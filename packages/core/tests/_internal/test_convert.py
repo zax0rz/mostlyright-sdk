@@ -8,18 +8,18 @@ import math
 import pytest
 
 
-# TODO(wave1-models-lift): swap the `mostlyright.models` reference below to
-# `tradewinds._internal.models` once the parallel Wave 1 models-lift agent lands.
-# Until then TestConvertObservation is skipped class-wide via skipif — keeping
-# the test bodies intact so the swap is a one-line edit.
-def _has_mostlyright_models() -> bool:
+# Wave 2 lifted `tradewinds._internal.models`, so the previously-skipped
+# TestConvertObservation class now runs. The skipif gate stays defensive so
+# this file survives a hypothetical drop of the models package; if models is
+# present (which it always should be now), the suite is active.
+def _has_tw_models() -> bool:
     try:
-        return importlib.util.find_spec("mostlyright.models") is not None
+        return importlib.util.find_spec("tradewinds._internal.models") is not None
     except ModuleNotFoundError:
         return False
 
 
-_HAS_MOSTLYRIGHT_MODELS = _has_mostlyright_models()
+_HAS_MOSTLYRIGHT_MODELS = _has_tw_models()
 
 
 class TestCelsiusToFahrenheit:
@@ -312,15 +312,14 @@ class TestInchesToMm:
 
 @pytest.mark.skipif(
     not _HAS_MOSTLYRIGHT_MODELS,
-    reason="Observation model not yet lifted into tradewinds._internal.models; "
-    "parallel Wave 1 models-lift agent owns this.",
+    reason="tradewinds._internal.models not available — should never trigger "
+    "after Wave 2 lifted the models package.",
 )
 class TestConvertObservation:
     """convert_observation: returns NEW Observation with converted fields."""
 
     def _make_obs(self):
-        # TODO(wave1-models-lift): swap to `tradewinds._internal.models.Observation`.
-        from mostlyright.models import Observation  # type: ignore[import-not-found]
+        from tradewinds._internal.models import Observation
 
         return Observation(
             station_code="NYC",
@@ -443,9 +442,8 @@ class TestConvertObservation:
             convert_observation(obs, "celsius")
 
     def test_none_fields_stay_none(self) -> None:
-        # TODO(wave1-models-lift): swap to `tradewinds._internal.models.Observation`.
-        from mostlyright.models import Observation  # type: ignore[import-not-found]
         from tradewinds._internal._convert import convert_observation
+        from tradewinds._internal.models import Observation
 
         obs = Observation(
             station_code="NYC",
