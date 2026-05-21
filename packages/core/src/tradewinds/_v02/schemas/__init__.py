@@ -8,6 +8,7 @@ specification.
 
 from .forecast import ForecastSchema
 from .observation import ObservationSchema
+from .settlement import SettlementSchema
 
 
-__all__ = ["ObservationSchema", "ForecastSchema"]
+__all__ = ["ObservationSchema", "ForecastSchema", "SettlementSchema"]
