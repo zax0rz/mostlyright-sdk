@@ -9,6 +9,7 @@ Provides:
 
 from __future__ import annotations
 
+import copy
 import json
 from pathlib import Path
 from typing import Any
@@ -89,14 +90,18 @@ def load_schema(entity: str) -> dict[str, Any]:
             f"Supported: {valid}. "
             f"Note: 'pairs' is not supported — see feature_catalog(source_filter='pairs')."
         )
+    # Codex review W2-C P2 fix: dict(...) only copies the top-level mapping;
+    # nested objects (properties, $ref blocks) remain shared with _SCHEMA_CACHE.
+    # Caller-side mutations would corrupt every subsequent load_schema() call
+    # process-wide. Deep-copy so the contract holds.
     if entity in _SCHEMA_CACHE:
-        return dict(_SCHEMA_CACHE[entity])  # return copy
+        return copy.deepcopy(_SCHEMA_CACHE[entity])
 
     spec_path = SPECS_DIR / _SCHEMA_FILES[entity]
     with spec_path.open() as f:
         schema = json.load(f)
     _SCHEMA_CACHE[entity] = schema
-    return dict(schema)
+    return copy.deepcopy(schema)
 
 
 # ---------------------------------------------------------------------------
