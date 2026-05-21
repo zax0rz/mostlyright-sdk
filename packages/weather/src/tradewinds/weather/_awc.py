@@ -79,8 +79,13 @@ def parse_awc_visibility(vis: Any) -> float | None:
             return None
         return min(w + n / d, MAX_VISIBILITY_MILES)
 
-    # Simple fraction: "1/2", "1/4", "3/4"
+    # Simple fraction: "1/2", "1/4", "3/4", or "M1/4" (below-quarter-mile
+    # AWC/METAR convention — codex review W3A P2). The leading 'M' means
+    # "less than", which we represent as the same fractional value (the
+    # observation schema treats this as the visibility value, not a flag).
     if "/" in s:
+        if s.startswith("M") or s.startswith("m"):
+            s = s[1:]
         frac_parts = s.split("/")
         if len(frac_parts) != 2:
             return None
