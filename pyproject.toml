@@ -59,7 +59,10 @@ ignore = ["E501"]  # line length handled by formatter
 
 [tool.pytest.ini_options]
 markers = [
-    "live: tests that hit live public APIs (skipped in CI per testing playbook)",
+    "live: tests that hit live public APIs (skipped by default per testing playbook)",
 ]
 testpaths = ["packages"]
-addopts = "-q --strict-markers"
+# -m "not live" excludes live tests by default — codex W3A P2: marker labelling
+# alone does not skip; CI/offline runs hit the network without this. Opt in
+# explicitly: uv run pytest -m live.
+addopts = "-q --strict-markers -m 'not live'"
