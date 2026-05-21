@@ -114,6 +114,13 @@ def _parse_weather_codes(row: dict[str, str]) -> str | None:
         val = row.get(f"pres_wx_AW{i}", "")
         if not val:
             continue
+        # Codex W3A P2: honor per-column Quality_Code filtering. GHCNh uses
+        # the same convention as other variables — rejected codes are 3 or P.
+        # Without this, flagged present-weather observations pass through even
+        # though we filter the matching numeric variables.
+        qc = row.get(f"pres_wx_AW{i}_Quality_Code", "")
+        if qc and qc.strip() in ("3", "P"):
+            continue
         code = val.split(":")[0] if ":" in val else val
         if code and not code.lstrip("+-").isdigit():
             codes.append(code)
@@ -283,9 +290,24 @@ def parse_ghcnh_row(row: dict[str, str]) -> dict[str, Any] | None:
     # Weather codes
     weather_codes = _parse_weather_codes(row)
 
-    # Raw METAR from REM column
+    # Raw METAR from REM column. Codex W3A P2: GHCNh wraps the raw METAR
+    # in a "METxxxxMM/DD/YY HH:MM:SS METAR <icao> ..." prefix. Extract just
+    # the METAR/SPECI substring so raw_metar starts with "METAR" or "SPECI"
+    # per the observation schema contract.
     rem = row.get("REM", "")
-    raw_metar: str | None = rem[:MAX_RAW_METAR_LEN] if rem else None
+    raw_metar: str | None = None
+    if rem:
+        # Find the first occurrence of "METAR " or "SPECI " and slice from there.
+        idx_metar = rem.find("METAR ")
+        idx_speci = rem.find("SPECI ")
+        if idx_metar >= 0 and (idx_speci < 0 or idx_metar < idx_speci):
+            cleaned = rem[idx_metar:]
+        elif idx_speci >= 0:
+            cleaned = rem[idx_speci:]
+        else:
+            cleaned = rem  # No METAR/SPECI marker — fall back to raw REM
+        # Trim trailing GHCNh annotations like " (RR)" if present at end
+        raw_metar = cleaned[:MAX_RAW_METAR_LEN]
 
     return {
         "station_code": station_code,
