@@ -33,7 +33,11 @@ the namespace is locked.
 
 ```bash
 cd /Users/helloiamvu/Documents/GitHub/tradewinds  # or wherever the merged branch lands
-uv build  # produces dist/tradewinds-0.0.1*, dist/tradewinds_weather-0.0.1*, dist/tradewinds_markets-0.0.1*
+
+# NOTE: `uv build` at the workspace root builds the ROOT package only, not the
+# workspace members. Use --all-packages to build tradewinds, tradewinds-weather,
+# and tradewinds-markets all at once.
+uv build --all-packages  # produces dist/tradewinds-0.0.1*, dist/tradewinds_weather-0.0.1*, dist/tradewinds_markets-0.0.1*
 
 # Set token once per shell (or use uv publish --token <token>)
 export UV_PUBLISH_TOKEN=<your-pypi-token>
