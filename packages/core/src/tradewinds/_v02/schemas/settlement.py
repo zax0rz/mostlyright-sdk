@@ -23,7 +23,6 @@ from __future__ import annotations
 
 from ..schema import ColumnSpec, Schema
 
-
 _REPORT_TYPE_VALUES: tuple[str, ...] = ("preliminary", "final", "correction")
 
 

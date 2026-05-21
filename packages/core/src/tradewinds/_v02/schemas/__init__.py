@@ -10,5 +10,4 @@ from .forecast import ForecastSchema
 from .observation import ObservationSchema
 from .settlement import SettlementSchema
 
-
-__all__ = ["ObservationSchema", "ForecastSchema", "SettlementSchema"]
+__all__ = ["ForecastSchema", "ObservationSchema", "SettlementSchema"]

@@ -14,7 +14,7 @@ TimePoint will eventually wrap timestamp handling; this module accepts raw
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, ClassVar
 
 if TYPE_CHECKING:
@@ -83,7 +83,7 @@ class ColumnSpec:
 
 def _utc_now() -> datetime:
     """Wall-clock UTC timestamp for audit entries."""
-    return datetime.now(tz=timezone.utc)
+    return datetime.now(tz=UTC)
 
 
 def _require_tz_aware(ts: datetime, field_name: str) -> datetime:
@@ -134,7 +134,7 @@ class SchemaRegistration:
     adapter at registration time. v0.1.0 carries no such attribute.
     """
 
-    schema: type["Schema"]
+    schema: type[Schema]
     source: str
     retrieved_at_min: datetime
     retrieved_at_max: datetime
@@ -305,7 +305,7 @@ class Schema:
         # Normalise to UTC so the stored range and audit-log ISO strings
         # are consistent regardless of caller-side tzinfo. Equality with
         # the input timestamp is preserved (datetime equality respects tz).
-        retrieved_at = retrieved_at.astimezone(timezone.utc)
+        retrieved_at = retrieved_at.astimezone(UTC)
 
         reg = SchemaRegistration(
             schema=cls,
@@ -325,10 +325,10 @@ class Schema:
     @classmethod
     def from_dataframe(
         cls,
-        df: "pd.DataFrame",
+        df: pd.DataFrame,
         source: str,
         retrieved_at: datetime,
-    ) -> "Schema":
+    ) -> Schema:
         """Infer a schema from a DataFrame (BYO data path). Deferred to v0.1.1.
 
         Per ``docs/design.md`` Premise 5 (and §"Layer responsibilities"):

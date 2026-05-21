@@ -14,7 +14,6 @@ from __future__ import annotations
 
 from ..schema import ColumnSpec, Schema
 
-
 _SKY_COVER_VALUES: tuple[str, ...] = ("CLR", "FEW", "SCT", "BKN", "OVC", "VV")
 _OBSERVATION_TYPE_VALUES: tuple[str, ...] = ("METAR", "SPECI")
 

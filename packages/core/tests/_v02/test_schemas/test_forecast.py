@@ -8,9 +8,7 @@ mostlyright's FORECAST_FIELDS documented in §X).
 from __future__ import annotations
 
 import pytest
-
 from tradewinds._v02.schemas import ForecastSchema
-
 
 # (name, dtype, units, nullable, enum_values) per docs/design.md §A.
 _EXPECTED: list[tuple[str, str, str | None, bool, tuple[str, ...] | None]] = [

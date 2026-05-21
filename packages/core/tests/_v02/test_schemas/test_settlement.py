@@ -8,9 +8,7 @@ table). Verifies ``station_tz`` is present and required.
 from __future__ import annotations
 
 import pytest
-
 from tradewinds._v02.schemas import SettlementSchema
-
 
 # (name, dtype, units, nullable, enum_values) per docs/design.md §BB.3.
 _EXPECTED: list[tuple[str, str, str | None, bool, tuple[str, ...] | None]] = [

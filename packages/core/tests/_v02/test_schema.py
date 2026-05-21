@@ -3,16 +3,14 @@
 from __future__ import annotations
 
 import dataclasses
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
-
 from tradewinds._v02.schema import (
     ColumnSpec,
     Schema,
     SchemaRegistration,
 )
-
 
 # ---------------------------------------------------------------------------
 # ColumnSpec construction
@@ -183,7 +181,7 @@ class TestColumnNames:
 # ---------------------------------------------------------------------------
 
 
-_TS = datetime(2026, 5, 21, 12, 0, 0, tzinfo=timezone.utc)
+_TS = datetime(2026, 5, 21, 12, 0, 0, tzinfo=UTC)
 
 
 class TestSchemaRegister:
@@ -250,11 +248,11 @@ class TestSchemaRegister:
         reg = _ToySchema.register(
             source="iem.archive", retrieved_at=ts_et, rows=1
         )
-        assert reg.retrieved_at_min.tzinfo == timezone.utc
-        assert reg.retrieved_at_max.tzinfo == timezone.utc
+        assert reg.retrieved_at_min.tzinfo == UTC
+        assert reg.retrieved_at_max.tzinfo == UTC
         # Same instant in UTC: 07:00-05:00 == 12:00+00:00.
         assert reg.retrieved_at_min == datetime(
-            2026, 5, 21, 12, 0, 0, tzinfo=timezone.utc
+            2026, 5, 21, 12, 0, 0, tzinfo=UTC
         )
         # Audit log ISO string ends with +00:00, not -05:00.
         assert reg.audit_log()[0]["ts"].endswith("+00:00")
@@ -383,7 +381,7 @@ class TestAuditLog:
 
     def test_append_with_explicit_ts_datetime(self) -> None:
         reg = self._fresh_registration()
-        ts = datetime(2026, 6, 1, 9, 30, tzinfo=timezone.utc)
+        ts = datetime(2026, 6, 1, 9, 30, tzinfo=UTC)
         reg._append_audit("source_drift_allowed", ts=ts, reason="r")
         # datetime ts is normalised to ISO-8601 string in the entry.
         assert reg.audit_log()[-1]["ts"] == ts.isoformat()
