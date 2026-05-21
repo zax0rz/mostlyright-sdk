@@ -1,6 +1,6 @@
 # Parity fixtures — Day 3 hard gate
 
-**Captured from:** `mostlyright==0.14.1` (intended; see "Capture blocker" below)
+**Captured from:** `mostlyright==0.14.1` on PyPI (via `api.mostlyright.md` hosted backend)
 **Capture date:** 2026-05-21
 **Capture script:** `capture_fixtures.py` (in this directory)
 **Pinned dep set:** `pandas>=2.2,<3.0`, `pyarrow>=18,<25`, Python 3.11+
@@ -8,42 +8,42 @@
 > Do **NOT** regenerate these files in CI. They are settlement-grade
 > reference data; the bytes ARE the Day 3 hard-gate ground truth.
 
-## STATUS: BLOCKED — REGEN NEEDED for all 5 cases
+## STATUS: CAPTURED — 5/5 fixtures present
 
-All five parity fixtures **FAILED to capture** on 2026-05-21 due to
-`AuthenticationError: Invalid or missing API key.` from
-`https://api.mostlyright.md/observations`. The published `mostlyright==0.14.1`
-SDK on PyPI has **no built-in API-key auth** (the `_http.HttpSession`
-constructor only sets a User-Agent header), and `api.mostlyright.md`
-requires every non-`/health` route to carry a valid `X-API-Key`. See
-`capture_fixtures.py` for a runtime monkeypatch that wires `X-API-Key`
-from `MOSTLYRIGHT_API_KEY` into the existing v0.14.1 client.
+All five fixtures captured on 2026-05-21 via the X-API-Key shim in
+`capture_fixtures.py` (the published `mostlyright==0.14.1` SDK has no
+built-in auth; the script monkeypatches `_http.HttpSession` to forward
+`MOSTLYRIGHT_API_KEY` as `X-API-Key` per `api.mostlyright.md`'s requirement).
 
-**To complete Day 3 hard gate:**
+### API whitelist constraint
 
-1. Obtain a valid `MOSTLYRIGHT_API_KEY` (operator: vuhcze@gmail.com).
-2. Activate `/tmp/mostlyright-v14-venv` (see `capture_fixtures.py` docstring
-   for the install recipe; pandas pin is **PARITY-CRITICAL**).
-3. From the repo root:
-   ```bash
-   MOSTLYRIGHT_API_KEY=<key> \
-     /tmp/mostlyright-v14-venv/bin/python tests/fixtures/parity/capture_fixtures.py
-   ```
-4. Verify five `.parquet` files appear in this directory.
-5. Commit the `.parquet` files. **Update this README's "STATUS" section to OK.**
+`api.mostlyright.md` only serves a 20-station whitelist:
+`ATL, AUS, BOS, DCA, DEN, DFW, HOU, LAS, LAX, MDW, MIA, MSP, MSY, NYC, OKC, PHL, PHX, SAT, SEA, SFO`.
 
-Until step 4, the Day 3 hard gate (`tests/test_parity.py`) cannot run.
-Flag this to the team **immediately** when picking the lane back up.
+**KORD (O'Hare) is NOT in the whitelist** — case 2 was switched from KORD to
+KMDW (Midway, also Chicago, IS in the whitelist) to capture a Chicago-area
+single-month fixture. The local-first tradewinds SDK calls public APIs directly
+(IEM, AWC, NWS CLI) and will work for any ICAO station; parity vs v0.14.1 is
+only defined for the whitelist.
+
+## Re-capture (only if fixtures are lost)
+
+```bash
+MOSTLYRIGHT_API_KEY=<key> \
+  /tmp/mostlyright-v14-venv/bin/python tests/fixtures/parity/capture_fixtures.py
+```
+
+Operator: vuhcze@gmail.com.
 
 ## Cases
 
 | # | Station | From       | To         | Why this case                                              | Status     |
 |---|---------|------------|------------|------------------------------------------------------------|------------|
-| 1 | KNYC    | 2025-01-06 | 2025-01-12 | Single-week NYC, clean baseline                            | REGEN NEEDED |
-| 2 | KORD    | 2025-04-01 | 2025-04-30 | Single-month Chicago, exercises monthly aggregation        | REGEN NEEDED |
-| 3 | KLAX    | 2025-03-01 | 2025-03-31 | LST month boundary case (PST/PDT transition on 2025-03-09) | REGEN NEEDED |
-| 4 | KMIA    | 2024-12-01 | 2025-11-30 | Full-year Miami, larger volume, year boundary              | REGEN NEEDED |
-| 5 | KMSY    | 2024-09-08 | 2024-09-22 | Hurricane Francine recovery — AWC gap, IEM fills           | REGEN NEEDED |
+| 1 | KNYC    | 2025-01-06 | 2025-01-12 | Single-week NYC, clean baseline                            | OK (7 rows)    |
+| 2 | KMDW    | 2025-04-01 | 2025-04-30 | Single-month Chicago (Midway; KORD not in API whitelist)   | OK (30 rows)   |
+| 3 | KLAX    | 2025-03-01 | 2025-03-31 | LST month boundary case (PST/PDT transition on 2025-03-09) | OK (31 rows)   |
+| 4 | KMIA    | 2024-12-01 | 2025-11-30 | Full-year Miami, larger volume, year boundary              | OK (365 rows)  |
+| 5 | KMSY    | 2024-09-08 | 2024-09-22 | Hurricane Francine recovery — AWC gap, IEM fills           | OK (15 rows)   |
 
 ### Case 5 picking rationale
 
