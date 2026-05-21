@@ -955,22 +955,36 @@ provides-extras = ["parquet"]
 name = "tradewinds-workspace"
 version = "0.0.0"
 source = { editable = "." }
+dependencies = [
+    { name = "tradewinds" },
+    { name = "tradewinds-markets" },
+    { name = "tradewinds-weather" },
+]
 
 [package.dev-dependencies]
 dev = [
     { name = "hypothesis" },
+    { name = "pandas" },
     { name = "pre-commit" },
+    { name = "pyarrow" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
 ]
 
 [package.metadata]
+requires-dist = [
+    { name = "tradewinds", editable = "packages/core" },
+    { name = "tradewinds-markets", editable = "packages/markets" },
+    { name = "tradewinds-weather", editable = "packages/weather" },
+]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "hypothesis", specifier = ">=6.100" },
+    { name = "pandas", specifier = ">=2.2" },
     { name = "pre-commit", specifier = ">=3.7" },
+    { name = "pyarrow", specifier = ">=17.0" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-cov", specifier = ">=5.0" },
     { name = "ruff", specifier = ">=0.5" },

@@ -3,6 +3,14 @@ name = "tradewinds-workspace"
 version = "0.0.0"
 description = "uv workspace root for tradewinds packages (not published)"
 requires-python = ">=3.11"
+# Declare the workspace members as deps so `uv sync` installs them in editable
+# mode by default (otherwise plain `uv sync` skips members; users would need
+# `uv sync --all-packages` and would hit ModuleNotFoundError on `import tradewinds`).
+dependencies = [
+    "tradewinds",
+    "tradewinds-weather",
+    "tradewinds-markets",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -30,6 +38,13 @@ dev = [
     # wave-1-core port from mostlyright-mcp; kept in workspace dev so future tests
     # across packages can use hypothesis without further setup.
     "hypothesis>=6.100",
+    # pandas + pyarrow are runtime deps under the `parquet` extra of `tradewinds`
+    # (DataFrame return values), but they are MANDATORY for the test suite:
+    # _v02 tests import pandas at collection time, and Sprint 0 parity fixtures
+    # are parquet files. Putting them in dev so `uv run pytest -m "not live"`
+    # works in a clean checkout without `--extra parquet` gymnastics.
+    "pandas>=2.2",
+    "pyarrow>=17.0",
 ]
 
 [tool.ruff]
