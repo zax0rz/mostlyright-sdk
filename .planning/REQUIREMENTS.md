@@ -150,26 +150,71 @@ Explicitly excluded. Documented to prevent scope creep.
 
 ## Traceability
 
-Populated during roadmap creation (`/gsd-new-project` step 8).
+Per-requirement phase assignments (filled by roadmapper 2026-05-21).
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PARITY-01..03 | (pending) | Pending |
-| CORE-01..08 | (pending) | Pending |
-| CATALOG-01..06 | (pending) | Pending |
-| MARKETS-01..03 | (pending) | Pending |
-| RESEARCH-01..05 | (pending) | Pending |
-| CACHE-01..07 | (pending) | Pending |
-| PKG-01..06 | (pending) | Pending |
-| DOCS-01..03 | (pending) | Pending |
-| MIGRATION-01..03 | (pending) | Pending |
-| CI-01..05 | (pending) | Pending |
+| PARITY-01 | Phase 1 | Pending |
+| PARITY-02 | Phase 1 | Pending |
+| PARITY-03 | Phase 1 | Pending |
+| CORE-01 | Phase 2 | Pending |
+| CORE-02 | Phase 2 | Pending |
+| CORE-03 | Phase 2 | Pending |
+| CORE-04 | Phase 2 | Pending |
+| CORE-05 | Phase 2 | Pending |
+| CORE-06 | Phase 1 | Pending |
+| CORE-07 | Phase 2 | Pending |
+| CORE-08 | Phase 2 | Pending |
+| CATALOG-01 | Phase 2 | Pending |
+| CATALOG-02 | Phase 2 | Pending |
+| CATALOG-03 | Phase 2 | Pending |
+| CATALOG-04 | Phase 2 | Pending |
+| CATALOG-05 | Phase 2 | Pending |
+| CATALOG-06 | Phase 1 | Pending |
+| MARKETS-01 | Phase 2 | Pending |
+| MARKETS-02 | Phase 2 | Pending |
+| MARKETS-03 | Phase 2 | Pending |
+| RESEARCH-01 | Phase 3 | Pending |
+| RESEARCH-02 | Phase 3 | Pending |
+| RESEARCH-03 | Phase 3 | Pending |
+| RESEARCH-04 | Phase 3 | Pending |
+| RESEARCH-05 | Phase 3 | Pending |
+| CACHE-01 | Phase 1 | Pending |
+| CACHE-02 | Phase 3 | Pending |
+| CACHE-03 | Phase 3 | Pending |
+| CACHE-04 | Phase 3 | Pending |
+| CACHE-05 | Phase 3 | Pending |
+| CACHE-06 | Phase 3 | Pending |
+| CACHE-07 | Phase 1 | Pending |
+| PKG-01 | Phase 4 | Pending |
+| PKG-02 | Phase 1 | Pending |
+| PKG-03 | Phase 2 | Pending |
+| PKG-04 | Phase 1 | Pending |
+| PKG-05 | Phase 1 | Pending |
+| PKG-06 | Phase 1 | Pending |
+| DOCS-01 | Phase 4 | Pending |
+| DOCS-02 | Phase 4 | Pending |
+| DOCS-03 | Phase 4 | Pending |
+| MIGRATION-01 | Phase 3 | Pending |
+| MIGRATION-02 | Phase 3 | Pending |
+| MIGRATION-03 | Phase 3 | Pending |
+| CI-01 | Phase 4 | Pending |
+| CI-02 | Phase 4 | Pending |
+| CI-03 | Phase 4 | Pending |
+| CI-04 | Phase 4 | Pending |
+| CI-05 | Phase 4 | Pending |
 
 **Coverage:**
-- v1 requirements: 47 total
-- Mapped to phases: 0 (will be filled by roadmapper)
-- Unmapped: 47 ⚠️ — expected; roadmapper runs next
+- v1 requirements: 49 total
+- Mapped to phases: 49 ✓
+- Unmapped: 0 ✓
+
+**Phase Distribution:**
+- Phase 1 (Parity Lift): 11 requirements (PARITY-01..03, CORE-06, CATALOG-06, CACHE-01, CACHE-07, PKG-02, PKG-04, PKG-05, PKG-06)
+- Phase 2 (Core + Catalog): 16 requirements (CORE-01..05, CORE-07, CORE-08, CATALOG-01..05, MARKETS-01..03, PKG-03)
+- Phase 3 (Mode 2 + Migration): 13 requirements (RESEARCH-01..05, CACHE-02..06, MIGRATION-01..03)
+- Phase 4 (Coverage + Release): 9 requirements (PKG-01, DOCS-01..03, CI-01..05)
 
 ---
 *Requirements defined: 2026-05-21*
-*Last updated: 2026-05-21 after initial definition*
+*Last updated: 2026-05-21 after roadmapper traceability fill (Phase 1-4 mapping, 49/49 coverage)*

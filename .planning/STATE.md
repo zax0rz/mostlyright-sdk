@@ -1,0 +1,70 @@
+# Project State
+
+## Project Reference
+
+See: .planning/PROJECT.md (updated 2026-05-21)
+
+**Core value:** `research(contract, station, from_date, to_date)` returns clean, leakage-free, source-identified training pairs that backtest the same way they trade — and any train/infer source mismatch errors loudly instead of silently corrupting a model.
+**Current focus:** Phase 1: v0.14.1 Parity Lift
+
+## Current Position
+
+Phase: 1 of 4 (v0.14.1 Parity Lift)
+Plan: 0 of TBD in current phase
+Status: Ready to plan
+Last activity: 2026-05-21 — Roadmap created from user-authored ROADMAP.md + research synthesis
+
+Progress: [░░░░░░░░░░] 0%
+
+## Performance Metrics
+
+**Velocity:**
+- Total plans completed: 0
+- Average duration: N/A
+- Total execution time: 0 hours
+
+**By Phase:**
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| - | - | - | - |
+
+**Recent Trend:**
+- Last 5 plans: N/A
+- Trend: N/A
+
+*Updated after each plan completion*
+
+## Accumulated Context
+
+### Decisions
+
+Decisions are logged in PROJECT.md Key Decisions table.
+Recent decisions affecting current work:
+
+- Merge mostlyright-mcp vision into tradewinds workspace, not standalone — Pending
+- Defer MCP server to v0.2 — Pending
+- Three-package workspace (`tradewinds`/`tradewinds-weather`/`tradewinds-markets`) — Pending
+- `research()` two-mode (parity + source-explicit) — Pending
+- Lift source pinned to `monorepo-v0.14.1/` tag (NOT head) — Locked
+- Open-Meteo NOT in v0.1 (licensing) — Locked
+
+### Pending Todos
+
+Open decisions to resolve during execution (per research SUMMARY.md):
+- Pandera vs jsonschema for Validator engine — Day 5 spike (Phase 2)
+- `research()` import path resolution (`from tradewinds.research import research` vs `from tradewinds.api import research`) — decide before Phase 2 Day 5
+
+### Blockers/Concerns
+
+[Pre-execution context — risks flagged by research]
+
+- Phase 1 Day 1 must complete the Day-1 Morning Sync addendum (7 items, ~2 hours): AWC URL smoke + PEP 420 migration + dtype ground-truth capture + version pins + `tradewinds.core` public surface stub + `TRADEWINDS_CACHE_DIR` wiring + `_vendor/__init__.py` inventory. Skipping any of these compromises the Day 3 parity gate.
+- Phase 2 must hard-code `KALSHI_SETTLEMENT_STATIONS` (KNYC, KMDW, etc.) before Phase 3 migration gate — silent data corruption risk if wrong station IDs are used.
+- Phase 4 PyPI trusted publishing needs three separate registrations (one per package); use PyPI "pending publisher" feature to bypass chicken-and-egg on first publish.
+
+## Session Continuity
+
+Last session: 2026-05-21 19:30
+Stopped at: ROADMAP.md + STATE.md + REQUIREMENTS.md traceability written; ready to plan Phase 1
+Resume file: None
