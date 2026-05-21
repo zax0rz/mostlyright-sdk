@@ -943,6 +943,7 @@ dependencies = [
     { name = "filelock" },
     { name = "httpx" },
     { name = "jsonschema" },
+    { name = "tradewinds" },
     { name = "tzdata", marker = "sys_platform == 'win32'" },
 ]
 
@@ -959,6 +960,7 @@ requires-dist = [
     { name = "jsonschema", specifier = ">=4.21" },
     { name = "pandas", marker = "extra == 'parquet'", specifier = ">=2.2" },
     { name = "pyarrow", marker = "extra == 'parquet'", specifier = ">=17.0" },
+    { name = "tradewinds", editable = "packages/core" },
     { name = "tzdata", marker = "sys_platform == 'win32'" },
 ]
 provides-extras = ["parquet"]
