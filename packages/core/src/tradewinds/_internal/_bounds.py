@@ -33,8 +33,11 @@ WIND_GUST_MAX = 250
 # Sky (observation.json: sky_base max)
 SKY_BASE_MAX_FT = 60000
 
-# Station code regex — security boundary: codes flow into Hive partition paths
-STATION_CODE_RE = re.compile(r"^[A-Z]{3,4}$")
+# Station code regex — security boundary: codes flow into Hive partition paths.
+# Use `\A...\Z` (not `^...$`) so trailing-newline inputs like "KJFK\n" fail to
+# match. Python's `$` matches BEFORE a trailing newline; `\Z` requires the
+# absolute end of string. Codex review fix.
+STATION_CODE_RE = re.compile(r"\A[A-Z]{3,4}\Z")
 
 # Year range for timestamp validation
 MIN_YEAR = 1940
