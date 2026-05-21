@@ -106,9 +106,14 @@ def _install_api_key_shim() -> None:
 def main() -> int:
     _install_api_key_shim()
 
+    # Note: api.mostlyright.md restricts to a 20-station whitelist (ATL, AUS, BOS,
+    # DCA, DEN, DFW, HOU, LAS, LAX, MDW, MIA, MSP, MSY, NYC, OKC, PHL, PHX, SAT,
+    # SEA, SFO). KORD (O'Hare) is NOT in the whitelist; case 2 uses KMDW (Midway)
+    # which is also Chicago and IS in the whitelist. tradewinds' local-first SDK
+    # will work for any ICAO station; parity is only defined for the whitelist.
     cases: list[tuple[int, str, str, str, str]] = [
         (1, "KNYC", "2025-01-06", "2025-01-12", "Single-week NYC baseline"),
-        (2, "KORD", "2025-04-01", "2025-04-30", "Single-month Chicago"),
+        (2, "KMDW", "2025-04-01", "2025-04-30", "Single-month Chicago (Midway; KORD not in API whitelist)"),
         (3, "KLAX", "2025-03-01", "2025-03-31", "PST/PDT transition"),
         (4, "KMIA", "2024-12-01", "2025-11-30", "Full-year Miami, year boundary"),
         (
