@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mostlyright.xyz/schemas/settlement_record.json",
+  "title": "Market Settlement Record",
+  "description": "Settlement outcome for a single market. Links the market ticker to the settled value and the authoritative data source used for resolution. Used by client.settlement(market_ticker).",
+  "type": "object",
+  "required": ["market_ticker", "exchange", "settled_at"],
+  "additionalProperties": false,
+  "properties": {
+    "market_ticker": {
+      "type": "string",
+      "description": "Individual market ticker (e.g. 'HIGHNY-24JUL04-B72')."
+    },
+    "series_ticker": {
+      "description": "Parent series ticker.",
+      "oneOf": [{ "type": "string" }, { "type": "null" }]
+    },
+    "exchange": {
+      "type": "string",
+      "enum": ["kalshi", "polymarket", "unknown"],
+      "description": "Exchange."
+    },
+    "result": {
+      "description": "Settlement result: 'yes' or 'no'. Null = not yet settled.",
+      "oneOf": [
+        { "type": "string", "enum": ["yes", "no"] },
+        { "type": "null" }
+      ]
+    },
+    "settlement_value_f": {
+      "description": "The actual observed value (°F) used for settlement.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "settlement_source": {
+      "description": "Data source used: 'nws_cli_final', 'nws_cli_preliminary', etc.",
+      "oneOf": [{ "type": "string" }, { "type": "null" }]
+    },
+    "settled_at": {
+      "description": "UTC timestamp when settlement was recorded (RFC3339).",
+      "oneOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }]
+    },
+    "observation_date": {
+      "description": "Settlement date (YYYY-MM-DD LST).",
+      "oneOf": [{ "type": "string", "format": "date" }, { "type": "null" }]
+    },
+    "station": {
+      "description": "NWS station code.",
+      "oneOf": [{ "type": "string" }, { "type": "null" }]
+    },
+    "cli_product_id": {
+      "description": "NWS CLI product identifier used for settlement (from specs/climate.json).",
+      "oneOf": [{ "type": "string" }, { "type": "null" }]
+    }
+  },
+  "$comment": "STUB: client.settlement() raises NotImplementedError until Sprint 3. Schema provided for forward compatibility."
+}

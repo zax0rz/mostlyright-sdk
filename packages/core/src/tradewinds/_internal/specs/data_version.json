@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mostlyright.xyz/schemas/data_version.json",
+  "title": "Data Version",
+  "description": "Deterministic identifier for the state of a dataset at a point in time. Two queries with the same version token always return identical data, enabling reproducibility for model training and backtesting.",
+  "type": "object",
+  "required": ["version", "station", "as_of", "observation_count"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Opaque version token. Deterministic hash of (station, sorted observation timestamps). as_of is metadata only and NOT included in the hash — identical observations queried at different times produce the same token."
+    },
+    "station": {
+      "type": "string",
+      "pattern": "^[A-Z]{3,4}$",
+      "description": "Normalized NWS station code."
+    },
+    "as_of": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Query timestamp (UTC ISO 8601). The watermark — data after this point is excluded."
+    },
+    "latest_observation": {
+      "description": "ISO 8601 timestamp of the most recent observation included. Null if no observations.",
+      "oneOf": [
+        { "type": "string", "format": "date-time" },
+        { "type": "null" }
+      ]
+    },
+    "observation_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of observations included in the version."
+    }
+  },
+  "$comment": "VERSIONING DESIGN: The version token is a short SHA-256 hash of station + sorted(observation_timestamps). as_of is metadata only and NOT in the hash. Same version = same dataset, guaranteed. Use to detect stale cached results or to label training data provenance."
+}

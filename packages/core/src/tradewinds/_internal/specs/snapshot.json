@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mostlyright.xyz/schemas/snapshot.json",
+  "title": "Historical Data Snapshot",
+  "description": "All data available for a station at a given historical moment. Answers: 'What would an AI agent have known at time T?' DST-aware Kalshi settlement window logic (midnight-midnight LST, NWS CLI published ~10 AM ET next day).",
+  "type": "object",
+  "required": ["station", "as_of", "settlement_date", "window_start_utc", "window_end_utc", "observations", "data_version"],
+  "additionalProperties": false,
+  "properties": {
+    "station": {
+      "type": "string",
+      "pattern": "^[A-Z]{3,4}$",
+      "description": "Station code (3-4 letter NWS code, e.g. NYC, ATL, KORD)."
+    },
+    "as_of": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Query timestamp (UTC ISO 8601). Data after this point is excluded."
+    },
+    "settlement_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Kalshi settlement date (YYYY-MM-DD in LOCAL STANDARD TIME). The date whose midnight-to-midnight LST window contains as_of."
+    },
+    "window_start_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC start of the settlement window (midnight LST = midnight_LST + abs(standard_offset))."
+    },
+    "window_end_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC end of the settlement window (24 hours after window_start_utc)."
+    },
+    "observations": {
+      "type": "array",
+      "description": "METAR/SPECI observations within the settlement window and before as_of. Raw storage schema (30 fields).",
+      "items": { "$ref": "observation.json" }
+    },
+    "climate": {
+      "description": "NWS CLI climate record for settlement_date, if published before as_of. Null if not yet available (CLI typically issued ~10 AM ET next day).",
+      "oneOf": [
+        { "$ref": "climate.json" },
+        { "type": "null" }
+      ]
+    },
+    "cli_publication_delay_hours": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Hours after midnight LST when the NWS CLI report is assumed to be published. Default 10.0 (10 AM ET next day per Kalshi contract spec)."
+    },
+    "forecasts": {
+      "description": "Forecasts available at as_of (most-recent model run before as_of). Null until sprint2/forecast-backfill is merged.",
+      "oneOf": [
+        { "type": "array", "items": { "type": "object" } },
+        { "type": "null" }
+      ]
+    },
+    "data_version": {
+      "type": "string",
+      "description": "Watermark/version tag for reproducibility. ISO timestamp of the most-recent observation in this snapshot, or 'empty' if no observations."
+    }
+  },
+  "$comment": "BUSINESS RULES: (1) Settlement window is midnight-midnight LOCAL STANDARD TIME (LST). During US DST, the clock-time window is 1:00 AM to 1:00 AM next day, but the LST window is always aligned to UTC-offset for standard time. (2) Climate record included only if as_of >= window_start_utc + 24h + cli_publication_delay_hours (i.e., the report would have been published). (3) Observations include only rows where observed_at <= as_of. (4) data_version is the latest observed_at in the observations list, enabling exact replay of AI agent training data. (5) LST offset computed from the station's IANA timezone using a January reference date (no DST in January for US stations)."
+}

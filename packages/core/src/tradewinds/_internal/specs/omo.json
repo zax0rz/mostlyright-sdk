@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mostlyright.xyz/schemas/omo.json",
+  "title": "OMO Observation (1-Minute ASOS)",
+  "description": "One-minute ASOS observations from MADIS. Integer °C precision (native telemetry). 19 stations (excludes NYC/KNYC which has no ASOS).",
+  "type": "object",
+  "required": ["station_code", "observed_at"],
+  "additionalProperties": false,
+  "properties": {
+    "station_code": {
+      "type": "string",
+      "pattern": "^[A-Z]{3,4}$",
+      "description": "ASOS station code. 19 of the 20 Kalshi stations (no NYC)."
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Observation timestamp (UTC). 1-minute intervals."
+    },
+    "temp_c": {
+      "description": "Temperature in integer degrees Celsius. Native ASOS telemetry precision.",
+      "oneOf": [
+        { "type": "integer", "minimum": -60, "maximum": 60 },
+        { "type": "null" }
+      ]
+    },
+    "dewpoint_c": {
+      "description": "Dewpoint in integer degrees Celsius. Must be <= temp_c when both present.",
+      "oneOf": [
+        { "type": "integer", "minimum": -60, "maximum": 60 },
+        { "type": "null" }
+      ]
+    },
+    "pressure1_inhg": {
+      "description": "Barometric pressure from primary sensor (inHg).",
+      "oneOf": [
+        { "type": "number", "minimum": 25.0, "maximum": 33.0 },
+        { "type": "null" }
+      ]
+    },
+    "pressure2_inhg": {
+      "description": "Barometric pressure from secondary sensor (inHg).",
+      "oneOf": [
+        { "type": "number", "minimum": 25.0, "maximum": 33.0 },
+        { "type": "null" }
+      ]
+    },
+    "pressure3_inhg": {
+      "description": "Barometric pressure from tertiary sensor (inHg).",
+      "oneOf": [
+        { "type": "number", "minimum": 25.0, "maximum": 33.0 },
+        { "type": "null" }
+      ]
+    },
+    "precip_type": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "null" }
+      ],
+      "description": "Precipitation type code."
+    },
+    "precip_in": {
+      "description": "Precipitation amount in inches.",
+      "oneOf": [
+        { "type": "number", "minimum": 0 },
+        { "type": "null" }
+      ]
+    },
+    "source": {
+      "oneOf": [
+        { "type": "string", "enum": ["ncei", "iem"] },
+        { "type": "null" }
+      ],
+      "description": "Data provenance. 'ncei' = authoritative historical. 'iem' = modern gap-fill."
+    }
+  },
+  "$comment": "BUSINESS RULES: (1) dewpoint_c <= temp_c when both present. (2) Integer precision only for temperature (native ASOS telemetry). (3) NYC/KNYC excluded (Central Park has no ASOS)."
+}

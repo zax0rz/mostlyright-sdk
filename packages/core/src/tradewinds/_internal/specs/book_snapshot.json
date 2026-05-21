@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mostlyright.xyz/schemas/book_snapshot.json",
+  "title": "Order Book Snapshot",
+  "description": "Level-2 order book snapshot for a market at a given timestamp. Used by client.book_snapshot(market_ticker, as_of).",
+  "type": "object",
+  "required": ["market_ticker", "exchange", "as_of"],
+  "additionalProperties": false,
+  "properties": {
+    "market_ticker": {
+      "type": "string",
+      "description": "Market ticker."
+    },
+    "exchange": {
+      "type": "string",
+      "enum": ["kalshi", "polymarket", "unknown"]
+    },
+    "as_of": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Snapshot timestamp (UTC RFC3339)."
+    },
+    "yes_bid": {
+      "description": "Best bid price for YES (0-100 cents). Null = no bids.",
+      "oneOf": [{ "type": "number", "minimum": 0, "maximum": 100 }, { "type": "null" }]
+    },
+    "yes_ask": {
+      "description": "Best ask price for YES (0-100 cents). Null = no asks.",
+      "oneOf": [{ "type": "number", "minimum": 0, "maximum": 100 }, { "type": "null" }]
+    },
+    "yes_last": {
+      "description": "Last traded price for YES (0-100 cents).",
+      "oneOf": [{ "type": "number", "minimum": 0, "maximum": 100 }, { "type": "null" }]
+    },
+    "volume": {
+      "description": "Total contracts traded (all-time).",
+      "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }]
+    },
+    "open_interest": {
+      "description": "Open interest (outstanding contracts).",
+      "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }]
+    },
+    "bids": {
+      "description": "Bid levels (price descending). Each entry: [price_cents, contracts].",
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              { "type": "number", "minimum": 0, "maximum": 100 },
+              { "type": "integer", "minimum": 0 }
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          }
+        },
+        { "type": "null" }
+      ]
+    },
+    "asks": {
+      "description": "Ask levels (price ascending). Each entry: [price_cents, contracts].",
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "prefixItems": [
+              { "type": "number", "minimum": 0, "maximum": 100 },
+              { "type": "integer", "minimum": 0 }
+            ],
+            "minItems": 2,
+            "maxItems": 2
+          }
+        },
+        { "type": "null" }
+      ]
+    }
+  },
+  "$comment": "STUB: client.book_snapshot() raises NotImplementedError until Sprint 3."
+}

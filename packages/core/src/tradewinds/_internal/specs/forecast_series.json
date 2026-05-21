@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mostlyright.xyz/schemas/forecast_series.json",
+  "title": "Open-Meteo Forecast Series (Seamless Time Series)",
+  "description": "STORAGE SCHEMA for seamless historical forecast time series from Open-Meteo. One row per (station, model, valid_at). These are NOT discrete model runs — each value comes from whichever model cycle was most recent, assembled into a continuous series. No issued_at provenance. Supplementary source for richer variables.",
+  "type": "object",
+  "required": ["station_code", "model", "source", "valid_at"],
+  "additionalProperties": false,
+  "properties": {
+    "station_code": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$",
+      "description": "Canonical 3-letter NWS station code."
+    },
+    "model": {
+      "type": "string",
+      "enum": ["gfs_seamless", "ncep_hrrr_conus", "ncep_nbm_conus", "ecmwf_ifs025", "ecmwf_aifs025"],
+      "description": "Open-Meteo model name. NAM excluded (archive starts Sep 2025, not yet available)."
+    },
+    "source": {
+      "type": "string",
+      "const": "open_meteo",
+      "description": "Always 'open_meteo' for this schema."
+    },
+    "valid_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this forecast value is for (UTC, Z-suffix). Whole-hour aligned."
+    },
+    "ingested_at": {
+      "description": "When we fetched this record (UTC, Z-suffix). Null for historical backfill.",
+      "oneOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }]
+    },
+
+    "temperature_c": {
+      "description": "Air temperature at 2m in Celsius. Open-Meteo 'temperature_2m'. Float64, no rounding.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "dewpoint_c": {
+      "description": "Dewpoint at 2m in Celsius. Open-Meteo 'dew_point_2m'.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "relative_humidity_pct": {
+      "description": "Relative humidity at 2m (%). Open-Meteo 'relative_humidity_2m'.",
+      "oneOf": [{ "type": "number", "minimum": 0, "maximum": 100 }, { "type": "null" }]
+    },
+    "apparent_temperature_c": {
+      "description": "Apparent (feels-like) temperature in Celsius. Open-Meteo 'apparent_temperature'.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+
+    "wind_speed_kmh": {
+      "description": "Wind speed at 10m in km/h. Open-Meteo 'wind_speed_10m'.",
+      "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }]
+    },
+    "wind_direction_deg": {
+      "description": "Wind direction at 10m in degrees (0-360). Open-Meteo 'wind_direction_10m'.",
+      "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 360 }, { "type": "null" }]
+    },
+    "wind_gusts_kmh": {
+      "description": "Wind gusts at 10m in km/h. Open-Meteo 'wind_gusts_10m'.",
+      "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }]
+    },
+
+    "pressure_msl_hpa": {
+      "description": "Mean sea level pressure in hPa. Open-Meteo 'pressure_msl'.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "surface_pressure_hpa": {
+      "description": "Surface pressure in hPa. Open-Meteo 'surface_pressure'.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+
+    "cloud_cover_pct": {
+      "description": "Total cloud cover (%). Open-Meteo 'cloud_cover'.",
+      "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 100 }, { "type": "null" }]
+    },
+    "visibility_m": {
+      "description": "Visibility in meters. Open-Meteo 'visibility'.",
+      "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }]
+    },
+    "weather_code": {
+      "description": "WMO weather interpretation code. Open-Meteo 'weather_code'.",
+      "oneOf": [{ "type": "integer" }, { "type": "null" }]
+    },
+
+    "precipitation_mm": {
+      "description": "Total precipitation in mm. Open-Meteo 'precipitation'. Zero = real zero, not missing.",
+      "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }]
+    },
+    "precipitation_probability_pct": {
+      "description": "Probability of precipitation (%). Open-Meteo 'precipitation_probability'.",
+      "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 100 }, { "type": "null" }]
+    },
+    "rain_mm": {
+      "description": "Rain only in mm. Open-Meteo 'rain'.",
+      "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }]
+    },
+    "snowfall_cm": {
+      "description": "Snowfall in cm. Open-Meteo 'snowfall'.",
+      "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }]
+    },
+
+    "shortwave_radiation_wm2": {
+      "description": "Global horizontal shortwave radiation in W/m2. Open-Meteo 'shortwave_radiation'. NWP models may return small negative values (~-3 W/m2) at night due to floating-point post-processing noise — stored as-reported per RAW-AS-REPORTED rule.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "direct_radiation_wm2": {
+      "description": "Direct beam radiation on horizontal surface in W/m2. Open-Meteo 'direct_radiation'. NWP models may return small negative values at night due to floating-point post-processing noise — stored as-reported.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+
+    "cape_jkg": {
+      "description": "Convective Available Potential Energy in J/kg. Open-Meteo 'cape'.",
+      "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }]
+    },
+    "freezing_level_m": {
+      "description": "0°C isotherm height in meters. Open-Meteo 'freezing_level_height'.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "snow_depth_m": {
+      "description": "Snow depth on ground in meters. Open-Meteo 'snow_depth'.",
+      "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }]
+    }
+  },
+
+  "$comment": "ARCHITECTURE DECISIONS: (1) SEAMLESS TIME SERIES, not discrete model runs. No issued_at — each value comes from whichever model cycle was most recent. Open-Meteo assembles this from initial hours of successive model runs. (2) Cannot answer 'what did 12Z GFS predict?' — only 'what was the best available short-range forecast?' This is why IEM (discrete runs) is primary. (3) Null = model horizon exceeded or data unavailable. Zero precip = real zero (confirmed via API testing). Never conflated. (4) Native Open-Meteo metric units: °C, hPa, km/h, mm. No conversions needed. (5) valid_at must be whole-hour aligned, UTC with Z suffix. (6) Dedup: exact-duplicate on (station_code, model, valid_at), first-seen wins. (7) Per-model archive start dates enforced at ingest: gfs_seamless=2021-03-23, ncep_hrrr_conus=2018-01-01, ncep_nbm_conus=2024-10-08, ecmwf_ifs025=2024-02-03, ecmwf_aifs025=2025-02-20. NAM excluded (archive starts Sep 2025). (8) 21 hourly variables selected from 80+ available. Additional variables (pressure-level, soil, 15-min) deferred."
+}
