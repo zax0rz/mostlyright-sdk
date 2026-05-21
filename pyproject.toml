@@ -26,6 +26,10 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.5",
     "pre-commit>=3.7",
+    # Property-based testing for v0.2 foundations (tradewinds._v02). Added by the
+    # wave-1-core port from mostlyright-mcp; kept in workspace dev so future tests
+    # across packages can use hypothesis without further setup.
+    "hypothesis>=6.100",
 ]
 
 [tool.ruff]
