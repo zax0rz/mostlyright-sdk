@@ -117,6 +117,14 @@ def parse_cli_record(
         return None
     if not _DATE_RE.match(observation_date):
         return None
+    # Codex W3A P2: regex matches "2025-02-31" but it's not a real date.
+    # Validate via date.fromisoformat() so invalid dates drop here (the
+    # alternative is infer_report_type() catching the ValueError later and
+    # silently classifying as "preliminary" — would corrupt settlement data).
+    try:
+        date.fromisoformat(observation_date)
+    except ValueError:
+        return None
 
     high = _parse_temp(record.get("high"))
     low = _parse_temp(record.get("low"))
