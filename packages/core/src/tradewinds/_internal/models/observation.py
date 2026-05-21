@@ -78,6 +78,13 @@ class Observation(DictLikeMixin):
     feels_like_f: float | None = field(init=False, default=None)
 
     def __post_init__(self) -> None:
+        # TODO(post-sprint-0): inherited bug from mostlyright==0.14.1 — after
+        # convert_observation() does dataclasses.replace() to swap kt→ms or
+        # kt→mph, this __post_init__ reruns and recomputes feels_like_f using
+        # the converted wind value as if it were still in knots. The result is
+        # wrong on cold/windy observations post-conversion. Byte-faithful lift
+        # preserves the bug; fix when refactoring units handling (codex W2-B P2,
+        # 2026-05-21).
         rh = compute_relative_humidity(self.temp_c, self.dewpoint_c)
         fl = compute_feels_like(self.temp_f, self.wind_speed_kt, rh)
         # Use object.__setattr__ because frozen=True
