@@ -1,0 +1,45 @@
+[project]
+name = "tradewinds-workspace"
+version = "0.0.0"
+description = "uv workspace root for tradewinds packages (not published)"
+requires-python = ">=3.11"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# Workspace root has no wheel artifact
+bypass-selection = true
+
+[tool.uv.workspace]
+members = ["packages/core", "packages/weather", "packages/markets"]
+
+[tool.uv.sources]
+tradewinds = { workspace = true }
+tradewinds-weather = { workspace = true }
+tradewinds-markets = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.5",
+    "pre-commit>=3.7",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [".venv", "dist", "build"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "RUF", "SIM"]
+ignore = ["E501"]  # line length handled by formatter
+
+[tool.pytest.ini_options]
+markers = [
+    "live: tests that hit live public APIs (skipped in CI per testing playbook)",
+]
+testpaths = ["packages"]
+addopts = "-q --strict-markers"

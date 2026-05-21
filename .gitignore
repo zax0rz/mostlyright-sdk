@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Testing / linting
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+
+# Local cache (tradewinds runtime cache lives in $HOME/.tradewinds/; this catches any test-time fixtures that leak)
+.tradewinds-cache/
+
+# uv — uv.lock IS committed for dev reproducibility across Lane F + Lane V (decision: lockfile-tracked for dev parity)
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

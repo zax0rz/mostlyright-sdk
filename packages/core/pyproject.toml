@@ -1,0 +1,39 @@
+[project]
+name = "tradewinds"
+version = "0.0.1"
+description = "Local-first SDK for quants researching prediction-market weather settlements. Meta package: research() join + shared utilities."
+readme = "README.md"
+license = { file = "../../LICENSE" }
+authors = [{ name = "Robert Tarabcak", email = "tarabcakr@gmail.com" }]
+requires-python = ">=3.11"
+keywords = ["weather", "quantitative-finance", "kalshi", "polymarket", "metar"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Financial and Insurance Industry",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    # Pinned to v0.14.1 mostlyright deps for inherited test coverage (per TODOS.md item 1)
+    "httpx>=0.27",
+    "jsonschema>=4.21",
+    "tzdata; sys_platform == 'win32'",
+    # Weather data lives in the sibling package; core re-exports research()
+    "tradewinds-weather",
+]
+
+[project.optional-dependencies]
+# DataFrame return + parquet cache. Matches v0.14.1's [parquet] extra.
+parquet = [
+    "pyarrow>=17.0",
+    "pandas>=2.2",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tradewinds"]
