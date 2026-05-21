@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mostlyright.xyz/schemas/candle.json",
+  "title": "Kalshi Market Candle (OHLCV)",
+  "description": "Candlestick data for Kalshi prediction markets. Sparse storage: only candles with complete OHLC (actual trades) are stored. Canonical storage uses CENTS (float 0–100) consistent with book_snapshot.json and market_unified.json. Parse Kalshi FixedPointDollars strings via: float(api_string) * 100.",
+  "type": "object",
+  "required": ["market_ticker", "period_interval", "end_period_ts", "open", "high", "low", "close", "volume", "open_interest"],
+  "additionalProperties": false,
+  "properties": {
+    "market_ticker": {
+      "type": "string",
+      "description": "Kalshi market ticker. Format varies (e.g., 'KXHIGHJFK-26APR25-T89').",
+      "minLength": 1
+    },
+    "period_interval": {
+      "type": "integer",
+      "enum": [1, 5, 15, 30, 60, 1440],
+      "description": "Candle interval in MINUTES. Note: Go API uses seconds (60, 300, 900, 1800, 3600, 86400). JSON Schema canonical unit is minutes."
+    },
+    "end_period_ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "End of candle period (RFC3339 UTC). Aligned to interval boundary."
+    },
+    "open": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Opening price in CENTS (0.0–100.0). Kalshi API returns FixedPointDollars strings (e.g., '0.5600' = 56 cents). Parse: float(api_string) * 100. Subpenny precision is preserved as decimal (e.g., 56.7 cents for deci-cent tick markets)."
+    },
+    "high": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Highest price in cents. Must be >= open, low, close."
+    },
+    "low": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Lowest price in cents. Must be <= open, high, close."
+    },
+    "close": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Closing price in cents."
+    },
+    "volume": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of contracts traded during period."
+    },
+    "open_interest": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Open interest (outstanding contracts) at end of period."
+    },
+    "filled": {
+      "type": "boolean",
+      "description": "True if this candle was forward-filled (no actual trade, OHLC copied from previous close). Default false.",
+      "default": false
+    }
+  },
+  "$comment": "BUSINESS RULES: (1) high >= max(open, low, close). (2) low <= min(open, high, close). (3) Only complete OHLC candles stored (sparse). (4) KALSHI API MIGRATION (March 12, 2026): Legacy integer cents fields REMOVED. API now returns FixedPointDollars strings. MostlyRight stores as float cents [0, 100]. Conversion: cents = float(dollars_string) * 100. (5) Unit consistency: candle.json, book_snapshot.json, and market_unified.json all use cents. (6) On conflict: full overwrite (no COALESCE). (7) The price_level_structure field on each market indicates tick size."
+}

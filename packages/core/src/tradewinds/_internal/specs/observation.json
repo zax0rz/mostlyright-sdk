@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mostlyright.xyz/schemas/observation.json",
+  "title": "Weather Observation (METAR/SPECI)",
+  "description": "STORAGE SCHEMA for hourly weather observations. Raw sensor data only. The SDK Observation model is a SUPERSET: it adds relative_humidity (computed from temp+dewpoint) and feels_like_f (NWS algorithm) at load time so existing SDK users see the same 29 fields they always had, plus new additive fields (temp_c, dewpoint_c, qc_field). ASOS measures in Fahrenheit; T-group recovers whole degrees F losslessly.",
+  "type": "object",
+  "required": ["station_code", "observed_at", "observation_type", "source"],
+  "additionalProperties": false,
+  "properties": {
+    "station_code": {
+      "type": "string",
+      "description": "3-4 letter NWS station code (ICAO without leading K for CONUS).",
+      "pattern": "^[A-Z]{3,4}$",
+      "examples": ["JFK", "LAX", "DEN", "KATL"]
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp of observation in RFC3339 format."
+    },
+    "observation_type": {
+      "type": "string",
+      "enum": ["METAR", "SPECI"],
+      "description": "METAR = routine hourly. SPECI = special (significant weather change)."
+    },
+    "source": {
+      "type": "string",
+      "enum": ["awc", "iem", "ghcnh"],
+      "description": "Data source. AWC = live (2-6 min). IEM = near-real-time gap-fill. GHCNh = historical backfill."
+    },
+
+    "temp_c": {
+      "description": "Temperature in Celsius. From T-group when available (0.1°C, maps 1:1 to whole °F). From METAR body otherwise (whole °C, lossy). ASOS native precision is whole °F. NEVER round at ingest — store source precision.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "dewpoint_c": {
+      "description": "Dewpoint in Celsius. Same precision rules as temp_c. Modern ASOS sensors derive dewpoint from RH measurement.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "temp_f": {
+      "description": "Temperature in Fahrenheit. Converted from temp_c. For ASOS T-group data, this recovers the internal whole-degree Fahrenheit value exactly. NEVER round at ingest.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "dewpoint_f": {
+      "description": "Dewpoint in Fahrenheit. Same rules as temp_f.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+
+    "wind_dir_degrees": {
+      "description": "Wind direction in degrees (0-360). RAW sensor, 2-min average, rounded to nearest 10°. Null = calm or variable (AWC 'VRB').",
+      "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 360 }, { "type": "null" }]
+    },
+    "wind_speed_kt": {
+      "description": "Sustained wind speed in knots. RAW sensor, 2-min average of 5-sec samples.",
+      "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 200 }, { "type": "null" }]
+    },
+    "wind_gust_kt": {
+      "description": "Wind gust in knots. RAW sensor, peak 3-sec speed in past 10 minutes. Only present when gusts reported.",
+      "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 250 }, { "type": "null" }]
+    },
+
+    "altimeter_inhg": {
+      "description": "Altimeter setting in inches of mercury. DERIVED from station pressure + elevation (ICAO Standard Atmosphere, no temperature dependence). METAR body precision: 0.01 inHg. AWC provides in hPa, convert without rounding.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "sea_level_pressure_mb": {
+      "description": "Sea level pressure in millibars (hPa). DERIVED from station pressure + elevation + 12hr mean temperature. Less reliable than altimeter (temperature-dependent). METAR remarks precision: 0.1 hPa. MUST NEVER BE ZERO (the original data quality bug).",
+      "oneOf": [
+        { "type": "number", "exclusiveMinimum": 0, "minimum": 870, "maximum": 1084 },
+        { "type": "null" }
+      ]
+    },
+
+    "sky_cover_1": { "$ref": "#/$defs/sky_cover" },
+    "sky_base_1_ft": { "$ref": "#/$defs/sky_base" },
+    "sky_cover_2": { "$ref": "#/$defs/sky_cover" },
+    "sky_base_2_ft": { "$ref": "#/$defs/sky_base" },
+    "sky_cover_3": { "$ref": "#/$defs/sky_cover" },
+    "sky_base_3_ft": { "$ref": "#/$defs/sky_base" },
+    "sky_cover_4": { "$ref": "#/$defs/sky_cover" },
+    "sky_base_4_ft": { "$ref": "#/$defs/sky_base" },
+
+    "visibility_miles": {
+      "description": "Visibility in statute miles. HEAVILY DERIVED from forward-scatter sensor extinction coefficient. Quantized to ~18 discrete values (M1/4, 1/4, 1/2, 3/4, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5, 6, 7, 8, 9, 10). 10+ reported as 10. Not a continuous measurement.",
+      "oneOf": [{ "type": "number", "minimum": 0, "maximum": 99.99 }, { "type": "null" }]
+    },
+    "weather_codes": {
+      "description": "Present weather phenomena codes. DERIVED from IR particle detector classification algorithm. E.g., '-RA' (light rain), 'TSRA' (thunderstorm with rain).",
+      "oneOf": [{ "type": "string", "maxLength": 256 }, { "type": "null" }]
+    },
+
+    "precip_1hr_inches": {
+      "description": "Precipitation in past hour in inches. RAW sensor (heated tipping bucket, 0.01in per tip). Correction applied: C = A(1 + 0.60A). Trace ('T' in METAR) stored as 0.0. Null = not reported.",
+      "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }]
+    },
+
+    "peak_wind_gust_kt": {
+      "description": "Peak wind gust in knots. From METAR remarks (PK WND dddss/hhmm). RAW sensor peak.",
+      "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 250 }, { "type": "null" }]
+    },
+    "peak_wind_dir": {
+      "description": "Peak wind direction in degrees. From PK WND remark.",
+      "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 360 }, { "type": "null" }]
+    },
+    "peak_wind_time": {
+      "description": "Peak wind time (HHMM format). From PK WND remark.",
+      "oneOf": [{ "type": "string", "pattern": "^\\d{4}$" }, { "type": "null" }]
+    },
+
+    "snow_depth_inches": {
+      "description": "Snow/ice depth on ground in inches. Only available from IEM, not AWC.",
+      "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }]
+    },
+
+    "qc_field": {
+      "description": "Quality control bitmask from AWC. Bit 0=COR, 1=AUTO, 2=AO2, 3=maintenance($), 4=NOSIG, 5=TSNO. Use for quality filtering.",
+      "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }]
+    },
+
+    "raw_metar": {
+      "description": "Raw METAR text string. The authoritative source. Used for T-group parsing, PK WND extraction, and debugging.",
+      "oneOf": [{ "type": "string", "maxLength": 2048 }, { "type": "null" }]
+    }
+  },
+
+  "$defs": {
+    "sky_cover": {
+      "description": "Cloud cover code. HEAVILY DERIVED from ceilometer (single-point measurement extrapolated via 30-min weighted algorithm).",
+      "oneOf": [
+        { "type": "string", "enum": ["CLR", "SKC", "FEW", "SCT", "BKN", "OVC", "VV"] },
+        { "type": "null" }
+      ]
+    },
+    "sky_base": {
+      "description": "Cloud base height in feet AGL from ceilometer. Max detection ~12,000 ft.",
+      "oneOf": [
+        { "type": "integer", "minimum": 0, "maximum": 60000 },
+        { "type": "null" }
+      ]
+    }
+  },
+
+  "$comment": "ARCHITECTURE DECISIONS: (1) Store BOTH temp_c AND temp_f. Celsius is what METAR reports. Fahrenheit is what ASOS measures internally and what CLI settlement uses. No information loss either way. (2) Removed: relative_humidity, feels_like_f, max_temp_6hr/24hr_f, min_temp_6hr/24hr_f, precip_3hr/6hr/24hr, pressure_tend_hpa. These belong in SEPARATE entities (synoptic_extremes for 6hr/24hr temps, computed_features for RH/feels_like) or are SDK-computed features. (3) PRECISION RULE: Never round at ingest. Store float64 as-is. No explicit rounding in conversion functions. (4) temp_c is stored alongside temp_f because it IS the METAR-reported value and some quants may prefer to work in Celsius. (5) BUSINESS RULES: dewpoint_c <= temp_c, wind_gust_kt > wind_speed_kt when present, sea_level_pressure_mb never zero, sky_base null when CLR/SKC. (6) Source priority: AWC(3) > IEM(2) > GHCNh(1). Training data must match live inference conditions. No COALESCE. One row per observation, rawest source wins. First-reported wins for same-priority (no corrections). (7) Column parity: live SDK and historical API return exactly this 30-field schema. Field names match MVP. (8) RAW-AS-REPORTED: API returns exactly what is stored. All computed features (RH, feels_like, preprocessing) happen client-side in SDK. No server-side transforms on read."
+}

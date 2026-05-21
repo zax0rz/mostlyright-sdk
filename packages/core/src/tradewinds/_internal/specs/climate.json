@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mostlyright.xyz/schemas/climate.json",
+  "title": "NWS Daily Climate Report (CLI)",
+  "description": "Daily high/low temperature from NWS Climate Reports. THIS IS THE KALSHI SETTLEMENT SOURCE. One record per (station, date). Report type determines priority for upserts.",
+  "type": "object",
+  "required": ["station_code", "observation_date", "report_type", "source"],
+  "additionalProperties": false,
+  "properties": {
+    "station_code": {
+      "type": "string",
+      "pattern": "^[A-Z]{3,4}$",
+      "description": "NWS station code."
+    },
+    "observation_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of climate observation (YYYY-MM-DD). Note: during DST, NWS reports in local standard time, so the observation window is 1:00 AM to 12:59 AM next day, NOT midnight-to-midnight."
+    },
+    "high_temp_f": {
+      "description": "Daily high temperature in Fahrenheit. SETTLEMENT FIELD for Kalshi HIGH_TEMP markets. Must be > low_temp_f when both present.",
+      "oneOf": [
+        { "type": "number", "minimum": -60, "maximum": 150 },
+        { "type": "null" }
+      ]
+    },
+    "low_temp_f": {
+      "description": "Daily low temperature in Fahrenheit. SETTLEMENT FIELD for Kalshi LOW_TEMP markets. Must be < high_temp_f when both present.",
+      "oneOf": [
+        { "type": "number", "minimum": -80, "maximum": 130 },
+        { "type": "null" }
+      ]
+    },
+    "report_type": {
+      "type": "string",
+      "enum": ["final", "ncei_final", "correction", "preliminary", "estimated"],
+      "description": "Report priority. final (3.0) > ncei_final (2.5) > correction (2.0) > preliminary (1.0) > estimated (0.0). Only overwrite existing row if new priority > existing (strict). First-seen wins at equal priority, preserving the overnight final. report_type_priority is a parquet-only derived column (float64), NOT in this schema."
+    },
+    "source": {
+      "type": "string",
+      "enum": ["iem", "acis"],
+      "description": "Data source for climate reports."
+    },
+    "product_id": {
+      "description": "NWS product identifier. Format: YYYYMMDDHHNN-STATION-PRODUCT-TYPE. E.g., '202603150620-KOKX-CDUS41-CLINYC'. Used to extract issued_at and infer report_type.",
+      "oneOf": [
+        { "type": "string", "maxLength": 64 },
+        { "type": "null" }
+      ]
+    },
+    "issued_at": {
+      "description": "When the report was issued (RFC3339). Extracted from product_id timestamp.",
+      "oneOf": [
+        { "type": "string", "format": "date-time" },
+        { "type": "null" }
+      ]
+    }
+  },
+  "$comment": "BUSINESS RULES: (1) high_temp_f > low_temp_f when both present. (2) Report type priority governs upserts with strict > (not >=): never downgrade from 'final' to 'preliminary', and second 'final' for same date is dropped (first-seen wins). (3) Kalshi settles on the 'final' CLI report as displayed in NOWData at 10:00 AM ET the day after observation. Per NHIGH contract: 'Subsequent corrections, revisions, or quality control adjustments made after the Expiration time are not accounted for.' (4) CLI overnight final issued ~04:00-10:00 UTC (midnight-5am ET) next day. This is THE settlement value."
+}

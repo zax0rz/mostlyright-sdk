@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mostlyright.xyz/schemas/series.json",
+  "title": "Kalshi Market Series",
+  "description": "Series metadata for a class of Kalshi markets (e.g., all JFK high temperature markets).",
+  "type": "object",
+  "required": ["ticker", "measure_type", "title", "active", "last_seen_at"],
+  "additionalProperties": false,
+  "properties": {
+    "ticker": {
+      "type": "string",
+      "description": "Series ticker (e.g., KXHIGHJFK = JFK high temp).",
+      "minLength": 1
+    },
+    "measure_type": {
+      "type": "string",
+      "enum": ["high", "low", "HIGH_TEMP", "LOW_TEMP"],
+      "description": "Type of weather measurement this series tracks. Kalshi API uses 'high'/'low'. Legacy format uses 'HIGH_TEMP'/'LOW_TEMP'."
+    },
+    "title": {
+      "type": "string",
+      "description": "Human-readable series title."
+    },
+    "station_code": {
+      "oneOf": [
+        { "type": "string", "pattern": "^[A-Z]{3,4}$" },
+        { "type": "null" }
+      ],
+      "description": "Associated NWS station code."
+    },
+    "category": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "null" }
+      ]
+    },
+    "frequency": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "null" }
+      ]
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Classification tags. Can be empty array."
+    },
+    "active": {
+      "type": "boolean",
+      "description": "Whether series is currently active on Kalshi."
+    },
+    "last_seen_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last time this series was observed in Kalshi market data."
+    }
+  }
+}

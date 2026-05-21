@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mostlyright.xyz/schemas/market_unified.json",
+  "title": "Unified Market Record",
+  "description": "Exchange-agnostic market record for client.markets(). Normalizes Kalshi and Polymarket contracts into a common schema with an 'exchange' discriminator field.",
+  "type": "object",
+  "required": ["market_ticker", "exchange", "status"],
+  "additionalProperties": false,
+  "properties": {
+    "market_ticker": {
+      "type": "string",
+      "description": "Unique market identifier within the exchange."
+    },
+    "exchange": {
+      "type": "string",
+      "enum": ["kalshi", "polymarket", "unknown"],
+      "description": "Exchange. Use for routing to exchange-specific API clients."
+    },
+    "series_ticker": {
+      "description": "Parent series (Kalshi) or condition ID group (Polymarket).",
+      "oneOf": [{ "type": "string" }, { "type": "null" }]
+    },
+    "title": {
+      "description": "Human-readable market title.",
+      "oneOf": [{ "type": "string" }, { "type": "null" }]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["open", "closed", "settled", "cancelled", "unknown"],
+      "description": "Market lifecycle status."
+    },
+    "category": {
+      "description": "Market category (e.g. 'weather', 'climate', 'temperature').",
+      "oneOf": [{ "type": "string" }, { "type": "null" }]
+    },
+    "settlement_date": {
+      "description": "Settlement date (YYYY-MM-DD LST) for weather markets.",
+      "oneOf": [{ "type": "string", "format": "date" }, { "type": "null" }]
+    },
+    "station": {
+      "description": "NWS station code for weather markets.",
+      "oneOf": [{ "type": "string", "pattern": "^[A-Z]{3,4}$" }, { "type": "null" }]
+    },
+    "settlement_field": {
+      "description": "Settlement source field: 'high_temp_f' or 'low_temp_f'.",
+      "oneOf": [
+        { "type": "string", "enum": ["high_temp_f", "low_temp_f"] },
+        { "type": "null" }
+      ]
+    },
+    "yes_bid": {
+      "description": "Current best YES bid (0-100 cents).",
+      "oneOf": [{ "type": "number", "minimum": 0, "maximum": 100 }, { "type": "null" }]
+    },
+    "yes_ask": {
+      "description": "Current best YES ask (0-100 cents).",
+      "oneOf": [{ "type": "number", "minimum": 0, "maximum": 100 }, { "type": "null" }]
+    },
+    "yes_last": {
+      "description": "Last trade price for YES (0-100 cents).",
+      "oneOf": [{ "type": "number", "minimum": 0, "maximum": 100 }, { "type": "null" }]
+    },
+    "volume": {
+      "description": "Total volume (all-time contracts).",
+      "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }]
+    },
+    "open_interest": {
+      "description": "Open interest.",
+      "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }]
+    },
+    "open_time": {
+      "description": "Market open time (RFC3339 UTC).",
+      "oneOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }]
+    },
+    "close_time": {
+      "description": "Market close time (RFC3339 UTC).",
+      "oneOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }]
+    },
+    "result": {
+      "description": "Settlement result ('yes'/'no'). Null = not yet settled.",
+      "oneOf": [
+        { "type": "string", "enum": ["yes", "no"] },
+        { "type": "null" }
+      ]
+    },
+    "exchange_raw": {
+      "description": "Original exchange-native record (for debugging). Not normalized.",
+      "oneOf": [{ "type": "object" }, { "type": "null" }]
+    }
+  },
+  "$comment": "MULTI-EXCHANGE ABSTRACTION: The 'exchange' field is the discriminator. Normalization rules: (1) Kalshi prices are in cents [0-100]. (2) Polymarket prices are probabilities [0.0-1.0] — normalize to cents by multiplying by 100. (3) volume and open_interest are contract counts for both exchanges. (4) settlement_date is always in LST for weather markets. STUB: client.markets() raises NotImplementedError until Sprint 3."
+}

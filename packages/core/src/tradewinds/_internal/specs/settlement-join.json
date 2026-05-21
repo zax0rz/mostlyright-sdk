@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mostlyright.xyz/schemas/settlement-join.json",
+  "title": "Observation-Settlement Join",
+  "description": "Joins METAR observations to NWS CLI daily reports to Kalshi market settlements. Schema for the observation-settlement joined record.",
+  "type": "object",
+  "required": ["station_code", "observation_date", "market_ticker"],
+  "properties": {
+    "station_code": {
+      "type": "string",
+      "pattern": "^[A-Z]{3,4}$",
+      "description": "NWS station code (shared key across all three entities)."
+    },
+    "observation_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Local date of observation. Timezone conversion: UTC observation → station local time → date. During DST, NWS uses local STANDARD time (observation window 1:00 AM to 12:59 AM next day)."
+    },
+    "cli_high_temp_f": {
+      "description": "Daily high from NWS CLI report (settlement source). From climate.high_temp_f with report_type='final'.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "cli_low_temp_f": {
+      "description": "Daily low from NWS CLI report (settlement source). From climate.low_temp_f with report_type='final'.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "metar_high_temp_f": {
+      "description": "Highest temp_f from METAR observations for this station+date. May differ from CLI high due to rounding, observation window, or sensor differences.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "metar_low_temp_f": {
+      "description": "Lowest temp_f from METAR observations for this station+date.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "metar_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of METAR observations for this station+date. Expect ~24 for a full day. <16 suggests gaps."
+    },
+    "market_ticker": {
+      "type": "string",
+      "description": "Kalshi market ticker for this station+date+measure."
+    },
+    "series_ticker": {
+      "type": "string",
+      "description": "Series ticker (e.g., KXHIGHJFK)."
+    },
+    "measure_type": {
+      "type": "string",
+      "enum": ["HIGH_TEMP", "LOW_TEMP"],
+      "description": "Which temperature measure this market tracks."
+    },
+    "floor_strike": {
+      "oneOf": [{ "type": "number" }, { "type": "null" }],
+      "description": "Market bracket lower bound (°F)."
+    },
+    "cap_strike": {
+      "oneOf": [{ "type": "number" }, { "type": "null" }],
+      "description": "Market bracket upper bound (°F)."
+    },
+    "market_result": {
+      "type": "string",
+      "enum": ["yes", "no", ""],
+      "description": "Kalshi settlement result."
+    },
+    "settlement_consistent": {
+      "type": "boolean",
+      "description": "True if the CLI value falls within the market bracket AND market_result='yes', OR CLI value falls outside AND market_result='no'. False = settlement anomaly worth investigating."
+    },
+    "cli_metar_delta_f": {
+      "description": "Difference between CLI high/low and METAR max/min for the same day. Large deltas suggest data quality issues or rounding differences.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    }
+  },
+  "$comment": "JOIN RULES: (1) observation.station_code = climate.station_code = series.station_code. (2) observation UTC → station local date = climate.observation_date. (3) climate.report_type should be 'final' for settlement. If only 'preliminary' exists, flag as unconfirmed. (4) Kalshi settlement at 10:00 AM ET using NOWData display. Corrections after 10:00 AM ET do NOT change settlement. Settlement delayed until 12:00 PM ET if CLI high inconsistent with 6-hr/24-hr METAR highs. (5) Rounding: NWS 5-minute readings undergo F→C→F conversion, so displayed 70F could originate from 69.5-70.4F. (6) SETTLEMENT SOURCES BY EXCHANGE: Kalshi = NWS CLI, Robinhood = Weather Underground, ForecastEx = unconfirmed. This join is Kalshi-specific. (7) CROSS-VALIDATION: max_temp_24hr_f from METAR should correlate with cli_high_temp_f. GHCNd TMAX (tenths °C) provides independent check. (8) DST: CLI uses Local Standard Time year-round. During DST, observation window is 1:00 AM to 12:59 AM next day local clock."
+}

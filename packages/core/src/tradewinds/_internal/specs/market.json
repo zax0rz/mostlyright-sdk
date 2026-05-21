@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mostlyright.xyz/schemas/market.json",
+  "title": "Kalshi Market",
+  "description": "A single bracket within a temperature event. E.g., 'Will JFK high be 89-91°F?' Markets transition: open → closed → settled. Result is yes/no based on CLI value falling within floor_strike/cap_strike.",
+  "type": "object",
+  "required": ["ticker", "event_ticker", "series_ticker", "status", "result"],
+  "additionalProperties": false,
+  "properties": {
+    "ticker": {
+      "type": "string",
+      "description": "Unique market ticker on Kalshi.",
+      "minLength": 1
+    },
+    "event_ticker": {
+      "type": "string",
+      "description": "Parent event ticker. Links to event entity."
+    },
+    "series_ticker": {
+      "type": "string",
+      "description": "Series ticker (e.g., KXHIGHJFK)."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["open", "closed", "settled"],
+      "description": "Market lifecycle. open = trading active. closed = awaiting settlement. settled = result determined."
+    },
+    "strike_type": {
+      "oneOf": [{ "type": "string" }, { "type": "null" }],
+      "description": "Strike specification type."
+    },
+    "floor_strike": {
+      "description": "Lower bound of temperature bracket (°F). Null for open-ended low bracket.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "cap_strike": {
+      "description": "Upper bound of temperature bracket (°F). Null for open-ended high bracket.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "result": {
+      "type": "string",
+      "enum": ["yes", "no", ""],
+      "description": "Settlement result. 'yes' = CLI value within bracket. 'no' = outside. '' = not yet settled."
+    },
+    "open_time": {
+      "description": "When trading opened (RFC3339).",
+      "oneOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }]
+    },
+    "close_time": {
+      "description": "When trading closed (RFC3339).",
+      "oneOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }]
+    },
+    "settled_at": {
+      "description": "When the market was settled (RFC3339). Null if not yet settled. Should be ~10:00 AM ET the day after the event date.",
+      "oneOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }]
+    },
+    "last_polled_at": {
+      "description": "Last time the ingest worker checked this market's status. Used for staleness detection.",
+      "oneOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }]
+    }
+  },
+  "$comment": "BUSINESS RULES: (1) Valid status transitions: open→closed, closed→settled. No reverse transitions. (2) result must be '' when status is 'open' or 'closed'. (3) result must be 'yes' or 'no' when status is 'settled'. (4) Exactly one market per event should have result='yes' (the winning bracket). (5) A market is 'stale' if last_polled_at is >24h ago and status is not 'settled'. (6) floor_strike and cap_strike define the bracket. For edge brackets, one may be null."
+}

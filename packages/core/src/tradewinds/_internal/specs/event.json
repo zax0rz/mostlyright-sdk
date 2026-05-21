@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mostlyright.xyz/schemas/event.json",
+  "title": "Kalshi Temperature Event",
+  "description": "A daily temperature event for one station. Contains multiple markets (brackets). E.g., KXHIGHJFK-26APR25 = 'What will the high temperature at JFK be on April 25, 2026?' Typically 6 markets per event (4 middle brackets of 2°F, 2 open-ended edge brackets).",
+  "type": "object",
+  "required": ["ticker", "series_ticker", "station_code", "event_date", "status"],
+  "additionalProperties": false,
+  "properties": {
+    "ticker": {
+      "type": "string",
+      "description": "Event ticker (e.g., KXHIGHJFK-26APR25).",
+      "minLength": 1
+    },
+    "series_ticker": {
+      "type": "string",
+      "description": "Parent series ticker (e.g., KXHIGHJFK)."
+    },
+    "station_code": {
+      "type": "string",
+      "pattern": "^[A-Z]{3,4}$",
+      "description": "NWS station code for this event."
+    },
+    "event_date": {
+      "type": "string",
+      "format": "date",
+      "description": "The observation date this event covers (YYYY-MM-DD). Settlement uses CLI for this date."
+    },
+    "measure_type": {
+      "type": "string",
+      "enum": ["high", "low", "HIGH_TEMP", "LOW_TEMP"],
+      "description": "Temperature measure: daily high or daily low."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["open", "closed", "settled"],
+      "description": "Event lifecycle status. Open = trading active. Closed = trading ended, awaiting settlement. Settled = CLI published, all markets resolved."
+    },
+    "market_count": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Number of markets (brackets) in this event. Typically 6."
+    },
+    "open_time": {
+      "description": "When the event opened for trading (RFC3339). Typically 10 AM ET the prior day.",
+      "oneOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }]
+    },
+    "close_time": {
+      "description": "When trading closed (RFC3339). Typically close of trading day.",
+      "oneOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }]
+    },
+    "settlement_time": {
+      "description": "When the event was settled (RFC3339). 10:00 AM ET the day after event_date. Null if not yet settled.",
+      "oneOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }]
+    },
+    "settlement_value": {
+      "description": "The CLI temperature that settled this event (°F). From NWS Daily Climate Report. Null if not yet settled.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    }
+  },
+  "$comment": "BUSINESS RULES: (1) settlement_time is 10:00 AM ET the day after event_date. (2) settlement_value comes from NWS CLI high_temp_f or low_temp_f depending on measure_type. (3) An event is 'stale' if status is still 'open' more than 36 hours after event_date. (4) All markets in an event must have the same series_ticker and event_date. (5) market_count is typically 6 (4 middle + 2 edge brackets) but can vary."
+}

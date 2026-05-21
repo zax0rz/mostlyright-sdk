@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mostlyright.xyz/schemas/synoptic_extremes.json",
+  "title": "Synoptic Temperature Extremes",
+  "description": "6-hour and 24-hour temperature extremes from METAR remarks (1xxxx, 2xxxx, 4xxxx groups). Separate from hourly observations because they have different frequency: 6hr extremes at synoptic hours (00/06/12/18Z), 24hr extremes once daily (~06Z). Also includes precipitation accumulators and pressure tendency. These are PROCESSED values from the ASOS running record of 5-minute averages, converted to 0.1°C (same precision as T-group, maps to whole °F).",
+  "type": "object",
+  "required": ["station_code", "observed_at", "source"],
+  "additionalProperties": false,
+  "properties": {
+    "station_code": {
+      "type": "string",
+      "pattern": "^[A-Z]{3,4}$"
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Synoptic observation time (00/06/12/18Z for 6hr, ~06Z for 24hr)."
+    },
+    "source": {
+      "type": "string",
+      "enum": ["awc", "iem", "ghcnh"]
+    },
+
+    "max_temp_6hr_c": {
+      "description": "6-hour maximum temperature in Celsius (0.1°C from 1xxxx remark). Maps to whole °F.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "min_temp_6hr_c": {
+      "description": "6-hour minimum temperature in Celsius (0.1°C from 2xxxx remark).",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "max_temp_6hr_f": {
+      "description": "6-hour max converted to Fahrenheit. No rounding at ingest.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "min_temp_6hr_f": {
+      "description": "6-hour min converted to Fahrenheit.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+
+    "max_temp_24hr_c": {
+      "description": "24-hour max temperature in Celsius (0.1°C from 4xxxx remark). Once daily. SETTLEMENT CROSS-VALIDATION: should correlate with CLI high_temp_f.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "min_temp_24hr_c": {
+      "description": "24-hour min temperature in Celsius. Correlates with CLI low_temp_f.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "max_temp_24hr_f": {
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "min_temp_24hr_f": {
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+
+    "precip_3hr_inches": {
+      "description": "3-hour precipitation accumulation. From 6nnnn group at synoptic times.",
+      "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }]
+    },
+    "precip_6hr_inches": {
+      "description": "6-hour precipitation accumulation.",
+      "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }]
+    },
+    "precip_24hr_inches": {
+      "description": "24-hour precipitation total. From 7nnnn group.",
+      "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }]
+    },
+    "pressure_tend_hpa": {
+      "description": "3-hour pressure tendency in hPa. DERIVED. Positive = rising, negative = falling. From 5appp group.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    }
+  },
+
+  "$comment": "SEPARATE ENTITY from observations because: (1) Different frequency (4x/day for 6hr, 1x/day for 24hr vs 24x/day for hourly METAR). (2) Avoids 20-23 null rows per day in hourly observations. (3) Different use case: settlement cross-validation, not real-time trading signals. (4) Parquet partition: synoptic_extremes/station={CODE}/{YEAR}.parquet"
+}
