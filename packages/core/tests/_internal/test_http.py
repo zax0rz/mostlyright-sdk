@@ -1,211 +1,128 @@
-"""Tests for src/tradewinds/_internal/_http.py — HTTP session.
+"""Tests for tradewinds._internal._http.
 
-Lifted byte-faithful from monorepo-v0.14.1/tests/test_sdk_http.py with
-namespace rewrites:
-- mostlyright._http      -> tradewinds._internal._http
-- mostlyright.config     -> tradewinds._internal.config
-- mostlyright.exceptions -> tradewinds._internal.exceptions
+Lifted from monorepo-v0.14.1/ingest/sources/_http.py — the public-API
+retry helper used by historical fetchers (IEM, GHCNh, AWC, CLI).
+
+v0.14.1 had no dedicated test_http.py for this module; coverage was
+transitive via fetcher tests that mocked download_with_retry. We add
+direct tests here so the helper is guarded before Wave 3 lifts the
+fetchers.
 """
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from pathlib import Path
 
 import httpx
 import pytest
+from tradewinds._internal._http import (
+    BASE_DELAY,
+    HTTP_TIMEOUT,
+    MAX_RETRIES,
+    TRANSIENT_CODES,
+    download_with_retry,
+)
 
 
-def _mock_response(
-    status_code: int = 200,
-    json_data: object = None,
-    content: bytes = b"",
-    headers: dict | None = None,
-) -> httpx.Response:
-    """Build a mock httpx.Response."""
-    resp = httpx.Response(
-        status_code=status_code,
-        json=json_data,
-        content=content if json_data is None else None,
-        headers=headers or {"content-type": "application/json"},
-    )
-    return resp
+class TestModuleConstants:
+    def test_max_retries(self) -> None:
+        assert MAX_RETRIES == 3
+
+    def test_base_delay(self) -> None:
+        assert BASE_DELAY == 1.0
+
+    def test_http_timeout(self) -> None:
+        assert HTTP_TIMEOUT == 30.0
+
+    def test_transient_codes(self) -> None:
+        assert frozenset({500, 502, 503, 504}) == TRANSIENT_CODES
 
 
-class TestHttpSessionGet:
-    """GET requests and JSON parsing."""
+class TestDownloadWithRetry:
+    """download_with_retry covers happy path, 404 (permanent), and
+    transient-error retry/exhaustion. Uses respx for httpx mocking."""
 
-    def test_get_returns_json(self) -> None:
-        from tradewinds._internal._http import HttpSession
-        from tradewinds._internal.config import TherminalConfig
+    def test_happy_path_writes_dest(self, tmp_path: Path) -> None:
+        url = "https://example.test/data.csv"
+        dest = tmp_path / "out" / "data.csv"
+        try:
+            import respx
+        except ImportError:
+            pytest.skip("respx not installed; skipping HTTP mock test")
 
-        cfg = TherminalConfig(base_url="http://test")
-        session = HttpSession(cfg)
-        with patch.object(
-            session._client,
-            "get",
-            return_value=_mock_response(json_data={"status": "ok"}),
-        ):
-            result = session.get("/health")
-        assert result == {"status": "ok"}
+        with respx.mock(assert_all_called=True) as mock:
+            mock.get(url).respond(200, content=b"row1,row2\n")
+            download_with_retry(url, dest)
 
-    def test_get_strips_none_params(self) -> None:
-        from tradewinds._internal._http import HttpSession
-        from tradewinds._internal.config import TherminalConfig
+        assert dest.exists()
+        assert dest.read_bytes() == b"row1,row2\n"
 
-        cfg = TherminalConfig(base_url="http://test")
-        session = HttpSession(cfg)
-        mock_get = MagicMock(return_value=_mock_response(json_data=[]))
-        with patch.object(session._client, "get", mock_get):
-            session.get("/obs", {"station": "ATL", "from": None})
-        called_params = mock_get.call_args[1]["params"]
-        assert "from" not in called_params
-        assert called_params["station"] == "ATL"
+    def test_404_raises_immediately(self, tmp_path: Path) -> None:
+        url = "https://example.test/notfound.csv"
+        dest = tmp_path / "x.csv"
+        try:
+            import respx
+        except ImportError:
+            pytest.skip("respx not installed")
 
+        with respx.mock() as mock:
+            mock.get(url).respond(404)
+            with pytest.raises(httpx.HTTPStatusError):
+                download_with_retry(url, dest)
+        assert not dest.exists()
 
-class TestHttpSessionErrors:
-    """HTTP error -> SDK exception mapping."""
+    def test_503_retried_then_succeeds(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        url = "https://example.test/flaky.csv"
+        dest = tmp_path / "flaky.csv"
+        try:
+            import respx
+        except ImportError:
+            pytest.skip("respx not installed")
 
-    def test_404_raises_not_found(self) -> None:
-        from tradewinds._internal._http import HttpSession
-        from tradewinds._internal.config import TherminalConfig
-        from tradewinds._internal.exceptions import NotFoundError
+        # Don't actually sleep through retries
+        monkeypatch.setattr("tradewinds._internal._http.time.sleep", lambda _: None)
 
-        cfg = TherminalConfig(base_url="http://test")
-        session = HttpSession(cfg)
-        resp = _mock_response(404, json_data={"error": "Station ZZZ not found"})
-        with patch.object(session._client, "get", return_value=resp):  # noqa: SIM117 — byte-faithful lift from mostlyright==0.14.1
-            with pytest.raises(NotFoundError, match="ZZZ"):
-                session.get("/obs", {"station": "ZZZ"})
+        with respx.mock(assert_all_called=True) as mock:
+            route = mock.get(url)
+            route.side_effect = [
+                httpx.Response(503),
+                httpx.Response(503),
+                httpx.Response(200, content=b"OK"),
+            ]
+            download_with_retry(url, dest)
 
-    def test_400_raises_validation(self) -> None:
-        from tradewinds._internal._http import HttpSession
-        from tradewinds._internal.config import TherminalConfig
-        from tradewinds._internal.exceptions import ValidationError
+        assert dest.read_bytes() == b"OK"
 
-        cfg = TherminalConfig(base_url="http://test")
-        session = HttpSession(cfg)
-        resp = _mock_response(400, json_data={"error": "bad date"})
-        with patch.object(session._client, "get", return_value=resp):  # noqa: SIM117 — byte-faithful lift from mostlyright==0.14.1
-            with pytest.raises(ValidationError):
-                session.get("/obs")
+    def test_503_exhausts_retries(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        url = "https://example.test/always-503.csv"
+        dest = tmp_path / "fail.csv"
+        try:
+            import respx
+        except ImportError:
+            pytest.skip("respx not installed")
 
-    def test_401_raises_auth(self) -> None:
-        from tradewinds._internal._http import HttpSession
-        from tradewinds._internal.config import TherminalConfig
-        from tradewinds._internal.exceptions import AuthenticationError
+        monkeypatch.setattr("tradewinds._internal._http.time.sleep", lambda _: None)
 
-        cfg = TherminalConfig(base_url="http://test")
-        session = HttpSession(cfg)
-        resp = _mock_response(401, json_data={"error": "Invalid API key"})
-        with patch.object(session._client, "get", return_value=resp):  # noqa: SIM117 — byte-faithful lift from mostlyright==0.14.1
-            with pytest.raises(AuthenticationError):
-                session.get("/obs")
+        with respx.mock() as mock:
+            mock.get(url).respond(503)
+            with pytest.raises(httpx.HTTPStatusError):
+                download_with_retry(url, dest)
+        assert not dest.exists()
 
-    def test_429_raises_rate_limit(self) -> None:
-        from tradewinds._internal._http import HttpSession
-        from tradewinds._internal.config import TherminalConfig
-        from tradewinds._internal.exceptions import RateLimitError
+    def test_atomic_write_via_tmp_file(self, tmp_path: Path) -> None:
+        """The helper writes to dest.with_suffix(suffix + .tmp) first then renames."""
+        url = "https://example.test/atomic.csv"
+        dest = tmp_path / "atomic.csv"
+        try:
+            import respx
+        except ImportError:
+            pytest.skip("respx not installed")
 
-        cfg = TherminalConfig(base_url="http://test")
-        session = HttpSession(cfg)
-        resp = _mock_response(
-            429,
-            json_data={"error": "rate limited"},
-            headers={"content-type": "application/json", "Retry-After": "30"},
-        )
-        with patch.object(session._client, "get", return_value=resp):
-            with pytest.raises(RateLimitError) as exc_info:
-                session.get("/obs")
-            assert exc_info.value.retry_after == 30
+        with respx.mock() as mock:
+            mock.get(url).respond(200, content=b"final")
+            download_with_retry(url, dest)
 
-    def test_500_raises_server_error(self) -> None:
-        from tradewinds._internal._http import HttpSession
-        from tradewinds._internal.config import TherminalConfig
-        from tradewinds._internal.exceptions import ServerError
-
-        cfg = TherminalConfig(base_url="http://test")
-        session = HttpSession(cfg)
-        resp = _mock_response(500, json_data={"error": "internal"})
-        with patch.object(session._client, "get", return_value=resp):  # noqa: SIM117 — byte-faithful lift from mostlyright==0.14.1
-            with pytest.raises(ServerError):
-                session.get("/obs")
-
-
-class TestHttpSessionGetAll:
-    """Auto-pagination."""
-
-    def test_single_page(self) -> None:
-        from tradewinds._internal._http import HttpSession
-        from tradewinds._internal.config import TherminalConfig
-
-        cfg = TherminalConfig(base_url="http://test")
-        session = HttpSession(cfg)
-        page = [{"id": i} for i in range(5)]
-        with patch.object(
-            session._client, "get", return_value=_mock_response(json_data=page)
-        ):
-            result = session.get_all("/obs", {"station": "ATL"})
-        assert len(result) == 5
-
-    def test_multi_page(self) -> None:
-        from tradewinds._internal._http import HttpSession
-        from tradewinds._internal.config import TherminalConfig
-
-        cfg = TherminalConfig(base_url="http://test")
-        session = HttpSession(cfg)
-        page1 = [{"id": i} for i in range(10)]
-        page2 = [{"id": i} for i in range(10, 15)]
-        responses = iter(
-            [_mock_response(json_data=page1), _mock_response(json_data=page2)]
-        )
-        with patch.object(
-            session._client, "get", side_effect=lambda *a, **kw: next(responses)
-        ):
-            result = session.get_all("/obs", {"station": "ATL"}, page_size=10)
-        assert len(result) == 15
-
-
-class TestHttpSessionGetBytes:
-    def test_returns_bytes(self) -> None:
-        from tradewinds._internal._http import HttpSession
-        from tradewinds._internal.config import TherminalConfig
-
-        cfg = TherminalConfig(base_url="http://test")
-        session = HttpSession(cfg)
-        resp = httpx.Response(
-            200,
-            content=b"binary-data",
-            headers={"content-type": "application/octet-stream"},
-        )
-        with patch.object(session._client, "get", return_value=resp):
-            result = session.get_bytes("/obs", {"format": "parquet"})
-        assert result == b"binary-data"
-
-
-class TestHttpSessionContextManager:
-    def test_context_manager(self) -> None:
-        from tradewinds._internal._http import HttpSession
-        from tradewinds._internal.config import TherminalConfig
-
-        cfg = TherminalConfig(base_url="http://test")
-        with HttpSession(cfg) as session:
-            assert session is not None
-
-    def test_close(self) -> None:
-        from tradewinds._internal._http import HttpSession
-        from tradewinds._internal.config import TherminalConfig
-
-        cfg = TherminalConfig(base_url="http://test")
-        session = HttpSession(cfg)
-        session.close()  # Should not raise
-
-
-class TestUserAgent:
-    def test_user_agent_header(self) -> None:
-        from tradewinds._internal._http import HttpSession
-        from tradewinds._internal.config import TherminalConfig
-
-        cfg = TherminalConfig(base_url="http://test")
-        session = HttpSession(cfg)
-        ua = session._client.headers.get("user-agent", "")
-        assert "mostlyright" in ua.lower()
+        # tmp file should NOT linger after successful rename
+        assert dest.exists()
+        assert dest.read_bytes() == b"final"
+        assert not dest.with_suffix(".csv.tmp").exists()
