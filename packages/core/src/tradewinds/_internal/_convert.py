@@ -173,7 +173,16 @@ def compute_feels_like(
         return None
     try:
         t = float(temp_f)
+        # Codex review fix: guard NaN/inf inputs from pandas/parquet where missing
+        # numeric fields come back as NaN rather than None. Without this, the result
+        # leaks non-finite values (not JSON-safe).
+        if not math.isfinite(t):
+            return None
         w_mph = float(wind_kt) * _KT_TO_MPH if wind_kt is not None else 0.0
+        if not math.isfinite(w_mph):
+            return None
+        if rh is not None and not math.isfinite(float(rh)):
+            rh = None  # Treat non-finite rh as missing (don't feed NaN into heat index)
 
         # Wind Chill (NWS): valid for temp <= 50F and wind > 3 mph
         if t <= 50.0 and w_mph > 3.0:
