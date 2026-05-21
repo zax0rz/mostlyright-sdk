@@ -108,7 +108,10 @@ def download_cli(
         tmp = dest.with_suffix(".json.tmp")
         dest.parent.mkdir(parents=True, exist_ok=True)
         tmp.write_text(json.dumps(data))
-        tmp.rename(dest)
+        # Codex W3B P2: Path.replace() overwrites existing files atomically on
+        # both POSIX and Windows; Path.rename() raises FileExistsError on
+        # Windows when dest exists, breaking the skip_cache=True force-refresh path.
+        tmp.replace(dest)
     finally:
         # Always drop the raw staging file: on success it's redundant with
         # dest; on failure it's a partial/corrupt response we don't want to
