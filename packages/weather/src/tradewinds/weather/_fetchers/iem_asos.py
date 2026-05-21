@@ -71,16 +71,25 @@ def _monthly_chunks(start: date, end: date) -> list[tuple[date, date]]:
 
     Examples:
         >>> _monthly_chunks(date(2025, 1, 5), date(2025, 1, 20))
-        [(date(2025, 1, 5), date(2025, 2, 1))]
+        [(date(2025, 1, 1), date(2025, 2, 1))]
         >>> _monthly_chunks(date(2025, 1, 31), date(2025, 2, 15))
-        [(date(2025, 1, 31), date(2025, 2, 1)), (date(2025, 2, 1), date(2025, 3, 1))]
+        [(date(2025, 1, 1), date(2025, 2, 1)), (date(2025, 2, 1), date(2025, 3, 1))]
+
+    Note: chunks always start on the 1st of each month, even when the caller's
+    range starts mid-month. This is intentional so the cache key (built from
+    chunk_start month) is idempotent — a request for Jan 5-20 and Jan 1-20
+    share the same Jan cache file. Codex W3B P1 fix: previously chunk_start =
+    max(current, start) caused a Jan 15-31 first request to cache `iem_202501_metar.csv`
+    with partial data, and a subsequent Jan 1-31 request would hit that cache and
+    silently return the partial data. Over-fetch is documented to be safe per
+    v0.14.1's `_monthly_chunks` docstring; dedup handles it.
     """
     chunks: list[tuple[date, date]] = []
     if end < start:
         return chunks
     current = date(start.year, start.month, 1)
     while current <= end:
-        chunk_start = max(current, start)
+        chunk_start = current  # ALWAYS month-aligned for cache idempotence
         if current.month == 12:
             next_month_1st = date(current.year + 1, 1, 1)
         else:

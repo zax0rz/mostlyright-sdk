@@ -63,10 +63,18 @@ class TestModuleConstants:
 # _monthly_chunks
 # ---------------------------------------------------------------------------
 class TestMonthlyChunks:
+    """After Codex W3B P1 fix: chunks ALWAYS month-aligned at start.
+
+    The fix prevents the cache-key bug where Jan 15-31 stored partial data
+    under `iem_202501_metar.csv` and a subsequent Jan 1-31 request hit that
+    cache returning incomplete data. Trade-off: minor over-fetch in the
+    first month; documented in _monthly_chunks docstring.
+    """
+
     def test_single_month_mid_month_range(self) -> None:
         chunks = _monthly_chunks(date(2025, 1, 5), date(2025, 1, 20))
-        # One chunk: [2025-01-05, 2025-02-01) (next-month boundary)
-        assert chunks == [(date(2025, 1, 5), date(2025, 2, 1))]
+        # Always month-aligned at start; over-fetch Jan 1-5 is fine.
+        assert chunks == [(date(2025, 1, 1), date(2025, 2, 1))]
 
     def test_single_full_month(self) -> None:
         chunks = _monthly_chunks(date(2025, 6, 1), date(2025, 6, 30))
@@ -75,7 +83,7 @@ class TestMonthlyChunks:
     def test_multi_month_range(self) -> None:
         chunks = _monthly_chunks(date(2025, 1, 15), date(2025, 3, 10))
         assert chunks == [
-            (date(2025, 1, 15), date(2025, 2, 1)),
+            (date(2025, 1, 1), date(2025, 2, 1)),
             (date(2025, 2, 1), date(2025, 3, 1)),
             (date(2025, 3, 1), date(2025, 4, 1)),
         ]
@@ -84,7 +92,7 @@ class TestMonthlyChunks:
         """December chunk must roll into next year's January 1st."""
         chunks = _monthly_chunks(date(2024, 12, 28), date(2025, 1, 5))
         assert chunks == [
-            (date(2024, 12, 28), date(2025, 1, 1)),
+            (date(2024, 12, 1), date(2025, 1, 1)),
             (date(2025, 1, 1), date(2025, 2, 1)),
         ]
 
@@ -92,12 +100,12 @@ class TestMonthlyChunks:
         """Explicit coverage of the IEM end-exclusive quirk.
 
         For caller window 2025-01-31..2025-02-15:
-        - First chunk includes Jan 31, so day2 must be 2025-02-01.
-        - Second chunk covers Feb, so day2 must be 2025-03-01 (NOT 2025-02-16).
+        - First chunk covers Jan (always month-aligned), end=Feb 1 (exclusive).
+        - Second chunk covers Feb, day2 must be 2025-03-01 (NOT 2025-02-16).
         """
         chunks = _monthly_chunks(date(2025, 1, 31), date(2025, 2, 15))
         assert chunks == [
-            (date(2025, 1, 31), date(2025, 2, 1)),
+            (date(2025, 1, 1), date(2025, 2, 1)),
             (date(2025, 2, 1), date(2025, 3, 1)),
         ]
         # The second chunk's exclusive end must be March 1st, not Feb 16th.
@@ -105,11 +113,21 @@ class TestMonthlyChunks:
 
     def test_single_day_range(self) -> None:
         chunks = _monthly_chunks(date(2025, 6, 15), date(2025, 6, 15))
-        assert chunks == [(date(2025, 6, 15), date(2025, 7, 1))]
+        # Single mid-month day still over-fetches to the full month.
+        assert chunks == [(date(2025, 6, 1), date(2025, 7, 1))]
 
     def test_inverted_range_returns_empty(self) -> None:
         """end < start: caller error; return [] rather than crash."""
         assert _monthly_chunks(date(2025, 6, 15), date(2025, 6, 1)) == []
+
+    def test_codex_w3b_p1_cache_key_idempotent(self) -> None:
+        """Regression: two requests for overlapping ranges within the same month
+        produce identical chunks (so cache key matches), preventing the partial-
+        month-served-as-full bug Codex W3B P1 flagged."""
+        chunks_a = _monthly_chunks(date(2025, 1, 15), date(2025, 1, 31))
+        chunks_b = _monthly_chunks(date(2025, 1, 1), date(2025, 1, 31))
+        assert chunks_a == chunks_b
+        assert chunks_a == [(date(2025, 1, 1), date(2025, 2, 1))]
 
 
 # ---------------------------------------------------------------------------
@@ -312,9 +330,10 @@ class TestDownloadIemAsos:
                 report_type=3,
             )
 
-        # Two chunks, two URLs, both with the end-exclusive next-month day2.
+        # Two chunks, two URLs. After codex W3B P1 fix, both chunks start on
+        # the 1st of their month (cache idempotence), with end-exclusive day2.
         assert len(captured_urls) == 2
-        assert "day1=31" in captured_urls[0] and "month1=1" in captured_urls[0]
+        assert "day1=1" in captured_urls[0] and "month1=1" in captured_urls[0]
         assert "day2=1" in captured_urls[0] and "month2=2" in captured_urls[0]
         assert "month1=2" in captured_urls[1] and "day1=1" in captured_urls[1]
         assert "month2=3" in captured_urls[1] and "day2=1" in captured_urls[1]
