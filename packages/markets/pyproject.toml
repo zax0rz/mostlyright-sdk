@@ -3,7 +3,7 @@ name = "tradewinds-markets"
 version = "0.0.1"
 description = "Prediction market data for tradewinds: Kalshi, Polymarket. v0.1.0 ships in Sprint 0.5 with Kalshi market metadata."
 readme = "README.md"
-license = { file = "../../LICENSE" }
+license = "MIT"
 authors = [{ name = "Robert Tarabcak", email = "tarabcakr@gmail.com" }]
 requires-python = ">=3.11"
 keywords = ["kalshi", "polymarket", "prediction-markets"]

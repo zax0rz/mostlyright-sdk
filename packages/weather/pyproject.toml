@@ -3,7 +3,7 @@ name = "tradewinds-weather"
 version = "0.0.1"
 description = "Weather data sources for tradewinds: AWC, IEM, GHCNh, NWS CLI. Direct public-API access; no hosted backend."
 readme = "README.md"
-license = { file = "../../LICENSE" }
+license = "MIT"
 authors = [{ name = "Robert Tarabcak", email = "tarabcakr@gmail.com" }]
 requires-python = ">=3.11"
 keywords = ["weather", "metar", "awc", "iem", "ghcnh", "nws-cli"]
