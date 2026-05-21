@@ -6,7 +6,8 @@ to. See ``docs/design.md`` §A, §X, and §BB.3 for the column-by-column
 specification.
 """
 
+from .forecast import ForecastSchema
 from .observation import ObservationSchema
 
 
-__all__ = ["ObservationSchema"]
+__all__ = ["ObservationSchema", "ForecastSchema"]
