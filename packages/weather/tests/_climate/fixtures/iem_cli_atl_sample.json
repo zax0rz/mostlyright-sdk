@@ -1,0 +1,50 @@
+[
+  {
+    "station": "KATL",
+    "valid": "2025-01-15",
+    "high": 52,
+    "low": 34,
+    "product": "202501160620-KFFC-CDUS42-CLIATL",
+    "name": "ATLANTA HARTSFIELD JACKSON INTL ARPT"
+  },
+  {
+    "station": "KATL",
+    "valid": "2025-01-16",
+    "high": "M",
+    "low": 28,
+    "product": "202501170530-KFFC-CDUS42-CLIATL",
+    "name": "ATLANTA HARTSFIELD JACKSON INTL ARPT"
+  },
+  {
+    "station": "KATL",
+    "valid": "2025-01-17",
+    "high": 48,
+    "low": null,
+    "product": "202501180700-KFFC-CDUS42-CLIATL",
+    "name": "ATLANTA HARTSFIELD JACKSON INTL ARPT"
+  },
+  {
+    "station": "KATL",
+    "valid": "2025-01-18",
+    "high": 55,
+    "low": 38,
+    "product": "202501181430-KFFC-CDUS42-CLIATL",
+    "name": "ATLANTA HARTSFIELD JACKSON INTL ARPT"
+  },
+  {
+    "station": "KATL",
+    "valid": "2025-01-19",
+    "high": 60,
+    "low": 42,
+    "product": "202501200200-KFFC-CDUS42-CLIATL",
+    "name": "ATLANTA HARTSFIELD JACKSON INTL ARPT"
+  },
+  {
+    "station": "KATL",
+    "valid": "2025-01-20",
+    "high": "M",
+    "low": null,
+    "product": "202501210600-KFFC-CDUS42-CLIATL",
+    "name": "ATLANTA HARTSFIELD JACKSON INTL ARPT"
+  }
+]
