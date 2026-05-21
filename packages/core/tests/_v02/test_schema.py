@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
+from typing import ClassVar
 from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
@@ -106,7 +107,7 @@ class TestColumnSpecConstruction:
 
 class _ToySchema(Schema):
     schema_id = "test.toy.v1"
-    COLUMNS = [
+    COLUMNS: ClassVar[list[ColumnSpec]] = [
         ColumnSpec(name="station", dtype="string", units=None, nullable=False),
         ColumnSpec(
             name="event_time",
@@ -118,7 +119,7 @@ class _ToySchema(Schema):
             name="temp_c", dtype="float64", units="celsius", nullable=True
         ),
     ]
-    IMPERIAL_RENAMES = {
+    IMPERIAL_RENAMES: ClassVar[dict[str, str]] = {
         "event_time": "utc_datetime",
         "temp_c": "temp_F",
     }
@@ -126,7 +127,7 @@ class _ToySchema(Schema):
 
 class _ToySchemaNoRenames(Schema):
     schema_id = "test.toy_no_renames.v1"
-    COLUMNS = [
+    COLUMNS: ClassVar[list[ColumnSpec]] = [
         ColumnSpec(name="a", dtype="string", units=None, nullable=False),
         ColumnSpec(name="b", dtype="int64", units=None, nullable=True),
     ]
@@ -420,7 +421,7 @@ class TestAuditLog:
 class TestSchemaFromDataFrame:
     def test_from_dataframe_raises_not_implemented(self) -> None:
         # df is unused — the method short-circuits before touching it.
-        with pytest.raises(NotImplementedError, match="v0.1.1"):
+        with pytest.raises(NotImplementedError, match=r"v0\.1\.1"):
             _ToySchema.from_dataframe(
                 df=object(),  # type: ignore[arg-type]
                 source="iem.archive",

@@ -14,6 +14,8 @@ Temporal mapping (§A):
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from ..schema import ColumnSpec, Schema
 
 
@@ -30,7 +32,7 @@ class ForecastSchema(Schema):
 
     schema_id = "schema.forecast.iem_mos.v1"
 
-    COLUMNS = [
+    COLUMNS: ClassVar[list[ColumnSpec]] = [
         ColumnSpec(
             name="station",
             dtype="string",
@@ -110,7 +112,7 @@ class ForecastSchema(Schema):
     #: keep their canonical names (no ``utc_datetime`` rename — that alias
     #: lives on the observation schema, where ``event_time`` is the
     #: load-bearing timestamp). See ``docs/design.md`` §A.
-    IMPERIAL_RENAMES = {
+    IMPERIAL_RENAMES: ClassVar[dict[str, str]] = {
         "temp_c": "temp_F",
         "dew_point_c": "dew_point_F",
         "wind_speed_ms": "wind_speed_kt",

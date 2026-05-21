@@ -21,6 +21,8 @@ Temporal mapping (§U + §BB.3):
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from ..schema import ColumnSpec, Schema
 
 _REPORT_TYPE_VALUES: tuple[str, ...] = ("preliminary", "final", "correction")
@@ -36,7 +38,7 @@ class SettlementSchema(Schema):
 
     schema_id = "schema.settlement.cli.v1"
 
-    COLUMNS = [
+    COLUMNS: ClassVar[list[ColumnSpec]] = [
         ColumnSpec(
             name="station",
             dtype="string",
@@ -126,4 +128,4 @@ class SettlementSchema(Schema):
     #: Settlement values are already in canonical Fahrenheit / inches; no
     #: imperial-mode rename map applies. ``Schema.column_names("imperial")``
     #: returns the same names as ``column_names("metric")``.
-    IMPERIAL_RENAMES: dict[str, str] = {}
+    IMPERIAL_RENAMES: ClassVar[dict[str, str]] = {}

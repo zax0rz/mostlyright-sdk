@@ -12,6 +12,8 @@ are stamped on every fetch and validated independently.
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from ..schema import ColumnSpec, Schema
 
 _SKY_COVER_VALUES: tuple[str, ...] = ("CLR", "FEW", "SCT", "BKN", "OVC", "VV")
@@ -31,7 +33,7 @@ class ObservationSchema(Schema):
 
     schema_id = "schema.observation.v1"
 
-    COLUMNS = [
+    COLUMNS: ClassVar[list[ColumnSpec]] = [
         ColumnSpec(
             name="station",
             dtype="string",
@@ -188,7 +190,7 @@ class ObservationSchema(Schema):
     #: Metric → imperial column-name map (docs §A imperial-mode table).
     #: ``station``, ``observation_type``, ``wind_dir_deg``, ``slp_hpa``,
     #: ``sky_cover_N`` and ``metar_raw`` are unchanged across modes.
-    IMPERIAL_RENAMES = {
+    IMPERIAL_RENAMES: ClassVar[dict[str, str]] = {
         "event_time": "utc_datetime",
         "temp_c": "temp_F",
         "dew_point_c": "dew_point_F",
