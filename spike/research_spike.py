@@ -27,7 +27,7 @@ from __future__ import annotations
 import json
 import sys
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -181,7 +181,7 @@ def research_spike(
         "station": station_icao,
         "from_date": from_date_str,
         "to_date": to_date_str,
-        "ts_utc": datetime.now(timezone.utc).isoformat(),
+        "ts_utc": datetime.now(UTC).isoformat(),
         "errors": {},
     }
 
