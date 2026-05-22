@@ -140,10 +140,10 @@ This plan delivers:
 @.planning/REQUIREMENTS.md
 @.planning/STATE.md
 @.planning/REVIEW-DISCIPLINE.md
-@.planning/phase-05-mcp-data-platform/VISION.md
-@.planning/phase-05-mcp-data-platform/CONTEXT.md
-@.planning/phase-05-mcp-data-platform/RESEARCH.md
-@.planning/phase-05-mcp-data-platform/05-01-SUMMARY.md
+@.planning/phases/05-mcp-data-platform/VISION.md
+@.planning/phases/05-mcp-data-platform/CONTEXT.md
+@.planning/phases/05-mcp-data-platform/RESEARCH.md
+@.planning/phases/05-mcp-data-platform/05-01-SUMMARY.md
 @./CLAUDE.md
 </execution_context>
 
@@ -223,9 +223,9 @@ from tradewinds.markets.catalog import kalshi_nhigh, kalshi_nlow
   <files>packages/mcp/catalog/_schema/catalog_entry.schema.json, packages/mcp/catalog/iem.archive.yaml, packages/mcp/catalog/iem.live.yaml, packages/mcp/catalog/awc.live.yaml, packages/mcp/catalog/ghcnh.archive.yaml, packages/mcp/catalog/cli.archive.yaml, packages/mcp/catalog/iem.forecasts.yaml, packages/mcp/catalog/kalshi.weather.yaml, packages/mcp/catalog/_generated/.gitkeep, packages/mcp/tests/test_catalog_meta_schema.py</files>
   <implements>MCP-02 (catalog format + 5-layer context), MCP-10 (weather portion)</implements>
   <read_first>
-    - .planning/phase-05-mcp-data-platform/RESEARCH.md (§B.1 Singer/dlt prior art; §B.2 YAML + JSON-Schema-meta recommendation; §B.2 yaml.safe_load only; full catalog YAML skeleton at lines 707-751; §E.3 top-10 pre-indexed entries — 7 weather + 3 macro)
-    - .planning/phase-05-mcp-data-platform/CONTEXT.md (decisions — per-source files at packages/mcp/catalog/; _generated/ subdir; locked YAML format)
-    - .planning/phase-02-core-primitives-catalog-adapters/PLAN.md (Wave 3 — weather adapter source IDs: iem.archive, iem.live, awc.live, cli.archive, ghcnh.archive, iem.forecasts; Wave 4 — Kalshi NHIGH/NLOW contract specs; KALSHI_SETTLEMENT_STATIONS list with 20 city tickers)
+    - .planning/phases/05-mcp-data-platform/RESEARCH.md (§B.1 Singer/dlt prior art; §B.2 YAML + JSON-Schema-meta recommendation; §B.2 yaml.safe_load only; full catalog YAML skeleton at lines 707-751; §E.3 top-10 pre-indexed entries — 7 weather + 3 macro)
+    - .planning/phases/05-mcp-data-platform/CONTEXT.md (decisions — per-source files at packages/mcp/catalog/; _generated/ subdir; locked YAML format)
+    - .planning/phases/02-core-primitives-catalog-adapters/PLAN.md (Wave 3 — weather adapter source IDs: iem.archive, iem.live, awc.live, cli.archive, ghcnh.archive, iem.forecasts; Wave 4 — Kalshi NHIGH/NLOW contract specs; KALSHI_SETTLEMENT_STATIONS list with 20 city tickers)
     - packages/core/src/tradewinds/core/schemas/observation.py + forecast.py + settlement.py (Phase 2 — confirm schema_id strings: schema.observation.v1, schema.forecast.iem_mos.v1, schema.settlement.cli.v1)
     - packages/weather/src/tradewinds/weather/catalog/iem.py + awc.py + cli.py + ghcnh.py (Phase 2 — adapter source IDs declared via SUPPORTED_SOURCES; cross-reference)
   </read_first>
@@ -439,8 +439,8 @@ from tradewinds.markets.catalog import kalshi_nhigh, kalshi_nlow
   <implements>MCP-02 (loader for the catalog format)</implements>
   <read_first>
     - Task 2.1 outputs (meta-schema + 7 YAML files exist)
-    - .planning/phase-05-mcp-data-platform/RESEARCH.md (§B.2 yaml.safe_load only — never yaml.load; sample attack via !!python/object)
-    - .planning/phase-05-mcp-data-platform/CONTEXT.md (decisions — _generated/ subdir is skipped on Wave 2 load; _schema/ subdir is skipped)
+    - .planning/phases/05-mcp-data-platform/RESEARCH.md (§B.2 yaml.safe_load only — never yaml.load; sample attack via !!python/object)
+    - .planning/phases/05-mcp-data-platform/CONTEXT.md (decisions — _generated/ subdir is skipped on Wave 2 load; _schema/ subdir is skipped)
     - packages/mcp/catalog/_schema/catalog_entry.schema.json (Task 2.1 output — the validation target)
   </read_first>
   <behavior>
@@ -682,8 +682,8 @@ from tradewinds.markets.catalog import kalshi_nhigh, kalshi_nlow
   <implements>MCP-02 (real list_sources/describe_source); MCP-10 (real query/ingest for the 7 weather entries)</implements>
   <read_first>
     - Task 2.1 + 2.2 outputs (catalog + loader exist)
-    - .planning/phase-05-mcp-data-platform/RESEARCH.md (§H.3 invariant — packages/mcp/ must depend on Phase 2 PUBLIC catalog registry, not private fetcher paths; §I.8 — cross-vertical join allow-list discipline)
-    - .planning/phase-02-core-primitives-catalog-adapters/PLAN.md (Wave 3 — tradewinds.weather.catalog.get_adapter(source_id) returns WeatherAdapter Protocol instance; Wave 4 — KALSHI contract spec resolve API)
+    - .planning/phases/05-mcp-data-platform/RESEARCH.md (§H.3 invariant — packages/mcp/ must depend on Phase 2 PUBLIC catalog registry, not private fetcher paths; §I.8 — cross-vertical join allow-list discipline)
+    - .planning/phases/02-core-primitives-catalog-adapters/PLAN.md (Wave 3 — tradewinds.weather.catalog.get_adapter(source_id) returns WeatherAdapter Protocol instance; Wave 4 — KALSHI contract spec resolve API)
     - packages/weather/src/tradewinds/weather/catalog/__init__.py (Phase 2 — confirm get_adapter signature)
     - packages/mcp/src/tradewinds_mcp/tools/query.py + ingest.py (Wave 1 stubs — read to understand current shape; you are replacing the `_placeholder` DataFrame with a real catalog-backed fetch)
   </read_first>
@@ -953,9 +953,9 @@ from tradewinds.markets.catalog import kalshi_nhigh, kalshi_nlow
   <files>packages/mcp/tests/test_catalog_sample_data_roundtrip.py</files>
   <implements>MCP-02 (catalog promotion gate prerequisite — Wave 3 makes this mandatory for _generated/ → catalog/ promotion); RESEARCH.md §I.4 mitigation</implements>
   <read_first>
-    - .planning/phase-05-mcp-data-platform/RESEARCH.md (§C.2 — quality-review gate table; §I.4 — agent hallucinates a field that doesn't exist in the API; mitigation is sample-data round-trip)
-    - .planning/phase-05-mcp-data-platform/CONTEXT.md (decisions — _generated/ → catalog/ promotion gate)
-    - .planning/phase-01-v0-14-1-parity-lift/PLAN.md (Phase 1 Day 1 — @pytest.mark.live convention; CLAUDE.md CI-04 — live tests excluded from CI; manual pre-publish run)
+    - .planning/phases/05-mcp-data-platform/RESEARCH.md (§C.2 — quality-review gate table; §I.4 — agent hallucinates a field that doesn't exist in the API; mitigation is sample-data round-trip)
+    - .planning/phases/05-mcp-data-platform/CONTEXT.md (decisions — _generated/ → catalog/ promotion gate)
+    - .planning/phases/01-v0-14-1-parity-lift/PLAN.md (Phase 1 Day 1 — @pytest.mark.live convention; CLAUDE.md CI-04 — live tests excluded from CI; manual pre-publish run)
     - CLAUDE.md (testing — @pytest.mark.live + uv run pytest -m "not live" default)
     - packages/mcp/src/tradewinds_mcp/_adapter_bridge.py (Task 2.3 output)
   </read_first>
@@ -1213,7 +1213,7 @@ echo "OK — all status fields valid"
 </success_criteria>
 
 <output>
-After completion, create `.planning/phase-05-mcp-data-platform/05-02-SUMMARY.md` documenting:
+After completion, create `.planning/phases/05-mcp-data-platform/05-02-SUMMARY.md` documenting:
 
 - MCP-02 + MCP-10-weather shipped; iem.forecasts status (live or wip)
 - Meta-schema file size, JSON Schema draft version

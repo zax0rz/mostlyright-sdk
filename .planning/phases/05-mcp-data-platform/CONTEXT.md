@@ -11,7 +11,7 @@ milestone: v0.2+
 
 **Gathered:** 2026-05-22
 **Status:** Ready for planning
-**Source:** [`.planning/phase-05-mcp-data-platform/VISION.md`](VISION.md) + inline orchestrator brief (2026-05-22)
+**Source:** [`.planning/phases/05-mcp-data-platform/VISION.md`](VISION.md) + inline orchestrator brief (2026-05-22)
 **Milestone:** v0.2+ (POST-v0.1.0 ship — runs strictly after Phases 1, 1.5, 2, 3, 4 complete and v0.1.0 ships to PyPI)
 
 <domain>
@@ -126,7 +126,7 @@ These are the Open Questions block from [VISION.md](VISION.md) lines 54-59, expa
 **Downstream agents MUST read these before planning or implementing.**
 
 ### Phase scope + vision
-- [`.planning/phase-05-mcp-data-platform/VISION.md`](VISION.md) — the user-authored vision document (6 components + 5 Open Questions)
+- [`.planning/phases/05-mcp-data-platform/VISION.md`](VISION.md) — the user-authored vision document (6 components + 5 Open Questions)
 - `.planning/ROADMAP.md` (lines 21, 94-110) — Phase 5 section, success criteria, depends-on, execution-order note (Phase 5 starts the v0.2+ milestone)
 - `.planning/REQUIREMENTS.md` (lines 101-108 SUPERSEDED, lines 236 ID-collision-note, lines 238-247 canonical MCP-01..MCP-10) — formal requirements text
 

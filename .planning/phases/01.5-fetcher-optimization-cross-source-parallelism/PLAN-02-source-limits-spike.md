@@ -96,8 +96,8 @@ Empirically characterize concurrent-request behavior of the three sources tradew
 @.planning/REQUIREMENTS.md
 @.planning/STATE.md
 @.planning/REVIEW-DISCIPLINE.md
-@.planning/phase-01-5-fetcher-optimization-cross-source-parallelism/CONTEXT.md
-@.planning/phase-01-5-fetcher-optimization-cross-source-parallelism/RESEARCH.md
+@.planning/phases/01.5-fetcher-optimization-cross-source-parallelism/CONTEXT.md
+@.planning/phases/01.5-fetcher-optimization-cross-source-parallelism/RESEARCH.md
 @./CLAUDE.md
 </execution_context>
 
@@ -128,8 +128,8 @@ Empirically characterize concurrent-request behavior of the three sources tradew
   <files>spike/source_limits/__init__.py, spike/source_limits/_common.py, spike/source_limits/README.md</files>
   <implements>PERF-05 scaffolding — DRY infra for the 3 spike scripts</implements>
   <read_first>
-    - .planning/phase-01-5-fetcher-optimization-cross-source-parallelism/CONTEXT.md (Specifics section — spike scope; locked decisions — "Rate-limit spike documentation lives in `.planning/research/`")
-    - .planning/phase-01-5-fetcher-optimization-cross-source-parallelism/RESEARCH.md (lines 509-543 — rate-limit characterization methodology; line 528-532 — metrics worth capturing per N)
+    - .planning/phases/01.5-fetcher-optimization-cross-source-parallelism/CONTEXT.md (Specifics section — spike scope; locked decisions — "Rate-limit spike documentation lives in `.planning/research/`")
+    - .planning/phases/01.5-fetcher-optimization-cross-source-parallelism/RESEARCH.md (lines 509-543 — rate-limit characterization methodology; line 528-532 — metrics worth capturing per N)
     - packages/core/src/tradewinds/_internal/_http.py (current state — after Plan 01 merges, HTTP_TIMEOUT will be 60s; spike scripts must accommodate either value at run time)
     - packages/weather/src/tradewinds/weather/_fetchers/awc.py (read to see the AWC URL pattern + the politeness pause)
     - packages/weather/src/tradewinds/weather/_fetchers/ghcnh.py (read to see the GHCNh URL pattern)
@@ -322,8 +322,8 @@ Empirically characterize concurrent-request behavior of the three sources tradew
     - spike/source_limits/_common.py (from Task 2.1 — the utilities you'll import)
     - packages/weather/src/tradewinds/weather/_fetchers/awc.py (the exact URL pattern + politeness pause used in production; the spike should use the SAME URL pattern to characterize realistic behavior)
     - packages/weather/src/tradewinds/weather/_fetchers/ghcnh.py (same — exact GHCNh URL pattern)
-    - .planning/phase-01-5-fetcher-optimization-cross-source-parallelism/RESEARCH.md (lines 517-543 — spike methodology recommendation; lines 528-543 — response-size methodology per source; AWC live: 7-day max; GHCNh: one PSV per station-year)
-    - .planning/phase-01-5-fetcher-optimization-cross-source-parallelism/CONTEXT.md (Specifics — exact filename targets for spike scripts)
+    - .planning/phases/01.5-fetcher-optimization-cross-source-parallelism/RESEARCH.md (lines 517-543 — spike methodology recommendation; lines 528-543 — response-size methodology per source; AWC live: 7-day max; GHCNh: one PSV per station-year)
+    - .planning/phases/01.5-fetcher-optimization-cross-source-parallelism/CONTEXT.md (Specifics — exact filename targets for spike scripts)
   </read_first>
   <action>
     Step 1 — Author `spike/source_limits/awc_concurrent.py`. Skeleton:
@@ -450,8 +450,8 @@ Empirically characterize concurrent-request behavior of the three sources tradew
   <files>spike/source_limits/iem_shared_ip_spike.py</files>
   <implements>PERF-05 — IEM `asos.py` vs `cli.py` shared-IP throttle verification (CRITICAL input to Plan 03)</implements>
   <read_first>
-    - .planning/phase-01-5-fetcher-optimization-cross-source-parallelism/RESEARCH.md (lines 319-335 — Pitfall 5 with full mitigation options A/B/C; lines 612-616 — Assumption A3 explicit)
-    - .planning/phase-01-5-fetcher-optimization-cross-source-parallelism/CONTEXT.md ("IEM rate-limit risk added 2026-05-22" — three mitigation paths documented)
+    - .planning/phases/01.5-fetcher-optimization-cross-source-parallelism/RESEARCH.md (lines 319-335 — Pitfall 5 with full mitigation options A/B/C; lines 612-616 — Assumption A3 explicit)
+    - .planning/phases/01.5-fetcher-optimization-cross-source-parallelism/CONTEXT.md ("IEM rate-limit risk added 2026-05-22" — three mitigation paths documented)
     - packages/weather/src/tradewinds/weather/_fetchers/iem_asos.py (production IEM ASOS URL pattern + IEM_POLITE_DELAY = 1.0)
     - packages/weather/src/tradewinds/weather/_fetchers/iem_cli.py (production IEM CLI URL pattern + politeness pause)
     - spike/source_limits/_common.py (helpers to reuse)
@@ -648,7 +648,7 @@ Empirically characterize concurrent-request behavior of the three sources tradew
     - spike/source_limits/awc_concurrent.py (Task 2.2)
     - spike/source_limits/ghcnh_concurrent.py (Task 2.2)
     - spike/source_limits/iem_shared_ip_spike.py (Task 2.3)
-    - .planning/phase-01-5-fetcher-optimization-cross-source-parallelism/RESEARCH.md (lines 509-543 — methodology)
+    - .planning/phases/01.5-fetcher-optimization-cross-source-parallelism/RESEARCH.md (lines 509-543 — methodology)
     - .planning/research/ (verify dir exists; create if missing)
   </read_first>
   <what-built>
@@ -802,7 +802,7 @@ Empirically characterize concurrent-request behavior of the three sources tradew
 </success_criteria>
 
 <output>
-After completion, create `.planning/phase-01-5-fetcher-optimization-cross-source-parallelism/01-5-02-SUMMARY.md` documenting:
+After completion, create `.planning/phases/01.5-fetcher-optimization-cross-source-parallelism/01-5-02-SUMMARY.md` documenting:
 
 - Spike run date + total wall time
 - Headline numbers per source (AWC max-N-no-429, GHCNh max-N-no-error, IEM treatment 503 count vs baseline)

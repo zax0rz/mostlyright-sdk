@@ -72,7 +72,7 @@ This plan is a documentation-only edit. No code changes. No tests changed. Run b
 @.planning/REQUIREMENTS.md
 @.planning/STATE.md
 @.planning/REVIEW-DISCIPLINE.md
-@.planning/phase-05-mcp-data-platform/CONTEXT.md
+@.planning/phases/05-mcp-data-platform/CONTEXT.md
 @./CLAUDE.md
 </execution_context>
 
@@ -99,7 +99,7 @@ This plan is a documentation-only edit. No code changes. No tests changed. Run b
   <files>.planning/REQUIREMENTS.md, .planning/ROADMAP.md</files>
   <implements>CONTEXT.md §id_collision locked decision — option (b) DELETE</implements>
   <read_first>
-    - .planning/phase-05-mcp-data-platform/CONTEXT.md (lines 239-261 — id_collision section, locked decision text, subsumption mapping table)
+    - .planning/phases/05-mcp-data-platform/CONTEXT.md (lines 239-261 — id_collision section, locked decision text, subsumption mapping table)
     - .planning/REQUIREMENTS.md (CURRENT FILE — read fully; lines 97-108 = '## v2 Requirements (Deferred)' header + '### MCP Server (v0.2 milestone)' OLD block to delete; line 236 = ID-collision note to delete; lines 238-247 = canonical NEW MCP-01..MCP-10 block to PRESERVE; lines 251-262 = Phase 5 Traceability table to verify)
     - .planning/ROADMAP.md (lines 94-105 — Phase 5 entry; verify the `**Requirements**: MCP-01..MCP-10` line at line 97 references only the canonical range; lines 16-21 — Phases index for Phase 5)
     - .planning/REVIEW-DISCIPLINE.md (never-skip list — planning artifacts with code-like fragments / requirement IDs are NOT skip-eligible; 2-reviewer loop applies)
@@ -209,7 +209,7 @@ This plan is a documentation-only edit. No code changes. No tests changed. Run b
   <implements>Project state hygiene — flag Phase 5 prereq done</implements>
   <read_first>
     - .planning/STATE.md (CURRENT FILE — note `stopped_at`, `last_updated`, `last_activity`, and `Session Continuity` block format)
-    - .planning/phase-05-mcp-data-platform/CONTEXT.md (locked decisions — confirm the ID-collision cleanup was the prerequisite called out)
+    - .planning/phases/05-mcp-data-platform/CONTEXT.md (locked decisions — confirm the ID-collision cleanup was the prerequisite called out)
   </read_first>
   <action>
     Step 1 — Read current STATE.md frontmatter and `## Session Continuity` block. Note the existing date/time format.
@@ -336,8 +336,8 @@ This plan is a documentation-only edit. No code changes. No tests changed. Run b
 ## Static Regression Guards
 
 ```bash
-# Ensure NO file under .planning/phase-05-*/ references the OLD narrow tool names
-grep -rnE "catalog_search|pull_pairs|validate_dataframe" .planning/phase-05-mcp-data-platform/ && echo "FAIL: old tool names in Phase 5 docs" || echo "OK"
+# Ensure NO file under .planning/phases/05-mcp-data-platform/ references the OLD narrow tool names
+grep -rnE "catalog_search|pull_pairs|validate_dataframe" .planning/phases/05-mcp-data-platform/ && echo "FAIL: old tool names in Phase 5 docs" || echo "OK"
 
 # Ensure NO Phase 5 PLAN file (created next in Wave 1) references both MCP-04 (server-enforced temporal) AND validate_dataframe in the same context — that would be a sign of muddled requirement
 # This is a forward-looking check; runs as part of Wave 1's pre-commit.
@@ -357,7 +357,7 @@ grep -rnE "catalog_search|pull_pairs|validate_dataframe" .planning/phase-05-mcp-
 </success_criteria>
 
 <output>
-After completion, create `.planning/phase-05-mcp-data-platform/05-00-SUMMARY.md` documenting:
+After completion, create `.planning/phases/05-mcp-data-platform/05-00-SUMMARY.md` documenting:
 
 - Lines deleted from REQUIREMENTS.md (exact pre-edit line numbers)
 - Verification grep results (all four checks: heading gone, old tool names gone, MCP-01..10 definition count = 10, MCP-LEGACY count = 0)

@@ -117,9 +117,9 @@ Per MCP-03, an AI agent (or a human) can produce a YAML catalog entry from an AP
 @.planning/REQUIREMENTS.md
 @.planning/STATE.md
 @.planning/REVIEW-DISCIPLINE.md
-@.planning/phase-05-mcp-data-platform/CONTEXT.md
-@.planning/phase-05-mcp-data-platform/RESEARCH.md
-@.planning/phase-05-mcp-data-platform/05-02-SUMMARY.md
+@.planning/phases/05-mcp-data-platform/CONTEXT.md
+@.planning/phases/05-mcp-data-platform/RESEARCH.md
+@.planning/phases/05-mcp-data-platform/05-02-SUMMARY.md
 @./CLAUDE.md
 </execution_context>
 
@@ -192,7 +192,7 @@ GitHub Actions context:
   <files>packages/mcp/src/tradewinds_mcp/_generated_scaffold.py, packages/mcp/src/tradewinds_mcp/_generated_validator.py, packages/mcp/tests/test_generated_scaffold.py, packages/mcp/tests/test_generated_validator.py, packages/mcp/tests/fixtures/example_generated/openmeteo.example.yaml</files>
   <implements>MCP-03 (partial — generation + validation tooling)</implements>
   <read_first>
-    - .planning/phase-05-mcp-data-platform/RESEARCH.md (§C.2 — quality-review gate table; columns "Automated? + How" map directly to the 4 checks; §I.4 — hallucination mitigation via sample-data round-trip; §C.1 — dlt's discover-then-tune pattern)
+    - .planning/phases/05-mcp-data-platform/RESEARCH.md (§C.2 — quality-review gate table; columns "Automated? + How" map directly to the 4 checks; §I.4 — hallucination mitigation via sample-data round-trip; §C.1 — dlt's discover-then-tune pattern)
     - packages/mcp/catalog/_schema/catalog_entry.schema.json (Task 2.1 output — meta-schema; the scaffold must produce a dict that validates against this)
     - packages/mcp/src/tradewinds_mcp/catalog.py (Task 2.2 output — CatalogLoader; the validator reuses jsonschema + Pydantic logic)
     - packages/core/src/tradewinds/core/schemas/__init__.py (Phase 2 — REGISTRY for schema_id-resolves check)
@@ -521,7 +521,7 @@ GitHub Actions context:
   <read_first>
     - Task 3.1 outputs (scaffold + validator)
     - packages/mcp/src/tradewinds_mcp/audit.py (Wave 1 — AuditLogger pattern for the new catalog-promotions.jsonl)
-    - .planning/phase-05-mcp-data-platform/RESEARCH.md (§C.3 — PR-based contribution model, two-step promotion: CI gates green → maintainer moves file)
+    - .planning/phases/05-mcp-data-platform/RESEARCH.md (§C.3 — PR-based contribution model, two-step promotion: CI gates green → maintainer moves file)
   </read_first>
   <behavior>
     Tests in `packages/mcp/tests/test_promotion_script.py` (5 tests):
@@ -927,7 +927,7 @@ GitHub Actions context:
   <implements>MCP-03 (community contract / public-facing documentation)</implements>
   <read_first>
     - Tasks 3.1 + 3.2 + 3.3 outputs
-    - .planning/phase-05-mcp-data-platform/RESEARCH.md (§C.3 — PR-based contribution model; documentation-augmented generation; 15% hallucination rate)
+    - .planning/phases/05-mcp-data-platform/RESEARCH.md (§C.3 — PR-based contribution model; documentation-augmented generation; 15% hallucination rate)
     - existing packages/mcp/CONTRIBUTING.md (Wave 1 — the 5 hard rules; extend with the Wave 3 contributor workflow)
   </read_first>
   <action>
@@ -1340,7 +1340,7 @@ grep "validate_generated_entry" .github/workflows/catalog-promotion-gate.yml || 
 </success_criteria>
 
 <output>
-After completion, create `.planning/phase-05-mcp-data-platform/05-03-SUMMARY.md` documenting:
+After completion, create `.planning/phases/05-mcp-data-platform/05-03-SUMMARY.md` documenting:
 
 - MCP-03 shipped end-to-end: scaffold + validator + CLI + CI gate + docs
 - Validator-check breakdown: 4 errors-block + 3 warnings-advisory; what each catches
