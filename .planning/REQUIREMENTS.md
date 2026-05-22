@@ -57,6 +57,14 @@ Requirements for initial release. Each maps to a roadmap phase.
 - [ ] **CACHE-06**: Cache rows carry the same `source` ID and `retrieved_at` as the source-of-record (cache is a speedup, not a different source ID)
 - [ ] **CACHE-07**: Parquet write uses `version="2.6"`, `coerce_timestamps="us"`, `read_dictionary=[...]` for categoricals — defends against pyarrow dtype/timestamp/categorical roundtrip loss
 
+### Performance (Phase 1.5)
+
+- [ ] **PERF-01**: IEM ASOS + MOS forecast chunk size = 365 calendar-aligned days (was monthly). Shared `_iem_chunks()` helper is leap-year safe. **KNYC** 5-year backfill ≤12 min wall time at 1 req/sec politeness (PR #85 measured 10 min for KNYC; allow 20% headroom for this benchmark station). Other-station regression: pick one of {KMDW, KLAX, KMIA} and confirm backfill completes within per-station wall time recorded during the Phase 1.5 spike — no fixed cross-station threshold.
+- [ ] **PERF-02**: **IEM CSV staging cache** filename encodes the full chunk window (`iem_{start_iso}_{end_iso}_{suffix}.csv`) inside `_fetchers/iem_asos.py` — this is the fetcher-internal raw-CSV staging cache, **distinct from `tradewinds.weather.cache`'s path-based parquet cache** (`v1/observations/{station}/{YYYY}/{MM}.parquet`, untouched by Phase 1.5). `skip_cache=True` AND `chunk_end > today_utc` routes to `_partial` namespace that backfill never reads. Closes 3 cache-poisoning paths from mostlyright PR #85.
+- [ ] **PERF-03**: `tradewinds._internal._http.HTTP_TIMEOUT` raised 30s → 60s to match 12x payload per chunk. 365-day KNYC ASOS pull completes inside 60s p95.
+- [ ] **PERF-04**: `research.py` orchestrator fires AWC + IEM + GHCNh + NWS CLI concurrently for the same time window (4 parallel workers, one per source). Parallelism check: 1-year `research()` wall time ≤ `max(per_source_t_i) * 1.2` (proves no serial stall). Replaces an earlier `≤45% of sum` threshold that was mathematically invalid when per-source times are uneven (slowest-source dominates the sum).
+- [ ] **PERF-05**: AWC + GHCNh rate-limit headroom empirically verified in a one-shot spike committed under `.planning/research/SOURCE-LIMITS.md` + `spike/source_limits/`. Documents max concurrent connections + response sizes (1-year, 5-year) per source.
+
 ### Packaging
 
 - [ ] **PKG-01**: Three PyPI distributions publish at v0.1.0: `tradewinds`, `tradewinds-weather`, `tradewinds-markets`
@@ -186,6 +194,11 @@ Per-requirement phase assignments (filled by roadmapper 2026-05-21).
 | CACHE-05 | Phase 3 | Pending |
 | CACHE-06 | Phase 3 | Pending |
 | CACHE-07 | Phase 1 | Pending |
+| PERF-01 | Phase 1.5 | Pending |
+| PERF-02 | Phase 1.5 | Pending |
+| PERF-03 | Phase 1.5 | Pending |
+| PERF-04 | Phase 1.5 | Pending |
+| PERF-05 | Phase 1.5 | Pending |
 | PKG-01 | Phase 4 | Pending |
 | PKG-02 | Phase 1 | Pending |
 | PKG-03 | Phase 2 | Pending |
@@ -205,12 +218,13 @@ Per-requirement phase assignments (filled by roadmapper 2026-05-21).
 | CI-05 | Phase 4 | Pending |
 
 **Coverage:**
-- v1 requirements: 49 total
-- Mapped to phases: 49 ✓
+- v1 requirements: 54 total
+- Mapped to phases: 54 ✓
 - Unmapped: 0 ✓
 
 **Phase Distribution:**
 - Phase 1 (Parity Lift): 11 requirements (PARITY-01..03, CORE-06, CATALOG-06, CACHE-01, CACHE-07, PKG-02, PKG-04, PKG-05, PKG-06)
+- Phase 1.5 (Fetcher Optimization + Parallelism): 5 requirements (PERF-01..05)
 - Phase 2 (Core + Catalog): 16 requirements (CORE-01..05, CORE-07, CORE-08, CATALOG-01..05, MARKETS-01..03, PKG-03)
 - Phase 3 (Mode 2 + Migration): 13 requirements (RESEARCH-01..05, CACHE-02..06, MIGRATION-01..03)
 - Phase 4 (Coverage + Release): 9 requirements (PKG-01, DOCS-01..03, CI-01..05)
