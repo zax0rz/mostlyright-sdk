@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: v0.14.1 Parity Lift** - Day 1 scaffold-prep + lift v0.14.1 parsers/cache; ship 5-fixture byte-equivalent parity gate and alpha1 wheels (Days 1-4)
 - [ ] **Phase 1.5: Fetcher Optimization + Cross-Source Parallelism** [INSERTED 2026-05-22] - Lift mostlyright PR #85 (365-day chunks, cache-poison fix, leap-year + UTC + HTTP_TIMEOUT) + add cross-source parallelism in `research.py` + rate-limit spike for AWC/GHCNh (Days 4.5-5.5). **Sequenced strictly between Phase 1 and Phase 2** — see architect-review notes; co-execution with Phase 2 was rejected.
-- [ ] **Phase 2: Core Primitives + Catalog Adapters** - Temporal/schema/validator/leakage/exceptions/formats in `core/`; four weather adapters + Kalshi market specs; two-lane parallel build (Days 5-9)
+- [ ] **Phase 2: Core Primitives + Catalog Adapters** - Temporal/schema/validator/leakage/exceptions/formats in `core/`; four weather adapters + Kalshi market specs; two-lane parallel build (Days 5.5-9)
 - [ ] **Phase 3: Mode 2 Integration + Migration Gate** - `research()` Mode 2 source-explicit dispatch; cache enhancements (filelock, LST-skip, volatile window); contract tests + `mostly-light/kxhigh` dry-run migration parity (Days 10-11)
 - [ ] **Phase 4: Coverage, Docs, CI/CD, Release** - ≥90% branch coverage on `core/`; <5-min quickstart timed by external person; GH Actions trusted publishing; two-tier fixture set; v0.1.0 ship (Days 12-14)
 
