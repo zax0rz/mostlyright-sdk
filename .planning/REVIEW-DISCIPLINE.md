@@ -19,9 +19,12 @@ For every branch (sub-branches inside a wave, integration branches between waves
 
 ## When to skip the loop
 
-- Trivial commits (typo fixes, version bumps without API change, doc-only README updates that don't change planning artifacts).
+- Trivial commits: typo fixes in prose, version bumps without API change, README/CONTRIBUTING wording polish, GIF/screenshot swaps.
 - The skip is documented in the commit message: `[review-skip: trivial]`.
-- Never skip for parity-critical paths: `_internal/merge/`, `research.py`, `core/temporal/`, anything touching cache write logic, schemas, exception payloads.
+- **Never skip — even if the change "looks like docs"** — when the diff includes:
+  - Anything under `_internal/merge/`, `_internal/_pairs.py`, `_vendor/` (lifted parsers), `research.py`, `tradewinds.weather.cache`, schema files (`_internal/merge/_schemas.py`, `_internal/specs/*.json`), exception payloads, parity-fixture files.
+  - **Any planning artifact under `.planning/` whose diff contains code, schema fragments, priority constants, fixture rows, or success-criterion threshold numbers.** A wrong literal in `PLAN.md` (e.g., `awc:3` → `awc:2` in a SOURCE_PRIORITY table, or a typo in an OBSERVATION_SCHEMA field type) propagates straight into Wave-N implementation. PLAN.md prose changes (rewording, reordering paragraphs) ARE skip-eligible; code-like fragments are NOT.
+  - Anything touching `pyproject.toml` dependency floors (`tradewinds-weather` ↔ `pyarrow`, `pandas` upper bound, etc.) or pre-commit/pre-push hook config.
 
 ## Severity examples (calibration)
 
