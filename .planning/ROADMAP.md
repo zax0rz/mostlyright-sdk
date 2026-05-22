@@ -50,7 +50,10 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Parity gate handling**: chunk size affects request pattern. Merge-output sensitivity is REAL — `_internal/merge/observations.py` uses strict `>` priority comparison (first-row-seen wins on same-priority ties), so row-iteration-order from the fetcher matters at tie boundaries (SPECI-vs-METAR at same `(station, observed_at, observation_type)`, cross-source same-priority). **Mandatory pre-flight before Phase 1.5 merges to `merged-vision`**: re-run all 5 parity fixtures against 365-day-chunked `research()` output. If any fixture drifts, either (a) revert Phase 1.5 chunk-size change, OR (b) change merge to `>=` with deterministic secondary key (`source` then `chunk_start`) and re-validate. Decision is post-spike; phase doesn't merge until parity green.
 
-**Plans**: TBD
+**Plans:** 3 plans
+- [ ] PLAN-01-lift-pr85.md — Wave 1; PERF-01/02/03; lift PR #85 verbatim (yearly chunker + _partial cache namespace + HTTP_TIMEOUT 30→60s) with TDD + pre-merge parity sweep
+- [ ] PLAN-02-source-limits-spike.md — Wave 1 (parallel sub-branch); PERF-05; one-shot empirical spike of AWC + GHCNh + IEM-shared-IP concurrent tolerance → `.planning/research/SOURCE-LIMITS.md`
+- [ ] PLAN-03-cross-source-parallelism.md — Wave 2 (depends on Plans 01 + 02); PERF-04; `research.py` ThreadPoolExecutor fan-out using IEM-sharing Option A/B/C chosen from SOURCE-LIMITS.md + live KNYC 5-year ≤12 min gate
 
 ### Phase 2: Core Primitives + Catalog Adapters
 **Goal**: Build the architectural spine — temporal-safety primitives (`TimePoint`, `KnowledgeView`, `LeakageDetector`), schema registry with canonical schemas, source-identity Validator, exception hierarchy, format serializers, four catalog adapters wrapping `_vendor/` parsers, and Kalshi NHIGH/NLOW contract specs — all on top of the now-stable v0.14.1 parity baseline.
