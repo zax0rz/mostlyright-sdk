@@ -569,9 +569,23 @@ def _fetch_climate_range(
         from tradewinds._internal.merge import merge_climate
 
         merged = merge_climate(parsed)
-        # write_climate_cache is a no-op for the current LST year - safe to
-        # call unconditionally.
-        write_climate_cache(info.icao, year, merged, source="iem")
+        # Climate cache write gate (mirror of `_is_writable_month` for the
+        # observation path). ``write_climate_cache`` already no-ops the
+        # station's current LST year, but for negative-offset stations LST
+        # lags UTC across year boundaries: if `from_date`/`to_date` straddle
+        # Dec 31 LST while UTC has rolled into the new year, the new-year
+        # parquet would otherwise persist whatever partial CLI snapshot was
+        # available at that moment. Once LST catches up, ``read_climate_cache``
+        # would serve that partial file as authoritative (codex iter-5).
+        if year < _now.year:
+            write_climate_cache(info.icao, year, merged, source="iem")
+        else:
+            logger.info(
+                "skip climate cache write for %s %04d (year not strictly past UTC, _now=%s)",
+                info.icao,
+                year,
+                _now.isoformat(),
+            )
         result.extend(merged)
 
     return result

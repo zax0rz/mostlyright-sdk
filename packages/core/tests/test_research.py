@@ -704,6 +704,75 @@ class TestSourceCacheAndPartialIEM:
             f"(historical) then skip_cache=True for 2026 (current LST year); got {captured}"
         )
 
+    def test_climate_cache_not_written_for_utc_current_or_future_year(
+        self,
+        tmp_cache_env: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Codex iter-5: climate parquet must NOT be written for non-past UTC years.
+
+        Symmetric to the iter-2 F3 fix on the observation path. At UTC/LST
+        year rollover (UTC has entered the new year, LST is still in the
+        previous year), an unconditional ``write_climate_cache`` would
+        persist a partial annual CLI snapshot for the new year; once LST
+        catches up, ``read_climate_cache`` would serve that partial file as
+        authoritative.
+
+        Strategy: directly exercise ``_fetch_climate_range`` (instead of
+        the full ``research()`` orchestrator) so this test isolates the
+        climate-write gate without coupling to observation-fetch + AWC
+        plumbing. The function reads `datetime.now(UTC)` at module scope -
+        we monkeypatch a stable past-rollover anchor so the assertion is
+        deterministic regardless of wall-clock drift.
+        """
+        from datetime import datetime as _dt
+        from pathlib import Path as _Path
+
+        from tradewinds._internal._stations import STATIONS
+        from tradewinds.research import _fetch_climate_range
+
+        info = STATIONS["NYC"]
+
+        # Stub network: IEM CLI returns a 200 with a single climate record
+        # for each year so parse_cli_response produces non-empty output.
+        def _fake_download_cli(
+            _icao: str, year: int, _dest_dir: _Path, *, skip_cache: bool = False
+        ) -> _Path:
+            p = tmp_cache_env / f"cli_{year}.json"
+            p.write_text(
+                f'[{{"valid": "{year}-01-01", "high": 30, "low": 20, '
+                f'"product": "CDUS41 KOKX 020930"}}]'
+            )
+            return p
+
+        monkeypatch.setattr("tradewinds.weather._fetchers.iem_cli.download_cli", _fake_download_cli)
+
+        # Anchor "now" at 2026-05-22 (the GSD project date). 2025 is past,
+        # 2026 is current UTC, 2027 would be future.
+        import sys
+
+        research_module = sys.modules["tradewinds.research"]
+
+        class _FrozenDateTime(_dt):
+            @classmethod
+            def now(cls, tz: Any = None) -> _dt:
+                return _dt(2026, 5, 22, 12, 0, tzinfo=UTC)
+
+        monkeypatch.setattr(research_module, "datetime", _FrozenDateTime)
+
+        _fetch_climate_range(info, "2025-12-30", "2026-01-02")
+
+        climate_2025 = tmp_cache_env / "v1" / "climate" / "KNYC" / "2025.parquet"
+        climate_2026 = tmp_cache_env / "v1" / "climate" / "KNYC" / "2026.parquet"
+
+        assert (
+            climate_2025.exists()
+        ), f"climate cache for 2025 (strictly past UTC) MUST be written; missing {climate_2025}"
+        assert not climate_2026.exists(), (
+            "climate cache for 2026 (UTC-current at frozen now) must NOT be "
+            f"written; found {climate_2026} which would freeze a partial-year snapshot"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Pure-function helper tests (no HTTP, no fixtures)
