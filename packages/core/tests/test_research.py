@@ -155,6 +155,24 @@ def mocked_http() -> Any:
 
     def _iem_asos_response(request: httpx.Request) -> httpx.Response:
         params = dict(request.url.params)
+        # Iter-1 finding [HIGH]: the orchestrator calls IEM twice per month
+        # (report_type=3 for METAR, report_type=4 for SPECI). Returning the
+        # same CSV for both doubled every observation through the merge
+        # layer (METAR + SPECI rows survive the dedup as two separate
+        # observation_types). report_type=4 returns header-only so the
+        # mock contributes one set of METAR rows per month.
+        report_type = params.get("report_type", "3")
+        if report_type == "4":
+            return httpx.Response(
+                200,
+                text=(
+                    "# IEM mock (SPECI branch: header-only)\n"
+                    "station,valid,tmpf,dwpf,drct,sknt,gust,p01i,alti,mslp,"
+                    "vsby,skyc1,skyl1,skyc2,skyl2,skyc3,skyl3,skyc4,skyl4,"
+                    "wxcodes,peak_wind_gust,peak_wind_drct,peak_wind_time,"
+                    "snowdepth,metar\n"
+                ),
+            )
         station = params.get("station", "")
         year = int(params.get("year1", "2025"))
         month = int(params.get("month1", "1"))
@@ -301,6 +319,26 @@ class TestResearchSmoke:
         # surface it rather than silently passing a stale fixture.
         assert obs_path.exists(), f"expected observation cache at {obs_path}"
         assert climate_path.exists(), f"expected climate cache at {climate_path}"
+
+    def test_obs_count_not_doubled_by_speci_handler(
+        self, mocked_http: Any, tmp_cache_env: Path
+    ) -> None:
+        """Iter-1 finding [HIGH]: respx _iem_asos_response returned the same
+        CSV for report_type=3 (METAR) and report_type=4 (SPECI), so every
+        observation got parsed twice. merge_observations dedupes by
+        (station, observed_at, observation_type), so METAR + SPECI rows at
+        the same observed_at both survived, doubling obs_count.
+
+        The mock _iem_csv_for_month produces 2 obs/day. The fix branches the
+        handler so report_type=4 returns header-only; obs_count stays at 2.
+        """
+        from tradewinds import research
+
+        df = research("KNYC", "2025-01-06", "2025-01-12")
+        assert df["obs_count"].iloc[0] == 2, (
+            f"expected 2 obs/day (mock fixture), got {df['obs_count'].iloc[0]}. "
+            f"If this is 4, the SPECI branch of the respx handler is doubling rows."
+        )
 
 
 class TestRegistryCoverage:
