@@ -285,20 +285,40 @@ class TestRoundtrip:
         freeze_to_past: datetime,
     ) -> None:
         # Cache enforces OBSERVATION_SCHEMA (30+ columns from v0.14.1); fixtures
-        # may provide a subset, and missing columns come back as null. Assert
-        # input columns are PRESENT (not full equality) and row count matches.
+        # may provide a subset, and missing columns come back as null. Assert:
+        # 1) row count matches
+        # 2) input columns are PRESENT (with values preserved)
+        # 3) schema-enforcement-only columns ARE present with null fill — this
+        #    is the load-bearing assertion. If schema enforcement disappears,
+        #    these columns won't exist in the file and the assertion fails
+        #    loudly. (Codex retroactive review of 10a7b1f: previous "subset"
+        #    check passed even if schema enforcement was silently disabled.)
         rows = _sample_rows()
         original = pa.Table.from_pylist(rows)
         write_cache("KNYC", 2025, 1, rows)
         path = cache_path("KNYC", 2025, 1)
         read_back = pq.read_table(path)
+        # (1)
         assert read_back.num_rows == original.num_rows
-        # Every column the test provided must round-trip back.
+        # (2)
         assert set(original.column_names).issubset(set(read_back.column_names))
-        # Values for the provided columns must match.
         for col in original.column_names:
-            assert read_back.column(col).to_pylist() == original.column(col).to_pylist(), (
-                f"column {col!r} did not round-trip equal"
+            assert (
+                read_back.column(col).to_pylist() == original.column(col).to_pylist()
+            ), f"column {col!r} did not round-trip equal"
+        # (3) Schema-only columns: pick a couple of fields that OBSERVATION_SCHEMA
+        # defines but _sample_rows() does NOT provide. They MUST exist in the
+        # written file (proves schema enforcement) AND be all-null (proves they
+        # weren't ghost-populated by some inferred default).
+        schema_only_cols = ["dewpoint_c", "altimeter_inhg", "weather_codes"]
+        for col in schema_only_cols:
+            assert col in read_back.column_names, (
+                f"schema-only column {col!r} missing — OBSERVATION_SCHEMA "
+                "enforcement appears to have regressed"
+            )
+            assert read_back.column(col).null_count == read_back.num_rows, (
+                f"schema-only column {col!r} should be all-null when fixture "
+                f"omits it; got {read_back.column(col).to_pylist()}"
             )
 
 
@@ -470,9 +490,9 @@ class TestParquetOptions:
         path = cache_path("KNYC", 2025, 1)
         meta = pq.read_metadata(path)
         # Format version metadata starts with "2.6" — pyarrow may extend it.
-        assert str(meta.format_version).startswith("2.6"), (
-            f"expected parquet format_version to start with '2.6', got {meta.format_version!r}"
-        )
+        assert str(meta.format_version).startswith(
+            "2.6"
+        ), f"expected parquet format_version to start with '2.6', got {meta.format_version!r}"
 
     def test_observed_at_is_iso_string(
         self,
@@ -589,9 +609,9 @@ class TestConcurrentWriters:
         # The winner must be entirely worker_a or entirely worker_b (no
         # interleaving / no partial bytes).
         sources = {row["source"] for row in out}
-        assert sources == {"worker_a"} or sources == {"worker_b"}, (
-            f"expected one writer to win cleanly; got mixed sources {sources}"
-        )
+        assert sources == {"worker_a"} or sources == {
+            "worker_b"
+        }, f"expected one writer to win cleanly; got mixed sources {sources}"
 
         # No leftover .tmp sibling — atomic rename completed.
         tmp = path.with_suffix(".tmp")
