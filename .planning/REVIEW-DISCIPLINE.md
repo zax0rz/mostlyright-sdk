@@ -7,7 +7,7 @@ Every code change goes through this routine before merging to `merged-vision`. L
 For every branch (sub-branches inside a wave, integration branches between waves, etc.) — before `git merge` to `merged-vision`:
 
 1. **Dispatch both reviewers in parallel** against the branch diff vs `merged-vision`:
-   - **Codex** — independent cross-model adversarial review. `codex review --base merged-vision -c 'model_reasoning_effort="high"'`.
+   - **Codex** — independent cross-model adversarial review. `codex review --base merged-vision -c 'model_reasoning_effort="high"'`. **`high` is the only tier used** — no `medium` / `low` passes for any branch type (parity-critical, trivial, hotfix, follow-up — all run `high`). The savings from a lower tier don't justify the loss of depth in catching design/sequencing/architecture bugs.
    - **Python Architect** — Claude general-purpose agent with the "Senior Python Architect" persona. Brutal about correctness, idioms, test fidelity, blast radius. **Not** style nits.
 2. **Collect findings.** Severity gate (only the top two block):
    - **CRITICAL** — bug, security hole, silent data corruption, broken invariant, parity-critical regression
