@@ -14,11 +14,14 @@ Local-first Python SDK for quants researching prediction-market weather settleme
 | `tradewinds-weather` | [packages/weather/](packages/weather/) | v0.1.0 — AWC/IEM/GHCNh/NWS CLI clients + cache |
 | `tradewinds-markets` | [packages/markets/](packages/markets/) | v0.0.1 placeholder; v0.1.0 in Sprint 0.5 (Kalshi metadata) |
 
-## Quickstart (post-v0.1.0)
+## Quickstart (alpha1)
 
 ```bash
-pip install "tradewinds[parquet]" "tradewinds-weather[parquet]"
+pip install "tradewinds[parquet]==0.1.0a1" "tradewinds-weather[parquet]==0.1.0a1"
+python -c "import tradewinds as tw; print(tw.research('KNYC', '2025-01-06', '2025-01-12').head())"
 ```
+
+That's it. `research(station, from_date, to_date)` returns a pandas DataFrame; local parquet cache lives at `$HOME/.tradewinds/cache/` (override with `TRADEWINDS_CACHE_DIR`); no API keys; no hosted backend.
 
 ```python
 import tradewinds as tw

@@ -20,6 +20,15 @@ build-backend = "hatchling.build"
 # Workspace root has no wheel artifact
 bypass-selection = true
 
+[tool.uv]
+# Mark this workspace root as NOT a publishable package, even though it
+# still carries a `[project]` table (which we keep so `dependencies = [...]`
+# can auto-install the three workspace members on `uv sync`). Without this,
+# `uv build --all-packages` emits an extra `tradewinds_workspace-0.0.0.whl`
+# alongside the three publishable wheels — codex Wave 4 iter-2 HIGH on
+# tests/test_wheel_layout.py.
+package = false
+
 [tool.uv.workspace]
 members = ["packages/core", "packages/weather", "packages/markets"]
 

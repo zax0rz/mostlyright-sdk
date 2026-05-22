@@ -20,9 +20,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Mirrors the core `parquet` extra caps (PKG-05, PKG-06) so a future install
+# cannot silently drift across the parity-critical pandas/pyarrow boundary.
 parquet = [
-    "pyarrow>=17.0",
-    "pandas>=2.2",
+    "pyarrow>=17.0,<24.0",
+    "pandas>=2.2,<3.0",
 ]
 
 [build-system]
