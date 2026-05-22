@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-05-21)
 Phase: 1 of 4 (v0.14.1 Parity Lift)
 Plan: 0 of TBD in current phase
 Status: Ready to plan
-Last activity: 2026-05-21 — Roadmap created from user-authored ROADMAP.md + research synthesis
+Last activity: 2026-05-22 - Completed quick task 260522-9uj: Move pytest from pre-commit to pre-push hook
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -62,6 +62,12 @@ Open decisions to resolve during execution (per research SUMMARY.md):
 - Phase 1 Day 1 must complete the Day-1 Morning Sync addendum (7 items, ~2 hours): AWC URL smoke + PEP 420 migration + dtype ground-truth capture + version pins + `tradewinds.core` public surface stub + `TRADEWINDS_CACHE_DIR` wiring + `_vendor/__init__.py` inventory. Skipping any of these compromises the Day 3 parity gate.
 - Phase 2 must hard-code `KALSHI_SETTLEMENT_STATIONS` (KNYC, KMDW, etc.) before Phase 3 migration gate — silent data corruption risk if wrong station IDs are used.
 - Phase 4 PyPI trusted publishing needs three separate registrations (one per package); use PyPI "pending publisher" feature to bypass chicken-and-egg on first publish.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260522-9uj | Move pytest from pre-commit to pre-push hook | 2026-05-22 | 1589398 | [260522-9uj-move-pytest-from-pre-commit-to-pre-push-](./quick/260522-9uj-move-pytest-from-pre-commit-to-pre-push-/) |
 
 ## Session Continuity
 
