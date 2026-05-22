@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-05-21)
 Phase: 1 of 4 (v0.14.1 Parity Lift)
 Plan: 0 of TBD in current phase
 Status: Ready to plan
-Last activity: 2026-05-22 - Completed quick task 260522-9uj: Move pytest from pre-commit to pre-push hook
+Last activity: 2026-05-22 - Completed quick task 260522-axd: Wire REVIEW-DISCIPLINE.md as canonical review policy source
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -68,6 +68,7 @@ Open decisions to resolve during execution (per research SUMMARY.md):
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260522-9uj | Move pytest from pre-commit to pre-push hook | 2026-05-22 | 1589398 | [260522-9uj-move-pytest-from-pre-commit-to-pre-push-](./quick/260522-9uj-move-pytest-from-pre-commit-to-pre-push-/) |
+| 260522-axd | Wire REVIEW-DISCIPLINE.md as canonical review policy source | 2026-05-22 | fb9cd61 | [260522-axd-wire-review-discipline-md-as-canonical-r](./quick/260522-axd-wire-review-discipline-md-as-canonical-r/) |
 
 ## Session Continuity
 
