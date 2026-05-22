@@ -37,7 +37,7 @@ uv build                                   # build all three packages
 - **Feature branches per work unit.** Name: `sprint0/<lane>-<task>`. Examples: `sprint0/vu-lift-core-internal`, `sprint0/founder-historical-fetcher-awc`.
 - **Never commit directly to main.** Always branch + PR.
 - **TDD mandatory.** Write tests first. RED → GREEN → REFACTOR. 80% coverage minimum.
-- **Pre-commit hooks mandatory.** No `--no-verify`. Fix the underlying issue.
+- **Pre-commit + pre-push hooks mandatory.** No `--no-verify`. Fix the underlying issue. Pre-commit runs fast checks (ruff, format, whitespace, YAML/TOML validation); pre-push runs `pytest -m "not live"`. Install both with `uv run pre-commit install && uv run pre-commit install --hook-type pre-push`.
 - **All API calls direct from SDK.** No `api.mostlyright.md`, no hosted-API client calls anywhere in `tradewinds.*`. Verified via grep on built wheels before publish.
 
 ## Data + parity rules

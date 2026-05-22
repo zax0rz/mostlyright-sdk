@@ -7,8 +7,10 @@ Read [`CLAUDE.md`](CLAUDE.md) first — it's the source of truth for collaborati
 ```bash
 git clone <repo>
 cd tradewinds
-uv sync                              # installs workspace + dev deps
-uv run pytest -m "not live" -q       # fast tests, no network
+uv sync                                                # installs workspace + dev deps
+uv run pre-commit install                              # pre-commit hook (fast checks)
+uv run pre-commit install --hook-type pre-push         # pre-push hook (pytest)
+uv run pytest -m "not live" -q                         # fast tests, no network
 ```
 
 ## Workflow
@@ -17,7 +19,7 @@ uv run pytest -m "not live" -q       # fast tests, no network
 2. **Write tests first** (TDD). RED → GREEN → REFACTOR.
 3. **Open PR.** Reviewer is the OTHER lane (Lane F authors → Vu reviews; Lane V authors → Founder reviews).
 4. **Codex review REQUIRED** on any PR touching `_internal/merge/` or `research.py` (parity-critical paths). Use `codex review` with `model_reasoning_effort=high`.
-5. **Pre-commit hooks** mandatory. No `--no-verify`. Fix the issue.
+5. **Pre-commit + pre-push hooks** mandatory. No `--no-verify`. Fix the issue. Pre-commit = fast (ruff/format/whitespace); pre-push = `pytest -m "not live"`. Install both: `uv run pre-commit install && uv run pre-commit install --hook-type pre-push`.
 6. **Merge only after approved review.**
 
 ## Lane assignments (Sprint 0)
