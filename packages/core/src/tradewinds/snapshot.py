@@ -4,7 +4,7 @@
 # Modifications:
 #   - import-rename: mostlyright.models.observation -> tradewinds._internal.models.observation
 #   - import-rename: mostlyright.versioning -> tradewinds._internal.versioning
-#   - import-rename: mostlyright._toon -> tradewinds._internal._toon (lazy; deferred to later wave)
+#   - import-rename: mostlyright._toon -> tradewinds._internal._toon (lifted in PR #2 fix branch)
 #   - ruff auto-fix UP017 (timezone.utc -> datetime.UTC)
 #   - ruff-clean ambiguous-unicode (RUF002/003): EN DASH and MINUS SIGN in comments
 #     and docstrings replaced with HYPHEN-MINUS. No code-path change.
@@ -398,9 +398,7 @@ def build_snapshot(
     code = _station_code_normalized(station)
 
     settlement_date = settlement_date_for(utc_dt, code, tz_override=tz_override)
-    win_start, win_end = settlement_window_utc(
-        settlement_date, code, tz_override=tz_override
-    )
+    win_start, win_end = settlement_window_utc(settlement_date, code, tz_override=tz_override)
 
     # Filter: only observations within [window_start, as_of] (both bounds).
     # The filter uses parsed datetimes (not pre-formatted strings) so DST-aware
@@ -418,8 +416,7 @@ def build_snapshot(
     filtered_obs = [
         o
         for o in observations
-        if (obs_dt := _parse_obs_dt(o.observed_at)) is not None
-        and win_start <= obs_dt <= utc_dt
+        if (obs_dt := _parse_obs_dt(o.observed_at)) is not None and win_start <= obs_dt <= utc_dt
     ]
 
     # Climate: filter to settlement_date only, then check publication threshold
@@ -430,9 +427,7 @@ def build_snapshot(
         "preliminary": 1.0,
         "estimated": 0.0,
     }
-    date_climate = [
-        r for r in all_climate if r.get("observation_date") == settlement_date
-    ]
+    date_climate = [r for r in all_climate if r.get("observation_date") == settlement_date]
     cli_threshold = cli_available_at(
         settlement_date, code, cli_publication_delay_hours, tz_override=tz_override
     )

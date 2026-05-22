@@ -41,12 +41,9 @@ class DictLikeMixin:
     def to_toon(self) -> str:
         """Encode as TOON v3.0 string. Storage fields only (30 fields).
 
-        Matches the served API contract — no computed fields leak.
+        Matches the served API contract - no computed fields leak.
         Use ``encode(self.to_dict())`` directly if you need computed fields.
         """
-        # TODO(wave3-toon-lift): swap to `tradewinds._internal._toon` once a
-        # later wave lifts the TOON encoder. Until then this method will raise
-        # ImportError at call time (no runtime impact at import).
         from tradewinds._internal._toon import encode
 
         return encode(self.to_storage_dict())
