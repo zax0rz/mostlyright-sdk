@@ -905,3 +905,178 @@ class TestResolveStation:
 
         with pytest.raises(ValueError, match="Unknown station"):
             _resolve_station("ZZZ")
+
+
+class TestFetchObservationsRangeCacheGating:
+    """Iter-1 finding [HIGH]: GHCNh annual fetch + AWC fetch fired
+    unconditionally, even when every requested month was a cache hit.
+    Wasted I/O + noisy logs.
+
+    Regression: when all months are cached, zero HTTP calls should fire
+    on the second invocation.
+    """
+
+    def test_all_months_cached_no_http_calls(self, tmp_cache_env: Path) -> None:
+        # First call: populate the cache. Use a separate respx scope so the
+        # call counts on the second-call scope start fresh.
+        with respx.mock(assert_all_called=False) as router:
+            iem_route = router.get(
+                url__regex=r"mesonet\.agron\.iastate\.edu/cgi-bin/request/asos\.py.*"
+            ).mock(
+                side_effect=lambda request: httpx.Response(
+                    200,
+                    text=_iem_csv_for_month(
+                        dict(request.url.params).get("station", ""),
+                        int(dict(request.url.params).get("year1", "2025")),
+                        int(dict(request.url.params).get("month1", "1")),
+                    ),
+                )
+            )
+            cli_route = router.get(url__regex=r"mesonet\.agron\.iastate\.edu/json/cli\.py.*").mock(
+                side_effect=lambda request: httpx.Response(
+                    200,
+                    json=_cli_json_for_year(int(dict(request.url.params).get("year", "2025"))),
+                )
+            )
+            ghcnh_route = router.get(
+                url__regex=r"ncei\.noaa\.gov/.*global-historical-climatology-network/hourly.*"
+            ).mock(return_value=httpx.Response(404, text=""))
+            from tradewinds import research
+
+            research("KNYC", "2025-01-06", "2025-01-12")
+            assert iem_route.call_count > 0, "first call should have fetched IEM"
+            assert cli_route.call_count > 0, "first call should have fetched CLI"
+            # GHCNh returns 404 -> still counts as a call; verify it fired.
+            assert ghcnh_route.call_count > 0, "first call should have probed GHCNh"
+
+        # Second call: same window, same cache. ZERO HTTP calls expected on
+        # all four endpoints because every month is a cache hit and every
+        # year's climate is cached.
+        with respx.mock(assert_all_called=False) as router2:
+            iem2 = router2.get(
+                url__regex=r"mesonet\.agron\.iastate\.edu/cgi-bin/request/asos\.py.*"
+            ).mock(return_value=httpx.Response(500, text="should not be called"))
+            cli2 = router2.get(url__regex=r"mesonet\.agron\.iastate\.edu/json/cli\.py.*").mock(
+                return_value=httpx.Response(500, text="should not be called")
+            )
+            ghcnh2 = router2.get(
+                url__regex=r"ncei\.noaa\.gov/.*global-historical-climatology-network/hourly.*"
+            ).mock(return_value=httpx.Response(500, text="should not be called"))
+            awc2 = router2.get(url__regex=r"aviationweather\.gov/.*").mock(
+                return_value=httpx.Response(500, text="should not be called")
+            )
+            from tradewinds import research
+
+            research("KNYC", "2025-01-06", "2025-01-12")
+            assert (
+                iem2.call_count == 0
+            ), f"expected zero IEM calls on cache-hit re-run, got {iem2.call_count}"
+            assert (
+                ghcnh2.call_count == 0
+            ), f"expected zero GHCNh calls on cache-hit re-run, got {ghcnh2.call_count}"
+            assert (
+                awc2.call_count == 0
+            ), f"expected zero AWC calls on cache-hit re-run, got {awc2.call_count}"
+            # CLI cache is annual; same year -> hit.
+            assert (
+                cli2.call_count == 0
+            ), f"expected zero CLI calls on cache-hit re-run, got {cli2.call_count}"
+
+
+class TestMergeInputOrderingDeterminism:
+    """Iter-1 finding [HIGH]: combined rows passed to merge_observations
+    unsorted. merge_observations uses first-seen-wins at equal priority and
+    returns ``list(best.values())`` -- dict insertion order. So input order
+    is load-bearing for both tie-break determinism AND the survivor
+    ordering. PLAN.md Task 2.1 step 3 mandates pre-sort by
+    ``(observed_at, source)`` BEFORE the merge call (R2 IEEE-add mitigation
+    + deterministic tie-break).
+    """
+
+    def test_concat_order_does_not_affect_merge_output(self) -> None:
+        """Documenting test: once inputs are pre-sorted, merge is deterministic.
+
+        Rows differ in ``source`` (one AWC-style, one IEM-style) so the
+        ``(observed_at, source)`` sort key actually disambiguates them -
+        matching the real orchestrator case where AWC + IEM rows arrive in
+        an arbitrary concat order and the sort key picks a deterministic
+        survivor order.
+        """
+        from tradewinds._internal.merge import merge_observations
+
+        # Two rows with distinct observation_types so the dedup key
+        # (station_code, observed_at, observation_type) does not collide.
+        # Both rows survive in dict insertion order. Sources differ so the
+        # (observed_at, source) sort key sorts them deterministically.
+        row_iem = {
+            "station_code": "NYC",
+            "observed_at": "2025-01-06T12:51:00Z",
+            "source": "iem.asos",
+            "observation_type": "METAR",
+            "temperature_f": 32.0,
+            "raw_metar": "KNYC 061251Z 09014KT 10SM CLR M00/M05 A2968",
+        }
+        row_awc = {
+            "station_code": "NYC",
+            "observed_at": "2025-01-06T12:51:00Z",
+            "source": "awc.metar",
+            "observation_type": "SPECI",
+            "temperature_f": 33.0,
+            "raw_metar": "KNYC 061251Z 09015KT 10SM CLR M01/M05 A2968",
+        }
+        forward = merge_observations(
+            sorted([row_iem, row_awc], key=lambda r: (r["observed_at"], r["source"]))
+        )
+        reverse = merge_observations(
+            sorted([row_awc, row_iem], key=lambda r: (r["observed_at"], r["source"]))
+        )
+        assert forward == reverse, (
+            f"merge output should be deterministic when input is pre-sorted; "
+            f"forward={forward} reverse={reverse}"
+        )
+        # AWC < IEM alphabetically -> AWC row appears first in both orderings.
+        assert forward[0]["source"] == "awc.metar"
+        assert forward[1]["source"] == "iem.asos"
+
+    def test_research_output_rows_sorted_by_observed_at(
+        self, mocked_http: Any, tmp_cache_env: Path
+    ) -> None:
+        """The cached parquet must contain rows sorted by observed_at.
+
+        The pre-sort in ``_fetch_observations_range`` puts rows in
+        ``(observed_at, source)`` order BEFORE merge; ``merge_observations``
+        preserves insertion order for survivors; ``write_cache`` persists
+        that order. Anyone who reads the parquet sees deterministic
+        ordering.
+        """
+        from tradewinds import research
+
+        research("KNYC", "2025-01-06", "2025-01-12")
+        # Read the persisted parquet directly to verify the persisted row
+        # order is observed_at-ascending.
+        obs_path = tmp_cache_env / "v1" / "observations" / "KNYC" / "2025" / "01.parquet"
+        assert obs_path.exists(), f"expected observation cache at {obs_path}"
+        rows = pq.read_table(obs_path).to_pylist()
+        observed_ats = [r["observed_at"] for r in rows]
+        assert observed_ats == sorted(observed_ats), (
+            "persisted rows must be sorted by observed_at; " f"got {observed_ats[:5]}..."
+        )
+
+    def test_research_smoke_obs_count_stable_after_presort(
+        self, mocked_http: Any, tmp_cache_env: Path
+    ) -> None:
+        """Regression: existing smoke output still produces expected obs_count.
+
+        Pre-sort changes WHICH row wins equal-priority ties (and the merge
+        survivor ordering). The mock fixture emits 2 obs/day per
+        report_type; today the doubled-SPECI bug yields obs_count=4 per
+        day -- Task 5 fixes that. Until Task 5 runs, this test pins
+        obs_count >= 2 so we know aggregation still works.
+        """
+        from tradewinds import research
+
+        df = research("KNYC", "2025-01-06", "2025-01-12")
+        assert df["obs_count"].iloc[0] >= 2, (
+            f"expected obs_count >= 2 (2 obs/day in mock fixture, plus the "
+            f"Task-5 SPECI doubling), got {df['obs_count'].iloc[0]}"
+        )

@@ -457,9 +457,18 @@ def _fetch_observations_range(
 
         awc_month = _awc_for_month(year, month)
 
-        merged = merge_observations(awc_month + iem_rows + ghcnh_month)
-        # R2 mitigation: deterministic ordering before mean aggregation.
-        merged.sort(key=lambda r: (r.get("observed_at") or "", r.get("source") or ""))
+        # PLAN.md Task 2.1 step 3 [HIGH]: pre-sort by (observed_at, source)
+        # BEFORE merge_observations. The merge layer uses first-seen-wins at
+        # equal priority AND returns ``list(best.values())`` (dict insertion
+        # order), so input order is load-bearing for BOTH tie-break
+        # determinism AND survivor ordering. Sorting AFTER the merge (the
+        # prior implementation) re-orders survivors but cannot influence
+        # which row won the equal-priority tie. R2 mitigation: also keeps
+        # non-associative IEEE float adds in downstream _obs_aggregates
+        # byte-stable across runs.
+        combined = awc_month + iem_rows + ghcnh_month
+        combined.sort(key=lambda r: (r.get("observed_at") or "", r.get("source") or ""))
+        merged = merge_observations(combined)
 
         # Cache-write gate: IEM must have succeeded (otherwise we'd freeze a
         # partial AWC+GHCNh slice as authoritative) AND the month must be
