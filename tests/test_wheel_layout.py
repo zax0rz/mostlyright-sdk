@@ -8,11 +8,13 @@ The three-package split relies on Python's implicit namespace-package
 ``__init__.py``, the first one installed would shadow the others and
 ``import tradewinds.weather`` would break depending on install order.
 
-This test builds the wheels with ``uv build --all-packages`` and asserts:
-1. Three wheels land in ``dist/`` (core, weather, markets).
-2. Only the core wheel ships ``tradewinds/__init__.py`` at the top level.
-3. Both sibling wheels ship their subpackage ``__init__.py`` (so they are
-   real packages once their root is provided by core).
+We build each named package individually (mirrors the founder publish flow
+in PLAN.md Task 4.2 which runs ``uv publish`` per package, not
+``--all-packages``). This intentionally excludes the workspace-root
+``tradewinds-workspace`` wheel that ``uv build --all-packages`` would
+otherwise leave in ``dist/`` — the workspace is a meta-package and is not
+published. The test asserts ``dist/`` contains EXACTLY the three named
+wheels after a clean build (codex Wave 4 iter-1 HIGH).
 """
 
 from __future__ import annotations
@@ -27,13 +29,19 @@ import pytest
 ROOT = Path(__file__).parents[1]
 DIST = ROOT / "dist"
 
+# The three packages we actually publish. Ordered to match the publish flow.
+PUBLISHED_PACKAGES = ("tradewinds", "tradewinds-weather", "tradewinds-markets")
+
 
 @pytest.fixture(scope="module")
 def built_wheels() -> dict[str, Path]:
-    """Build all three packages once per module run.
+    """Build the three published packages once per module run.
 
     Cleans ``dist/`` first so a stale 0.0.1 wheel cannot satisfy the
-    pattern globs below and mask a missed version bump.
+    pattern globs below and mask a missed version bump, AND so a
+    previously-built ``tradewinds_workspace-*.whl`` from a prior
+    ``uv build --all-packages`` run does not slip into the wheel
+    inventory.
     """
     if shutil.which("uv") is None:  # pragma: no cover - dev tooling gate
         pytest.skip("uv not on PATH; wheel-layout test requires `uv build`")
@@ -42,12 +50,13 @@ def built_wheels() -> dict[str, Path]:
             wheel.unlink()
         for sdist in DIST.glob("*.tar.gz"):
             sdist.unlink()
-    subprocess.run(
-        ["uv", "build", "--all-packages"],
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
-    )
+    for pkg in PUBLISHED_PACKAGES:
+        subprocess.run(
+            ["uv", "build", "--package", pkg],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+        )
     wheels = list(DIST.glob("*.whl"))
     by_name: dict[str, Path] = {}
     for wheel in wheels:
@@ -57,6 +66,10 @@ def built_wheels() -> dict[str, Path]:
             by_name["markets"] = wheel
         elif wheel.name.startswith("tradewinds-"):
             by_name["core"] = wheel
+        else:
+            # Surface any unrecognized wheel (e.g. tradewinds_workspace-*)
+            # so the count assertion below fails with a clear name.
+            by_name[f"UNEXPECTED:{wheel.name}"] = wheel
     return by_name
 
 
@@ -65,12 +78,33 @@ def _names(wheel: Path) -> list[str]:
         return z.namelist()
 
 
-def test_three_wheels_produced(built_wheels: dict[str, Path]) -> None:
+def test_exactly_three_published_wheels(built_wheels: dict[str, Path]) -> None:
+    """Exactly three wheels, no workspace artifact, no leftovers.
+
+    A previous version of this test only checked the three expected names
+    were present; ``uv build --all-packages`` produced a 4th
+    ``tradewinds_workspace-0.0.0`` wheel that slipped through (codex Wave
+    4 iter-1 HIGH). Now we assert ``dist/`` has exactly three .whl files
+    and they are precisely the named packages.
+    """
     assert set(built_wheels.keys()) == {
         "core",
         "weather",
         "markets",
-    }, f"expected core+weather+markets wheels, got {sorted(built_wheels)}"
+    }, f"expected exactly core+weather+markets wheels, got {sorted(built_wheels)}"
+
+    # Belt-and-suspenders: the fixture set the right keys, but re-glob
+    # dist/ in case anything else (e.g. a stray workspace wheel from a
+    # parallel `uv build --all-packages` call) sneaks in.
+    all_wheels = list(DIST.glob("*.whl"))
+    assert len(all_wheels) == 3, (
+        f"dist/ must contain exactly 3 wheels after a clean build; got "
+        f"{[w.name for w in all_wheels]}"
+    )
+    assert not list(DIST.glob("tradewinds_workspace-*.whl")), (
+        "workspace meta-package wheel slipped into dist/; "
+        "the root pyproject is a workspace marker only — not for publish"
+    )
 
 
 def test_alpha_versions_in_wheel_filenames(built_wheels: dict[str, Path]) -> None:
