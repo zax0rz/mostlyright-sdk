@@ -93,16 +93,17 @@ def freeze_to_past(monkeypatch: pytest.MonkeyPatch) -> datetime:
 
 
 def _sample_rows() -> list[dict[str, Any]]:
-    """Three rows of observation-shaped data with a timestamp column.
+    """Three rows of observation-shaped data.
 
-    Schema is inferred by pyarrow (Task 1.2's OBSERVATION_SCHEMA isn't in
-    this sub-branch). The shape matches what merge_observations + the parser
-    layer will produce in Wave 2.
+    `observed_at` is an ISO 8601 string per OBSERVATION_SCHEMA (which uses
+    `pa.string()`, matching v0.14.1's storage format — strings, not native
+    timestamps). The cache layer enforces this schema at write time, so
+    fixtures must produce strings rather than datetime objects.
     """
     return [
         {
             "station_code": "KNYC",
-            "observed_at": datetime(2025, 1, 6, 12, 0, tzinfo=UTC),
+            "observed_at": "2025-01-06T12:00:00+00:00",
             "observation_type": "metar",
             "source": "iem.asos",
             "temp_f": 32.5,
@@ -110,7 +111,7 @@ def _sample_rows() -> list[dict[str, Any]]:
         },
         {
             "station_code": "KNYC",
-            "observed_at": datetime(2025, 1, 6, 13, 0, tzinfo=UTC),
+            "observed_at": "2025-01-06T13:00:00+00:00",
             "observation_type": "metar",
             "source": "iem.asos",
             "temp_f": 33.1,
@@ -118,7 +119,7 @@ def _sample_rows() -> list[dict[str, Any]]:
         },
         {
             "station_code": "KNYC",
-            "observed_at": datetime(2025, 1, 6, 14, 0, tzinfo=UTC),
+            "observed_at": "2025-01-06T14:00:00+00:00",
             "observation_type": "metar",
             "source": "awc.metar",
             "temp_f": 33.8,
@@ -283,16 +284,22 @@ class TestRoundtrip:
         tmp_cache_dir: Path,
         freeze_to_past: datetime,
     ) -> None:
-        # Roundtrip via pyarrow.Table.equals — strongest equality check.
+        # Cache enforces OBSERVATION_SCHEMA (30+ columns from v0.14.1); fixtures
+        # may provide a subset, and missing columns come back as null. Assert
+        # input columns are PRESENT (not full equality) and row count matches.
         rows = _sample_rows()
         original = pa.Table.from_pylist(rows)
         write_cache("KNYC", 2025, 1, rows)
         path = cache_path("KNYC", 2025, 1)
         read_back = pq.read_table(path)
-        # The read-back table must be schema-equivalent to the original.
         assert read_back.num_rows == original.num_rows
-        # Same column set.
-        assert set(read_back.column_names) == set(original.column_names)
+        # Every column the test provided must round-trip back.
+        assert set(original.column_names).issubset(set(read_back.column_names))
+        # Values for the provided columns must match.
+        for col in original.column_names:
+            assert read_back.column(col).to_pylist() == original.column(col).to_pylist(), (
+                f"column {col!r} did not round-trip equal"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -467,21 +474,24 @@ class TestParquetOptions:
             f"expected parquet format_version to start with '2.6', got {meta.format_version!r}"
         )
 
-    def test_microsecond_timestamp_coercion(
+    def test_observed_at_is_iso_string(
         self,
         tmp_cache_dir: Path,
         freeze_to_past: datetime,
     ) -> None:
+        """observed_at uses pa.string() per OBSERVATION_SCHEMA (v0.14.1 storage
+        format). Earlier draft of this test expected timestamp[us] inferred by
+        pyarrow; the merged schema overrides that with strings."""
         rows = _sample_rows()
         write_cache("KNYC", 2025, 1, rows)
         path = cache_path("KNYC", 2025, 1)
-        # Read schema and inspect the timestamp column unit.
         table = pq.read_table(path)
         observed_at = table.schema.field("observed_at")
         ts_type = observed_at.type
-        # Must be a timestamp type with microsecond ('us') unit (not ns).
-        assert pa.types.is_timestamp(ts_type), f"expected timestamp, got {ts_type}"
-        assert ts_type.unit == "us", f"expected microsecond timestamps, got unit={ts_type.unit!r}"
+        assert pa.types.is_string(ts_type), f"expected string, got {ts_type}"
+        # Verify values are well-formed ISO-8601 with timezone
+        first = table.column("observed_at")[0].as_py()
+        assert first.startswith("2025-01-06T12:00:00"), f"unexpected ISO value: {first!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -524,7 +534,7 @@ class TestConcurrentWriters:
         rows_a = [
             {
                 "station_code": "KMSY",
-                "observed_at": datetime(2024, 9, 1, i, 0, tzinfo=UTC),
+                "observed_at": f"2024-09-01T{i:02d}:00:00+00:00",
                 "observation_type": "metar",
                 "source": "worker_a",
                 "temp_f": 75.0 + i,
@@ -534,7 +544,7 @@ class TestConcurrentWriters:
         rows_b = [
             {
                 "station_code": "KMSY",
-                "observed_at": datetime(2024, 9, 1, i, 0, tzinfo=UTC),
+                "observed_at": f"2024-09-01T{i:02d}:00:00+00:00",
                 "observation_type": "metar",
                 "source": "worker_b",
                 "temp_f": 80.0 + i,
@@ -676,7 +686,7 @@ class TestAtomicWrite:
         rows_b = [
             {
                 "station_code": "KNYC",
-                "observed_at": datetime(2025, 1, 6, 15, 0, tzinfo=UTC),
+                "observed_at": "2025-01-06T15:00:00+00:00",
                 "observation_type": "metar",
                 "source": "second",
                 "temp_f": 99.9,
