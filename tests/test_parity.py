@@ -12,12 +12,29 @@ Marked ``@pytest.mark.live`` per CLAUDE.md testing playbook - the default
     uv run pytest tests/test_parity.py -m live -v
 
 Tolerance ladder (RESEARCH.md Open Q3):
-    - Rung 1 (current): ``check_dtype=True, check_exact=True``.
+    - Rung 1: ``check_dtype=True, check_exact=True``.
     - Rung 2: ``check_exact=False, rtol=0, atol=0``.
-    - Rung 3: ``check_exact=False, rtol=0, atol=1e-12``.
+    - Rung 3 (current): ``check_dtype=True, check_exact=False, rtol=0,
+      atol=1e-12``.
     - Rung 4: ``check_exact=False, rtol=0, atol=1e-9`` (last resort).
 
-Document chosen rung in the Wave 3 merge commit if relaxing below rung 1.
+**Chosen rung: Rung 3.** ``research.py`` pre-sorts observations by
+``observed_at`` before averaging (R2 mitigation, ``research.py:462``),
+but the v0.14.1 hosted-API parquet store iterated rows in a storage
+order that is not recoverable from the public IEM/AWC/GHCNh feeds, so
+``sum(temps)/len(temps)`` in ``_obs_aggregates`` accumulates the same
+inputs in a slightly different order than v0.14.1's hosted code did.
+The numeric result is identical to within ~1 ULP; measured worst case
+across the 5 fixtures is ``2.84e-14`` (case 4 KMIA, ``obs_mean_f``).
+Three float columns drift: ``obs_mean_f``, ``obs_mean_dewpoint_f``,
+``obs_total_precip_in`` (all sum-then-divide aggregates). All other
+columns - including ints, datetimes, objects, and the min/max float
+columns ``obs_high_f``/``obs_low_f`` - match exactly. ``atol=1e-12``
+gives ~35,000x headroom over the worst measured drift while still
+catching any genuine value regression. Integer columns (``cli_high_f``,
+``obs_count``, etc.) still require strict equality because
+``assert_frame_equal`` applies the float tolerance only to float
+arrays - any int regression remains a hard fail.
 
 PARITY-03: ``expected_dtypes.json`` (captured by
 ``scripts/capture_expected_dtypes.py``) is the dtype ground truth for
@@ -86,8 +103,14 @@ def test_parity_case(case_num: int, station: str, frm: str, to: str) -> None:
         f"expected: {EXPECTED_DTYPES[f'case_{case_num}']}"
     )
 
-    # PARITY-02: value + dtype equivalence (Rung 1).
-    assert_frame_equal(actual_c, expected_c, check_dtype=True, check_exact=True)
+    # PARITY-02: value + dtype equivalence (Rung 3 - see module docstring).
+    # `atol=1e-12` accepts ~1-ULP float-associativity drift in sum-aggregate
+    # columns while still catching any genuine value regression (~35,000x
+    # headroom over the worst measured drift of 2.84e-14 on case 4 KMIA).
+    # Integers/objects/datetimes still require strict equality.
+    assert_frame_equal(
+        actual_c, expected_c, check_dtype=True, check_exact=False, rtol=0, atol=1e-12
+    )
 
 
 def test_dtypes_match_ground_truth() -> None:
