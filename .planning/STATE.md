@@ -2,19 +2,19 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-21)
+See: .planning/PROJECT.md (updated 2026-05-21; STATE.md refreshed 2026-05-22)
 
 **Core value:** `research(contract, station, from_date, to_date)` returns clean, leakage-free, source-identified training pairs that backtest the same way they trade — and any train/infer source mismatch errors loudly instead of silently corrupting a model.
 **Current focus:** Phase 1: v0.14.1 Parity Lift
 
 ## Current Position
 
-Phase: 1 of 4 (v0.14.1 Parity Lift)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-05-22 - Completed quick task 260522-axd: Wire REVIEW-DISCIPLINE.md as canonical review policy source
+Phase: 1.5 of 5 (Fetcher Optimization + Cross-Source Parallelism — INSERTED 2026-05-22)
+Plan: 0 of TBD in current phase (Phase 1 Wave 1 of 4 merged on `merged-vision`; Phase 1 Waves 2-4 + Phase 1.5 pending)
+Status: Phase 1.5 PLAN.md pending (strictly serial after Phase 1, strictly before Phase 2)
+Last activity: 2026-05-22 - Phase 1 Wave 1 merged to merged-vision; Phase 1.5 (PERF-01..05) inserted into ROADMAP; quick task 260522-ea7: fix stale STATE.md + REQUIREMENTS.md
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] ~10% (Phase 1 Wave 1 of 4 complete)
 
 ## Performance Metrics
 
@@ -46,8 +46,8 @@ Recent decisions affecting current work:
 - Defer MCP server to v0.2 — Pending
 - Three-package workspace (`tradewinds`/`tradewinds-weather`/`tradewinds-markets`) — Pending
 - `research()` two-mode (parity + source-explicit) — Pending
-- Lift source pinned to `monorepo-v0.14.1/` tag (NOT head) — Locked
-- Open-Meteo NOT in v0.1 (licensing) — Locked
+- Lift source pinned to `monorepo-v0.14.1/` tag (NOT head) — ✓ Good (Decided, per PROJECT.md Key Decisions)
+- Open-Meteo NOT in v0.1 (licensing) — ✓ Good (Decided, per PROJECT.md Key Decisions)
 
 ### Pending Todos
 
@@ -72,6 +72,6 @@ Open decisions to resolve during execution (per research SUMMARY.md):
 
 ## Session Continuity
 
-Last session: 2026-05-21 19:30
-Stopped at: ROADMAP.md + STATE.md + REQUIREMENTS.md traceability written; ready to plan Phase 1
-Resume file: None
+Last session: 2026-05-22
+Stopped at: Phase 1 Wave 1 merged to merged-vision; Phase 1.5 inserted into ROADMAP (PERF-01..05); stale STATE.md/REQUIREMENTS.md/Phase 2 depends_on reconciled via quick task 260522-ea7. Ready to plan Phase 1.5.
+Resume file: .planning/phase-01-5-fetcher-optimization-cross-source-parallelism/ (to be created when Phase 1.5 planning starts)
