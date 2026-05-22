@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v0.14.1
 milestone_name: Parity Lift
 status: executing
-stopped_at: "ROADMAP enriched with 4 new phases (2.1, 3.1, 3.2, 3.3) for v0.1.0 scope expansion (international + multi-forecast + Polymarket + Sprint 2o lineage). Phase stubs created via `gsd-tools phase insert`; ROADMAP entries enriched with full Goal/Depends-on/Requirements/Success Criteria/Out-of-Scope/Review-panel blocks. STATE.md updated with Roadmap Evolution section + new decisions + new blockers/concerns. **Pending follow-ups before execution:** (1) add LINEAGE-01..05 + INTL-01..05 + NWP-01..06 + POLY-01..05 entries to REQUIREMENTS.md (POLY-01 currently a Sprint 0.5+ deferral — activate and split); (2) update PROJECT.md "Active scope" to reflect expanded v0.1.0; (3) run `/gsd-plan-phase` per new phase to write detailed PLAN.md; (4) decide whether to migrate existing `.planning/phase-NN-...` dirs to new `.planning/phases/NN.M-...` convention created by gsd-tools, or move the new dirs to match existing convention."
-last_updated: "2026-05-22T13:30:00.000Z"
-last_activity: 2026-05-22 -- Completed quick task 260522-ng9: Fix Task 1 mkdir variable name + ordering (iter-11)
+stopped_at: "Phase 1.5 complete (PERF-01/02/03/04/05): yearly-chunk lift from mostlyright PR #85 + HTTP_TIMEOUT bump + research.py 4-way ThreadPoolExecutor prefetch (Option C from .planning/research/SOURCE-LIMITS.md spike) + live perf gate + parallelism-ratio assertion. Two-iteration review discipline: iter-1 closed 6 HIGH findings from codex+python-architect; iter-2 both reviewers PASS clean. Merged to main as 738232e (--no-ff), pushed to origin/main. KNYC 5-year live wall time: 50.3s vs 720s gate (~14x under budget). 5-fixture parity gate green. Next: Phase 2 — Core Primitives + Catalog Adapters."
+last_updated: "2026-05-23T12:00:00.000Z"
+last_activity: 2026-05-23 -- Phase 1.5 merged to main (commit 738232e) after iter-2 review PASS
 progress:
   total_phases: 12
-  completed_phases: 0
+  completed_phases: 2
   total_plans: 15
-  completed_plans: 0
-  percent: 6
+  completed_plans: 7
+  percent: 17
 ---
 
 # Project State
@@ -21,16 +21,40 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-21; STATE.md refreshed 2026-05-22)
 
 **Core value:** `research(contract, station, from_date, to_date)` returns clean, leakage-free, source-identified training pairs that backtest the same way they trade — and any train/infer source mismatch errors loudly instead of silently corrupting a model.
-**Current focus:** Phase 1: v0.14.1 Parity Lift
+**Current focus:** Phase 2: Core Primitives + Catalog Adapters (Phase 1.5 complete 2026-05-23)
 
 ## Current Position
 
-Phase: 1.5 of 12 (Fetcher Optimization + Cross-Source Parallelism — INSERTED 2026-05-22)
-Plan: 0 of 3 in Phase 1.5 (Phase 1 Wave 1 of 4 merged on `merged-vision`; Phase 1 Waves 2-4 + Phase 1.5 pending)
-Status: Ready to execute
-Last activity: 2026-05-22 -- Phase 2.1 planning complete; added Phases 3.4 (QC engine), 3.5 (transforms DSL), 3.6 (discovery + settlement + DataVersion) to close mostlyright→tradewinds feature gaps
+Phase: 2 of 12 (Core Primitives + Catalog Adapters — ready to start)
+Plan: 0 of N in Phase 2 (Phases 1 + 1.5 complete on `main`)
+Status: Ready to plan Phase 2
+Last activity: 2026-05-23 -- Phase 1.5 merged to main (commit 738232e) after iter-2 review PASS
 
-Progress: [█░░░░░░░░░] ~6% (Phase 1 Wave 1 of 4 complete; scope expanded from 5 → 12 numbered phases in v0.1.0)
+Progress: [██░░░░░░░░] ~17% (Phases 1 + 1.5 complete; 2/12 phases done in v0.1.0)
+
+## Phase 1.5 closeout summary (2026-05-23)
+
+Merge commit: `738232e Merge phase-1-5/integration: Phase 1.5 fetcher optimization + cross-source parallelism` (--no-ff on main, pushed to origin/main).
+
+Plans shipped:
+- **PLAN-01 (PERF-01/02/03)** — Lifted mostlyright PR #85 commit `cf9eb85`. Yearly chunks via shared `_iem_chunks.py` (leap-year safe), cache-window filename + `_partial` namespace, HTTP_TIMEOUT 30→60s. Tradewinds-specific deviation documented: caller's `start` is normalized to `date(start.year, 1, 1)` before the chunker fires, for cache idempotence under per-month research.py callers. Required a parity-preserving month-filter in `_fetch_iem_month` post-parse.
+- **PLAN-02 (PERF-05)** — `spike/source_limits/` (3 CLI scripts + shared helpers) characterizing AWC, GHCNh, IEM concurrent-request behavior; output `.planning/research/SOURCE-LIMITS.md` with deterministic Option-C recommendation (smoke-run scale; caveat documented). Spike scripts kept under version control for v0.2 re-validation.
+- **PLAN-03 (PERF-04)** — `_prefetch_sources` in research.py: 4-way ThreadPoolExecutor (Option C per SOURCE-LIMITS.md) with Pitfall-6 timing pattern (submitted_at captured immediately after ex.submit()), narrow-except contract (httpx.HTTPStatusError, httpx.RequestError, OSError only — programming bugs propagate via f.result()), current-UTC-year skip (no double-fetch), AWC-window-relevance skip (preserves no-network invariant for cached re-runs). Live perf gate: KNYC 5-year backfill 50.3s vs 720s (12 min) gate.
+
+Review discipline (per .planning/REVIEW-DISCIPLINE.md):
+- Iter 1: codex `high` + python-architect ran in parallel against the integration branch diff vs main. Returned 3 + 6 HIGH findings (overlap; 6 unique). Commit `7e26fa2` closed all six: reversed-range guard in download_iem_asos, narrowed except clauses in `_warm_*`, current-year skip, parallelism-ratio assertion in live perf test, strengthened Pitfall-6 AST scan, RuntimeError-based propagation contract test.
+- Iter 2: BOTH reviewers PASS clean. No CRITICAL or HIGH findings.
+
+Wins:
+- IEM ASOS: ~12x fewer HTTP requests per backfill (monthly → yearly chunks).
+- research() parity gate: 97s → 49s (~2x faster after PERF-04).
+- research() KNYC 5-year live: ~14x under the ROADMAP 12-min gate.
+- HTTP_TIMEOUT=60s confirmed load-bearing for GHCNh ~10 MB PSV downloads at N=4 concurrent.
+
+Validation:
+- 5-fixture parity gate (Phase 1 HARD GATE invariant): green.
+- Fast suite: 976 passed, 10 deselected (live).
+- Live perf gate: green.
 
 **Phase count by milestone (post-2026-05-22 expansion):**
 
