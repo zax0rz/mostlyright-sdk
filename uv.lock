@@ -899,6 +899,8 @@ parquet = [
     { name = "pyarrow" },
 ]
 research = [
+    { name = "pandas" },
+    { name = "pyarrow" },
     { name = "tradewinds-weather" },
 ]
 
@@ -907,11 +909,13 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
     { name = "jsonschema", specifier = ">=4.21" },
     { name = "pandas", marker = "extra == 'parquet'", specifier = ">=2.2" },
+    { name = "pandas", marker = "extra == 'research'", specifier = ">=2.2" },
     { name = "pyarrow", marker = "extra == 'parquet'", specifier = ">=17.0" },
+    { name = "pyarrow", marker = "extra == 'research'", specifier = ">=17.0" },
     { name = "tradewinds-weather", marker = "extra == 'research'", editable = "packages/weather" },
     { name = "tzdata", marker = "sys_platform == 'win32'" },
 ]
-provides-extras = ["research", "parquet"]
+provides-extras = ["parquet", "research"]
 
 [[package]]
 name = "tradewinds-markets"

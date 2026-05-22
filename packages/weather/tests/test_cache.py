@@ -302,6 +302,32 @@ class TestRoundtrip:
         after = datetime.now(UTC) + cache_module._lst_offset("KNYC")
         assert before <= result <= after
 
+    def test_lst_offset_resolves_for_every_registry_station(self, tmp_cache_dir: Path) -> None:
+        """Regression: every station in ``STATIONS`` must resolve via
+        ``cache._lst_offset`` (Wave 2 codex iter-1 P1).
+
+        Previously the cache shipped a hardcoded 10-station fallback that
+        raised ``ValueError`` for half the registry once Task 1.1 landed
+        ``_stations.py`` without a ``_lst_offset`` symbol, silently breaking
+        ``research()`` for 11 of the 20 advertised stations. The fix
+        delegates to ``tradewinds.snapshot._lst_offset`` (which carries the
+        full v0.14.1 tz map). This test pins the contract so the regression
+        cannot return unnoticed.
+        """
+        from tradewinds._internal._stations import STATIONS
+
+        failures: list[tuple[str, str]] = []
+        for code, info in STATIONS.items():
+            for variant in (code, info.icao):
+                try:
+                    cache_module._lst_offset(variant)
+                except ValueError as exc:
+                    failures.append((variant, str(exc)))
+        assert not failures, (
+            "cache._lst_offset must accept every STATIONS entry "
+            f"(both 3-letter and 4-letter ICAO); failures: {failures}"
+        )
+
     def test_climate_roundtrip(
         self,
         tmp_cache_dir: Path,

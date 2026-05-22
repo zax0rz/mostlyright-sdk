@@ -303,6 +303,35 @@ class TestResearchSmoke:
         assert climate_path.exists(), f"expected climate cache at {climate_path}"
 
 
+class TestRegistryCoverage:
+    """Regression for codex iter-1 P1.
+
+    The orchestrator must not raise on any station in the 20-entry registry.
+    Previously the cache's ``_lst_offset`` fallback only knew 10 stations and
+    raised ``ValueError`` for the rest, silently breaking ``research()`` for
+    every registry entry outside the hardcoded whitelist (KAUS, KDCA, KDFW,
+    KHOU, KLAS, KMDW, KMSP, KOKC, KPHL, KSAT, KSFO). The fix delegates to
+    ``tradewinds.snapshot._lst_offset`` (the canonical v0.14.1 map); this
+    test asserts the cache layer accepts every advertised station so the
+    regression cannot return.
+
+    Uses ``cache_path`` (a cheap operation that exercises the LST-offset path
+    transitively via ``validate_icao_for_path``) rather than a full
+    ``research()`` call - the goal is to lock in the contract without paying
+    for a per-station HTTP mock matrix.
+    """
+
+    def test_every_station_resolves_via_cache_layer(self, tmp_cache_env: Path) -> None:
+        from tradewinds._internal._stations import STATIONS
+        from tradewinds.weather.cache import _lst_offset
+
+        for code, info in STATIONS.items():
+            for variant in (code, info.icao):
+                # Should NOT raise ValueError for any registry station.
+                offset = _lst_offset(variant)
+                assert offset is not None, f"_lst_offset returned None for {variant!r}"
+
+
 class TestIncludeForecastRaises:
     def test_include_forecast_true_raises_not_implemented(self, tmp_cache_env: Path) -> None:
         """Phase 1 is observations + climate only; forecast is Phase 3.2."""

@@ -66,67 +66,42 @@ LOCK_TIMEOUT_SECONDS = 30
 
 
 # ---------------------------------------------------------------------------
-# Dependency shims for sibling Wave 1 tasks
+# LST offset resolution
 # ---------------------------------------------------------------------------
-# Task 1.1 will land ``_lst_offset`` in ``tradewinds._internal._stations``.
-# Task 1.2 will land ``OBSERVATION_SCHEMA``/``CLIMATE_SCHEMA`` in
-# ``tradewinds._internal.merge._schemas``. Until those sibling sub-branches
-# merge into ``phase-1/wave-1``, this module ships with safe fallbacks so the
-# cache layer can be developed and tested in parallel. Per PLAN.md Task 1.4
-# <depends_on>: "Task 1.1 ... Task 1.2 ... MUST merge LAST in Wave 1." When
-# merging cache last, the real implementations are already present and the
-# fallbacks become dead code (harmless).
+# Wave 1 originally shipped a 10-station whitelist fallback here, expecting
+# Task 1.1 to land ``_lst_offset`` under ``tradewinds._internal._stations``.
+# The actual lift kept ``_lst_offset`` in ``tradewinds.snapshot`` (where it
+# always lived in v0.14.1) - so the fallback became permanently active and
+# raised ``ValueError`` for the 11 stations missing from its hardcoded map
+# (KAUS, KDCA, KDFW, KHOU, KLAS, KMDW, KMSP, KOKC, KPHL, KSAT, KSFO). That
+# silently broke ``research()`` for half the advertised registry once
+# Wave 2 wired the public API through this cache layer.
+#
+# Resolution (Wave 2 codex iter-1 P1): delegate directly to
+# ``tradewinds.snapshot._lst_offset``, which lifts the full 20-station tz
+# map from v0.14.1 verbatim and ALSO accepts a ``tz_override`` argument
+# (already supported by the v0.1.0 public surface). The import is local so
+# ``tradewinds.weather.cache`` does not pull ``snapshot`` at module import
+# time - keeping the dependency one-directional (weather depends on core,
+# never the reverse).
 def _lst_offset(station: str) -> timedelta:
     """Return the Local Standard Time offset for ``station`` (no DST).
 
-    Imported lazily from ``tradewinds._internal._stations`` once Task 1.1
-    lands. The fallback below derives the offset from a hardcoded mapping of
-    the 20 Kalshi-traded stations using a January reference date so DST is
-    never in effect. Sufficient for unit testing the cache's LST-month-skip
-    logic without taking a hard dependency on Task 1.1.
+    Thin wrapper over :func:`tradewinds.snapshot._lst_offset` - the canonical
+    home of the 20-station tz map (lifted verbatim from
+    ``monorepo-v0.14.1/src/mostlyright/snapshot.py``). Accepts both the
+    3-letter NWS code and the 4-letter ICAO; the snapshot helper normalizes
+    internally via ``_station_code_normalized``.
+
+    Raises:
+        ValueError: when ``station`` is unknown to the snapshot tz registry
+            (matches the snapshot helper's contract; the orchestrator
+            ``research()`` rejects unknown stations earlier with the same
+            error class).
     """
-    try:
-        # Real implementation lands in Task 1.1 sibling branch.
-        from tradewinds._internal._stations import _lst_offset as _real_lst_offset
+    from tradewinds.snapshot import _lst_offset as _snapshot_lst_offset
 
-        return _real_lst_offset(station)
-    except ImportError:
-        # Fallback: derive offset from IANA tz using a January reference date.
-        from zoneinfo import ZoneInfo
-
-        # Whitelist of 20 Kalshi-traded stations -> IANA tz. Sourced from
-        # tradewinds._internal.models.station._build_registry expectations.
-        _STATION_TZ: dict[str, str] = {
-            "KNYC": "America/New_York",
-            "NYC": "America/New_York",
-            "KLAX": "America/Los_Angeles",
-            "LAX": "America/Los_Angeles",
-            "KMSY": "America/Chicago",
-            "MSY": "America/Chicago",
-            "KMIA": "America/New_York",
-            "MIA": "America/New_York",
-            "KORD": "America/Chicago",
-            "ORD": "America/Chicago",
-            "KDEN": "America/Denver",
-            "DEN": "America/Denver",
-            "KPHX": "America/Phoenix",
-            "PHX": "America/Phoenix",
-            "KBOS": "America/New_York",
-            "BOS": "America/New_York",
-            "KSEA": "America/Los_Angeles",
-            "SEA": "America/Los_Angeles",
-            "KATL": "America/New_York",
-            "ATL": "America/New_York",
-        }
-        tz = _STATION_TZ.get(station)
-        if tz is None:
-            raise ValueError(
-                f"Unknown station {station!r}; expected an ICAO code from the "
-                "Kalshi-traded whitelist (e.g. 'KNYC', 'KLAX')."
-            ) from None
-        jan_ref = datetime(2024, 1, 15, 12, 0, tzinfo=ZoneInfo(tz))
-        offset = jan_ref.utcoffset() or timedelta(0)
-        return offset
+    return _snapshot_lst_offset(station)
 
 
 def _observation_schema() -> pa.Schema | None:

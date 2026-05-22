@@ -28,14 +28,18 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Pull in the sibling weather package so `tradewinds.research()` works without
-# a separate `pip install tradewinds-weather`. Lazy import inside research()
-# means the dep is only required at call time, not at `import tradewinds`.
-research = [
-    "tradewinds-weather",
-]
 # DataFrame return + parquet cache. Matches v0.14.1's [parquet] extra.
 parquet = [
+    "pyarrow>=17.0",
+    "pandas>=2.2",
+]
+# Pull in the sibling weather package + pandas/pyarrow so the default
+# `tradewinds.research(...)` call returns a DataFrame without `ImportError`.
+# Codex iter-1 P2 fix: previously `research` listed only `tradewinds-weather`,
+# leaving the soft `import pandas` in `pairs_to_dataframe` to blow up at call
+# time because `as_dataframe=True` is the default.
+research = [
+    "tradewinds-weather",
     "pyarrow>=17.0",
     "pandas>=2.2",
 ]
