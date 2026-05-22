@@ -33,7 +33,7 @@ uv build                                   # build all three packages
   - **Lane F (Founder):** new code — HTTP fetchers, cache, orchestration, README, outreach.
   - **Lane V (Vu):** lift from `monorepo-v0.14.1/` — parsers, merge policies, `pairs.py` → `research.py`, CI/CD.
   - **Cross-review:** each lane authors its own PRs; the OTHER lane reviews.
-  - **Codex `model_reasoning_effort=high` mandatory** on any PR touching `_internal/merge/` or `research.py` (parity-critical paths).
+  - **Review discipline:** Every PR runs the two-reviewer loop (Codex + Python Architect) before merging to `merged-vision`. See [`.planning/REVIEW-DISCIPLINE.md`](.planning/REVIEW-DISCIPLINE.md) for the loop mechanics, severity gate, never-skip path list, and trivial-skip rules.
 - **Feature branches per work unit.** Name: `sprint0/<lane>-<task>`. Examples: `sprint0/vu-lift-core-internal`, `sprint0/founder-historical-fetcher-awc`.
 - **Never commit directly to main.** Always branch + PR.
 - **TDD mandatory.** Write tests first. RED → GREEN → REFACTOR. 80% coverage minimum.

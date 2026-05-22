@@ -18,7 +18,7 @@ uv run pytest -m "not live" -q                         # fast tests, no network
 1. **Branch per work unit.** Name format: `sprint0/<lane>-<task>`, e.g. `sprint0/vu-lift-core-internal`.
 2. **Write tests first** (TDD). RED → GREEN → REFACTOR.
 3. **Open PR.** Reviewer is the OTHER lane (Lane F authors → Vu reviews; Lane V authors → Founder reviews).
-4. **Codex review REQUIRED** on any PR touching `_internal/merge/` or `research.py` (parity-critical paths). Use `codex review` with `model_reasoning_effort=high`.
+4. **Review discipline:** every PR runs the two-reviewer loop (Codex + Python Architect) before merging to `merged-vision`. See [`.planning/REVIEW-DISCIPLINE.md`](.planning/REVIEW-DISCIPLINE.md) for the loop mechanics, severity gate, never-skip path list, and trivial-skip rules.
 5. **Pre-commit + pre-push hooks** mandatory. No `--no-verify`. Fix the issue. Pre-commit = fast (ruff/format/whitespace); pre-push = `pytest -m "not live"`. Install both: `uv run pre-commit install && uv run pre-commit install --hook-type pre-push`.
 6. **Merge only after approved review.**
 
