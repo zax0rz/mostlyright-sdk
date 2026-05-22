@@ -32,7 +32,9 @@ class TestModuleConstants:
         assert BASE_DELAY == 1.0
 
     def test_http_timeout(self) -> None:
-        assert HTTP_TIMEOUT == 30.0
+        # Phase 1.5 PERF-03: bumped 30 -> 60 to match the ~12x payload increase
+        # per IEM yearly chunk (PR #85 cf9eb85 round-2 HIGH-2 finding).
+        assert HTTP_TIMEOUT == 60.0
 
     def test_transient_codes(self) -> None:
         # 429 (Too Many Requests) is retryable so IEM ASOS rate-limit bursts

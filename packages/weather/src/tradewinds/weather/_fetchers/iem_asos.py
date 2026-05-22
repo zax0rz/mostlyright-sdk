@@ -1,48 +1,70 @@
-"""IEM ASOS historical METAR fetcher — monthly-chunked CSV downloads.
+"""IEM ASOS historical METAR fetcher — yearly-chunked CSV downloads.
 
-Wraps ``https://mesonet.agron.iastate.edu/cgi-bin/request/asos.py`` for
-arbitrary date ranges. The IEM ``asos.py`` endpoint accepts day1/day2 date
-filters but treats ``day2`` as EXCLUSIVE — to include observations on the
-caller's inclusive ``end`` date, every monthly chunk extends ``day2`` to the
-first day of the following month. Over-fetch beyond the caller's end date is
-harmless: the parser is idempotent and dedup happens downstream.
+Wraps ``https://mesonet.agron.iastate.edu/cgi-bin/request/asos.py`` for arbitrary
+date ranges. The IEM ``asos.py`` endpoint accepts day1/day2 date filters but treats
+``day2`` as EXCLUSIVE — to include observations on the caller's inclusive ``end``
+date, every chunk extends ``day2`` to the first day of the following year. Over-fetch
+beyond the caller's end date is harmless: the parser is idempotent and dedup happens
+downstream.
 
-Net-new code lifted-in-pattern from monorepo-v0.14.1
-``ingest/sources/iem_gap_fill.py``:
-- ``_build_iem_url`` — exact param shape and ordering preserved.
-- ``_monthly_chunks`` — splits arbitrary ranges into per-month requests.
-- ``download_iem_asos`` — the public surface; one CSV per (month, report_type).
+Phase 1.5 PERF-01/02/03 — lifts mostlyright PR #85 (commit ``cf9eb85``, 2026-05-12):
 
-Conventions:
+- **PERF-01 chunk size:** monthly → 365-day calendar-aligned via the shared
+  :mod:`~tradewinds.weather._fetchers._iem_chunks` helper (leap-year safe).
+- **PERF-02 cache filename + partial namespace:** cache key encodes the full chunk
+  window (``iem_{start_iso}_{end_iso}_{suffix}.csv``); ``skip_cache=True`` OR
+  ``chunk_end > today_utc`` routes to the ``_partial_`` infix namespace that backfill
+  never reads (closes three cache-poisoning paths PR #85 documented).
+- **PERF-03 timeout** lives in :mod:`tradewinds._internal._http` (separate concern).
+
+Tradewinds-specific deviation from PR #85 verbatim
+==================================================
+
+PR #85's :func:`yearly_chunks_exclusive_end` uses ``chunk_start = max(current, start)``,
+which floats the chunk's start with the caller. That works for PR #85's "one big
+backfill" caller pattern but defeats cache idempotence when tradewinds'
+``research.py`` calls this fetcher month-by-month — each different start date
+produces a different cache filename, forcing 12 full-year fetches per year.
+
+Resolution: this fetcher normalizes the caller's ``start`` to ``date(start.year, 1, 1)``
+before invoking the chunker. Cache filename becomes year-stable
+(``iem_YYYY-01-01_YYYY+1-01-01_<suffix>.csv``) so a per-month caller hits the cache
+on every month after the first. Over-fetch is documented-safe (the parser is
+idempotent; downstream filters by date). The chunker module itself remains PR-#85
+verbatim — see :mod:`tradewinds.weather._fetchers._iem_chunks`.
+
+Conventions
+===========
+
 - IEM is a university server — keep a polite 1.0s delay between requests.
-- The cache key is ``dest_dir / station.code / iem_<YYYYMM>_<suffix>.csv``;
-  pass ``skip_cache=True`` to force a re-download (used by live sweeps).
-- ``report_type``: ``3`` = METAR (routine), ``4`` = SPECI (special). IEM
-  strips the ``SPECI`` keyword from raw METAR text, so callers that want
-  observation_type tagging should issue both report types in turn and pass
-  the corresponding ``observation_type_override`` to ``parse_iem_file``.
+- ``report_type``: ``3`` = METAR (routine), ``4`` = SPECI (special). IEM strips the
+  ``SPECI`` keyword from raw METAR text, so callers that want observation_type
+  tagging should issue both report types in turn and pass the corresponding
+  ``observation_type_override`` to ``parse_iem_file``.
 
-Out of scope here: parsing (see ``tradewinds.weather._iem``), parquet
-staging/merge, gap-fill orchestration.
+Out of scope here: parsing (see ``tradewinds.weather._iem``), parquet staging/merge,
+gap-fill orchestration.
 """
 
 from __future__ import annotations
 
 import logging
 import time
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 from tradewinds._internal._bounds import validate_icao_for_path
 from tradewinds._internal._http import download_with_retry
 from tradewinds._internal.models.station import StationInfo
+from tradewinds.weather._fetchers._iem_chunks import yearly_chunks_exclusive_end
 
 log = logging.getLogger(__name__)
 
 IEM_BASE_URL = "https://mesonet.agron.iastate.edu/cgi-bin/request/asos.py"
 
-# Polite delay (seconds) between consecutive IEM HTTP requests. IEM runs on
-# Iowa State infrastructure; v0.14.1 uses 1.0s and has not been throttled.
+# Polite delay (seconds) between consecutive IEM HTTP requests. IEM runs on Iowa
+# State infrastructure; v0.14.1 used 1.0s and has not been throttled. IEM published
+# a 1-sec/IP throttle on 2026-04-21 — see .planning/research/SOURCE-LIMITS.md.
 IEM_POLITE_DELAY = 1.0
 
 # IEM report_type codes: (HTTP param int, on-disk suffix).
@@ -50,54 +72,25 @@ IEM_POLITE_DELAY = 1.0
 _REPORT_TYPE_SUFFIX: dict[int, str] = {3: "metar", 4: "speci"}
 
 
-def _monthly_chunks(start: date, end: date) -> list[tuple[date, date]]:
-    """Split a date range into monthly chunks with EXCLUSIVE end dates.
+def _iem_cache_filename(
+    chunk_start: date,
+    chunk_end: date,
+    suffix: str,
+    *,
+    partial: bool,
+) -> str:
+    """Build a cache filename encoding the full chunk window.
 
-    IEM's ``day2`` parameter is exclusive: ``day2=2025-02-01`` is required to
-    include observations from ``2025-01-31``. So every returned chunk ends on
-    the first day of the *next* month, even when that overshoots the caller's
-    inclusive ``end``. Over-fetch is fine — the IEM CSV parser is idempotent
-    and downstream dedup handles redundant rows.
+    Pattern:
+      - canonical: ``iem_{start_iso}_{end_iso}_{suffix}.csv``
+      - partial:   ``iem_{start_iso}_{end_iso}_partial_{suffix}.csv``
 
-    The first chunk's ``start`` is clamped to ``start`` (not the 1st of the
-    month) so we don't request data preceding the caller's window.
-
-    Args:
-        start: Inclusive first date in the desired range.
-        end: Inclusive last date in the desired range.
-
-    Returns:
-        List of ``(chunk_start, chunk_end_exclusive)`` tuples, one per month
-        touched by ``[start, end]``. Empty if ``end < start``.
-
-    Examples:
-        >>> _monthly_chunks(date(2025, 1, 5), date(2025, 1, 20))
-        [(date(2025, 1, 1), date(2025, 2, 1))]
-        >>> _monthly_chunks(date(2025, 1, 31), date(2025, 2, 15))
-        [(date(2025, 1, 1), date(2025, 2, 1)), (date(2025, 2, 1), date(2025, 3, 1))]
-
-    Note: chunks always start on the 1st of each month, even when the caller's
-    range starts mid-month. This is intentional so the cache key (built from
-    chunk_start month) is idempotent — a request for Jan 5-20 and Jan 1-20
-    share the same Jan cache file. Codex W3B P1 fix: previously chunk_start =
-    max(current, start) caused a Jan 15-31 first request to cache `iem_202501_metar.csv`
-    with partial data, and a subsequent Jan 1-31 request would hit that cache and
-    silently return the partial data. Over-fetch is documented to be safe per
-    v0.14.1's `_monthly_chunks` docstring; dedup handles it.
+    The ``_partial`` infix is part of the filename (not a sibling dir) so the
+    canonical-cache lookup ``dest.exists()`` cleanly misses partial files —
+    backfill never reads partials. PERF-02 / Pitfall 3 (OR-not-AND) gates this.
     """
-    chunks: list[tuple[date, date]] = []
-    if end < start:
-        return chunks
-    current = date(start.year, start.month, 1)
-    while current <= end:
-        chunk_start = current  # ALWAYS month-aligned for cache idempotence
-        if current.month == 12:
-            next_month_1st = date(current.year + 1, 1, 1)
-        else:
-            next_month_1st = date(current.year, current.month + 1, 1)
-        chunks.append((chunk_start, next_month_1st))
-        current = next_month_1st
-    return chunks
+    partial_infix = "_partial" if partial else ""
+    return f"iem_{chunk_start.isoformat()}_{chunk_end.isoformat()}" f"{partial_infix}_{suffix}.csv"
 
 
 def _build_iem_url(
@@ -110,14 +103,13 @@ def _build_iem_url(
 
     Param shape and ordering are preserved byte-for-byte from v0.14.1's
     ``ingest/sources/iem_gap_fill.py::_build_iem_url`` so URL snapshots stay
-    diff-stable across the lift. ``station.code`` is the 3-letter
-    no-K-prefix identifier (e.g. ``"NYC"``, not ``"KNYC"``) — the IEM ASOS
-    endpoint expects the bare code.
+    diff-stable across the lift. ``station.code`` is the 3-letter no-K-prefix
+    identifier (e.g. ``"NYC"``, not ``"KNYC"``) — IEM ASOS expects the bare code.
 
     Args:
         station: Station whose ``.code`` is used as ``station=...``.
         start: Inclusive first date of the request window.
-        end: EXCLUSIVE last date (already adjusted by ``_monthly_chunks``).
+        end: EXCLUSIVE last date (already adjusted by :func:`yearly_chunks_exclusive_end`).
         report_type: ``3`` for METAR, ``4`` for SPECI.
 
     Returns:
@@ -142,52 +134,88 @@ def download_iem_asos(
     skip_cache: bool = False,
     report_type: int = 3,
 ) -> list[Path]:
-    """Download monthly chunks of IEM ASOS data, returning local CSV paths.
+    """Download yearly chunks of IEM ASOS data, returning local CSV paths.
 
-    Splits ``[start, end]`` into monthly chunks, issues one HTTP request per
-    chunk for ``report_type``, and writes the response to
-    ``dest_dir / station.code / iem_<YYYYMM>_<suffix>.csv``. Existing files
-    are returned as-is unless ``skip_cache=True``.
+    The caller's inclusive ``[start, end]`` is normalized to ``[date(start.year,1,1),
+    end]`` and split into per-calendar-year EXCLUSIVE-end chunks (PERF-01). Each
+    chunk's response is cached at
+    ``dest_dir / station.code / iem_{start_iso}_{end_iso}_{partial?}_{suffix}.csv``.
+
+    A chunk is treated as **partial** (and routed to the ``_partial_`` namespace
+    that backfill never reads) when either:
+
+    - ``skip_cache=True``: the caller has declared the source view stale (e.g. live
+      freshness sweep). Without ``_partial`` namespacing, the fresh response would
+      overwrite a canonical cache file with potentially-truncated data — PERF-02
+      OR-branch A.
+    - ``chunk_end > today_utc``: the chunk extends past the current UTC date, so
+      IEM's response cannot be complete yet (today's METARs are still landing).
+      UTC, not local: the cutoff uses ``datetime.now(timezone.utc).date()``. A
+      naive ``date.today()`` would silently truncate data for non-UTC hosts at the
+      day boundary (Europe/Prague is UTC+1/+2; "today" there for the first hours
+      of UTC midnight is the NEXT UTC day) — PERF-02 OR-branch B / Pitfall 2.
+
+    The two conditions are joined by **OR**, not AND (Pitfall 3): each independently
+    can poison the cache.
 
     Args:
-        station: Station to download. ``station.code`` (3-letter, no K prefix)
-            is sent to IEM; ``station.icao`` is unused here but kept on the
-            dataclass so callers can use one type for fetcher + parser flows.
-        start: Inclusive first date in the desired range.
+        station: Station to download. ``station.code`` (3-letter, no K prefix) is
+            sent to IEM; ``station.icao`` is unused here but kept on the dataclass
+            so callers can use one type for fetcher + parser flows.
+        start: Inclusive first date in the desired range. Normalized to
+            ``date(start.year, 1, 1)`` internally so per-month callers hit the
+            same yearly cache key.
         end: INCLUSIVE last date in the desired range. The IEM endpoint's
-            end-exclusive quirk is handled internally by ``_monthly_chunks``.
+            end-exclusive quirk is handled internally by the yearly chunker.
         dest_dir: Root directory for cached CSVs. A per-station subdirectory
             (``station.code``) is created automatically.
-        skip_cache: When ``True``, always re-download even if the destination
-            file already exists. Used by live freshness sweeps.
-        report_type: ``3`` for METAR (default), ``4`` for SPECI. Callers that
-            need both should invoke this twice and pass the matching
+        skip_cache: When ``True``, route every chunk to the ``_partial`` namespace
+            (the canonical cache is left untouched; live sweeps cannot poison
+            backfill).
+        report_type: ``3`` for METAR (default), ``4`` for SPECI. Callers that need
+            both should invoke this twice and pass the matching
             ``observation_type_override`` to ``parse_iem_file``.
 
     Returns:
-        List of local file paths — one entry per monthly chunk. Both cached
-        and freshly-downloaded paths are included; order matches the natural
-        chronological chunking from ``_monthly_chunks``.
+        List of local file paths — one entry per yearly chunk. Both cached and
+        freshly-downloaded paths are included; order matches the natural chunking
+        from :func:`yearly_chunks_exclusive_end`.
 
     Raises:
-        ValueError: If ``report_type`` is not in ``{3, 4}``.
+        ValueError: If ``report_type`` is not in ``{3, 4}`` or ``station.code`` is
+            not a safe ICAO (path-traversal guard).
         httpx.HTTPStatusError: Propagated from ``download_with_retry`` for
             persistent 5xx exhaustion or 404 responses.
     """
     if report_type not in _REPORT_TYPE_SUFFIX:
         raise ValueError(f"report_type must be 3 (METAR) or 4 (SPECI), got {report_type!r}")
-    # Rob C1/H8: validate station.code at the boundary BEFORE it goes into the
-    # IEM URL param or the per-station cache subdirectory. StationInfo.code is
-    # supposed to be a curated 3-letter no-K-prefix ICAO, but defense-in-depth
+    # Defense-in-depth: validate station.code at the URL/path boundary BEFORE it goes
+    # into the IEM URL param or the per-station cache subdirectory. StationInfo.code
+    # is supposed to be a curated 3-letter no-K-prefix ICAO from the registry, but
     # the check at the boundary catches any registry corruption or mis-call.
     validate_icao_for_path(station.code, field="station.code")
+    # Reversed-range guard (codex iter-1 HIGH): the underlying chunker honors
+    # ``start > end -> []``, but the tradewinds-specific year-normalization
+    # below would mask an inverted same-year range and fire a full-year
+    # download. Mirror the chunker invariant at the caller boundary.
+    if start > end:
+        return []
     suffix = _REPORT_TYPE_SUFFIX[report_type]
-    chunks = _monthly_chunks(start, end)
+    # Tradewinds-specific: normalize start to Jan 1 of its year so per-month callers
+    # share a yearly cache key. PR #85's chunker uses max(current, start), which
+    # floats the chunk_start with the caller — fine for one-shot backfills, wasteful
+    # for tradewinds' per-month research.py loop. See module docstring "Deviation".
+    normalized_start = date(start.year, 1, 1)
+    chunks = yearly_chunks_exclusive_end(normalized_start, end)
+    today_utc = datetime.now(UTC).date()
     paths: list[Path] = []
     for chunk_start, chunk_end in chunks:
-        filename = f"iem_{chunk_start.strftime('%Y%m')}_{suffix}.csv"
+        # OR not AND (Pitfall 3): either condition independently can poison the
+        # cache. UTC not local (Pitfall 2): date.today() truncates on non-UTC hosts.
+        chunk_is_partial = skip_cache or chunk_end > today_utc
+        filename = _iem_cache_filename(chunk_start, chunk_end, suffix, partial=chunk_is_partial)
         dest = dest_dir / station.code / filename
-        if dest.exists() and not skip_cache:
+        if dest.exists() and not chunk_is_partial:
             log.info("IEM ASOS cache hit: %s", dest)
             paths.append(dest)
             continue

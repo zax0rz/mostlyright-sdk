@@ -81,9 +81,7 @@ def _install_api_key_shim() -> None:
 
     def patched_init(self: Any, config: Any = None) -> None:
         original_init(self, config)
-        api_key = os.environ.get("MOSTLYRIGHT_API_KEY") or os.environ.get(
-            "THERMINAL_API_KEY"
-        )
+        api_key = os.environ.get("MOSTLYRIGHT_API_KEY") or os.environ.get("THERMINAL_API_KEY")
         if api_key:
             # Rebuild httpx.Client with the header. The SDK stores the
             # client as ``self._client`` and never reassigns it after
@@ -93,9 +91,7 @@ def _install_api_key_shim() -> None:
                 base_url=self._config.base_url,
                 timeout=self._config.timeout,
                 headers={
-                    "User-Agent": self._client.headers.get(
-                        "User-Agent", "mostlyright-py"
-                    ),
+                    "User-Agent": self._client.headers.get("User-Agent", "mostlyright-py"),
                     "X-API-Key": api_key,
                 },
             )
@@ -113,7 +109,13 @@ def main() -> int:
     # will work for any ICAO station; parity is only defined for the whitelist.
     cases: list[tuple[int, str, str, str, str]] = [
         (1, "KNYC", "2025-01-06", "2025-01-12", "Single-week NYC baseline"),
-        (2, "KMDW", "2025-04-01", "2025-04-30", "Single-month Chicago (Midway; KORD not in API whitelist)"),
+        (
+            2,
+            "KMDW",
+            "2025-04-01",
+            "2025-04-30",
+            "Single-month Chicago (Midway; KORD not in API whitelist)",
+        ),
         (3, "KLAX", "2025-03-01", "2025-03-31", "PST/PDT transition"),
         (4, "KMIA", "2024-12-01", "2025-11-30", "Full-year Miami, year boundary"),
         (
@@ -141,7 +143,7 @@ def main() -> int:
             size = fname.stat().st_size
             print(f"case {n}: {fname.name} — {rows} rows, {size} bytes")
             results.append((n, "OK", rows, size, str(fname)))
-        except Exception as exc:  # noqa: BLE001 — best-effort, surface all
+        except Exception as exc:
             failures += 1
             print(
                 f"case {n}: FAILED — {type(exc).__name__}: {exc}",
