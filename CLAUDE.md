@@ -88,7 +88,7 @@ A local-first Python SDK for quants researching prediction-market weather contra
 
 - **Tech stack:** Python 3.11+. uv workspace. `httpx`, `pandas`, `pyarrow`, `filelock`, `jsonschema`, `hypothesis` (dev). No FastAPI, no Docker, no hosted infra in v0.1.
 - **Timeline:** 14 calendar days from Day 1. Phase A (parity lift) Days 1-4, Phase B (core+catalog) Days 5-14. v0.2 (MCP) is a later milestone.
-- **Execution model:** Two-lane parallel — Lane V (Vu) lifts from `monorepo-v0.14.1/`, Lane F (Founder) builds new code. Cross-review mandatory; Codex `model_reasoning_effort=high` on any PR touching `core/`, `_internal/merge/`, or `research.py`.
+- **Execution model:** Two-lane parallel — Lane V (Vu) lifts from `monorepo-v0.14.1/`, Lane F (Founder) builds new code. Cross-review mandatory. Every PR runs the two-reviewer loop (Codex `high` + Python Architect) per [`.planning/REVIEW-DISCIPLINE.md`](.planning/REVIEW-DISCIPLINE.md) — applies to ALL branches, not just parity-critical paths.
 - **Testing discipline:** TDD mandatory (RED → GREEN → REFACTOR). Pre-commit hooks; no `--no-verify`. ≥90% branch coverage on `tradewinds.core`. 80% line coverage on `catalog/` and adapter wrappers. Lifted `_vendor/` code retains its monorepo coverage.
 - **Parity gate (HARD):** Day 3 — all 5 byte-equivalent parity fixtures vs `mostlyright==0.14.1` must pass. Sprint 0 ships only if green.
 - **License:** MIT (matches mostlyright, lowest friction for external adoption).

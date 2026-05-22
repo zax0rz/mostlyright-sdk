@@ -22,12 +22,17 @@ uv run pytest -m "not live" -q                         # fast tests, no network
 5. **Pre-commit + pre-push hooks** mandatory. No `--no-verify`. Fix the issue. Pre-commit = fast (ruff/format/whitespace); pre-push = `pytest -m "not live"`. Install both: `uv run pre-commit install && uv run pre-commit install --hook-type pre-push`.
 6. **Merge only after approved review.**
 
-## Lane assignments (Sprint 0)
+## Phase planning
 
-See [`roadmap/sprint0.md`](roadmap/sprint0.md) for overview and [`roadmap/lanes/`](roadmap/lanes/) for per-lane day-by-day checklists.
+Current authoritative plan lives under [`.planning/`](.planning/) (GSD structure):
 
-- **Lane F (Founder):** new HTTP fetchers, cache, orchestration, README, outreach. Daily checklist: [`roadmap/lanes/founder-build-lane.md`](roadmap/lanes/founder-build-lane.md).
-- **Lane V (Vu, @helloiamvu):** lift from `../monorepo-v0.14.1/`, CI/CD scaffolding. Daily checklist: [`roadmap/lanes/vu-lift-lane.md`](roadmap/lanes/vu-lift-lane.md).
+- [`.planning/ROADMAP.md`](.planning/ROADMAP.md) — 4 phases + Phase 1.5 (v0.14.1 Parity Lift → Fetcher Optimization → Core Primitives → Mode 2 → Release), Days 1-14
+- [`.planning/PROJECT.md`](.planning/PROJECT.md) — vision + requirement IDs
+- [`.planning/REQUIREMENTS.md`](.planning/REQUIREMENTS.md) — full requirement specs
+- [`.planning/STATE.md`](.planning/STATE.md) — current execution position
+- [`.planning/phase-NN-<slug>/PLAN.md`](.planning/phase-01-v0-14-1-parity-lift/PLAN.md) — per-phase executable plan
+
+Lane assignments (Lane V = Vu lifts from `monorepo-v0.14.1/`; Lane F = Founder builds new code) are described in `.planning/PROJECT.md` § Execution model. The earlier `roadmap/sprint0.md` + `roadmap/lanes/` lane-based plan is **superseded and archived** — see [`roadmap/README.md`](roadmap/README.md) for the redirect.
 
 ## Issues / TODOs
 

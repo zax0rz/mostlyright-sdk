@@ -978,7 +978,7 @@ Hard-code `KALSHI_SETTLEMENT_STATIONS` with citations, ship `kalshi_nhigh.resolv
 
 - Every wave gets its own branch off `merged-vision`.
 - Within a wave, parallel tasks get sub-branches off the wave branch.
-- Each sub-branch goes through codex review at the priority noted per task (`high` for parity-critical lifts and source-identity invariants; `medium` for new code; `low` for wiring/exports).
+- Every sub-branch runs the two-reviewer loop (Codex `high` + Python Architect) per [`.planning/REVIEW-DISCIPLINE.md`](../REVIEW-DISCIPLINE.md). Codex reasoning effort is `high` for ALL sub-branches — the earlier `high`/`medium`/`low` tier mapping (parity-critical / new-code / wiring) is **superseded**. Per-task "priority" annotations elsewhere in this plan are advisory review-attention signals only; they do not change the codex effort tier.
 - No direct commits to `merged-vision`; wave branch merges to `merged-vision` only after full test suite (`pytest packages/`) passes.
 - No `--no-verify` on commits — pre-commit hooks (`ruff check --fix` + `ruff format`) must run.
 
