@@ -75,3 +75,48 @@ def test_other_station_regression_within_baseline(tmp_path, monkeypatch, station
     assert (
         wall_time <= baseline
     ), f"{station} 1-year backfill took {wall_time:.1f}s (gate {baseline}s)."
+
+
+@pytest.mark.live
+def test_prefetch_parallelism_ratio_under_check(tmp_path, monkeypatch) -> None:
+    """PERF-04 parallelism check: ``wall_time <= max(per_source_t_i) * 1.2``.
+
+    PLAN-03 §success_criteria item 4 (and architect iter-1 HIGH-5): the
+    parallelism check is mandated by the plan but ``research()`` returns a
+    DataFrame and never surfaces ``per_source_times``. This test exercises
+    ``_prefetch_sources`` directly to assert the ratio holds against real
+    upstream endpoints.
+
+    Failure mode the test catches: a regression that secretly serializes the
+    4 workers (e.g. someone replaces ``ex.submit`` with direct calls in
+    submit order) would have wall_time ~= sum(per_source) >> max(per_source).
+    """
+    import sys
+
+    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path / "cache"))
+
+    import tradewinds.research  # noqa: F401 — populates sys.modules
+
+    research_mod = sys.modules["tradewinds.research"]
+    from tradewinds._internal._stations import STATIONS
+
+    info = STATIONS["NYC"]
+    # Use a fully past year so prefetch actually runs (post-iter-1 fix skips
+    # the current UTC year to avoid double-fetch).
+    result = research_mod._prefetch_sources(info, "2024-01-01", "2024-12-31", "2025-01-01")
+
+    per_source = result["per_source_times"]
+    wall_time = result["wall_time"]
+
+    assert per_source, "per_source_times empty"
+    max_source = max(per_source.values())
+
+    # 1.2x tolerance per PLAN-03 + CONTEXT.md "Parallelism check threshold".
+    # The PERF-04 wiring is sound iff wall_time stays bounded by the slowest
+    # worker plus thread overhead.
+    assert wall_time <= max_source * 1.2, (
+        f"Serial stall detected: wall_time={wall_time:.2f}s, "
+        f"max(per_source)={max_source:.2f}s, "
+        f"ratio={wall_time / max_source:.2f} (gate <= 1.2). "
+        f"per_source_times={per_source}"
+    )

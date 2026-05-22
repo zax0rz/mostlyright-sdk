@@ -699,26 +699,36 @@ def _prefetch_sources(
     to_d = _date.fromisoformat(to_date_iso)
     _now = now or datetime.now(UTC)
 
+    # Codex/architect iter-1 HIGH-3/4: prefetching the current UTC year with
+    # ``skip_cache=True`` would write to the ``_partial`` namespace, and the
+    # sequential ``_fetch_iem_month`` fallback would then re-fetch into the
+    # canonical namespace — doubling network load for every current-year call.
+    # The cleanest fix: only prefetch years strictly past UTC. The current
+    # year falls through to the existing sequential lazy path, which still
+    # handles per-month skip_source_cache correctly via its own predicate.
+    # ``_PREFETCH_NETWORK_ERRORS``: tight whitelist of recoverable network
+    # exceptions for the _warm_* helpers. Anything outside this tuple
+    # propagates via f.result() per the docstring contract — programming bugs
+    # MUST surface (codex/architect iter-1 HIGH-1/2).
+
     def _warm_iem_asos() -> None:
-        """Warm IEM ASOS yearly-chunk cache across the year range, both report types.
+        """Warm IEM ASOS yearly-chunk cache for years STRICTLY past UTC.
 
         ``download_iem_asos`` normalizes the caller's start to ``date(year, 1, 1)``
-        (Plan 01 PERF-02 cache-idempotence). Issuing one call per year here
-        primes the cache so the per-month ``_fetch_iem_month`` calls in
-        ``_fetch_observations_range`` hit on every month after the first.
+        (Plan 01 PERF-02 cache-idempotence). Issuing one call per past year
+        here primes the canonical cache so the per-month ``_fetch_iem_month``
+        calls in ``_fetch_observations_range`` hit on every month after the
+        first. The current UTC year is intentionally NOT prefetched — see
+        block comment above.
         """
+        import httpx
+
         # Local import: weather sibling may not be present in bare installs.
         from tradewinds.weather._fetchers.iem_asos import download_iem_asos
-        from tradewinds.weather.cache import _is_current_lst_month
 
-        for year in range(from_d.year, extended_to.year + 1):
+        for year in range(from_d.year, min(extended_to.year, _now.year - 1) + 1):
             year_start = _date(year, 1, 1)
             year_end_inclusive = _date(year, 12, 31)
-            # Skip the source cache for the station's current LST month or any
-            # year not strictly past UTC — same predicate as the per-month
-            # _fetch_observations_range path so cache contents stay consistent
-            # between the prefetch warm and the lazy fallback.
-            skip_year = year >= _now.year or _is_current_lst_month(info.icao, year, 12)
             for rt in (3, 4):
                 try:
                     download_iem_asos(
@@ -727,12 +737,11 @@ def _prefetch_sources(
                         year_end_inclusive,
                         iem_dir,
                         report_type=rt,
-                        skip_cache=skip_year,
+                        skip_cache=False,
                     )
-                except Exception as exc:
-                    # Mirror the lazy path's degraded-graceful posture; a
-                    # prefetch failure is recoverable (the per-month fallback
-                    # will retry under skip_cache=True or the cache-miss path).
+                except (httpx.HTTPStatusError, httpx.RequestError, OSError) as exc:
+                    # Recoverable network/disk error: log + let the sequential
+                    # fallback retry per its own predicate.
                     logger.warning(
                         "PERF-04 prefetch IEM ASOS %s %d rt=%d failed: %s",
                         info.code,
@@ -742,16 +751,14 @@ def _prefetch_sources(
                     )
 
     def _warm_iem_cli() -> None:
-        """Warm IEM CLI annual JSON cache across the year range."""
+        """Warm IEM CLI annual JSON cache for years STRICTLY past UTC."""
         import httpx
 
         from tradewinds.weather._fetchers.iem_cli import download_cli
-        from tradewinds.weather.cache import _is_current_lst_year
 
-        for year in range(from_d.year, to_d.year + 1):
-            skip_cli_source = _is_current_lst_year(info.icao, year) or year >= _now.year
+        for year in range(from_d.year, min(to_d.year, _now.year - 1) + 1):
             try:
-                download_cli(info.icao, year, cli_dir, skip_cache=skip_cli_source)
+                download_cli(info.icao, year, cli_dir, skip_cache=False)
             except httpx.HTTPStatusError as exc:
                 if exc.response.status_code != 404:
                     logger.warning(
@@ -760,7 +767,7 @@ def _prefetch_sources(
                         year,
                         exc,
                     )
-            except Exception as exc:
+            except (httpx.RequestError, OSError) as exc:
                 logger.warning(
                     "PERF-04 prefetch CLI %s %d failed: %s",
                     info.icao,
@@ -769,16 +776,14 @@ def _prefetch_sources(
                 )
 
     def _warm_ghcnh() -> None:
-        """Warm GHCNh annual PSV cache across the year range."""
+        """Warm GHCNh annual PSV cache for years STRICTLY past UTC."""
         import httpx
 
         from tradewinds.weather._fetchers.ghcnh import download_ghcnh
-        from tradewinds.weather.cache import _is_current_lst_year
 
-        for year in range(from_d.year, extended_to.year + 1):
-            skip_ghcnh_source = _is_current_lst_year(info.icao, year) or year >= _now.year
+        for year in range(from_d.year, min(extended_to.year, _now.year - 1) + 1):
             try:
-                download_ghcnh(info.ghcnh_id, year, ghcnh_dir, skip_cache=skip_ghcnh_source)
+                download_ghcnh(info.ghcnh_id, year, ghcnh_dir, skip_cache=False)
             except httpx.HTTPStatusError as exc:
                 if exc.response.status_code != 404:
                     logger.warning(
@@ -787,7 +792,7 @@ def _prefetch_sources(
                         year,
                         exc,
                     )
-            except Exception as exc:
+            except (httpx.RequestError, OSError) as exc:
                 logger.warning(
                     "PERF-04 prefetch GHCNh %s %d failed: %s",
                     info.ghcnh_id,
@@ -795,15 +800,33 @@ def _prefetch_sources(
                     exc,
                 )
 
-    def _fetch_awc() -> list[dict[str, Any]]:
+    # AWC-window relevance: AWC's 168h endpoint only returns data for months
+    # overlapping the last ~7 days (see ``_month_overlaps_awc_window``). For
+    # queries entirely outside that window, the prefetch worker should NO-OP
+    # — matching the lazy ``_awc_for_month`` short-circuit and avoiding
+    # unnecessary HTTP. Returning None (vs []) signals "no prefetch fired"
+    # so ``_fetch_observations_range`` falls through to its legacy lazy path.
+    months_overlap_awc = any(
+        _month_overlaps_awc_window(y, m, now=now)
+        for y, m in _month_range(from_date_iso, extended_to_iso)
+    )
+
+    def _fetch_awc() -> list[dict[str, Any]] | None:
         """Fetch AWC METARs for the last 168h (in-memory; no disk cache).
 
-        Result is returned to the caller and passed into
-        ``_fetch_observations_range`` to bypass the lazy fetch.
+        Returns ``None`` when the query window has no AWC overlap so the
+        lazy ``_awc_for_month`` short-circuit stays the source of truth.
+        Returns ``[]`` (not None) on network failure so the orchestrator
+        does not fall back to a second lazy fetch (which would also fail).
+        Programming bugs propagate.
         """
+        import httpx
+
+        if not months_overlap_awc:
+            return None
         try:
             return _fetch_awc_for_window(info.icao)
-        except Exception as exc:
+        except (httpx.HTTPStatusError, httpx.RequestError, OSError) as exc:
             logger.warning("PERF-04 prefetch AWC %s failed: %s", info.icao, exc)
             return []
 

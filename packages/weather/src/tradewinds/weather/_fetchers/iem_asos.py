@@ -194,6 +194,12 @@ def download_iem_asos(
     # is supposed to be a curated 3-letter no-K-prefix ICAO from the registry, but
     # the check at the boundary catches any registry corruption or mis-call.
     validate_icao_for_path(station.code, field="station.code")
+    # Reversed-range guard (codex iter-1 HIGH): the underlying chunker honors
+    # ``start > end -> []``, but the tradewinds-specific year-normalization
+    # below would mask an inverted same-year range and fire a full-year
+    # download. Mirror the chunker invariant at the caller boundary.
+    if start > end:
+        return []
     suffix = _REPORT_TYPE_SUFFIX[report_type]
     # Tradewinds-specific: normalize start to Jan 1 of its year so per-month callers
     # share a yearly cache key. PR #85's chunker uses max(current, start), which

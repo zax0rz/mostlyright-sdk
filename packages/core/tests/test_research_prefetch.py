@@ -28,12 +28,21 @@ import pytest
 
 
 def test_prefetch_sources_returns_per_source_times_with_four_names(monkeypatch, tmp_path) -> None:
-    """The 4 named workers all appear in per_source_times."""
+    """The 4 named workers all appear in per_source_times.
+
+    Uses a query window inside the 168h AWC lookback (relative to fake ``now``)
+    so the AWC worker fires. Past-year IEM/CLI/GHCNh fire because the
+    current-UTC-year skip (post iter-1 fix) only activates for year >= now.year.
+    """
+    from datetime import UTC, datetime
+
     monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path / "cache"))
     from tradewinds._internal._stations import STATIONS
     from tradewinds.research import _prefetch_sources
 
     info = STATIONS["NYC"]
+    # Fake now = 2024-01-15; query 2024-01-08..2024-01-15 is well inside 168h.
+    fake_now = datetime(2024, 1, 15, 12, 0, 0, tzinfo=UTC)
 
     # Stub all 4 worker network functions to be no-ops/quick returns. The
     # spike's job here is to verify the ThreadPoolExecutor wiring, not the
@@ -44,7 +53,7 @@ def test_prefetch_sources_returns_per_source_times_with_four_names(monkeypatch, 
         patch("tradewinds.weather._fetchers.ghcnh.download_ghcnh", return_value=Path("/tmp/x")),
         patch("tradewinds.research._fetch_awc_for_window", return_value=[]),
     ):
-        result = _prefetch_sources(info, "2025-01-06", "2025-01-12", "2025-01-13")
+        result = _prefetch_sources(info, "2023-12-25", "2024-01-05", "2024-01-06", now=fake_now)
 
     assert set(result["per_source_times"].keys()) == {
         "iem.archive",
@@ -58,8 +67,8 @@ def test_prefetch_sources_returns_per_source_times_with_four_names(monkeypatch, 
 
 def test_prefetch_sources_pitfall_6_submitted_at_in_source(monkeypatch) -> None:
     """AST scan: ``submitted_at`` is assigned IMMEDIATELY after ``ex.submit()``,
-    NOT inside an as_completed loop where iteration order would inflate the
-    first-iterated future's timing.
+    and the ``as_completed`` body uses ``submitted_at[name]`` (NOT a freshly
+    captured t0) for per-source timing.
 
     The Pitfall 6 anti-pattern is::
 
@@ -68,7 +77,7 @@ def test_prefetch_sources_pitfall_6_submitted_at_in_source(monkeypatch) -> None:
             f.result()  # blocks until DONE — inflates time for first iterated
             per_source_times[name] = time.monotonic() - t0  # WRONG
 
-    The correct pattern (which we assert is present)::
+    The correct pattern (which we assert is present + absent for the bug)::
 
         for name, fn in ...:
             f = ex.submit(fn)
@@ -77,6 +86,13 @@ def test_prefetch_sources_pitfall_6_submitted_at_in_source(monkeypatch) -> None:
 
         for f in as_completed(futures):
             per_source_times[name] = time.monotonic() - submitted_at[name]
+
+    Strengthens iter-1 review (codex HIGH-3 / architect HIGH-6): the original
+    AST scan accepted ANY ``For`` body where ``ex.submit`` and ``submitted_at``
+    coexisted, breaking on the first match. This version requires (a) the
+    correct submission shape AND (b) absence of the t0/result/elapsed
+    anti-pattern inside any ``as_completed`` loop body AND (c) the
+    as_completed body references ``submitted_at[`` for its timing.
     """
     import sys
 
@@ -87,26 +103,62 @@ def test_prefetch_sources_pitfall_6_submitted_at_in_source(monkeypatch) -> None:
     src = inspect.getsource(research_mod._prefetch_sources)
     tree = ast.parse(src)
 
-    # Find the "for name, fn in ..." loop that should contain submit + submitted_at.
-    found_pattern = False
+    # (a) Locate the submit loop and assert submit-then-capture adjacency in
+    # every For body that contains an ex.submit call (defends against the
+    # "second broken loop bypasses the test" weakness).
+    submit_loops_found = 0
     for node in ast.walk(tree):
         if isinstance(node, ast.For):
             body_strs = [ast.unparse(stmt) for stmt in node.body]
             joined = "\n".join(body_strs)
-            if "ex.submit" in joined and "submitted_at[" in joined:
-                # Both assignments must be present in the same For body so
-                # capture happens immediately after the submit call returns.
-                found_pattern = True
-                # Also assert submit() comes BEFORE the submitted_at assignment
-                # in the source order (so the timer starts after work is queued).
-                submit_idx = next(i for i, s in enumerate(body_strs) if "ex.submit" in s)
-                cap_idx = next(i for i, s in enumerate(body_strs) if "submitted_at[" in s)
-                assert submit_idx < cap_idx, (
-                    "submitted_at[name] must be assigned AFTER ex.submit() — "
-                    "Pitfall 6 anti-pattern detected"
-                )
-                break
-    assert found_pattern, "Pitfall 6 pattern missing in _prefetch_sources"
+            if "ex.submit" not in joined:
+                continue
+            submit_loops_found += 1
+            # Same body MUST also have submitted_at[ assignment, immediately
+            # after submit() returns.
+            assert (
+                "submitted_at[" in joined
+            ), "submit loop missing submitted_at[name] capture — Pitfall 6 anti-pattern"
+            submit_idx = next(i for i, s in enumerate(body_strs) if "ex.submit" in s)
+            cap_idx = next(i for i, s in enumerate(body_strs) if "submitted_at[" in s)
+            assert submit_idx < cap_idx, (
+                "submitted_at[name] must be assigned AFTER ex.submit() — "
+                "Pitfall 6 anti-pattern detected"
+            )
+    assert submit_loops_found >= 1, "no ex.submit loop found in _prefetch_sources"
+
+    # (b)+(c) Walk every "for ... in as_completed(...)" body and assert:
+    #   - NO ``t0 = time.monotonic()`` immediately followed by ``f.result()``
+    #     and then ``per_source_times[...] = time.monotonic() - t0``
+    #   - per_source_times[...] timing references submitted_at[...]
+    as_completed_loops_found = 0
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.For):
+            continue
+        iter_src = ast.unparse(node.iter)
+        if "as_completed" not in iter_src:
+            continue
+        as_completed_loops_found += 1
+        body_strs = [ast.unparse(stmt) for stmt in node.body]
+        joined = "\n".join(body_strs)
+        # Defends against the bug-preserving refactor codex flagged: a t0
+        # captured inside the as_completed loop measures wrong wall time.
+        assert (
+            "t0 = time.monotonic()" not in joined
+        ), "Pitfall 6 anti-pattern detected: t0 captured inside as_completed body"
+        # Defends against the architect's HIGH-6 weakness: ensure the timing
+        # arithmetic actually reads submitted_at (not a local var).
+        assert "submitted_at[" in joined, (
+            "as_completed body does not reference submitted_at[name] for timing — "
+            "Pitfall 6 fix incomplete"
+        )
+        # The per_source_times assignment must use submitted_at directly.
+        per_source_lines = [s for s in body_strs if "per_source_times[" in s]
+        assert per_source_lines, "per_source_times[name] not assigned in as_completed body"
+        assert any(
+            "submitted_at[" in s for s in per_source_lines
+        ), "per_source_times[name] assignment does not use submitted_at[name]"
+    assert as_completed_loops_found >= 1, "no as_completed loop found in _prefetch_sources"
 
 
 def test_prefetch_sources_uses_max_workers_4(monkeypatch) -> None:
@@ -166,7 +218,11 @@ def test_prefetch_sources_awc_rows_returned(monkeypatch, tmp_path) -> None:
     from tradewinds.research import _prefetch_sources
 
     info = STATIONS["NYC"]
-    fake_awc = [{"station_code": "NYC", "observed_at": "2025-01-06T12:00:00Z"}]
+    from datetime import UTC, datetime
+
+    fake_awc = [{"station_code": "NYC", "observed_at": "2024-01-06T12:00:00Z"}]
+    # Fake now inside the AWC 168h lookback so the AWC worker fires.
+    fake_now = datetime(2024, 1, 10, 12, 0, 0, tzinfo=UTC)
 
     with (
         patch("tradewinds.weather._fetchers.iem_asos.download_iem_asos", return_value=[]),
@@ -174,17 +230,28 @@ def test_prefetch_sources_awc_rows_returned(monkeypatch, tmp_path) -> None:
         patch("tradewinds.weather._fetchers.ghcnh.download_ghcnh", return_value=Path("/tmp/x")),
         patch("tradewinds.research._fetch_awc_for_window", return_value=fake_awc),
     ):
-        result = _prefetch_sources(info, "2025-01-06", "2025-01-12", "2025-01-13")
+        result = _prefetch_sources(info, "2023-12-25", "2024-01-05", "2024-01-06", now=fake_now)
 
     assert result["awc_rows"] == fake_awc
 
 
 def test_prefetch_sources_propagates_unexpected_exception(monkeypatch, tmp_path) -> None:
-    """An unhandled exception inside a worker bubbles up via f.result().
+    """A non-network exception inside a worker bubbles up via f.result().
 
-    The _warm_* helpers catch httpx errors internally (degraded-graceful path).
-    But programming bugs (TypeError, ZeroDivisionError, etc.) MUST propagate so
-    the orchestrator sees them — same contract Plan 03 mandates.
+    The _warm_* helpers catch only the recoverable network/disk exception
+    tuple ``(httpx.HTTPStatusError, httpx.RequestError, OSError)``. Plain
+    ``RuntimeError`` (a programming bug) MUST propagate — codex/architect
+    iter-1 HIGH-1/2.
+
+    Critically: we use ``RuntimeError`` here, NOT ``SystemExit`` (which
+    propagates regardless of ``except Exception:`` because it derives from
+    ``BaseException``). A regression that broadens the except clause back to
+    ``Exception`` MUST cause this test to fail.
+
+    Uses ``from_date=2024-01-01, to_date=2024-12-31`` (a year strictly past
+    UTC given today=2026-05-23) so the _warm_iem_asos worker actually invokes
+    its inner ``download_iem_asos`` — the post-iter-1 fix skips the prefetch
+    for the current UTC year, which would otherwise mask the test.
     """
     monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path / "cache"))
     from tradewinds._internal._stations import STATIONS
@@ -193,25 +260,54 @@ def test_prefetch_sources_propagates_unexpected_exception(monkeypatch, tmp_path)
     info = STATIONS["NYC"]
 
     def boom(*args, **kwargs):
-        # TypeError is the kind of bug the _warm_* helpers do NOT catch
-        # (they catch BaseException-derived noqa: BLE001, but the broad except
-        # turns this into a logged warning, not a raise). To force propagation
-        # we patch the AWC fetch which has its own narrower try/except for
-        # network errors only -- actually it catches Exception too. Let's
-        # patch download_iem_asos to raise SystemExit (always propagates).
-        raise SystemExit("simulated unrecoverable error")
+        raise RuntimeError("simulated programming bug")
 
-    # SystemExit propagates because the _warm_iem_asos helper's except clause
-    # is `except Exception`, which does NOT catch SystemExit (it inherits from
-    # BaseException directly).
     with (
         patch("tradewinds.weather._fetchers.iem_asos.download_iem_asos", side_effect=boom),
         patch("tradewinds.weather._fetchers.iem_cli.download_cli", return_value=Path("/tmp/x")),
         patch("tradewinds.weather._fetchers.ghcnh.download_ghcnh", return_value=Path("/tmp/x")),
         patch("tradewinds.research._fetch_awc_for_window", return_value=[]),
-        pytest.raises(SystemExit, match="simulated unrecoverable error"),
+        pytest.raises(RuntimeError, match="simulated programming bug"),
     ):
-        _prefetch_sources(info, "2025-01-06", "2025-01-12", "2025-01-13")
+        _prefetch_sources(info, "2024-01-01", "2024-12-31", "2025-01-01")
+
+
+def test_prefetch_sources_swallows_network_errors(monkeypatch, tmp_path) -> None:
+    """The _warm_* helpers catch the recoverable network tuple
+    ``(httpx.HTTPStatusError, httpx.RequestError, OSError)`` and degrade
+    gracefully — the lazy sequential path retries per its own predicate.
+
+    Counterpart to test_prefetch_sources_propagates_unexpected_exception:
+    together they pin down the EXACT exception-catch contract.
+    """
+    import httpx
+
+    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path / "cache"))
+    from tradewinds._internal._stations import STATIONS
+    from tradewinds.research import _prefetch_sources
+
+    info = STATIONS["NYC"]
+
+    def http_500(*args, **kwargs):
+        # Mimic the wrapped HTTPStatusError that the fetchers re-raise.
+        request = httpx.Request("GET", "https://example.test/x")
+        response = httpx.Response(500, text="upstream flaked", request=request)
+        raise httpx.HTTPStatusError("upstream flaked", request=request, response=response)
+
+    with (
+        patch("tradewinds.weather._fetchers.iem_asos.download_iem_asos", side_effect=http_500),
+        patch("tradewinds.weather._fetchers.iem_cli.download_cli", return_value=Path("/tmp/x")),
+        patch("tradewinds.weather._fetchers.ghcnh.download_ghcnh", return_value=Path("/tmp/x")),
+        patch("tradewinds.research._fetch_awc_for_window", return_value=[]),
+    ):
+        # HTTPStatusError IS caught and logged; the call returns normally.
+        result = _prefetch_sources(info, "2024-01-01", "2024-12-31", "2025-01-01")
+    assert set(result["per_source_times"].keys()) == {
+        "iem.archive",
+        "awc.live",
+        "ghcnh.archive",
+        "cli.archive",
+    }
 
 
 def test_all_caches_warm_returns_false_when_obs_cache_missing(monkeypatch, tmp_path) -> None:
@@ -254,7 +350,13 @@ def test_per_source_times_are_positive(monkeypatch, tmp_path) -> None:
         ),
         patch("tradewinds.research._fetch_awc_for_window", side_effect=slow_noop),
     ):
-        result = _prefetch_sources(info, "2025-01-06", "2025-01-12", "2025-01-13")
+        from datetime import UTC, datetime
+
+        # Fake now inside the AWC 168h lookback so all 4 workers fire and
+        # the per-source timings sum to ~0.2s (4 x 50ms) serially or ~0.05s
+        # in parallel.
+        fake_now = datetime(2024, 1, 10, 12, 0, 0, tzinfo=UTC)
+        result = _prefetch_sources(info, "2023-12-25", "2024-01-05", "2024-01-06", now=fake_now)
 
     # Each worker slept ~50ms; per_source_times should be at least that.
     for name, elapsed in result["per_source_times"].items():
