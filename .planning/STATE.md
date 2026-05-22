@@ -4,8 +4,8 @@ milestone: v0.14.1
 milestone_name: Parity Lift
 status: executing
 stopped_at: "ROADMAP enriched with 4 new phases (2.1, 3.1, 3.2, 3.3) for v0.1.0 scope expansion (international + multi-forecast + Polymarket + Sprint 2o lineage). Phase stubs created via `gsd-tools phase insert`; ROADMAP entries enriched with full Goal/Depends-on/Requirements/Success Criteria/Out-of-Scope/Review-panel blocks. STATE.md updated with Roadmap Evolution section + new decisions + new blockers/concerns. **Pending follow-ups before execution:** (1) add LINEAGE-01..05 + INTL-01..05 + NWP-01..06 + POLY-01..05 entries to REQUIREMENTS.md (POLY-01 currently a Sprint 0.5+ deferral — activate and split); (2) update PROJECT.md "Active scope" to reflect expanded v0.1.0; (3) run `/gsd-plan-phase` per new phase to write detailed PLAN.md; (4) decide whether to migrate existing `.planning/phase-NN-...` dirs to new `.planning/phases/NN.M-...` convention created by gsd-tools, or move the new dirs to match existing convention."
-last_updated: "2026-05-22T11:52:40.503Z"
-last_activity: 2026-05-22 -- Phase 2.1 planning complete
+last_updated: "2026-05-22T13:30:00.000Z"
+last_activity: 2026-05-22 -- Completed quick task 260522-lah: Fix 5 REVIEW-DISCIPLINE iteration 4 findings
 progress:
   total_phases: 12
   completed_phases: 0
@@ -117,6 +117,7 @@ Open decisions to resolve during execution (per research SUMMARY.md):
 | 260522-axd | Wire REVIEW-DISCIPLINE.md as canonical review policy source | 2026-05-22 | fb9cd61 | [260522-axd-wire-review-discipline-md-as-canonical-r](./quick/260522-axd-wire-review-discipline-md-as-canonical-r/) |
 | 260522-ea7 | Fix stale STATE.md and REQUIREMENTS.md footer/decisions/phase count | 2026-05-22 | eba690a | [260522-ea7-fix-stale-state-md-and-requirements-md-f](./quick/260522-ea7-fix-stale-state-md-and-requirements-md-f/) |
 | 260522-h6a | Clean up duplicate MCP-01..06 IDs in REQUIREMENTS.md per Phase 5 PLAN-00 (option b) | 2026-05-22 | e92aa36 | [260522-h6a-clean-up-duplicate-mcp-01-06-ids-in-requ](./quick/260522-h6a-clean-up-duplicate-mcp-01-06-ids-in-requ/) |
+| 260522-lah | Fix 5 REVIEW-DISCIPLINE iteration 4 findings | 2026-05-22 | 5ec7fc4 | [260522-lah-fix-5-review-discipline-iteration-4-find](./quick/260522-lah-fix-5-review-discipline-iteration-4-find/) |
 
 ## Session Continuity
 
