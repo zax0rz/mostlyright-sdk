@@ -5,7 +5,7 @@ milestone_name: Parity Lift
 status: executing
 stopped_at: "ROADMAP enriched with 4 new phases (2.1, 3.1, 3.2, 3.3) for v0.1.0 scope expansion (international + multi-forecast + Polymarket + Sprint 2o lineage). Phase stubs created via `gsd-tools phase insert`; ROADMAP entries enriched with full Goal/Depends-on/Requirements/Success Criteria/Out-of-Scope/Review-panel blocks. STATE.md updated with Roadmap Evolution section + new decisions + new blockers/concerns. **Pending follow-ups before execution:** (1) add LINEAGE-01..05 + INTL-01..05 + NWP-01..06 + POLY-01..05 entries to REQUIREMENTS.md (POLY-01 currently a Sprint 0.5+ deferral — activate and split); (2) update PROJECT.md "Active scope" to reflect expanded v0.1.0; (3) run `/gsd-plan-phase` per new phase to write detailed PLAN.md; (4) decide whether to migrate existing `.planning/phase-NN-...` dirs to new `.planning/phases/NN.M-...` convention created by gsd-tools, or move the new dirs to match existing convention."
 last_updated: "2026-05-22T13:30:00.000Z"
-last_activity: 2026-05-22 -- Completed quick task 260522-msx: Fix 3 iter-7 findings (count drift + self-lock + non-deterministic race)
+last_activity: 2026-05-22 -- Completed quick task 260522-n2e: Fix iter-8 P2 (migrate_to_v2 CLI needs lock around lock-free helper)
 progress:
   total_phases: 12
   completed_phases: 0
@@ -121,6 +121,7 @@ Open decisions to resolve during execution (per research SUMMARY.md):
 | 260522-lz3 | Fix 5 REVIEW-DISCIPLINE iteration 5 findings | 2026-05-22 | 0feccec | [260522-lz3-fix-5-review-discipline-iteration-5-find](./quick/260522-lz3-fix-5-review-discipline-iteration-5-find/) |
 | 260522-miq | Fix 2 codex iteration 6 findings (write-wins race + class-B order) | 2026-05-22 | 6c3c282 | [260522-miq-fix-2-codex-iteration-6-findings-write-w](./quick/260522-miq-fix-2-codex-iteration-6-findings-write-w/) |
 | 260522-msx | Fix 3 iter-7 findings (count drift + self-lock + non-deterministic race) | 2026-05-22 | 3d35cd2 | [260522-msx-fix-3-iter-7-findings-count-drift-self-l](./quick/260522-msx-fix-3-iter-7-findings-count-drift-self-l/) |
+| 260522-n2e | Fix iter-8 P2 (migrate_to_v2 CLI needs lock around lock-free helper) | 2026-05-22 | 068c9c4 | [260522-n2e-fix-iter-8-p2-migrate-to-v2-cli-needs-lo](./quick/260522-n2e-fix-iter-8-p2-migrate-to-v2-cli-needs-lo/) |
 
 ## Session Continuity
 
