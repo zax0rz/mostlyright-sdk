@@ -36,7 +36,7 @@ df = tw.research(
 
 ## Contributing
 
-See [`CLAUDE.md`](CLAUDE.md) for project rules + collaboration discipline. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for workflow.
+See [`CLAUDE.md`](CLAUDE.md) for project rules + collaboration discipline. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for workflow. Review discipline: see [`.planning/REVIEW-DISCIPLINE.md`](.planning/REVIEW-DISCIPLINE.md).
 
 ## License
 

@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mostlyright.xyz/schemas/forecast.json",
+  "title": "IEM MOS Forecast (Discrete Model Runs)",
+  "description": "STORAGE SCHEMA for discrete NWP model run forecasts from IEM MOS bulk API. One row per (station, model, issued_at, valid_at). These are real model runs with provenance — you know exactly which forecast cycle produced each value. Primary forecast source for ML training.",
+  "type": "object",
+  "required": ["station_code", "model", "source", "issued_at", "valid_at", "forecast_hour"],
+  "additionalProperties": false,
+  "properties": {
+    "station_code": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$",
+      "description": "Canonical 3-letter NWS station code. IEM API uses ICAO (KORD), normalised to MostlyRight code (ORD) at parse time."
+    },
+    "model": {
+      "type": "string",
+      "enum": ["NBS", "NBE", "GFS"],
+      "description": "IEM MOS model. NBS = NBM Short (3-hourly to 72h). NBE = NBM Extended (12-hourly to 192h). GFS = GFS MOS (3/6-hourly). NAM deferred."
+    },
+    "source": {
+      "type": "string",
+      "const": "iem",
+      "description": "Always 'iem' for this schema."
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Model run initialization time (UTC, Z-suffix). Maps from IEM 'runtime' field."
+    },
+    "valid_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the forecast is valid for (UTC, Z-suffix). Maps from IEM 'ftime' field."
+    },
+    "forecast_hour": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Hours ahead: (valid_at - issued_at) in whole hours. Hour 0 = analysis/nowcast."
+    },
+    "ingested_at": {
+      "description": "When we fetched this record (UTC, Z-suffix). Null for historical backfill, populated for live polling.",
+      "oneOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }]
+    },
+
+    "temperature_f": {
+      "description": "Air temperature in Fahrenheit. IEM 'tmp'. Integer precision (MOS text product). Store as-is.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "dewpoint_f": {
+      "description": "Dewpoint in Fahrenheit. IEM 'dpt'. Integer precision.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "temperature_c": {
+      "description": "Temperature in Celsius. Converted from temperature_f at ingest. No rounding.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "dewpoint_c": {
+      "description": "Dewpoint in Celsius. Converted from dewpoint_f at ingest. No rounding.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+
+    "wind_speed_kt": {
+      "description": "Wind speed in knots. IEM 'wsp'.",
+      "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }]
+    },
+    "wind_direction_deg": {
+      "description": "Wind direction in degrees (0-360). IEM 'wdr'.",
+      "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 360 }, { "type": "null" }]
+    },
+    "wind_gust_kt": {
+      "description": "Wind gust in knots. IEM 'gst'.",
+      "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }]
+    },
+
+    "cloud_cover_code": {
+      "description": "Cloud cover category. IEM 'cld'. CL=clear, SC=scattered, BK=broken, OV=overcast.",
+      "oneOf": [{ "type": "string" }, { "type": "null" }]
+    },
+    "sky_cover_pct": {
+      "description": "Sky cover percentage (0-100). IEM 'sky'.",
+      "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 100 }, { "type": "null" }]
+    },
+    "ceiling_cat": {
+      "description": "Ceiling height category. IEM 'cig'. Sentinel -88 mapped to null at ingest.",
+      "oneOf": [{ "type": "integer" }, { "type": "null" }]
+    },
+    "visibility_cat": {
+      "description": "Visibility category. IEM 'vis'.",
+      "oneOf": [{ "type": "integer" }, { "type": "null" }]
+    },
+
+    "pop_6hr_pct": {
+      "description": "Probability of precipitation, 6-hour (%). IEM 'p06'.",
+      "oneOf": [{ "type": "number", "minimum": 0, "maximum": 100 }, { "type": "null" }]
+    },
+    "pop_12hr_pct": {
+      "description": "Probability of precipitation, 12-hour (%). IEM 'p12'.",
+      "oneOf": [{ "type": "number", "minimum": 0, "maximum": 100 }, { "type": "null" }]
+    },
+    "qpf_6hr_in": {
+      "description": "Quantitative precipitation forecast, 6-hour (inches). IEM 'q06'. Stored in native IEM units.",
+      "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }]
+    },
+    "qpf_12hr_in": {
+      "description": "Quantitative precipitation forecast, 12-hour (inches). IEM 'q12'. Stored in native IEM units.",
+      "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }]
+    },
+    "snow_flag": {
+      "description": "Categorical snow. IEM 'snw'.",
+      "oneOf": [{ "type": "string" }, { "type": "null" }]
+    },
+    "precip_type": {
+      "description": "Precipitation type. IEM 'typ'. R=rain, S=snow, Z=freezing rain, IP=ice pellets.",
+      "oneOf": [{ "type": "string" }, { "type": "null" }]
+    },
+    "freezing_rain_pct": {
+      "description": "Freezing rain probability (%). IEM 'pzr'.",
+      "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 100 }, { "type": "null" }]
+    },
+    "snow_prob_pct": {
+      "description": "Snow probability (%). IEM 'psn'.",
+      "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 100 }, { "type": "null" }]
+    },
+    "sleet_prob_pct": {
+      "description": "Sleet/ice pellet probability (%). IEM 'ppl'.",
+      "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 100 }, { "type": "null" }]
+    },
+    "rain_prob_pct": {
+      "description": "Rain probability (%). IEM 'pra'.",
+      "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 100 }, { "type": "null" }]
+    },
+
+    "thunder_prob_6hr": {
+      "description": "Thunderstorm probability, 6-hour. IEM 't06'. String format, e.g. '0/5'.",
+      "oneOf": [{ "type": "string" }, { "type": "null" }]
+    },
+    "thunder_prob_12hr": {
+      "description": "Thunderstorm probability, 12-hour. IEM 't12'. String format.",
+      "oneOf": [{ "type": "string" }, { "type": "null" }]
+    },
+
+    "max_min_temp_f": {
+      "description": "Max/min temperature in Fahrenheit. IEM 'n_x'.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "transport_wind_speed": {
+      "description": "Transport wind speed. IEM 'tws'.",
+      "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }]
+    },
+    "transport_wind_dir": {
+      "description": "Transport wind direction. IEM 'twd'.",
+      "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 360 }, { "type": "null" }]
+    },
+    "mixing_height": {
+      "description": "Mixing height. IEM 'mht'.",
+      "oneOf": [{ "type": "integer" }, { "type": "null" }]
+    },
+    "haines_index": {
+      "description": "Haines Index (fire weather). IEM 'hid'.",
+      "oneOf": [{ "type": "integer" }, { "type": "null" }]
+    },
+    "solar_radiation": {
+      "description": "Solar radiation. IEM 'sol'.",
+      "oneOf": [{ "type": "integer" }, { "type": "null" }]
+    },
+    "low_cloud_base": {
+      "description": "Low cloud base. IEM 'lcb'.",
+      "oneOf": [{ "type": "integer" }, { "type": "null" }]
+    },
+    "snow_level": {
+      "description": "Snow level. IEM 'slv'.",
+      "oneOf": [{ "type": "integer" }, { "type": "null" }]
+    }
+  },
+
+  "$comment": "ARCHITECTURE DECISIONS: (1) DISCRETE MODEL RUNS with provenance. Each row has issued_at (model run time) and valid_at (forecast target time). This is what ML needs: 'what did NBS predict at 12Z on March 15 for March 16 at 18Z?' (2) IEM-native units preserved: °F for temperature (integer MOS precision), knots for wind, inches for QPF. Celsius added via conversion at ingest, no rounding. (3) Sentinel handling: IEM cig=-88 mapped to null at parse time, never stored. (4) forecast_hour = int((valid_at - issued_at).total_seconds() / 3600). issued_at <= valid_at (hour-0 = analysis). (5) All timestamps UTC with Z suffix (YYYY-MM-DDTHH:MM:SSZ). IEM runtime/ftime normalized at ingest. (6) ICAO mapping: IEM API uses 4-char ICAO (KORD), stored as 3-char station_code (ORD). NYC/KNYC is a special case. (7) Dedup: exact-duplicate on (station_code, model, issued_at, valid_at), first-seen wins. No cross-source priority. (8) NBS is 3-hourly, NBE is 12-hourly, GFS varies — store as-is, never interpolate. (9) NAM deferred for this sprint."
+}

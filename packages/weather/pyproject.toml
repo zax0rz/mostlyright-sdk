@@ -15,18 +15,26 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
+    # tradewinds (core) provides _internal._bounds, _internal._convert,
+    # _internal._http, _internal.models, _internal.exceptions — used by the
+    # parsers (_awc, _iem, _climate, _ghcnh) and fetchers under tradewinds.weather.
+    "tradewinds",
     # Pinned to v0.14.1 mostlyright deps
     "httpx>=0.27",
     "jsonschema>=4.21",
     "tzdata; sys_platform == 'win32'",
     # Local parquet cache requires filelock for concurrent process safety
     "filelock>=3.12",
+    # Codex P2 fix (Wave 1.4): pyarrow used at import time in tradewinds.weather.cache
+    # for cache I/O. Cannot live in `parquet` optional extra — default install would
+    # fail to import the cache module.
+    "pyarrow>=17.0",
 ]
 
 [project.optional-dependencies]
-# DataFrame return + parquet read/write
+# DataFrame return values (cache.py uses pyarrow directly; pandas only needed
+# for users who want to convert cache output to DataFrames).
 parquet = [
-    "pyarrow>=17.0",
     "pandas>=2.2",
 ]
 

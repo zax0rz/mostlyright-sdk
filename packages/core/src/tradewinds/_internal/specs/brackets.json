@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mostlyright.xyz/schemas/brackets.json",
+  "title": "Market Bracket Definition",
+  "description": "Temperature bracket definitions for a Kalshi or Polymarket weather series. Each bracket defines a price range that settles YES if the settlement value falls in [min, max). Used by client.brackets(series_ticker).",
+  "type": "object",
+  "required": ["series_ticker", "exchange", "brackets"],
+  "additionalProperties": false,
+  "properties": {
+    "series_ticker": {
+      "type": "string",
+      "description": "Exchange series identifier (e.g. 'HIGHNY' for Kalshi NYC high temp)."
+    },
+    "exchange": {
+      "type": "string",
+      "enum": ["kalshi", "polymarket", "unknown"],
+      "description": "Exchange this series belongs to."
+    },
+    "station": {
+      "description": "NWS station code for settlement (e.g. 'NYC', 'ATL').",
+      "oneOf": [{ "type": "string", "pattern": "^[A-Z]{3,4}$" }, { "type": "null" }]
+    },
+    "settlement_field": {
+      "description": "Which CLI field settles this series: 'high_temp_f' or 'low_temp_f'.",
+      "oneOf": [
+        { "type": "string", "enum": ["high_temp_f", "low_temp_f"] },
+        { "type": "null" }
+      ]
+    },
+    "brackets": {
+      "type": "array",
+      "description": "Ordered list of bracket definitions.",
+      "items": {
+        "type": "object",
+        "required": ["market_ticker", "min_f", "max_f"],
+        "additionalProperties": false,
+        "properties": {
+          "market_ticker": {
+            "type": "string",
+            "description": "Individual market ticker (e.g. 'HIGHNY-24JUL04-B72')."
+          },
+          "min_f": {
+            "description": "Lower bound (inclusive) in °F. Null = open lower bound.",
+            "oneOf": [{ "type": "number" }, { "type": "null" }]
+          },
+          "max_f": {
+            "description": "Upper bound (exclusive) in °F. Null = open upper bound.",
+            "oneOf": [{ "type": "number" }, { "type": "null" }]
+          },
+          "label": {
+            "description": "Human-readable bracket label (e.g. '72-74°F').",
+            "oneOf": [{ "type": "string" }, { "type": "null" }]
+          }
+        }
+      }
+    },
+    "fetched_at": {
+      "description": "When this bracket definition was retrieved (RFC3339 UTC).",
+      "oneOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }]
+    }
+  },
+  "$comment": "STUB: client.brackets() raises NotImplementedError until Sprint 3 (Kalshi integration). Schema provided for forward compatibility and AI agent planning."
+}

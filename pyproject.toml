@@ -3,6 +3,14 @@ name = "tradewinds-workspace"
 version = "0.0.0"
 description = "uv workspace root for tradewinds packages (not published)"
 requires-python = ">=3.11"
+# Declare the workspace members as deps so `uv sync` installs them in editable
+# mode by default (otherwise plain `uv sync` skips members; users would need
+# `uv sync --all-packages` and would hit ModuleNotFoundError on `import tradewinds`).
+dependencies = [
+    "tradewinds",
+    "tradewinds-weather",
+    "tradewinds-markets",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -26,6 +34,18 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.5",
     "pre-commit>=3.7",
+    # Property-based testing for v0.2 foundations (tradewinds._v02). Added by the
+    # wave-1-core port from mostlyright-mcp; kept in workspace dev so future tests
+    # across packages can use hypothesis without further setup.
+    "hypothesis>=6.100",
+    # pandas + pyarrow are runtime deps under the `parquet` extra of `tradewinds`
+    # (DataFrame return values), but they are MANDATORY for the test suite:
+    # _v02 tests import pandas at collection time, and Sprint 0 parity fixtures
+    # are parquet files. Putting them in dev so `uv run pytest -m "not live"`
+    # works in a clean checkout without `--extra parquet` gymnastics.
+    "pandas>=2.2",
+    "pyarrow>=17.0",
+    "respx>=0.23.1",
 ]
 
 [tool.ruff]
@@ -39,7 +59,10 @@ ignore = ["E501"]  # line length handled by formatter
 
 [tool.pytest.ini_options]
 markers = [
-    "live: tests that hit live public APIs (skipped in CI per testing playbook)",
+    "live: tests that hit live public APIs (skipped by default per testing playbook)",
 ]
 testpaths = ["packages"]
-addopts = "-q --strict-markers"
+# -m "not live" excludes live tests by default — codex W3A P2: marker labelling
+# alone does not skip; CI/offline runs hit the network without this. Opt in
+# explicitly: uv run pytest -m live.
+addopts = "-q --strict-markers -m 'not live'"
