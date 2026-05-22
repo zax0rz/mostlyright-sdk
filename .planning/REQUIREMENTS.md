@@ -229,6 +229,40 @@ Per-requirement phase assignments (filled by roadmapper 2026-05-21).
 - Phase 3 (Mode 2 + Migration): 13 requirements (RESEARCH-01..05, CACHE-02..06, MIGRATION-01..03)
 - Phase 4 (Coverage + Release): 9 requirements (PKG-01, DOCS-01..03, CI-01..05)
 
+## Phase 5: MCP Data Platform (v0.2+)
+
+Post-v0.1.0 requirements for the MCP-native data platform vision. See [`phase-05-mcp-data-platform/VISION.md`](phase-05-mcp-data-platform/VISION.md).
+
+> **ID-collision note:** The earlier `## v2 Requirements (Deferred) > ### MCP Server (v0.2 milestone)` section uses the identifiers `MCP-01..MCP-06` for narrow MCP tool surface (`tradewinds-mcp-server` console script, `catalog_search`, `pull_pairs`, `validate_dataframe`, JSON-RPC tests, TOON serialization). Those entries are SUPERSEDED by the broader Phase 5 vision below — same identifiers, expanded scope. Resolve before Phase 5 PLAN.md is written: either (a) renumber the old entries (e.g. `MCP-LEGACY-01..06`), (b) delete the old entries and treat Phase 5 as canonical, or (c) renumber Phase 5 (e.g. `PLAT-01..10`). Default recommendation: option (b) — the Phase 5 vision subsumes the old narrow MCP tools list.
+
+- [ ] **MCP-01**: MCP server exposes `list_sources`, `describe_source`, `ingest`, `query`, `get_schema` tools via the MCP protocol; any MCP client (Claude, Cursor, custom) can drive end-to-end pipelines
+- [ ] **MCP-02**: Data catalog stores 5-layer context per source — schema semantics, temporal rules, quality notes, relationship mappings, operational context — functioning as agent-readable onboarding docs
+- [ ] **MCP-03**: Agent-generated connector pipeline accepts API docs/HTML/PDF, builds schema mental model, generates extraction config, persists for re-use; quality-review gate before promotion to pre-indexed status
+- [ ] **MCP-04**: Server-enforced temporal safety — no agent bypass possible; constraint is structural (not honor-system), enforced inside the MCP server before any row is returned to the agent
+- [ ] **MCP-05**: Multi-vertical catalog expansion: v0.2 = weather + MCP server; v0.3 = sports prediction markets; v0.4 = politics + finance. Same temporal-safety layer across verticals.
+- [ ] **MCP-06**: Auditable provenance chain — every data transformation logs source, retrieval timestamp, schema version, and transformation identity; replayable end-to-end
+- [ ] **MCP-07**: Schema contract validation on BOTH ingest and query paths; mismatches raise structured errors with `to_dict()` JSON-RPC payloads (reuses Phase 2 exception hierarchy)
+- [ ] **MCP-08**: Point-in-time query API — `dataset.at_time(date)`, `.between(start, end)`, `.as_of(timestamp)`; returns exactly and only what was knowable on the given date
+- [ ] **MCP-09**: Deterministic replay — same query + same cutoff = identical result bytes across runs; tested via property-based fixtures
+- [ ] **MCP-10**: Pre-indexed catalog entries for the top 10 prediction-market data sources at v0.2 ship (concrete list to be defined in Phase 5 PLAN.md; weather sources already covered by Phase 2 adapters)
+
+### Phase 5 Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| MCP-01 | Phase 5 | Pending |
+| MCP-02 | Phase 5 | Pending |
+| MCP-03 | Phase 5 | Pending |
+| MCP-04 | Phase 5 | Pending |
+| MCP-05 | Phase 5 | Pending |
+| MCP-06 | Phase 5 | Pending |
+| MCP-07 | Phase 5 | Pending |
+| MCP-08 | Phase 5 | Pending |
+| MCP-09 | Phase 5 | Pending |
+| MCP-10 | Phase 5 | Pending |
+
+**Phase 5 coverage:** 10 requirements, all mapped. Depends on Phase 2 (temporal primitives, catalog adapters, canonical schemas) and Phase 4 (CI/CD trusted publishing).
+
 ---
 *Requirements defined: 2026-05-21*
-*Last updated: 2026-05-21 after roadmapper traceability fill (Phase 1-4 mapping, 49/49 coverage)*
+*Last updated: 2026-05-22 — added Phase 5 (MCP Data Platform, MCP-01..MCP-10) post-v0.1.0 vision*

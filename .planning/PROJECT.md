@@ -8,6 +8,21 @@ A local-first Python SDK for quants researching prediction-market weather contra
 
 `research(contract, station, from_date, to_date)` returns clean, leakage-free, source-identified training pairs that backtest the same way they trade — and any train/infer source mismatch errors loudly instead of silently corrupting a model.
 
+## Long-term Vision
+
+**Tradewinds is becoming an MCP-native data platform for prediction market ML.** v0.1.0 ships the weather/Kalshi wedge as a local-first Python SDK with temporal-safety primitives and source-identity enforcement. v0.2+ adds an MCP server layer (at `packages/mcp/`, seam already reserved) that exposes those primitives to AI agents — so domain experts orchestrate data pipelines without becoming data engineers.
+
+The platform pieces, post-v0.1.0:
+
+1. **MCP server layer** at `packages/mcp/` exposing `list_sources`, `describe_source`, `ingest`, `query`, `get_schema` tools via the MCP protocol. Any MCP client (Claude, Cursor, custom) drives end-to-end pipelines.
+2. **Data catalog with 5-layer context engineering** — every pre-indexed source carries schema semantics, temporal rules, quality notes, cross-source relationship mappings, and operational context. Catalog entries are onboarding docs for AI agents.
+3. **Agent-generated connector pipeline** — for sources not yet pre-indexed, agents read API docs/HTML/PDF, build schema mental models, generate and persist extraction configs. Catalog grows organically; quality-review gates promote vetted configs.
+4. **Server-enforced temporal safety as trust architecture** — `dataset.at_time(...)`, `.between(...)`, `.as_of(...)` return exactly and only what was knowable on the given date; the constraint is structural, not honor-system. This is why quants will trust the platform: they already distrust agents on leakage risk.
+5. **Multi-vertical expansion** — v0.2 weather + MCP server → v0.3 sports prediction markets → v0.4 politics + finance, all on the same temporal-safety layer. New verticals = catalog entries + adapters, not rewrites.
+6. **Architecture: core + wrappers** — `tradewinds` (Python SDK, what we're building now), `packages/mcp/` (MCP server wrapper, v0.2+), and an eventual CLI wrapper (v1.1+).
+
+This vision lives in `phase-05-mcp-data-platform/VISION.md`. It depends on Phase 2 (TimePoint/KnowledgeView/LeakageDetector + catalog adapters + canonical schemas) and Phase 4 (CI/CD trusted publishing). It does NOT change v0.1.0 scope; Phase 5 begins only after v0.1.0 ships.
+
 ## Requirements
 
 ### Validated

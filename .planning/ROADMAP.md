@@ -9,6 +9,7 @@ tradewinds is a local-first Python SDK for Kalshi NHIGH/NLOW prediction-market w
 **Phase Numbering:**
 - Integer phases (1, 2, 3, 4): Planned milestone work for v0.1.0
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
+- Phase 5+: Post-v0.1 milestones (v0.2+)
 
 Decimal phases appear between their surrounding integers in numeric order.
 
@@ -17,6 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 2: Core Primitives + Catalog Adapters** - Temporal/schema/validator/leakage/exceptions/formats in `core/`; four weather adapters + Kalshi market specs; two-lane parallel build (Days 5.5-9)
 - [ ] **Phase 3: Mode 2 Integration + Migration Gate** - `research()` Mode 2 source-explicit dispatch; cache enhancements (filelock, LST-skip, volatile window); contract tests + `mostly-light/kxhigh` dry-run migration parity (Days 10-11)
 - [ ] **Phase 4: Coverage, Docs, CI/CD, Release** - ≥90% branch coverage on `core/`; <5-min quickstart timed by external person; GH Actions trusted publishing; two-tier fixture set; v0.1.0 ship (Days 12-14)
+- [ ] **Phase 5: MCP Data Platform** [v0.2+] - MCP server layer at `packages/mcp/` exposing tradewinds as MCP-native data platform for prediction market ML; 5-layer context-engineered data catalog; agent-generated connector pipeline; server-enforced temporal safety; multi-vertical expansion (weather → sports → politics → finance). See [`phase-05-mcp-data-platform/VISION.md`](phase-05-mcp-data-platform/VISION.md). **Post-v0.1.0; depends on Phase 2 (temporal primitives + catalog) and Phase 4 (CI/CD).**
 
 ## Phase Details
 
@@ -86,10 +88,23 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. Two-tier fixture structure in place: `tests/fixtures/parity/` (frozen, never re-recorded — 5 byte-equivalent fixtures from Day 0.5) + `tests/fixtures/drift/` (weekly cron-rotated, compared against parity set); rotation policy documented in `tests/fixtures/README.md`
 **Plans**: TBD
 
+### Phase 5: MCP Data Platform [v0.2+]
+**Goal**: Transform tradewinds from a single-vertical SDK into an MCP-native data platform for prediction market ML. Ship the MCP server layer at `packages/mcp/`, a 5-layer context-engineered data catalog, an agent-generated connector pipeline for sources not yet pre-indexed, server-enforced temporal safety (no agent bypass), and the first multi-vertical expansion beyond weather.
+**Depends on**: Phase 2 (TimePoint/KnowledgeView/LeakageDetector + catalog adapters + canonical schemas), Phase 4 (CI/CD trusted publishing carries forward)
+**Requirements**: MCP-01..MCP-10 (see REQUIREMENTS.md § Phase 5: MCP Data Platform)
+**Vision doc**: [`phase-05-mcp-data-platform/VISION.md`](phase-05-mcp-data-platform/VISION.md)
+**Success Criteria** (what must be TRUE):
+  1. MCP server at `packages/mcp/` exposes `list_sources`, `describe_source`, `ingest`, `query`, `get_schema` tools via the MCP protocol; AI agents (Claude, Cursor, any MCP client) can connect and orchestrate end-to-end data pipelines without touching the Python SDK directly
+  2. Data catalog stores 5-layer context per pre-indexed source (schema semantics, temporal rules, quality notes, relationship mappings, operational context); catalog entries function as agent-readable onboarding docs; pre-indexed coverage for the top 10 prediction-market data sources at v0.2 ship
+  3. Agent-generated connector pipeline accepts API docs/HTML/PDF and produces stored extraction configs; generated configs are persisted so re-use by the next agent is incremental, not from scratch; quality-review gate promotes vetted configs to pre-indexed status
+  4. Temporal safety is SERVER-ENFORCED: `dataset.at_time("2024-01-15")`, `.between(...)`, `.as_of(...)` return exactly and only what was knowable on that date; the constraint is structural (no agent bypass possible); deterministic replay holds — same query + same cutoff = identical results
+  5. Multi-vertical expansion proven: at least one non-weather vertical (sports prediction markets) ships as catalog entries + adapters atop the same temporal-safety layer; full provenance chain auditable for every transformation; schema contracts validated on both ingest and query
+**Plans**: TBD
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → **1.5** → 2 → 3 → 4 (decimal phases sequence between their surrounding integers per the numbering convention above).
+Phases execute in numeric order: 1 → **1.5** → 2 → 3 → 4 → **(v0.1.0 ship)** → 5 (decimal phases sequence between their surrounding integers per the numbering convention above; Phase 5 is post-v0.1 and starts the v0.2+ milestone).
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -98,3 +113,4 @@ Phases execute in numeric order: 1 → **1.5** → 2 → 3 → 4 (decimal phases
 | 2. Core Primitives + Catalog Adapters | 0/TBD | Not started (PLAN.md committed) | - |
 | 3. Mode 2 Integration + Migration Gate | 0/TBD | Not started | - |
 | 4. Coverage, Docs, CI/CD, Release | 0/TBD | Not started | - |
+| 5. MCP Data Platform [v0.2+] | 0/TBD | Vision committed (VISION.md); PLAN.md pending v0.1.0 ship | - |
