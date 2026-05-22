@@ -103,7 +103,7 @@ Requirements for initial release. Each maps to a roadmap phase.
 - [ ] **POLY-04**: TBD — `schema.polymarket_settlement_record.v1` with both °C and °F + `resolution_source_type` enum.
 - [ ] **POLY-05**: TBD — `polymarket_settle()` engine using `daily_extremes()` resolution; per-source finalization delay; tolerance-based `data_quality_alert`.
 
-(Note: `POLY-01` repurposed from `Sprint 0.5+` to Phase 3.3 v0.1.0 scope as of 2026-05-22 expansion. Its earlier "v0.x+ as demand emerges" entry in "Markets API Client (Sprint 0.5+)" below is superseded; see Phase 3.3 in ROADMAP.)
+(Note: `POLY-01` repurposed from `Sprint 0.5+` to Phase 3.3 v0.1.0 scope as of 2026-05-22 expansion. The earlier "v0.x+ as demand emerges" entry under "Markets API Client (Sprint 0.5+)" was removed 2026-05-22 as part of this fix; see Phase 3.3 in ROADMAP.)
 
 ### QC Engine (Phase 3.4)
 
@@ -181,7 +181,6 @@ Acknowledged but not in v0.1.0 roadmap.
 ### Markets API Client (Sprint 0.5+)
 
 - **KALSHI-01**: Kalshi API client (orderbook, fills, settlement queries)
-- **POLY-01**: Polymarket adapter (out of v0.1 scope; v0.x+ as demand emerges)
 
 ### Preprocessing (Sprint 0.5+)
 
