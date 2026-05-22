@@ -3,7 +3,7 @@ phase: 02-core-primitives-catalog-adapters
 type: execute
 duration: Days 5-9 (5 working days)
 waves: 5
-depends_on: [phase-01-v0141-parity-lift]
+depends_on: [phase-01-v0141-parity-lift, phase-01-5-fetcher-optimization-cross-source-parallelism]
 branch_strategy: per-wave; sub-branch per parallel task; codex review before merge to wave branch; wave merges to merged-vision
 requirements:
   - CORE-01
