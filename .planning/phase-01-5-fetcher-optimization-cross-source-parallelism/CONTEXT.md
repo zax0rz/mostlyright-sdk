@@ -19,7 +19,7 @@ Make ingestion fast by default. Two work streams, strictly serial after Phase 1 
 
 **Stream A — Lift `mostlyright` PR #85 (commit `cf9eb85`, 2026-05-12):**
 1. **PERF-01** IEM ASOS + MOS chunk size monthly → 365 days; calendar-aligned via shared `_iem_chunks()` helper (leap-year safe).
-2. **PERF-02** Cache-poison fix: IEM CSV staging cache filename encodes full chunk window (`iem_{start_iso}_{end_iso}_{suffix}.csv`) inside `_fetchers/iem_asos.py`. `skip_cache=True` AND `chunk_end > today_utc` routes to `_partial` namespace that backfill never reads. Distinct from `tradewinds.weather.cache`'s path-based parquet cache (untouched).
+2. **PERF-02** Cache-poison fix: IEM CSV staging cache filename encodes full chunk window (`iem_{start_iso}_{end_iso}_{suffix}.csv`) inside `_fetchers/iem_asos.py`. `skip_cache=True` **OR** `chunk_end > today_utc` (where `today_utc = datetime.now(timezone.utc).date()`, NOT `date.today()`) routes to `_partial` namespace that backfill never reads. Distinct from `tradewinds.weather.cache`'s path-based parquet cache (untouched). *(Corrected 2026-05-22 per RESEARCH.md from PR #85 diff: condition is `OR` not `AND`; cutoff is UTC-aware to avoid Europe/Prague silent-data-loss bug.)*
 3. **PERF-03** `HTTP_TIMEOUT` 30s → 60s in `_internal._http` to match the 12x payload increase per chunk.
 
 **Stream B — New code:**
@@ -73,8 +73,13 @@ Make ingestion fast by default. Two work streams, strictly serial after Phase 1 
 - **Codex effort:** `high` (the only tier per REVIEW-DISCIPLINE.md — no second-pass at lower effort).
 - **Reverts after Phase 1.5:** Phase 2 returns to standard 2-reviewer panel per REVIEW-DISCIPLINE.md.
 
+### IEM rate-limit risk added 2026-05-22 (from RESEARCH.md)
+- **NEW RISK:** IEM published a 1-sec per-IP throttle on 2026-04-21. Both ASOS (`asos.py`) and IEM-MOS (`cli.py`) hit `mesonet.agron.iastate.edu` — likely shared IP budget. The `max_workers=4` design includes TWO IEM threads, each `time.sleep(1.0)`-paced, totaling 2 req/sec to IEM — possibly 503-triggering.
+- **Decision deferred to PERF-05 spike output:** three mitigation paths documented in RESEARCH.md (A: shared IEM lock; B: drop to max_workers=3 and serialize IEM ASOS+MOS; C: rely on spike empirical data to size the gap). Planner MUST sequence PERF-05 (spike) BEFORE PERF-04 (parallelism) so the spike informs the choice.
+
 ### Claude's Discretion
 - Exact name of the shared `_iem_chunks()` helper and its module location (likely `tradewinds.weather._fetchers._iem_chunks` or `tradewinds.weather._fetchers.iem_asos`). Planner picks.
+- Whether Phase 1.5 creates a `research.py` stub or postpones to Phase 3 — RESEARCH.md recommends Phase 1.5 stub with "Phase 3 will extend" docstring. Planner confirms.
 - Granularity of plan files: planner decides 1 plan vs N (recommendation: separate plan per PERF requirement OR group lift-from-PR-85 into one + parallelism into one + spike into one).
 - Whether the rate-limit spike (PERF-05) runs before or after PERF-04 within Phase 1.5. Both orderings work; planner picks based on dependency analysis.
 - Exact assertion form for `wall_time ≤ max(per_source_t_i) * 1.2` (pytest fixture + timing helper, or inline `time.monotonic()` + assert). Planner picks.
