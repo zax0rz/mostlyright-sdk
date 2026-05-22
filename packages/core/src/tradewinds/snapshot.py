@@ -342,7 +342,9 @@ class DataSnapshot:
             "settlement_date": self.settlement_date,
             "window_start_utc": self.window_start_utc,
             "window_end_utc": self.window_end_utc,
-            "observations": [o.to_dict() for o in self.observations],
+            # Codex P2 fix: use storage shape (no computed fields) so to_dict()
+            # matches snapshot.json schema (observation.json has additionalProperties: false).
+            "observations": [o.to_storage_dict() for o in self.observations],
             "climate": self.climate,
             "climate_unavailable_reason": self.climate_unavailable_reason,
             "cli_publication_delay_hours": self.cli_publication_delay_hours,

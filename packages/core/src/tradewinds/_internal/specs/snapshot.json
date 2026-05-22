@@ -49,6 +49,13 @@
       "minimum": 0,
       "description": "Hours after midnight LST when the NWS CLI report is assumed to be published. Default 10.0 (10 AM ET next day per Kalshi contract spec)."
     },
+    "climate_unavailable_reason": {
+      "description": "Free-text reason climate is null (e.g., 'not yet published', 'CLI server error'). Null when climate is populated. Codex review fix: schema previously had additionalProperties:false but to_dict() emits this field unconditionally.",
+      "oneOf": [
+        { "type": "string" },
+        { "type": "null" }
+      ]
+    },
     "forecasts": {
       "description": "Forecasts available at as_of (most-recent model run before as_of). Null until sprint2/forecast-backfill is merged.",
       "oneOf": [
