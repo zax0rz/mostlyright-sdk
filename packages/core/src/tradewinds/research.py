@@ -1,0 +1,541 @@
+"""``tradewinds.research`` - local-first orchestrator for the v0.14.1 ``pairs()`` join.
+
+Public surface:
+
+.. code-block:: python
+
+    tradewinds.research(
+        station="KNYC",
+        from_date="2025-01-06",
+        to_date="2025-01-12",
+    )
+
+returns a Pandas ``DataFrame`` with one row per settlement date in the
+inclusive range, joining:
+
+- NWS CLI climate observations (the Kalshi NHIGH/NLOW settlement source),
+- METAR observation aggregates from IEM ASOS, AWC (when in-window), and GHCNh,
+- Kalshi-style market close timestamp (4:30 PM LST in UTC).
+
+This is byte-equivalent to ``mostlyright==0.14.1``'s ``client.pairs(...)``
+for the 5 Phase 1 parity fixtures (verified in Wave 3).
+
+NEW module - replaces the v0.14.1 ``client.pairs()`` hosted-API call with a
+local pipeline composed from Wave 1 outputs:
+
+- :func:`tradewinds.snapshot.settlement_date_for` for LST settlement-date math.
+- :func:`tradewinds.weather._fetchers.iem_asos.download_iem_asos`,
+  ``iem_cli.download_cli``, ``ghcnh.download_ghcnh``, ``awc.fetch_awc_metars``
+  for raw-data acquisition.
+- :func:`tradewinds.weather._iem.parse_iem_file`,
+  ``_ghcnh.parse_ghcnh_file``, ``_climate.parse_cli_response``,
+  ``_awc.awc_to_observation`` for parsing.
+- :func:`tradewinds._internal.merge.merge_observations` /
+  ``merge_climate`` for per-key dedup with v0.14.1 priority rules.
+- :func:`tradewinds.weather.cache.read_cache` / ``write_cache`` /
+  ``read_climate_cache`` / ``write_climate_cache`` for the local-first
+  parquet cache (skips current LST month/year automatically).
+- :func:`tradewinds._internal._pairs.build_pairs` and ``pairs_to_dataframe``
+  for the actual row assembly (LIFTED verbatim from v0.14.1 ``pairs.py``).
+
+Phase 1 scope (Wave 2): ``include_forecast=False`` only. Forecast wiring
+ships in Phase 3 (multi-forecast live path). Calling with
+``include_forecast=True`` raises ``NotImplementedError`` so users do not
+silently get a stale stub.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+from datetime import UTC, datetime, timedelta
+from datetime import date as _date
+from pathlib import Path
+from typing import Any
+
+from tradewinds._internal._pairs import (
+    build_pairs,
+    date_range,
+    pairs_to_dataframe,
+)
+from tradewinds._internal._stations import STATIONS, StationInfo
+from tradewinds.snapshot import (
+    _station_code_normalized,
+    settlement_date_for,
+)
+
+logger = logging.getLogger(__name__)
+
+# AWC live serves at most ~168 hours (7 days). The PLAN.md task spec
+# (Phase 1 Wave 2 Task 2.1) gates AWC fetches to months that overlap that
+# window - older months are IEM-ASOS + GHCNh only because AWC simply will
+# not return their observations.
+_AWC_LOOKBACK_HOURS = 168
+
+
+def _resolve_station(station: str) -> StationInfo:
+    """Resolve ``station`` (e.g. ``"KNYC"`` or ``"NYC"``) to ``StationInfo``.
+
+    Accepts both the 3-letter NWS code (``"NYC"``) and the 4-letter ICAO
+    (``"KNYC"``) - they are normalized via
+    :func:`tradewinds.snapshot._station_code_normalized` (strips a leading
+    ``"K"`` when the input is exactly 4 letters).
+
+    Raises:
+        ValueError: when ``station`` is not in the 20-station Phase 1
+            registry. Phase 3.1 expands this to international stations;
+            in v0.1.0 the orchestrator refuses unknown stations rather than
+            silently returning empty data.
+    """
+    code = _station_code_normalized(station)
+    info = STATIONS.get(code)
+    if info is None:
+        raise ValueError(
+            f"Unknown station: {station!r} (normalized {code!r}). "
+            f"v0.1.0 supports the 20 Kalshi-traded stations from "
+            f"``tradewinds._internal._stations.STATIONS``."
+        )
+    return info
+
+
+def _sources_root() -> Path:
+    """Return the root directory for raw-source downloads (IEM CSV, CLI JSON, GHCNh PSV).
+
+    Sits alongside the parquet cache under the same ``TRADEWINDS_CACHE_DIR``
+    (or ``$HOME/.tradewinds/cache/`` fallback) so a single cache wipe clears
+    both layers. ``cache._cache_root()`` is the single source of truth - we
+    deliberately do not duplicate the env-var lookup here.
+    """
+    # Local import to avoid an import cycle at module load (cache imports
+    # from ``tradewinds._internal`` for path validators).
+    from tradewinds.weather.cache import CACHE_VERSION, _cache_root
+
+    return _cache_root() / CACHE_VERSION / "sources"
+
+
+def _month_range(start_iso: str, end_iso: str) -> list[tuple[int, int]]:
+    """Return inclusive list of (year, month) tuples covering ``[start, end]``.
+
+    Both bounds are YYYY-MM-DD ISO strings. Empty result when ``start > end``.
+    """
+    start = _date.fromisoformat(start_iso)
+    end = _date.fromisoformat(end_iso)
+    if start > end:
+        return []
+    out: list[tuple[int, int]] = []
+    y, m = start.year, start.month
+    end_y, end_m = end.year, end.month
+    while (y, m) <= (end_y, end_m):
+        out.append((y, m))
+        m += 1
+        if m == 13:
+            m = 1
+            y += 1
+    return out
+
+
+def _month_window(year: int, month: int) -> tuple[_date, _date]:
+    """Return ``(first_day, last_day)`` of the calendar month."""
+    first = _date(year, month, 1)
+    next_first = _date(year + 1, 1, 1) if month == 12 else _date(year, month + 1, 1)
+    last = next_first - timedelta(days=1)
+    return first, last
+
+
+def _month_overlaps_awc_window(year: int, month: int, *, now: datetime | None = None) -> bool:
+    """True iff the month's UTC range overlaps ``[now - 168h, now]``.
+
+    Used to gate AWC fetches: AWC's ``hours=168`` endpoint only returns the
+    last ~7 days of METARs (see ``spike/SPIKE_REPORT.md``). Months entirely
+    before that window get zero AWC contribution; calling the AWC fetcher
+    for them is wasted I/O and noisy logs.
+    """
+    now = now or datetime.now(UTC)
+    window_start = now - timedelta(hours=_AWC_LOOKBACK_HOURS)
+    month_start = datetime(year, month, 1, tzinfo=UTC)
+    next_y, next_m = (year + 1, 1) if month == 12 else (year, month + 1)
+    month_end = datetime(next_y, next_m, 1, tzinfo=UTC)
+    return month_start < now and month_end > window_start
+
+
+def _observed_at_month(observed_at: str) -> tuple[int, int] | None:
+    """Extract ``(year, month)`` from an ``"YYYY-MM-DDTHH:MM:SSZ"`` timestamp.
+
+    Returns ``None`` if the input is malformed (callers drop the row).
+    Pure string slice - no datetime parsing - matches v0.14.1 which compared
+    ISO strings lexicographically and never round-tripped through datetime.
+    """
+    if not observed_at or len(observed_at) < 7:
+        return None
+    try:
+        return int(observed_at[0:4]), int(observed_at[5:7])
+    except ValueError:
+        return None
+
+
+def _fetch_iem_month(
+    info: StationInfo,
+    year: int,
+    month: int,
+    dest_dir: Path,
+) -> list[dict[str, Any]]:
+    """Download + parse IEM ASOS METAR + SPECI rows for one (station, year, month).
+
+    Fetches both ``report_type=3`` (METAR) and ``report_type=4`` (SPECI) so
+    the merge layer can dedupe per-``observation_type`` and the parity-fixture
+    coverage matches v0.14.1's server-side ingest (which gathered both).
+    """
+    # Local import: weather sibling package may not be importable from a
+    # bare ``tradewinds`` install (no ``[parquet]`` extra), but ``research()``
+    # cannot run without it - we let the ImportError surface at call time.
+    from tradewinds.weather._fetchers.iem_asos import download_iem_asos
+    from tradewinds.weather._iem import parse_iem_file
+
+    first, last = _month_window(year, month)
+    rows: list[dict[str, Any]] = []
+    for report_type, override in ((3, "METAR"), (4, "SPECI")):
+        try:
+            paths = download_iem_asos(
+                info,
+                first,
+                last,
+                dest_dir,
+                report_type=report_type,
+            )
+        except Exception as exc:
+            logger.warning(
+                "IEM ASOS download failed for %s %04d-%02d report_type=%d: %s",
+                info.code,
+                year,
+                month,
+                report_type,
+                exc,
+            )
+            continue
+        for p in paths:
+            rows.extend(parse_iem_file(p, observation_type_override=override))
+    return rows
+
+
+def _fetch_awc_for_window(icao: str, hours: int = _AWC_LOOKBACK_HOURS) -> list[dict[str, Any]]:
+    """Fetch AWC METARs for the last ``hours`` and convert to observation rows.
+
+    Returns a list of observation-schema dicts (post-``awc_to_observation``).
+    Empty list when the AWC endpoint is unhappy - matches the fetcher's
+    "never raise, degrade gracefully" contract.
+    """
+    from tradewinds.weather._awc import awc_to_observation
+    from tradewinds.weather._fetchers.awc import fetch_awc_metars
+
+    raw = fetch_awc_metars([icao], hours=hours)
+    out: list[dict[str, Any]] = []
+    for m in raw:
+        obs = awc_to_observation(m)
+        if obs is not None:
+            out.append(obs)
+    return out
+
+
+def _fetch_ghcnh_year(
+    info: StationInfo,
+    year: int,
+    dest_dir: Path,
+) -> list[dict[str, Any]]:
+    """Download + parse a GHCNh PSV for ``(info, year)`` and return rows.
+
+    GHCNh is annual-granularity, so callers cache the parsed rows for the
+    year and slice by month at the caller site.
+    """
+    import httpx
+
+    from tradewinds.weather._fetchers.ghcnh import download_ghcnh
+    from tradewinds.weather._ghcnh import parse_ghcnh_file
+
+    try:
+        path = download_ghcnh(info.ghcnh_id, year, dest_dir)
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 404:
+            logger.info("GHCNh %s %d: no data (404), skipping", info.ghcnh_id, year)
+            return []
+        raise
+    return parse_ghcnh_file(path)
+
+
+def _fetch_observations_range(
+    info: StationInfo,
+    from_date_iso: str,
+    extended_to_iso: str,
+    *,
+    now: datetime | None = None,
+) -> list[dict[str, Any]]:
+    """Return merged, sorted observation rows covering ``[from_date, extended_to]``.
+
+    Per-month flow:
+
+    1. Try the parquet cache (``read_cache``). On hit, extend the result and
+       skip the network round-trip entirely.
+    2. On miss, gather raw rows from IEM ASOS (always), AWC (only when the
+       month overlaps the last 168h), and GHCNh (annual, cached at the
+       per-year layer).
+    3. Merge via :func:`merge_observations` (AWC > IEM > GHCNh priority on
+       ties; first-seen wins at equal priority - v0.14.1 byte-faithful
+       semantics).
+    4. **Pre-sort by ``observed_at`` before caching.** Risk R2 mitigation:
+       float averaging in ``_obs_aggregates`` is non-associative; sorting
+       deterministically keeps the parity fixtures byte-stable.
+    5. Write the cache (``write_cache`` no-ops the current LST month and
+       any ``.live`` source).
+    """
+    from tradewinds.weather.cache import read_cache, write_cache
+
+    sources_root = _sources_root()
+    iem_dir = sources_root / "iem_asos"
+    ghcnh_dir = sources_root / "ghcnh"
+
+    months = _month_range(from_date_iso, extended_to_iso)
+
+    # GHCNh is annual - parse once per year and slice per month.
+    ghcnh_by_year: dict[int, list[dict[str, Any]]] = {}
+    years_needed = sorted({y for y, _ in months})
+    for year in years_needed:
+        ghcnh_by_year[year] = _fetch_ghcnh_year(info, year, ghcnh_dir)
+
+    # AWC is fetched at most once across the whole window. Filter per-month
+    # at the merge site. Skip entirely when no month overlaps the AWC lookback.
+    awc_rows: list[dict[str, Any]] = []
+    if any(_month_overlaps_awc_window(y, m, now=now) for y, m in months):
+        awc_rows = _fetch_awc_for_window(info.icao)
+
+    result: list[dict[str, Any]] = []
+    for year, month in months:
+        cached = read_cache(info.icao, year, month)
+        if cached is not None:
+            result.extend(cached)
+            continue
+
+        iem_rows = _fetch_iem_month(info, year, month, iem_dir)
+
+        ghcnh_month: list[dict[str, Any]] = [
+            r
+            for r in ghcnh_by_year.get(year, [])
+            if r.get("station_code") == info.code
+            and _observed_at_month(r.get("observed_at", "")) == (year, month)
+        ]
+
+        if _month_overlaps_awc_window(year, month, now=now):
+            awc_month = [
+                r
+                for r in awc_rows
+                if r.get("station_code") == info.code
+                and _observed_at_month(r.get("observed_at", "")) == (year, month)
+            ]
+        else:
+            awc_month = []
+
+        from tradewinds._internal.merge import merge_observations
+
+        merged = merge_observations(awc_month + iem_rows + ghcnh_month)
+        # R2 mitigation: deterministic ordering before mean aggregation.
+        merged.sort(key=lambda r: (r.get("observed_at") or "", r.get("source") or ""))
+
+        # write_cache is itself a no-op when (year, month) is the station's
+        # current LST month, so callers do not need to short-circuit here.
+        write_cache(info.icao, year, month, merged, source="iem")
+
+        result.extend(merged)
+
+    return result
+
+
+def _fetch_climate_range(
+    info: StationInfo,
+    from_date_iso: str,
+    to_date_iso: str,
+) -> list[dict[str, Any]]:
+    """Return merged climate rows for the inclusive ``[from_date, to_date]`` years.
+
+    Annual cache layer: one parquet per (station, year). Cache miss triggers
+    one IEM CLI download per year. Parse via
+    :func:`tradewinds.weather._climate.parse_cli_response` then merge via
+    :func:`merge_climate` (highest ``report_type_priority`` with STRICT > -
+    overnight final wins, which IS the Kalshi settlement source).
+    """
+    import httpx
+
+    from tradewinds.weather._climate import parse_cli_response
+    from tradewinds.weather._fetchers.iem_cli import download_cli
+    from tradewinds.weather.cache import read_climate_cache, write_climate_cache
+
+    sources_root = _sources_root()
+    cli_dir = sources_root / "iem_cli"
+
+    start = _date.fromisoformat(from_date_iso)
+    end = _date.fromisoformat(to_date_iso)
+    if start > end:
+        return []
+
+    result: list[dict[str, Any]] = []
+    for year in range(start.year, end.year + 1):
+        cached = read_climate_cache(info.icao, year)
+        if cached is not None:
+            result.extend(cached)
+            continue
+
+        try:
+            path = download_cli(info.icao, year, cli_dir)
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 404:
+                logger.info("IEM CLI %s %d: no data (404), skipping", info.icao, year)
+                continue
+            raise
+
+        try:
+            data = json.loads(path.read_text(encoding="utf-8", errors="replace"))
+        except (OSError, json.JSONDecodeError) as exc:
+            logger.warning(
+                "IEM CLI %s %d: failed to read cache file %s: %s",
+                info.icao,
+                year,
+                path,
+                exc,
+            )
+            continue
+        if not isinstance(data, list):
+            logger.warning(
+                "IEM CLI %s %d: unexpected payload shape %s",
+                info.icao,
+                year,
+                type(data).__name__,
+            )
+            continue
+
+        parsed = parse_cli_response(data, info.code)
+        from tradewinds._internal.merge import merge_climate
+
+        merged = merge_climate(parsed)
+        # write_climate_cache is a no-op for the current LST year - safe to
+        # call unconditionally.
+        write_climate_cache(info.icao, year, merged, source="iem")
+        result.extend(merged)
+
+    return result
+
+
+def research(
+    station: str,
+    from_date: str,
+    to_date: str,
+    *,
+    include_forecast: bool = False,
+    forecast_model: str | None = None,
+    as_dataframe: bool = True,
+    tz_override: str | None = None,
+) -> Any:
+    """Return joined observation + climate + (optional) forecast rows for a date range.
+
+    This is the v0.1.0 public surface for the Phase 1 parity gate: when
+    ``include_forecast=False`` the output is byte-equivalent to
+    ``mostlyright==0.14.1``'s ``client.pairs(station, from_date, to_date)``
+    on the 5 Phase 1 fixtures.
+
+    Args:
+        station: 3-letter NWS code (``"NYC"``) or 4-letter ICAO (``"KNYC"``).
+            Normalized via :func:`_station_code_normalized`. Must be one of
+            the 20 Kalshi-traded stations from
+            :data:`tradewinds._internal._stations.STATIONS`. International
+            expansion lands in Phase 3.1.
+        from_date: Inclusive start (``YYYY-MM-DD`` in LST). Per-station LST
+            settlement-date semantics - see
+            :func:`tradewinds.snapshot.settlement_date_for`.
+        to_date: Inclusive end (``YYYY-MM-DD`` in LST). The observation
+            fetch extends one calendar day past ``to_date`` so the last LST
+            settlement window's pre-midnight UTC tail observations are
+            included.
+        include_forecast: When ``True``, attach forecast columns. **Phase 1
+            scope is ``False`` only**; calling with ``True`` raises
+            :class:`NotImplementedError`. Forecast wiring ships in Phase 3.2
+            (multi-forecast live path).
+        forecast_model: Filter IEM MOS records to this model name before
+            run selection. Passed through to
+            :func:`tradewinds._internal._pairs.build_pairs`. Ignored when
+            ``include_forecast=False``.
+        as_dataframe: When ``True`` (default) return a Pandas DataFrame
+            indexed by ``date``. When ``False`` return the raw
+            ``list[dict]`` rows produced by ``build_pairs``.
+        tz_override: IANA timezone name override for stations not yet in
+            :data:`tradewinds.snapshot._STATION_TZ`. Passed through to
+            settlement-date math; rarely needed for the 20-station Phase 1
+            registry (all entries are covered).
+
+    Returns:
+        DataFrame (or ``list[dict]`` when ``as_dataframe=False``) with one
+        row per settlement date in ``[from_date, to_date]``. Columns:
+
+        ``date`` (index when DataFrame), ``station``, ``cli_high_f``,
+        ``cli_low_f``, ``cli_report_type``, ``obs_high_f``, ``obs_low_f``,
+        ``obs_mean_f``, ``obs_mean_dewpoint_f``, ``obs_max_wind_kt``,
+        ``obs_max_gust_kt``, ``obs_total_precip_in``, ``obs_count``,
+        ``fcst_high_f``, ``fcst_low_f``, ``fcst_model``,
+        ``fcst_issued_at``, ``fcst_pop_6hr_pct``, ``fcst_qpf_6hr_in``,
+        ``market_close_utc``.
+
+        With ``include_forecast=False`` the ``fcst_*`` columns are present
+        with ``None`` values (matches the parity fixtures' null-dtype
+        columns).
+
+    Raises:
+        NotImplementedError: when ``include_forecast=True`` in Phase 1.
+        ValueError: when ``station`` is not in the v0.1.0 registry, or when
+            ``from_date``/``to_date`` are not ISO-8601 dates.
+    """
+    if include_forecast:
+        raise NotImplementedError(
+            "include_forecast=True is not supported in Phase 1 (v0.1.0). "
+            "Forecast wiring lands in Phase 3.2 (multi-forecast live path)."
+        )
+
+    info = _resolve_station(station)
+
+    # Inclusive settlement dates (LST). Validates the ISO format eagerly.
+    dates = date_range(from_date, to_date)
+
+    # Extend the observation fetch one calendar day so the last LST settlement
+    # window's pre-midnight UTC tail is captured. Climate is per-LST-day, so
+    # the climate fetch only needs the original [from, to] year range.
+    extended_to = (_date.fromisoformat(to_date) + timedelta(days=1)).isoformat()
+
+    raw_obs = _fetch_observations_range(info, from_date, extended_to)
+    raw_climate = _fetch_climate_range(info, from_date, to_date)
+
+    # PLAN.md Pitfall-1 fix: group observations by ``settlement_date_for``,
+    # NOT by ``observed_at[:10]`` - the latter would drop the pre-midnight
+    # UTC tail into the wrong LST settlement day.
+    obs_by_date: dict[str, list[dict[str, Any]]] = {d: [] for d in dates}
+    for r in raw_obs:
+        observed_at = r.get("observed_at")
+        if not observed_at:
+            continue
+        settle_date = settlement_date_for(observed_at, info.code, tz_override=tz_override)
+        bucket = obs_by_date.get(settle_date)
+        if bucket is not None:
+            bucket.append(r)
+
+    climate_by_date: dict[str, dict[str, Any] | None] = {}
+    for r in raw_climate:
+        obs_date = r.get("observation_date")
+        if obs_date:
+            climate_by_date[obs_date] = r
+
+    rows = build_pairs(
+        info.code,
+        dates,
+        obs_by_date,
+        climate_by_date,
+        forecasts_by_date=None,  # Phase 1 Wave 2 - Mode 1 only.
+        forecast_model=forecast_model,
+        tz_override=tz_override,
+    )
+    return pairs_to_dataframe(rows) if as_dataframe else rows
+
+
+__all__ = ["research"]

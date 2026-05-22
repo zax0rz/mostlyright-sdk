@@ -22,7 +22,6 @@ __path__ = __import__("pkgutil").extend_path(__path__, __name__)
 
 __version__ = "0.0.1"
 
-# Sprint 0 Day 2: research() function gets re-exported here once Lane V's pairs.py lift lands.
-# from tradewinds.research import research
+from tradewinds.research import research
 
-__all__ = ["__version__"]
+__all__ = ["__version__", "research"]
