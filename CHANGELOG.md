@@ -12,6 +12,20 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) once it ships
 #### Added
 - `tradewinds.weather._fetchers._iem_chunks` — shared calendar-year chunkers
   (`yearly_chunks_inclusive`, `yearly_chunks_exclusive_end`), leap-year-safe.
+- `tradewinds.research._prefetch_sources` — PERF-04 concurrent fan-out of the
+  4 source-fetch operations (IEM ASOS, IEM CLI, GHCNh, AWC) via
+  `concurrent.futures.ThreadPoolExecutor(max_workers=4)`. Implements **Option C**
+  from `.planning/research/SOURCE-LIMITS.md` (no shared `threading.Lock`; each
+  fetcher preserves its own politeness delay; spike confirmed zero 503s at
+  this load). Pitfall 6 timing pattern: `submitted_at[name]` captured
+  immediately after `ex.submit()` so per-source timing measures actual work,
+  not iteration-order accident. Empirical: KNYC 5-year backfill ~50s wall
+  time vs the 720s (12 min) ROADMAP gate.
+- `tests/test_live_perf.py` — `@pytest.mark.live` KNYC 5-year wall-time gate
+  + KMDW other-station regression. Excluded from CI; run manually pre-merge.
+- `spike/source_limits/` — 3 stand-alone CLI scripts characterizing AWC,
+  GHCNh, and IEM concurrent-request behavior; `.planning/research/SOURCE-LIMITS.md`
+  documents the Option-C recommendation grounded in real spike data.
 
 #### Changed
 - **IEM ASOS fetcher now uses 365-day calendar-aligned chunks** (was: monthly).

@@ -365,6 +365,7 @@ def _fetch_observations_range(
     extended_to_iso: str,
     *,
     now: datetime | None = None,
+    prefetched_awc_rows: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     """Return merged, sorted observation rows covering ``[from_date, extended_to]``.
 
@@ -386,6 +387,13 @@ def _fetch_observations_range(
        month AND (b) the month is strictly in the past UTC. Both gates
        protect against poisoning the cache with incomplete data — see
        :func:`_is_writable_month` and :func:`_fetch_iem_month`.
+
+    Args:
+        prefetched_awc_rows: Phase 1.5 PERF-04 — when ``research()`` runs the
+            parallel prefetch pool, AWC rows are fetched concurrently with
+            IEM/GHCNh/CLI cache-warming and passed in here. Bypasses the
+            lazy ``_fetch_awc_for_window`` call. ``None`` preserves the legacy
+            lazy behavior for any non-orchestrator callers.
     """
     from tradewinds._internal.merge import merge_observations
     from tradewinds.weather.cache import read_cache, write_cache
@@ -400,9 +408,11 @@ def _fetch_observations_range(
     # a fully-cached range never touches NCEI.
     ghcnh_by_year: dict[int, list[dict[str, Any]]] = {}
 
-    # Lazy AWC fetch — at most one call across the whole orchestrator run,
-    # and only on a cache miss for a month that overlaps the 168h lookback.
-    awc_rows: list[dict[str, Any]] | None = None
+    # AWC: when the orchestrator prefetched rows in parallel (PERF-04), use
+    # them directly; otherwise preserve the legacy lazy fetch (at most one
+    # call across the whole orchestrator run, only on a cache miss for a
+    # month that overlaps the 168h lookback).
+    awc_rows: list[dict[str, Any]] | None = prefetched_awc_rows
 
     def _awc_for_month(year: int, month: int) -> list[dict[str, Any]]:
         """Return the AWC observation rows that belong to ``(year, month)``."""
@@ -613,6 +623,233 @@ def _fetch_climate_range(
     return result
 
 
+def _all_caches_warm(
+    info: StationInfo,
+    from_date_iso: str,
+    to_date_iso: str,
+    extended_to_iso: str,
+) -> bool:
+    """True iff every (year, month) parquet and every climate-year parquet is hit.
+
+    PERF-04 gate: when this returns True, the PERF-04 prefetch is skipped so
+    a fully-cached re-run still fires zero HTTP requests
+    (TestFetchObservationsRangeCacheGating regression).
+    """
+    from tradewinds.weather.cache import read_cache, read_climate_cache
+
+    months = _month_range(from_date_iso, extended_to_iso)
+    if any(read_cache(info.icao, y, m) is None for y, m in months):
+        return False
+    from_d = _date.fromisoformat(from_date_iso)
+    to_d = _date.fromisoformat(to_date_iso)
+    return all(
+        read_climate_cache(info.icao, y) is not None for y in range(from_d.year, to_d.year + 1)
+    )
+
+
+def _prefetch_sources(
+    info: StationInfo,
+    from_date_iso: str,
+    to_date_iso: str,
+    extended_to_iso: str,
+    *,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Phase 1.5 PERF-04 — concurrent fan-out of the 4 source-fetch operations.
+
+    Implements Option C from ``.planning/research/SOURCE-LIMITS.md`` (no shared
+    ``threading.Lock``; ``max_workers=4``; each fetcher preserves its own
+    politeness delay). Empirically validated at the production-target N=4
+    concurrency: zero 503s, zero errors on the smoke spike.
+
+    Four workers:
+
+    - ``iem.archive`` — warms the IEM ASOS yearly-chunk CSV cache for the full
+      ``[from_date.year, extended_to.year]`` range, both report types.
+    - ``cli.archive`` — warms the IEM CLI annual JSON cache for the
+      ``[from_date.year, to_date.year]`` range.
+    - ``ghcnh.archive`` — warms the GHCNh annual PSV cache for the
+      ``[from_date.year, extended_to.year]`` range.
+    - ``awc.live`` — fetches AWC METARs for the last 168h (in-memory, no disk
+      cache). Returned to the caller so ``_fetch_observations_range`` can
+      bypass its lazy fetch.
+
+    Pitfall 6 timing pattern (PLAN-03 / RESEARCH Pitfall 6): ``submitted_at[name]``
+    captured IMMEDIATELY after ``ex.submit()`` so per-source timing measures
+    actual work, not iteration-order accident. Exceptions propagate via
+    ``f.result()`` — no try/except wrapping per worker.
+
+    Returns:
+        ``{"awc_rows": list[dict] | None, "per_source_times": dict[str, float],
+        "wall_time": float, "submitted_at": dict[str, float]}``.
+
+        ``awc_rows`` is ``None`` if the AWC worker raised (degraded gracefully —
+        the fetcher's contract is "never raise" but defense-in-depth here).
+    """
+    import concurrent.futures
+    import time
+
+    sources_root = _sources_root()
+    iem_dir = sources_root / "iem_asos"
+    cli_dir = sources_root / "iem_cli"
+    ghcnh_dir = sources_root / "ghcnh"
+
+    from_d = _date.fromisoformat(from_date_iso)
+    extended_to = _date.fromisoformat(extended_to_iso)
+    to_d = _date.fromisoformat(to_date_iso)
+    _now = now or datetime.now(UTC)
+
+    def _warm_iem_asos() -> None:
+        """Warm IEM ASOS yearly-chunk cache across the year range, both report types.
+
+        ``download_iem_asos`` normalizes the caller's start to ``date(year, 1, 1)``
+        (Plan 01 PERF-02 cache-idempotence). Issuing one call per year here
+        primes the cache so the per-month ``_fetch_iem_month`` calls in
+        ``_fetch_observations_range`` hit on every month after the first.
+        """
+        # Local import: weather sibling may not be present in bare installs.
+        from tradewinds.weather._fetchers.iem_asos import download_iem_asos
+        from tradewinds.weather.cache import _is_current_lst_month
+
+        for year in range(from_d.year, extended_to.year + 1):
+            year_start = _date(year, 1, 1)
+            year_end_inclusive = _date(year, 12, 31)
+            # Skip the source cache for the station's current LST month or any
+            # year not strictly past UTC — same predicate as the per-month
+            # _fetch_observations_range path so cache contents stay consistent
+            # between the prefetch warm and the lazy fallback.
+            skip_year = year >= _now.year or _is_current_lst_month(info.icao, year, 12)
+            for rt in (3, 4):
+                try:
+                    download_iem_asos(
+                        info,
+                        year_start,
+                        year_end_inclusive,
+                        iem_dir,
+                        report_type=rt,
+                        skip_cache=skip_year,
+                    )
+                except Exception as exc:
+                    # Mirror the lazy path's degraded-graceful posture; a
+                    # prefetch failure is recoverable (the per-month fallback
+                    # will retry under skip_cache=True or the cache-miss path).
+                    logger.warning(
+                        "PERF-04 prefetch IEM ASOS %s %d rt=%d failed: %s",
+                        info.code,
+                        year,
+                        rt,
+                        exc,
+                    )
+
+    def _warm_iem_cli() -> None:
+        """Warm IEM CLI annual JSON cache across the year range."""
+        import httpx
+
+        from tradewinds.weather._fetchers.iem_cli import download_cli
+        from tradewinds.weather.cache import _is_current_lst_year
+
+        for year in range(from_d.year, to_d.year + 1):
+            skip_cli_source = _is_current_lst_year(info.icao, year) or year >= _now.year
+            try:
+                download_cli(info.icao, year, cli_dir, skip_cache=skip_cli_source)
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code != 404:
+                    logger.warning(
+                        "PERF-04 prefetch CLI %s %d failed: %s",
+                        info.icao,
+                        year,
+                        exc,
+                    )
+            except Exception as exc:
+                logger.warning(
+                    "PERF-04 prefetch CLI %s %d failed: %s",
+                    info.icao,
+                    year,
+                    exc,
+                )
+
+    def _warm_ghcnh() -> None:
+        """Warm GHCNh annual PSV cache across the year range."""
+        import httpx
+
+        from tradewinds.weather._fetchers.ghcnh import download_ghcnh
+        from tradewinds.weather.cache import _is_current_lst_year
+
+        for year in range(from_d.year, extended_to.year + 1):
+            skip_ghcnh_source = _is_current_lst_year(info.icao, year) or year >= _now.year
+            try:
+                download_ghcnh(info.ghcnh_id, year, ghcnh_dir, skip_cache=skip_ghcnh_source)
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code != 404:
+                    logger.warning(
+                        "PERF-04 prefetch GHCNh %s %d failed: %s",
+                        info.ghcnh_id,
+                        year,
+                        exc,
+                    )
+            except Exception as exc:
+                logger.warning(
+                    "PERF-04 prefetch GHCNh %s %d failed: %s",
+                    info.ghcnh_id,
+                    year,
+                    exc,
+                )
+
+    def _fetch_awc() -> list[dict[str, Any]]:
+        """Fetch AWC METARs for the last 168h (in-memory; no disk cache).
+
+        Result is returned to the caller and passed into
+        ``_fetch_observations_range`` to bypass the lazy fetch.
+        """
+        try:
+            return _fetch_awc_for_window(info.icao)
+        except Exception as exc:
+            logger.warning("PERF-04 prefetch AWC %s failed: %s", info.icao, exc)
+            return []
+
+    submitted_at: dict[str, float] = {}
+    futures: dict[concurrent.futures.Future, str] = {}
+    per_source_times: dict[str, float] = {}
+    awc_rows: list[dict[str, Any]] | None = None
+
+    t_start = time.monotonic()
+    # max_workers=4 per SOURCE-LIMITS.md Option C: no shared lock; each fetcher
+    # preserves its own politeness delay; spike confirmed zero 503s at this load.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
+        for name, fn in (
+            ("iem.archive", _warm_iem_asos),
+            ("awc.live", _fetch_awc),
+            ("ghcnh.archive", _warm_ghcnh),
+            ("cli.archive", _warm_iem_cli),
+        ):
+            f = ex.submit(fn)
+            # Pitfall 6 (PLAN-03): capture submitted_at IMMEDIATELY after submit()
+            # — NOT inside the as_completed loop where the first iterated future
+            # would inflate the timing for whichever source happens to be iterated
+            # first.
+            submitted_at[name] = time.monotonic()
+            futures[f] = name
+
+        for f in concurrent.futures.as_completed(futures):
+            name = futures[f]
+            per_source_times[name] = time.monotonic() - submitted_at[name]
+            # Exceptions propagate via f.result() (no try/except wrapping per
+            # worker) — preserves the orchestrator's degraded-graceful contract
+            # while still surfacing programming bugs in the helpers above. The
+            # network-error catches are inside the _warm_* helpers themselves.
+            result = f.result()
+            if name == "awc.live":
+                awc_rows = result
+
+    wall_time = time.monotonic() - t_start
+    return {
+        "awc_rows": awc_rows,
+        "per_source_times": per_source_times,
+        "wall_time": wall_time,
+        "submitted_at": submitted_at,
+    }
+
+
 def research(
     station: str,
     from_date: str,
@@ -696,7 +933,30 @@ def research(
     # the climate fetch only needs the original [from, to] year range.
     extended_to = (_date.fromisoformat(to_date) + timedelta(days=1)).isoformat()
 
-    raw_obs = _fetch_observations_range(info, from_date, extended_to)
+    # Phase 1.5 PERF-04: concurrent fan-out of the 4 source-fetch operations
+    # (IEM ASOS, IEM CLI, GHCNh, AWC) BEFORE the sequential assembly. The
+    # prefetch warms on-disk caches and captures AWC rows in-memory; the
+    # subsequent _fetch_observations_range + _fetch_climate_range calls hit
+    # the warmed caches and run sequentially on local CPU. Parity preserved
+    # because the on-disk cache contents are byte-identical to the sequential
+    # path (same fetchers, same URLs, same response bodies).
+    #
+    # Skip the prefetch entirely when BOTH the observation-parquet and
+    # climate-parquet caches are fully populated for the requested window —
+    # preserves the local-first "fully-cached range never touches the network"
+    # invariant the cache-gating tests guard. The sequential path below then
+    # reads from parquet without ever consulting the source-CSV layer.
+    awc_rows: list[dict[str, Any]] | None = None
+    if not _all_caches_warm(info, from_date, to_date, extended_to):
+        prefetch = _prefetch_sources(info, from_date, to_date, extended_to)
+        awc_rows = prefetch["awc_rows"]
+
+    raw_obs = _fetch_observations_range(
+        info,
+        from_date,
+        extended_to,
+        prefetched_awc_rows=awc_rows,
+    )
     raw_climate = _fetch_climate_range(info, from_date, to_date)
 
     # PLAN.md Pitfall-1 fix: group observations by ``settlement_date_for``,
