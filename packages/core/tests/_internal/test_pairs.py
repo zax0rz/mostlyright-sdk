@@ -583,3 +583,61 @@ class TestPairsTzOverride:
         rows = build_pairs("NYC", ["2024-07-04"], {}, {}, tz_override="America/New_York")
         assert len(rows) == 1
         assert set(rows[0]) >= _FCST_KEYS
+
+
+class TestMarketCloseUtcTzOverride:
+    """Iter-6 F1 fix: ``market_close_utc`` must thread ``tz_override``.
+
+    v0.14.1's ``pairs.py`` silently dropped the override in this call,
+    causing two bugs:
+    1. Unknown stations + override crashed inside ``_lst_offset(station)``.
+    2. Known stations with an override used a different LST cutoff than
+       ``settlement_window_utc``, yielding inconsistent forecast-window
+       boundaries.
+
+    Parity impact: zero - all 5 Phase 1 fixtures use registry stations
+    with ``tz_override=None``, so the change is a no-op for the gate.
+    """
+
+    def test_unknown_station_with_override_does_not_crash(self) -> None:
+        """A station not in the registry plus a tz_override must succeed."""
+        # 'ABC' is not in _STATION_TZ; without the fix this raises ValueError.
+        result = market_close_utc("2024-07-04", "ABC", tz_override="America/New_York")
+        assert result == datetime(2024, 7, 4, 21, 30, tzinfo=UTC)
+
+    def test_known_station_override_changes_offset(self) -> None:
+        """A registry station passed with a different override uses the override.
+
+        NYC defaults to America/New_York (UTC-5 LST → 21:30 UTC close).
+        Override to America/Chicago (UTC-6 LST → 22:30 UTC close).
+        """
+        default_close = market_close_utc("2024-07-04", "NYC")
+        override_close = market_close_utc("2024-07-04", "NYC", tz_override="America/Chicago")
+        assert default_close == datetime(2024, 7, 4, 21, 30, tzinfo=UTC)
+        assert override_close == datetime(2024, 7, 4, 22, 30, tzinfo=UTC)
+
+    def test_build_pairs_row_threads_override_to_market_close(self) -> None:
+        """``build_pairs_row`` propagates ``tz_override`` to ``market_close_utc``."""
+        row = build_pairs_row(
+            "2024-07-04",
+            "NYC",
+            [],
+            None,
+            None,
+            tz_override="America/Chicago",
+        )
+        # 4:30 PM CST = 22:30 UTC (not 21:30 UTC that NYC default would produce).
+        assert row["market_close_utc"] == "2024-07-04T22:30:00Z"
+
+    def test_build_pairs_row_unknown_station_with_override(self) -> None:
+        """A station outside the registry now works end-to-end with override."""
+        row = build_pairs_row(
+            "2024-07-04",
+            "ABC",
+            [],
+            None,
+            None,
+            tz_override="America/New_York",
+        )
+        assert row["station"] == "ABC"
+        assert row["market_close_utc"] == "2024-07-04T21:30:00Z"

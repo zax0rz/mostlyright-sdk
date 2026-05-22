@@ -7,9 +7,21 @@
 #   - removed ``pairs_to_toon`` function and the ``from mostlyright._toon import ...``
 #     import it required (TOON serialization deferred to Phase 2 CORE-05; ``research()``
 #     emits DataFrame or list[dict] only in Phase 1).
-#   - no logic changes; the build_pairs / build_pairs_row / _obs_aggregates /
-#     _select_best_run / _aggregate_fcst_temps_* / market_close_utc / date_range /
-#     pairs_to_dataframe surface is byte-faithful to v0.14.1.
+#   - tz_override fix (codex iter-6 F1, 2026-05-22): ``market_close_utc`` accepts
+#     an optional ``tz_override`` and threads it into ``_lst_offset`` so the
+#     market-close calculation matches the settlement-window calculation for
+#     custom stations OR stations passed with an override. v0.14.1's pairs.py
+#     silently dropped the override here, causing ``_lst_offset(station)`` to
+#     raise ``ValueError`` for unknown stations before ``settlement_window_utc``
+#     could honor the override, and yielding inconsistent cutoffs for known
+#     stations with an override. ``build_pairs_row`` now passes the kwarg
+#     through. **Parity impact:** zero - all 5 Phase 1 parity fixtures use
+#     registry stations with ``tz_override=None``, so the only call sites that
+#     change behavior are previously-broken paths (unknown station + override),
+#     not the byte-equivalent parity cases.
+#   - no other logic changes; build_pairs / _obs_aggregates / _select_best_run /
+#     _aggregate_fcst_temps_* / date_range / pairs_to_dataframe surface remains
+#     byte-faithful to v0.14.1.
 """Pre-joined forecast + observation + settlement DataFrame keyed by date.
 
 pairs() returns one row per settlement date, joining:
@@ -50,7 +62,7 @@ _MARKET_CLOSE_HOUR_LST = 16  # 4 PM
 _MARKET_CLOSE_MINUTE_LST = 30  # :30
 
 
-def market_close_utc(date_str: str, station: str) -> datetime:
+def market_close_utc(date_str: str, station: str, *, tz_override: str | None = None) -> datetime:
     """Return the UTC time of the Kalshi market close for a settlement date.
 
     Kalshi NHIGH/NLOW markets typically close at 4:30 PM ET on the day of
@@ -59,13 +71,17 @@ def market_close_utc(date_str: str, station: str) -> datetime:
     Args:
         date_str: Settlement date (YYYY-MM-DD in LST).
         station: Station code.
+        tz_override: IANA timezone name override for stations not in the
+            known registry (matches ``settlement_window_utc``'s contract;
+            kwarg threaded here so both the cutoff and the window agree).
+            v0.14.1 pairs.py dropped this argument; iter-6 F1 restores it.
 
     Returns:
         Aware UTC datetime of market close (4:30 PM LST expressed in UTC).
     """
     from datetime import date as _date
 
-    offset = _lst_offset(station)
+    offset = _lst_offset(station, tz_override=tz_override)
     lst_date = _date.fromisoformat(date_str)
     market_close_lst = datetime(
         lst_date.year,
@@ -245,7 +261,10 @@ def build_pairs_row(
     """
     code = _station_code_normalized(station)
     obs_agg = _obs_aggregates(observations)
-    market_close = market_close_utc(date_str, code)
+    # Iter-6 F1 fix: thread tz_override so the market-close cutoff matches
+    # the settlement-window calculation a few lines below (and so custom
+    # stations using an override do not crash inside _lst_offset).
+    market_close = market_close_utc(date_str, code, tz_override=tz_override)
 
     # Climate: guard against non-dict (e.g. Observation object passed by mistake)
     climate_dict = climate if isinstance(climate, dict) else None
