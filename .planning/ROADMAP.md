@@ -13,7 +13,7 @@ tradewinds is a local-first Python SDK for Kalshi NHIGH/NLOW prediction-market w
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: v0.14.1 Parity Lift** - Day 1 scaffold-prep + lift v0.14.1 parsers/cache; ship 5-fixture byte-equivalent parity gate and alpha1 wheels (Days 1-4)
-- [ ] **Phase 1.5: Fetcher Optimization + Cross-Source Parallelism** [INSERTED 2026-05-22] - Lift mostlyright PR #85 (365-day chunks, cache-poison fix, leap-year + UTC + HTTP_TIMEOUT) + add cross-source parallelism in `research.py` + rate-limit spike for AWC/GHCNh (Days 4.5-5.5, parallelizable with Phase 2 Wave 1)
+- [ ] **Phase 1.5: Fetcher Optimization + Cross-Source Parallelism** [INSERTED 2026-05-22] - Lift mostlyright PR #85 (365-day chunks, cache-poison fix, leap-year + UTC + HTTP_TIMEOUT) + add cross-source parallelism in `research.py` + rate-limit spike for AWC/GHCNh (Days 4.5-5.5). **Sequenced strictly between Phase 1 and Phase 2** — see architect-review notes; co-execution with Phase 2 was rejected.
 - [ ] **Phase 2: Core Primitives + Catalog Adapters** - Temporal/schema/validator/leakage/exceptions/formats in `core/`; four weather adapters + Kalshi market specs; two-lane parallel build (Days 5-9)
 - [ ] **Phase 3: Mode 2 Integration + Migration Gate** - `research()` Mode 2 source-explicit dispatch; cache enhancements (filelock, LST-skip, volatile window); contract tests + `mostly-light/kxhigh` dry-run migration parity (Days 10-11)
 - [ ] **Phase 4: Coverage, Docs, CI/CD, Release** - ≥90% branch coverage on `core/`; <5-min quickstart timed by external person; GH Actions trusted publishing; two-tier fixture set; v0.1.0 ship (Days 12-14)
@@ -35,17 +35,18 @@ Decimal phases appear between their surrounding integers in numeric order.
 ### Phase 1.5: Fetcher Optimization + Cross-Source Parallelism [INSERTED 2026-05-22]
 **Goal**: Make ingestion fast by default. Lift the empirically validated improvements that landed in `mostlyright` PR #85 (commit `cf9eb85`, 2026-05-12) AFTER the v0.14.1 tag we lifted from, and add cross-source parallelism in `research.py`. Verified-or-go-empirical for AWC and GHCNh rate-limit headroom.
 **Depends on**: Phase 1 (parity gate green, alpha1 published — must NOT break Day 3 byte-equivalence)
+**Sequencing**: **Strictly serial after Phase 1, strictly before Phase 2.** Co-execution with Phase 2 Wave 1 was rejected by architect review: both phases touch `_internal/_http.py` import graph (Wave 1 `_v02 → core` git-mv vs PERF-03 timeout bump) — concurrent edits on `merged-vision` guarantee rebase conflicts on parity-fixture test runs.
 **Requirements**: PERF-01, PERF-02, PERF-03, PERF-04, PERF-05
 **Success Criteria** (what must be TRUE):
-  1. **IEM ASOS + MOS chunk size = 365 days** (was monthly). Calendar-aligned via shared `_iem_chunks()` helper (leap-year safe). Empirically validated: 5-year backfill ≤12 min wall time at unchanged 1 req/sec politeness (mostlyright PR #85 measured 10 min for KNYC; allow 20% headroom).
-  2. **Cache filename encodes the full chunk window** (`iem_{start_iso}_{end_iso}_{suffix}.csv`), not just calendar year. `skip_cache=True` AND `chunk_end > today_utc` routes to `_partial` namespace that backfill never reads. Prevents the 3 cache-poisoning paths PR #85 documented (live-sweep poison, H2-then-full-year, current-year-canonical-write).
+  1. **IEM ASOS + MOS chunk size = 365 days** (was monthly). Calendar-aligned via shared `_iem_chunks()` helper (leap-year safe). Empirically validated: **KNYC 5-year backfill ≤12 min** wall time at unchanged 1 req/sec politeness (PR #85 measured 10 min for KNYC; allow 20% headroom for this specific station). Other-station regression check: pick one of {KMDW, KLAX, KMIA} from parity fixtures and confirm backfill completes within station-specific empirical wall time recorded during the Phase 1.5 spike — no fixed cross-station threshold.
+  2. **IEM CSV staging cache filename encodes the full chunk window** (`iem_{start_iso}_{end_iso}_{suffix}.csv`) inside `_fetchers/iem_asos.py` — this is the fetcher-internal raw-CSV staging cache, **distinct from `tradewinds.weather.cache`'s path-based parquet cache** (`v1/observations/{station}/{YYYY}/{MM}.parquet`, untouched by Phase 1.5). `skip_cache=True` AND `chunk_end > today_utc` routes to `_partial` namespace that backfill never reads. Prevents the 3 cache-poisoning paths PR #85 documented.
   3. **`HTTP_TIMEOUT` bumped 30s → 60s** in `_internal._http` to match the 12x payload increase per chunk. Live smoke test: 365-day KNYC ASOS pull completes inside 60s p95.
-  4. **`research.py` orchestrator fires AWC + IEM + GHCNh + NWS CLI concurrently** for the same time window via `concurrent.futures.ThreadPoolExecutor` (max_workers=4, one per source). Merge layer sorts at the end — no parity impact. Verified by recording wall-clock time of a 1-year `research()` call: ≤45% of the sum of sequential per-source wall times (proves parallelism is real, not nominal).
+  4. **`research.py` orchestrator fires AWC + IEM + GHCNh + NWS CLI concurrently** for the same time window via `concurrent.futures.ThreadPoolExecutor` (max_workers=4, one per source). Parallelism check: `wall_time ≤ max(per_source_t_i) * 1.2` (proves no serial stall) — replaces an earlier `≤45% of sum` threshold that architect review caught as mathematically invalid when per-source times are uneven (max-source dominates the sum).
   5. **AWC + GHCNh rate-limit headroom verified** via a one-shot spike committed under `.planning/research/SOURCE-LIMITS.md`. Documents max concurrent connections per source + actual response-size measurements (1-year, 5-year requested where API permits). Spike script kept under `spike/source_limits/` so re-validation in v0.2 is one command.
 
 **Review panel**: 4 reviewers temporarily (codex + python-architect + security + pure-codex-medium) — chunk-size + cache-filename + timeout changes are parity-critical and security-adjacent (HTTP timeout × payload-size attack surface). Per `REVIEW-DISCIPLINE.md`'s lineage note: "v0.2 likely adds security-reviewer + architect as separate roles once the surface grows" — Phase 1.5 hits that threshold sooner.
 
-**Parity gate handling**: chunk-size change is request-pattern only, not merge-output. The 5 parity fixtures captured against v0.14.1 should remain green because the merge layer is chunk-size-agnostic. If any fixture drifts, the gate fails and Phase 1.5 reverts BEFORE Phase 2 starts.
+**Parity gate handling**: chunk size affects request pattern. Merge-output sensitivity is REAL — `_internal/merge/observations.py` uses strict `>` priority comparison (first-row-seen wins on same-priority ties), so row-iteration-order from the fetcher matters at tie boundaries (SPECI-vs-METAR at same `(station, observed_at, observation_type)`, cross-source same-priority). **Mandatory pre-flight before Phase 1.5 merges to `merged-vision`**: re-run all 5 parity fixtures against 365-day-chunked `research()` output. If any fixture drifts, either (a) revert Phase 1.5 chunk-size change, OR (b) change merge to `>=` with deterministic secondary key (`source` then `chunk_start`) and re-validate. Decision is post-spike; phase doesn't merge until parity green.
 
 **Plans**: TBD
 
@@ -88,11 +89,12 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4
+Phases execute in numeric order: 1 → **1.5** → 2 → 3 → 4 (decimal phases sequence between their surrounding integers per the numbering convention above).
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. v0.14.1 Parity Lift | 0/TBD | Not started | - |
-| 2. Core Primitives + Catalog Adapters | 0/TBD | Not started | - |
+| 1. v0.14.1 Parity Lift | 0/TBD | Wave 1 of 4 done (cache + merge + snapshot/_stations on `merged-vision`) | - |
+| 1.5. Fetcher Optimization + Cross-Source Parallelism | 0/TBD | Not started — strictly serial after Phase 1, strictly before Phase 2 | - |
+| 2. Core Primitives + Catalog Adapters | 0/TBD | Not started (PLAN.md committed) | - |
 | 3. Mode 2 Integration + Migration Gate | 0/TBD | Not started | - |
 | 4. Coverage, Docs, CI/CD, Release | 0/TBD | Not started | - |
