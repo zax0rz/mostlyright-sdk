@@ -25,12 +25,16 @@ dependencies = [
     "tzdata; sys_platform == 'win32'",
     # Local parquet cache requires filelock for concurrent process safety
     "filelock>=3.12",
+    # Codex P2 fix (Wave 1.4): pyarrow used at import time in tradewinds.weather.cache
+    # for cache I/O. Cannot live in `parquet` optional extra — default install would
+    # fail to import the cache module.
+    "pyarrow>=17.0",
 ]
 
 [project.optional-dependencies]
-# DataFrame return + parquet read/write
+# DataFrame return values (cache.py uses pyarrow directly; pandas only needed
+# for users who want to convert cache output to DataFrames).
 parquet = [
-    "pyarrow>=17.0",
     "pandas>=2.2",
 ]
 
