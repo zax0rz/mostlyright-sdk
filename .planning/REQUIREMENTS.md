@@ -71,7 +71,68 @@ Requirements for initial release. Each maps to a roadmap phase.
 - [ ] **LINEAGE-02**: Silver-tier append-only ledger at `~/.tradewinds/cache/v1/observations_ledger/{station}/{YYYY}/{MM}.parquet` — rows-per-source long format. Multiple rows per `(station, observed_at)` natural key are valid silver-tier outputs (one row per contributing source). Gold-tier view materialized at read time via `ObservationMergePolicy.apply()`; cache reader applies merge transparently for Mode 1 callers. QC sidecar root at `~/.tradewinds/cache/v1/observations_qc/{station}/{YYYY}/{MM}.parquet`.
 - [ ] **LINEAGE-03**: `tradewinds.core.merge.query_time_merge(rows, policy=LIVE_V1)` materializes single-row-per-`(station, observed_at, observation_kind)` gold using strict-`>` priority on `source_priority` (AWC=3, IEM=2, GHCNh=1) with secondary deterministic key `(source_received_at, ingestion_id)`. Property-tested via Hypothesis: same `silver_df` produces byte-identical `gold_df` across invocations AND across row-shuffle permutations. Backward-compat shim `merge_observations(rows)` retained as thin wrapper calling `query_time_merge(rows, LIVE_V1)`.
 - [ ] **LINEAGE-04**: Pre-2.1 cache files (v0.14.1 30-column single-row-per-key shape) auto-upgrade on read via `_legacy_v014_to_v021_migration()` adapter (primary path) OR via explicit `python -m tradewinds.weather.cache_migration` CLI (predictable-timing path). Legacy `as_of_time = observed_at + 1h`; `ingestion_id = legacy:{sha256(relative_path)[:16]}:{row_idx:08d}` (machine-deterministic, lifted from mostlyright Vu Sprint-2o-s8 R4 M-7 mitigation). Legacy files renamed to `.parquet.legacy`, NEVER deleted — no silent data loss.
-- [ ] **LINEAGE-05**: QC sidecar parquet root `~/.tradewinds/cache/v1/observations_qc/{station}/{YYYY}/{MM}.parquet` ships with schema + writer hooks in Phase 2.1. **NO QC rules registered or executed in v0.1.0** — sidecar directories exist but files only get written once the 8-rule alpha QC engine lands (deferred to v0.2 per mostlyright Sprint 2o-s4 scope cut). Phase 2.1 smoke test asserts the sidecar directory layout exists and is writable.
+- [ ] **LINEAGE-05**: QC sidecar parquet root `~/.tradewinds/cache/v1/observations_qc/{station}/{YYYY}/{MM}.parquet` ships with schema + writer hooks in Phase 2.1. **NO QC rules registered or executed in Phase 2.1** — sidecar directories exist but files only get written once Phase 3.4 lands the QC engine + 5-8 alpha rules. Phase 2.1 smoke test asserts the sidecar directory layout exists and is writable. **Sequencing**: Phase 2.1 ships schema + path layout + writer hooks; Phase 3.4 ships engine + rules that consume them (forecast QC + climate QC stay deferred to v0.2 per Phase 3.4 out-of-scope).
+
+### International (Phase 3.1)
+
+> Detailed requirements (each with verifiable success criterion) land via `/gsd-plan-phase 3.1`. Stubs registered here so ROADMAP `Requirements: INTL-01..05` references resolve to canonical IDs and traceability checks pass. Scope per ROADMAP Phase 3.1 `### Phase 3.1` block.
+
+- [ ] **INTL-01**: TBD — defined when Phase 3.1 PLAN.md is written. Scope: STATIONS registry grows 20 US → 60 with 40 international ICAOs + per-station IANA timezones.
+- [ ] **INTL-02**: TBD — `_per_event_station.resolve_station_for_event()` handles Paris LFPG/LFPB split + `polymarket_city_stations.json` catalog ships.
+- [ ] **INTL-03**: TBD — `daily_extremes()` rollup with station-local IANA calendar day; whole-°C international, 0.1°C US.
+- [ ] **INTL-04**: TBD — `schema.daily_extreme.v1` registered.
+- [ ] **INTL-05**: TBD — catalog adapter wiring honors per-source priority for non-US (IEM > GHCNh; AWC US-only).
+
+### NWP Forecast (Phase 3.2)
+
+> Stubs for ROADMAP Phase 3.2. Detailed requirements via `/gsd-plan-phase 3.2`.
+
+- [ ] **NWP-01**: TBD — `schema.forecast_nwp.v1` (36 cols + sidecar) with 7-model enum (incl. 4 ECMWF reserved) + 8-archive-mirror enum.
+- [ ] **NWP-02**: TBD — 3 Tier-1 adapters (HRRR/GFS/NBM) via `_nwp_idx.py` + cfgrib + BallTree.
+- [ ] **NWP-03**: TBD — `client.forecast_nwp(...)` SDK surface with 37-col fixed-shape DataFrame.
+- [ ] **NWP-04**: TBD — 12 QC rules per model run at fetch time, populate `qc_status`.
+- [ ] **NWP-05**: TBD — `tradewinds-weather[nwp]` optional extra; per-station per-month cache layout.
+- [ ] **NWP-06**: TBD — ECMWF Tier-2 + historical NWP backfill explicitly OUT of v0.1.
+
+### Polymarket (Phase 3.3)
+
+> Stubs for ROADMAP Phase 3.3. Detailed requirements via `/gsd-plan-phase 3.3`. Activates `POLY-01` (formerly Sprint 0.5+ deferral; now Phase 3.3 v0.1.0 scope).
+
+- [ ] **POLY-02**: TBD — `PolymarketClient` over Gamma API (no auth) with rate limit + retries + dedup.
+- [ ] **POLY-03**: TBD — `polymarket_discover()` + Tier 0/1/2/3 resolver; drops 11 US slugs.
+- [ ] **POLY-04**: TBD — `schema.polymarket_settlement_record.v1` with both °C and °F + `resolution_source_type` enum.
+- [ ] **POLY-05**: TBD — `polymarket_settle()` engine using `daily_extremes()` resolution; per-source finalization delay; tolerance-based `data_quality_alert`.
+
+(Note: `POLY-01` repurposed from `Sprint 0.5+` to Phase 3.3 v0.1.0 scope as of 2026-05-22 expansion. Its earlier "v0.x+ as demand emerges" entry in "Markets API Client (Sprint 0.5+)" below is superseded; see Phase 3.3 in ROADMAP.)
+
+### QC Engine (Phase 3.4)
+
+> Stubs for ROADMAP Phase 3.4. Detailed requirements via `/gsd-plan-phase 3.4`.
+
+- [ ] **QC-01**: TBD — `QCEngine` + bitfield rule registry ported from `mostlyright/src/mostlyright/qc/engine.py`.
+- [ ] **QC-02**: TBD — `ObservationQCSidecar.write_entries()` populates the LINEAGE-05 sidecar layout.
+- [ ] **QC-03**: TBD — IEM-vs-GHCNh crosscheck with per-field tolerances.
+- [ ] **QC-04**: TBD — Alpha rule set (5-8 rules: physics bounds + crosscheck + METAR-corruption).
+- [ ] **QC-05**: TBD — `research()` Mode 2 surfaces `obs_qc_status` bitfield (Mode 1 stays parity-clean).
+
+### Transforms (Phase 3.5)
+
+> Stubs for ROADMAP Phase 3.5. Detailed requirements via `/gsd-plan-phase 3.5`.
+
+- [ ] **TRANSFORM-01**: TBD — `tradewinds.transforms.{lag, diff, diff2, rolling}` ported from `mostlyright/src/mostlyright/transforms.py`.
+- [ ] **TRANSFORM-02**: TBD — `tradewinds.transforms.calendar_features` with station-local tz (sin/cos cyclical encoding).
+- [ ] **TRANSFORM-03**: TBD — Cross-features (spread, wind_chill, heat_index) with documented physics-formula domains.
+- [ ] **TRANSFORM-04**: TBD — `tradewinds.preprocessing.{clip_outliers, iem_crosscheck}` ported from `mostlyright/src/mostlyright/preprocessing.py`.
+
+### Discovery + Settlement + Versioning (Phase 3.6)
+
+> Stubs for ROADMAP Phase 3.6. Detailed requirements via `/gsd-plan-phase 3.6`.
+
+- [ ] **DISCOVERY-01**: TBD — `tradewinds.discovery.availability(station)` returns per-source coverage record.
+- [ ] **DISCOVERY-02**: TBD — `tradewinds.discovery.{climate_gaps, describe, feature_catalog}` ports.
+- [ ] **DISCOVERY-03**: TBD — `feature_catalog()` returns structured `FeatureSpec` list (Kalshi-specific annotations defer to Phase 5 PLAN-02).
+- [ ] **SETTLEMENT-API-01**: TBD — `tradewinds.settlement.{settlement_date_for, settlement_window_utc}` at top level with DST-edge-case tests.
+- [ ] **VERSION-01**: TBD — `tradewinds.DataVersion` reproducibility token: `(content_hash, schema_version, lift_sha, fetched_at)`. Property test: same args + same DataVersion → byte-identical DataFrame.
 
 ### Packaging
 
@@ -202,7 +263,13 @@ Per-requirement phase assignments (filled by roadmapper 2026-05-21).
 | LINEAGE-02 | Phase 2.1 | Pending |
 | LINEAGE-03 | Phase 2.1 | Pending |
 | LINEAGE-04 | Phase 2.1 | Pending |
-| LINEAGE-05 | Phase 2.1 | Pending |
+| LINEAGE-05 | Phase 2.1 | Pending (engine deferred to Phase 3.4) |
+| INTL-01..05 | Phase 3.1 | Stubbed (defined per /gsd-plan-phase 3.1) |
+| NWP-01..06 | Phase 3.2 | Stubbed (defined per /gsd-plan-phase 3.2) |
+| POLY-02..05 | Phase 3.3 | Stubbed (defined per /gsd-plan-phase 3.3); POLY-01 repurposed from Sprint-0.5+ |
+| QC-01..05 | Phase 3.4 | Stubbed (defined per /gsd-plan-phase 3.4) |
+| TRANSFORM-01..04 | Phase 3.5 | Stubbed (defined per /gsd-plan-phase 3.5) |
+| DISCOVERY-01..03, SETTLEMENT-API-01, VERSION-01 | Phase 3.6 | Stubbed (defined per /gsd-plan-phase 3.6) |
 | PKG-01 | Phase 4 | Pending |
 | PKG-02 | Phase 1 | Pending |
 | PKG-03 | Phase 2 | Pending |
