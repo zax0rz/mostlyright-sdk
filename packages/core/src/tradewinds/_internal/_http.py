@@ -6,6 +6,7 @@ Used by both GHCNh and IEM download runners.
 from __future__ import annotations
 
 import logging
+import os
 import time
 from pathlib import Path
 
@@ -50,5 +51,9 @@ def download_with_retry(url: str, dest: Path) -> None:
             response.raise_for_status()
             tmp = dest.with_suffix(dest.suffix + ".tmp")
             tmp.write_bytes(response.content)
-            tmp.rename(dest)
+            # Rob H1: `os.replace` is atomic on both POSIX and Windows
+            # (unlike `Path.rename`, which raises FileExistsError on
+            # Windows when dest exists -- so `skip_cache=True` re-downloads
+            # broke on Windows). Matches `cache.py::_atomic_write` style.
+            os.replace(tmp, dest)
             return

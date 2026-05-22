@@ -26,7 +26,12 @@ import time
 from pathlib import Path
 
 import httpx
+from filelock import FileLock
 from tradewinds._internal._http import download_with_retry
+
+# Match cache.py's lock timeout so concurrent downloaders surface deadlocks
+# rather than hanging forever.
+_IEM_CLI_LOCK_TIMEOUT_SECONDS = 30
 
 log = logging.getLogger(__name__)
 
@@ -86,37 +91,51 @@ def download_cli(
 
     url = f"{IEM_CLI_BASE_URL}?station={station_icao}&year={year}"
 
-    # Stage the raw response next to the final cache file. download_with_retry
-    # writes atomically (.tmp then rename), so a partial fetch never appears
-    # under raw_path. We then unwrap and rewrite to dest atomically.
-    raw_path = dest_dir / station_icao / f"cli_{year}_raw.json"
-    download_with_retry(url, raw_path)
+    # Rob H5: two concurrent `download_cli` calls for the same station-year
+    # both write to the same `cli_<year>_raw.json` staging file and could read
+    # each other's partial data. Serialize the entire download -> read ->
+    # parse -> atomic-replace block on a FileLock keyed on the final dest.
+    # Lock sidecar lives next to dest; `filelock` creates it if missing.
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    lock = FileLock(str(dest) + ".lock", timeout=_IEM_CLI_LOCK_TIMEOUT_SECONDS)
+    with lock:
+        # Re-check under the lock: another process may have just finished
+        # writing the same dest while we were blocked on the lock acquisition.
+        if dest.exists() and not skip_cache:
+            return dest
 
-    try:
-        raw_text = raw_path.read_text(encoding="utf-8", errors="replace")
-        data = json.loads(raw_text)
+        # Stage the raw response next to the final cache file.
+        # download_with_retry writes atomically (.tmp then rename), so a
+        # partial fetch never appears under raw_path. We then unwrap and
+        # rewrite to dest atomically.
+        raw_path = dest_dir / station_icao / f"cli_{year}_raw.json"
+        download_with_retry(url, raw_path)
 
-        if isinstance(data, dict) and "results" in data:
-            data = data["results"]
+        try:
+            raw_text = raw_path.read_text(encoding="utf-8", errors="replace")
+            data = json.loads(raw_text)
 
-        if not isinstance(data, list):
-            raise ValueError(
-                f"Unexpected IEM CLI response shape for {station_icao} {year}: "
-                f"{type(data).__name__}"
-            )
+            if isinstance(data, dict) and "results" in data:
+                data = data["results"]
 
-        tmp = dest.with_suffix(".json.tmp")
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        tmp.write_text(json.dumps(data))
-        # Codex W3B P2: Path.replace() overwrites existing files atomically on
-        # both POSIX and Windows; Path.rename() raises FileExistsError on
-        # Windows when dest exists, breaking the skip_cache=True force-refresh path.
-        tmp.replace(dest)
-    finally:
-        # Always drop the raw staging file: on success it's redundant with
-        # dest; on failure it's a partial/corrupt response we don't want to
-        # leak back as a fake cache hit on the next call.
-        raw_path.unlink(missing_ok=True)
+            if not isinstance(data, list):
+                raise ValueError(
+                    f"Unexpected IEM CLI response shape for {station_icao} {year}: "
+                    f"{type(data).__name__}"
+                )
+
+            tmp = dest.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps(data))
+            # Codex W3B P2: Path.replace() overwrites existing files
+            # atomically on both POSIX and Windows; Path.rename() raises
+            # FileExistsError on Windows when dest exists, breaking the
+            # skip_cache=True force-refresh path.
+            tmp.replace(dest)
+        finally:
+            # Always drop the raw staging file: on success it's redundant
+            # with dest; on failure it's a partial/corrupt response we don't
+            # want to leak back as a fake cache hit on the next call.
+            raw_path.unlink(missing_ok=True)
 
     time.sleep(IEM_CLI_POLITE_DELAY)
     return dest

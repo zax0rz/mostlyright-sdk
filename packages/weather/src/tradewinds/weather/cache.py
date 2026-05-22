@@ -276,9 +276,12 @@ def read_cache(station: str, year: int, month: int) -> list[dict] | None:
     Returns ``None`` when:
         - the cache file does not exist
         - (year, month) is the station's current LST month (file may be stale)
+        - a concurrent ``invalidate()`` removes the file between the
+          ``exists()`` check and the read (treated as cache-miss; the caller
+          re-fetches transparently)
 
     Returns ``list[dict]`` otherwise. The list is materialised eagerly from
-    pyarrow — callers can iterate freely without holding a file handle.
+    pyarrow - callers can iterate freely without holding a file handle.
     """
     if _is_current_lst_month(station, year, month):
         logger.debug(
@@ -291,7 +294,14 @@ def read_cache(station: str, year: int, month: int) -> list[dict] | None:
     path = cache_path(station, year, month)
     if not path.exists():
         return None
-    table = pq.read_table(path)
+    # Rob H3: TOCTOU race - `invalidate()` (lock-guarded) can unlink the file
+    # between `exists()` and `pq.read_table()`. Treat the race as a cache miss
+    # rather than locking reads (which would serialize all concurrent readers).
+    # Catches FileNotFoundError + pyarrow.lib.ArrowIOError (both subclass OSError).
+    try:
+        table = pq.read_table(path)
+    except (FileNotFoundError, OSError):
+        return None
     return table.to_pylist()
 
 
@@ -362,6 +372,9 @@ def read_climate_cache(station: str, year: int) -> list[dict] | None:
     Returns ``None`` when:
         - the cache file does not exist
         - ``year`` is the station's current LST year (file may be stale)
+        - a concurrent ``invalidate_climate()`` removes the file between the
+          ``exists()`` check and the read (cache-miss semantics; caller
+          re-fetches transparently)
     """
     if _is_current_lst_year(station, year):
         logger.debug(
@@ -373,7 +386,11 @@ def read_climate_cache(station: str, year: int) -> list[dict] | None:
     path = climate_cache_path(station, year)
     if not path.exists():
         return None
-    table = pq.read_table(path)
+    # Rob H3: same TOCTOU race as read_cache (see comment there).
+    try:
+        table = pq.read_table(path)
+    except (FileNotFoundError, OSError):
+        return None
     return table.to_pylist()
 
 
