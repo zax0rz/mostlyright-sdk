@@ -980,7 +980,7 @@ provides-extras = ["parquet"]
 [[package]]
 name = "tradewinds-workspace"
 version = "0.0.0"
-source = { editable = "." }
+source = { virtual = "." }
 dependencies = [
     { name = "tradewinds" },
     { name = "tradewinds-markets" },

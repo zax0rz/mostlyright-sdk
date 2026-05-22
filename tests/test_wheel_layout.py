@@ -8,13 +8,14 @@ The three-package split relies on Python's implicit namespace-package
 ``__init__.py``, the first one installed would shadow the others and
 ``import tradewinds.weather`` would break depending on install order.
 
-We build each named package individually (mirrors the founder publish flow
-in PLAN.md Task 4.2 which runs ``uv publish`` per package, not
-``--all-packages``). This intentionally excludes the workspace-root
-``tradewinds-workspace`` wheel that ``uv build --all-packages`` would
-otherwise leave in ``dist/`` — the workspace is a meta-package and is not
-published. The test asserts ``dist/`` contains EXACTLY the three named
-wheels after a clean build (codex Wave 4 iter-1 HIGH).
+We build with ``uv build --all-packages`` (the command PLAN.md Task 4.1
+verifies and Task 4.2 prepares for publish). This used to emit a 4th
+``tradewinds_workspace-0.0.0`` wheel from the workspace root; the root
+pyproject now sets ``[tool.uv] package = false`` so the workspace is
+recognized as not-a-publishable-package, and ``--all-packages`` returns
+exactly the three publishable wheels. This test guards both halves:
+the wheel-layout invariants AND the absence of a workspace artifact
+(codex Wave 4 iter-2 HIGH on tests/test_wheel_layout.py).
 """
 
 from __future__ import annotations
@@ -29,18 +30,15 @@ import pytest
 ROOT = Path(__file__).parents[1]
 DIST = ROOT / "dist"
 
-# The three packages we actually publish. Ordered to match the publish flow.
-PUBLISHED_PACKAGES = ("tradewinds", "tradewinds-weather", "tradewinds-markets")
-
 
 @pytest.fixture(scope="module")
 def built_wheels() -> dict[str, Path]:
-    """Build the three published packages once per module run.
+    """Build the workspace once per module run via ``uv build --all-packages``.
 
     Cleans ``dist/`` first so a stale 0.0.1 wheel cannot satisfy the
-    pattern globs below and mask a missed version bump, AND so a
-    previously-built ``tradewinds_workspace-*.whl`` from a prior
-    ``uv build --all-packages`` run does not slip into the wheel
+    pattern globs below and mask a missed version bump, AND so any
+    previously-built ``tradewinds_workspace-*.whl`` from before the
+    ``[tool.uv] package = false`` fix cannot slip into the wheel
     inventory.
     """
     if shutil.which("uv") is None:  # pragma: no cover - dev tooling gate
@@ -50,13 +48,12 @@ def built_wheels() -> dict[str, Path]:
             wheel.unlink()
         for sdist in DIST.glob("*.tar.gz"):
             sdist.unlink()
-    for pkg in PUBLISHED_PACKAGES:
-        subprocess.run(
-            ["uv", "build", "--package", pkg],
-            cwd=ROOT,
-            check=True,
-            capture_output=True,
-        )
+    subprocess.run(
+        ["uv", "build", "--all-packages"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+    )
     wheels = list(DIST.glob("*.whl"))
     by_name: dict[str, Path] = {}
     for wheel in wheels:
