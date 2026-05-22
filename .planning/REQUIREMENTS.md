@@ -65,6 +65,14 @@ Requirements for initial release. Each maps to a roadmap phase.
 - [ ] **PERF-04**: `research.py` orchestrator fires AWC + IEM + GHCNh + NWS CLI concurrently for the same time window (4 parallel workers, one per source). Parallelism check: 1-year `research()` wall time ≤ `max(per_source_t_i) * 1.2` (proves no serial stall). Replaces an earlier `≤45% of sum` threshold that was mathematically invalid when per-source times are uneven (slowest-source dominates the sum).
 - [ ] **PERF-05**: AWC + GHCNh rate-limit headroom empirically verified in a one-shot spike committed under `.planning/research/SOURCE-LIMITS.md` + `spike/source_limits/`. Documents max concurrent connections + response sizes (1-year, 5-year) per source.
 
+### Lineage (Phase 2.1)
+
+- [ ] **LINEAGE-01**: Canonical `schema.observation_ledger.v1` registered with 9 additive nullable lineage columns (`parser_name`, `parser_version`, `ingestion_id`, `as_of_time`, `source_received_at`, `qc_status`, `observation_kind`, `provenance`, `observation_quality` enum `{clean, flagged, suspect}`) on top of the v0.14.1 30-field observation schema. Natural key: `(station, observed_at, source, parser_name, as_of_time, ingestion_id)` — rows-per-source long format. Source enum reserves `ncei` for forward-compat (registered but never written in v0.1.0). QC sidecar schema `schema.observation_qc.v1` registered alongside (writer hooks ship; no rules registered in v0.1).
+- [ ] **LINEAGE-02**: Silver-tier append-only ledger at `~/.tradewinds/cache/v1/observations_ledger/{station}/{YYYY}/{MM}.parquet` — rows-per-source long format. Multiple rows per `(station, observed_at)` natural key are valid silver-tier outputs (one row per contributing source). Gold-tier view materialized at read time via `ObservationMergePolicy.apply()`; cache reader applies merge transparently for Mode 1 callers. QC sidecar root at `~/.tradewinds/cache/v1/observations_qc/{station}/{YYYY}/{MM}.parquet`.
+- [ ] **LINEAGE-03**: `tradewinds.core.merge.query_time_merge(rows, policy=LIVE_V1)` materializes single-row-per-`(station, observed_at, observation_kind)` gold using strict-`>` priority on `source_priority` (AWC=3, IEM=2, GHCNh=1) with secondary deterministic key `(source_received_at, ingestion_id)`. Property-tested via Hypothesis: same `silver_df` produces byte-identical `gold_df` across invocations AND across row-shuffle permutations. Backward-compat shim `merge_observations(rows)` retained as thin wrapper calling `query_time_merge(rows, LIVE_V1)`.
+- [ ] **LINEAGE-04**: Pre-2.1 cache files (v0.14.1 30-column single-row-per-key shape) auto-upgrade on read via `_legacy_v014_to_v021_migration()` adapter (primary path) OR via explicit `python -m tradewinds.weather.cache_migration` CLI (predictable-timing path). Legacy `as_of_time = observed_at + 1h`; `ingestion_id = legacy:{sha256(relative_path)[:16]}:{row_idx:08d}` (machine-deterministic, lifted from mostlyright Vu Sprint-2o-s8 R4 M-7 mitigation). Legacy files renamed to `.parquet.legacy`, NEVER deleted — no silent data loss.
+- [ ] **LINEAGE-05**: QC sidecar parquet root `~/.tradewinds/cache/v1/observations_qc/{station}/{YYYY}/{MM}.parquet` ships with schema + writer hooks in Phase 2.1. **NO QC rules registered or executed in v0.1.0** — sidecar directories exist but files only get written once the 8-rule alpha QC engine lands (deferred to v0.2 per mostlyright Sprint 2o-s4 scope cut). Phase 2.1 smoke test asserts the sidecar directory layout exists and is writable.
+
 ### Packaging
 
 - [ ] **PKG-01**: Three PyPI distributions publish at v0.1.0: `tradewinds`, `tradewinds-weather`, `tradewinds-markets`
@@ -190,6 +198,11 @@ Per-requirement phase assignments (filled by roadmapper 2026-05-21).
 | PERF-03 | Phase 1.5 | Pending |
 | PERF-04 | Phase 1.5 | Pending |
 | PERF-05 | Phase 1.5 | Pending |
+| LINEAGE-01 | Phase 2.1 | Pending |
+| LINEAGE-02 | Phase 2.1 | Pending |
+| LINEAGE-03 | Phase 2.1 | Pending |
+| LINEAGE-04 | Phase 2.1 | Pending |
+| LINEAGE-05 | Phase 2.1 | Pending |
 | PKG-01 | Phase 4 | Pending |
 | PKG-02 | Phase 1 | Pending |
 | PKG-03 | Phase 2 | Pending |
