@@ -43,7 +43,7 @@ uv build                                   # build all three packages
 ## Data + parity rules
 
 - **Source priority (LIVE_V1 observations):** AWC > IEM > GHCNh. NCEI excluded from live (latency).
-- **Climate LIVE_V1:** `source_filter={iem, acis}`, NO source_priority, sort key `(-report_type_priority, source_received_at, ingestion_id)`. The file `policies_climate.py` in monorepo-v0.14.1 states: any drift here invalidates every historical Kalshi NHIGH/NLOW settlement. Treat as load-bearing.
+- **Climate LIVE_V1:** `source_filter={iem, acis}`, NO source_priority. Dedup by `(station_code, observation_date)`: keep highest `report_type_priority` with STRICT `>` (not `>=`), first-seen wins at equal priority. Byte-faithful port of `_dedup_climate_rows` from `monorepo-v0.14.1/ingest/storage/parquet.py:477-494` (there is NO separate `policies_climate.py` file in v0.14.1). Lives at [`packages/core/src/tradewinds/_internal/merge/climate.py`](packages/core/src/tradewinds/_internal/merge/climate.py). Any drift here invalidates every historical Kalshi NHIGH/NLOW settlement. Treat as load-bearing.
 - **Any change to merge logic MUST update parity fixtures** in `tests/fixtures/parity/`.
 - **v0.14.1 contract:** `research(station, from_date, to_date)` returns byte-equivalent output to `mostlyright==0.14.1`'s `client.pairs(...)`. Columns: `date, station, cli_high_f, cli_low_f, obs_high_f, obs_low_f, obs_high_at, obs_low_at` (+ `fcst_*` if `include_forecast=True`).
 - **Lift source pinned to v0.14.1 tag.** All "lift from monorepo" instructions refer to `../monorepo-v0.14.1/` (git worktree from the v0.14.1 tag), NOT monorepo head (which is at v0.17.0 with diverged behavior — Open-Meteo removal, settlement_v1 intake, etc.).
