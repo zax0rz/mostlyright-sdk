@@ -293,3 +293,37 @@ class TestDownloadCliRange:
         assert len(paths) == 2
         assert paths[0] == cached
         assert paths[1] == tmp_path / "KNYC" / "cli_2021.json"
+
+
+# ---------------------------------------------------------------------------
+# Station-string boundary validation (Rob PR #2 C1/H8)
+# ---------------------------------------------------------------------------
+class TestStationBoundaryValidation:
+    """``download_cli`` + ``download_cli_range`` reject path-traversal payloads.
+
+    No HTTP mock - validation must fail BEFORE any request is built.
+    """
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            "../evil",
+            "..",
+            "../../../tmp/evil",
+            "KNYC/../etc",
+            "KNYC/etc",
+            "KNYC\\windows",
+            "KNYC\x00",
+            "KNYC\n",
+            "K NYC",
+            "knyc",
+        ],
+    )
+    def test_download_cli_rejects_traversal(self, tmp_path: Path, payload: str) -> None:
+        with pytest.raises(ValueError, match="STATION_CODE_RE"):
+            download_cli(payload, 2024, tmp_path)
+
+    @pytest.mark.parametrize("payload", ["../evil", "KNYC/etc", "knyc"])
+    def test_download_cli_range_rejects_traversal(self, tmp_path: Path, payload: str) -> None:
+        with pytest.raises(ValueError, match="STATION_CODE_RE"):
+            download_cli_range(payload, 2023, 2024, tmp_path)

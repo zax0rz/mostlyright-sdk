@@ -357,3 +357,44 @@ class TestDownloadIemAsos:
                 tmp_path,
                 report_type=3,
             )
+
+
+# ---------------------------------------------------------------------------
+# Station-code boundary validation (Rob PR #2 C1/H8)
+# ---------------------------------------------------------------------------
+class TestStationBoundaryValidation:
+    """``download_iem_asos`` rejects path-traversal via ``station.code``.
+
+    ``StationInfo.code`` is supposed to be a curated ICAO from the registry,
+    but defense-in-depth a check at the URL/path boundary catches any
+    registry corruption or mis-instantiation. No HTTP mock - validation must
+    fail BEFORE any request is built.
+    """
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            "../evil",
+            "..",
+            "../../../tmp/evil",
+            "NYC/../etc",
+            "NYC/etc",
+            "NYC\\windows",
+            "NYC\x00",
+            "NYC\n",
+            "N YC",
+            "nyc",  # lowercase rejected
+        ],
+    )
+    def test_download_iem_asos_rejects_traversal(self, tmp_path: Path, payload: str) -> None:
+        from tradewinds.weather._fetchers.iem_asos import download_iem_asos
+
+        bad = _make_station(code=payload, icao="KNYC")
+        with pytest.raises(ValueError, match="STATION_CODE_RE"):
+            download_iem_asos(
+                bad,
+                date(2025, 1, 1),
+                date(2025, 1, 31),
+                tmp_path,
+                report_type=3,
+            )

@@ -1,4 +1,12 @@
-"""TOON v3.0 encoder — Token-Oriented Object Notation.
+# Lifted from monorepo-v0.14.1/src/mostlyright/_toon.py
+# Source SHA: 514fcdab227e845145ca32b989355647466231d9
+# Lift date: 2026-05-22
+# Modifications:
+#   - ruff-clean ambiguous-unicode (RUF002/003): replace EN DASH with
+#     HYPHEN-MINUS in comments and docstrings. No code-path change.
+#     The U+2028/U+2029 in the regex character classes are PRESERVED
+#     (functional — they are part of the TOON spec's quoting trigger set).
+"""TOON v3.0 encoder - Token-Oriented Object Notation.
 
 Encodes JSON-compatible Python values to TOON format for LLM/AI agent
 consumers. Reduces token count ~60-70% vs JSON for tabular weather data.
@@ -7,9 +15,6 @@ Encoder-only. No decoder. Pure Python, no external dependencies.
 Deterministic: same input always produces identical output.
 
 Spec: https://github.com/toon-format/spec (v3.0 Working Draft)
-
-Lifted verbatim from mostlyright v0.15.0 → mostlyright-mcp wave-1-core →
-tradewinds._v02 per design doc §F.
 """
 
 from __future__ import annotations
@@ -26,7 +31,9 @@ __all__ = ["encode", "encode_tabular"]
 _SAFE_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_.]*$")
 
 # String quoting triggers: colon, quote, backslash, brackets, braces, control chars.
-_NEEDS_QUOTE_CHARS_RE = re.compile(r'[:\\"\'\[\]\{\}\x00-\x1f\x7f\x85\u2028\u2029]')
+# U+2028 LINE SEPARATOR / U+2029 PARAGRAPH SEPARATOR are part of the trigger
+# set per TOON spec; written as Python escape sequences (NOT literal chars).
+_NEEDS_QUOTE_CHARS_RE = re.compile("[:\\\\\"'\\[\\]\\{\\}\\x00-\\x1f\\x7f\\x85\u2028\u2029]")
 
 # Numeric-like pattern (could be parsed as a number).
 _NUMERIC_LIKE_RE = re.compile(r"^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$")
@@ -42,11 +49,11 @@ _INDENT = "  "  # 2 spaces per spec
 def _format_number(n: int | float) -> str:
     """Format number per TOON canonical rules.
 
-    - NaN/Infinity → "null"
-    - -0 → "0"
-    - Integer form when fractional part is zero (1.0 → "1")
-    - No trailing fractional zeros (1.50 → "1.5")
-    - No exponent notation (1e6 → "1000000")
+    - NaN/Infinity -> "null"
+    - -0 -> "0"
+    - Integer form when fractional part is zero (1.0 -> "1")
+    - No trailing fractional zeros (1.50 -> "1.5")
+    - No exponent notation (1e6 -> "1000000")
     """
     if isinstance(n, float):
         if math.isnan(n) or math.isinf(n):
@@ -58,7 +65,7 @@ def _format_number(n: int | float) -> str:
         s = repr(n)
         if "e" in s or "E" in s:
             # Expand scientific notation via Decimal for full precision.
-            # Extreme values (1e308, 5e-324) produce 300+ chars — intentional.
+            # Extreme values (1e308, 5e-324) produce 300+ chars - intentional.
             # Correctness over brevity: settlement data must round-trip exactly.
             d = Decimal(s)
             s = format(d, "f")
@@ -91,13 +98,12 @@ def _needs_quoting(s: str, delimiter: str) -> bool:
         return True
     if delimiter in s:
         return True
-    if _NEEDS_QUOTE_CHARS_RE.search(s):  # noqa: SIM103 — lifted verbatim
-        return True
-    return False
+    return bool(_NEEDS_QUOTE_CHARS_RE.search(s))
 
 
-# Control chars that have no TOON escape sequence — stripped on output.
-_UNSUPPORTED_CTRL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\x85\u2028\u2029]")
+# Control chars that have no TOON escape sequence - stripped on output.
+# U+2028/U+2029 included via Python escape (NOT literal chars in source).
+_UNSUPPORTED_CTRL_RE = re.compile("[\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f\\x7f\\x85\u2028\u2029]")
 
 
 def _quote_string(s: str) -> str:
@@ -122,7 +128,7 @@ def _quote_string(s: str) -> str:
 
 
 def _format_key(key: str) -> str:
-    """Format object key — unquoted if safe, quoted otherwise."""
+    """Format object key - unquoted if safe, quoted otherwise."""
     if not isinstance(key, str):
         raise TypeError(f"TOON keys must be strings, got {type(key).__name__}: {key!r}")
     if _SAFE_KEY_RE.match(key):
@@ -141,7 +147,7 @@ def _encode_scalar(value: Any, delimiter: str) -> str:
         return "null"
     if isinstance(value, bool):
         return "true" if value else "false"
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         return _format_number(value)
     if isinstance(value, str):
         if _needs_quoting(value, delimiter):
@@ -174,7 +180,7 @@ def _is_tabular(items: list[Any]) -> bool:
             return False
     for item in items:
         for v in item.values():
-            if v is not None and not isinstance(v, (str, int, float, bool)):
+            if v is not None and not isinstance(v, str | int | float | bool):
                 return False
     return True
 
@@ -209,7 +215,7 @@ def _encode_tabular_rows(items: list[Any], key: str, indent: int) -> str:
     """Encode tabular array: key[N]{col1,col2,...}: with CSV-like rows.
 
     Critical: column order comes from first row's keys. Every subsequent
-    row is indexed by those column names — never row.values().
+    row is indexed by those column names - never row.values().
     """
     columns = list(items[0].keys())
     prefix = _INDENT * indent
@@ -219,7 +225,7 @@ def _encode_tabular_rows(items: list[Any], key: str, indent: int) -> str:
     col_header = ",".join(_format_key(c) for c in columns)
     header = f"{prefix}{key}[{len(items)}]{{{col_header}}}:"
 
-    # Data rows — iterate columns[i] for every row.
+    # Data rows - iterate columns[i] for every row.
     rows: list[str] = []
     for item in items:
         vals = [_encode_scalar(item[col], ",") for col in columns]
@@ -268,7 +274,7 @@ def _encode_expanded_list(items: list[Any], key: str, indent: int) -> str:
                     lines.append(f"{cont_prefix}{rl.lstrip()}")
             else:
                 lines.append(f"{item_prefix}- {fk}: {_encode_scalar(fv, ',')}")
-            # Remaining keys at indent+2 — always emitted regardless of
+            # Remaining keys at indent+2 - always emitted regardless of
             # first key's type.
             for rk in keys[1:]:
                 rv = item[rk]
@@ -279,9 +285,7 @@ def _encode_expanded_list(items: list[Any], key: str, indent: int) -> str:
                 elif isinstance(rv, list):
                     lines.append(_encode_array_field(rv, frk, indent + 2))
                 else:
-                    lines.append(
-                        f"{_INDENT * (indent + 2)}{frk}: {_encode_scalar(rv, ',')}"
-                    )
+                    lines.append(f"{_INDENT * (indent + 2)}{frk}: {_encode_scalar(rv, ',')}")
         else:
             lines.append(f"{item_prefix}- {_encode_scalar(item, ',')}")
     return "\n".join(lines)
@@ -292,7 +296,7 @@ def _encode_array_field(items: list[Any], key: str, indent: int) -> str:
     if not items:
         return f"{_INDENT * indent}{key}[0]:"
     # Check if all items are primitives (not dicts/lists).
-    all_primitive = all(not isinstance(v, (Mapping, list)) for v in items)
+    all_primitive = all(not isinstance(v, Mapping | list) for v in items)
     if all_primitive:
         return _encode_primitive_array(items, key, indent)
     if _is_tabular(items):
@@ -308,10 +312,10 @@ def _encode_array_field(items: list[Any], key: str, indent: int) -> str:
 def encode(value: Any) -> str:
     """Encode any JSON-compatible Python value to TOON v3.0 string.
 
-    - dict/Mapping → TOON object
-    - list of uniform dicts → tabular TOON with default name "rows"
-    - list of primitives → inline array (root)
-    - scalar → scalar string
+    - dict/Mapping -> TOON object
+    - list of uniform dicts -> tabular TOON with default name "rows"
+    - list of primitives -> inline array (root)
+    - scalar -> scalar string
     """
     if isinstance(value, Mapping):
         return _encode_object(value, 0)
@@ -321,7 +325,7 @@ def encode(value: Any) -> str:
         if _is_tabular(value):
             return _encode_tabular_rows(value, "rows", 0)
         # All-primitive root list.
-        all_primitive = all(not isinstance(v, (Mapping, list)) for v in value)
+        all_primitive = all(not isinstance(v, Mapping | list) for v in value)
         if all_primitive:
             return _encode_primitive_array(value, "rows", 0)
         return _encode_expanded_list(value, "rows", 0)
@@ -333,7 +337,7 @@ def encode_tabular(rows: Sequence[Mapping[str, Any]], name: str = "rows") -> str
 
     Accepts plain dicts (from parsers), Observation.to_storage_dict(),
     or any Mapping[str, Any]. This matches the dominant representation
-    in the pipeline — producers emit dict[str, Any], not model instances.
+    in the pipeline - producers emit dict[str, Any], not model instances.
     """
     items = list(rows)
     if not items:

@@ -5,7 +5,7 @@
 #   - import-rename: mostlyright.snapshot -> tradewinds.snapshot
 #   - import-rename: mostlyright.models.observation -> tradewinds._internal.models.observation
 #   - import-rename: mostlyright.versioning -> tradewinds._internal.versioning
-#   - to_toon test gated behind skipif until tradewinds._internal._toon is lifted
+#   - to_toon test runs unconditionally; tradewinds._internal._toon is in-tree
 """Tests for src/tradewinds/snapshot.py — DataSnapshot + settlement window logic.
 
 TDD: Tests written FIRST. Implementation follows.
@@ -13,7 +13,6 @@ TDD: Tests written FIRST. Implementation follows.
 
 from __future__ import annotations
 
-import importlib.util
 from datetime import UTC, datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
@@ -32,17 +31,6 @@ from tradewinds.snapshot import (
     settlement_date_for,
     settlement_window_utc,
 )
-
-
-def _has_toon_module() -> bool:
-    try:
-        return importlib.util.find_spec("tradewinds._internal._toon") is not None
-    except ModuleNotFoundError:
-        return False
-
-
-_HAS_TOON = _has_toon_module()
-
 
 # ---------------------------------------------------------------------------
 # Helper factories
@@ -472,11 +460,13 @@ class TestBuildSnapshot:
         assert len(loaded["observations"]) == 1
         assert loaded["data_version"] == "2024-07-04T10:00:00Z"
 
-    @pytest.mark.skipif(
-        not _HAS_TOON,
-        reason="tradewinds._internal._toon not yet lifted; to_toon() raises ImportError.",
-    )
     def test_to_toon_returns_string(self) -> None:
+        """Always runs; tradewinds._internal._toon is in-tree (no find_spec gating).
+
+        Rob PR #2 C3: previously gated behind ``find_spec`` so CI never
+        invoked ``to_toon()`` even when the module was missing - CI green
+        could ship a runtime ImportError. This test must always execute.
+        """
         snap = build_snapshot(
             station="NYC",
             as_of="2024-07-04T20:00:00Z",

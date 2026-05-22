@@ -20,11 +20,20 @@ dependencies = [
     "httpx>=0.27",
     "jsonschema>=4.21",
     "tzdata; sys_platform == 'win32'",
-    # Weather data lives in the sibling package; core re-exports research()
-    "tradewinds-weather",
+    # NOTE: `tradewinds-weather` is INTENTIONALLY NOT in runtime deps.
+    # Listing it here creates a runtime cycle (core <-> weather) that defeats
+    # the three-package split — see .planning/REQUIREMENTS.md RESEARCH-05.
+    # Users who want `tradewinds.research()` install `tradewinds[research]`
+    # (or `tradewinds-weather` directly, which depends on core transitively).
 ]
 
 [project.optional-dependencies]
+# Pull in the sibling weather package so `tradewinds.research()` works without
+# a separate `pip install tradewinds-weather`. Lazy import inside research()
+# means the dep is only required at call time, not at `import tradewinds`.
+research = [
+    "tradewinds-weather",
+]
 # DataFrame return + parquet cache. Matches v0.14.1's [parquet] extra.
 parquet = [
     "pyarrow>=17.0",

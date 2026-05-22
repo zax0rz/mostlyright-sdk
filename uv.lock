@@ -890,7 +890,6 @@ source = { editable = "packages/core" }
 dependencies = [
     { name = "httpx" },
     { name = "jsonschema" },
-    { name = "tradewinds-weather" },
     { name = "tzdata", marker = "sys_platform == 'win32'" },
 ]
 
@@ -899,6 +898,9 @@ parquet = [
     { name = "pandas" },
     { name = "pyarrow" },
 ]
+research = [
+    { name = "tradewinds-weather" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -906,10 +908,10 @@ requires-dist = [
     { name = "jsonschema", specifier = ">=4.21" },
     { name = "pandas", marker = "extra == 'parquet'", specifier = ">=2.2" },
     { name = "pyarrow", marker = "extra == 'parquet'", specifier = ">=17.0" },
-    { name = "tradewinds-weather", editable = "packages/weather" },
+    { name = "tradewinds-weather", marker = "extra == 'research'", editable = "packages/weather" },
     { name = "tzdata", marker = "sys_platform == 'win32'" },
 ]
-provides-extras = ["parquet"]
+provides-extras = ["research", "parquet"]
 
 [[package]]
 name = "tradewinds-markets"
