@@ -239,7 +239,20 @@ def _fetch_iem_month(
             continue
         success_count += 1
         for p in paths:
-            rows.extend(parse_iem_file(p, observation_type_override=override))
+            # Phase 1.5 PERF-01 boundary filter: ``download_iem_asos`` now returns
+            # yearly chunks (one CSV covering all of ``year``). Without filtering,
+            # the per-month merge loop in ``_fetch_observations_range`` would see
+            # Jan-Dec IEM rows mixed with the month's AWC/GHCNh slice, which
+            # changes the merge composition (and therefore tie-break order on
+            # strict-> priority comparisons) at month boundaries. Filtering parsed
+            # rows back to ``(year, month)`` here restores the exact merge input
+            # set the monthly-chunker era produced — preserves the 5-fixture parity
+            # gate. The yearly-vs-monthly perf win is in the network layer (one
+            # request per year, not 12); orchestrator restructuring to a year-at-
+            # a-time fetch loop is Plan 03 territory (PERF-04).
+            for row in parse_iem_file(p, observation_type_override=override):
+                if _observed_at_month(row.get("observed_at", "")) == (year, month):
+                    rows.append(row)
     # Require BOTH report types to succeed before claiming the month is
     # safely cacheable. Partial success would otherwise poison the cache
     # with METAR-only or SPECI-only data and skip future retries.
