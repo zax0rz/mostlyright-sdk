@@ -178,6 +178,8 @@ def _fetch_iem_month(
     year: int,
     month: int,
     dest_dir: Path,
+    *,
+    skip_source_cache: bool = False,
 ) -> tuple[list[dict[str, Any]], bool]:
     """Download + parse IEM ASOS METAR + SPECI rows for one (station, year, month).
 
@@ -185,12 +187,26 @@ def _fetch_iem_month(
     the merge layer can dedupe per-``observation_type`` and the parity-fixture
     coverage matches v0.14.1's server-side ingest (which gathered both).
 
+    Args:
+        skip_source_cache: When ``True``, force ``download_iem_asos`` to
+            re-fetch the underlying ``sources/iem_asos/.../iem_YYYYMM_*.csv``
+            even when a local copy exists. Callers pass ``True`` for the
+            station's current LST month so a second call within the same
+            month doesn't aggregate stale METARs from an earlier IEM CSV
+            snapshot (codex iter-3 P2). The parquet cache layer already
+            no-ops the current LST month, but it can't help if the
+            underlying CSV is stale.
+
     Returns:
-        ``(rows, iem_ok)`` — ``iem_ok`` is ``True`` iff at least one of the two
-        IEM ASOS downloads succeeded (HTTP-wise) for this month. Callers use
-        the flag to gate cache writes: a month where every IEM call failed
-        must NOT be cached (otherwise a transient outage poisons the local
-        parquet cache and future calls never retry IEM — codex iter-2 P2).
+        ``(rows, iem_ok)`` — ``iem_ok`` is ``True`` **only when BOTH** IEM
+        ASOS report types downloaded successfully (HTTP-wise) for this
+        month. Callers use the flag to gate cache writes: any partial
+        failure (METAR succeeded but SPECI failed, or vice versa) must NOT
+        write the parquet cache because future calls would hit the
+        incomplete cache and never retry the missing half — losing
+        off-cycle SPECI extremes in stormy months matters for byte parity
+        against v0.14.1's server-side ingest (codex iter-3 P2; this is the
+        stricter follow-up to the iter-2 "neither-succeeded" gate).
     """
     # Local import: weather sibling package may not be importable from a
     # bare ``tradewinds`` install (no ``[parquet]`` extra), but ``research()``
@@ -200,7 +216,7 @@ def _fetch_iem_month(
 
     first, last = _month_window(year, month)
     rows: list[dict[str, Any]] = []
-    any_success = False
+    success_count = 0
     for report_type, override in ((3, "METAR"), (4, "SPECI")):
         try:
             paths = download_iem_asos(
@@ -209,6 +225,7 @@ def _fetch_iem_month(
                 last,
                 dest_dir,
                 report_type=report_type,
+                skip_cache=skip_source_cache,
             )
         except Exception as exc:
             logger.warning(
@@ -220,10 +237,13 @@ def _fetch_iem_month(
                 exc,
             )
             continue
-        any_success = True
+        success_count += 1
         for p in paths:
             rows.extend(parse_iem_file(p, observation_type_override=override))
-    return rows, any_success
+    # Require BOTH report types to succeed before claiming the month is
+    # safely cacheable. Partial success would otherwise poison the cache
+    # with METAR-only or SPECI-only data and skip future retries.
+    return rows, success_count == 2
 
 
 def _fetch_awc_for_window(icao: str, hours: int = _AWC_LOOKBACK_HOURS) -> list[dict[str, Any]]:
@@ -376,8 +396,17 @@ def _fetch_observations_range(
             continue
 
         # Cache miss: pull IEM + AWC + GHCNh for the month. GHCNh is fetched
-        # lazily here so a fully-cached range never hits NCEI.
-        iem_rows, iem_ok = _fetch_iem_month(info, year, month, iem_dir)
+        # lazily here so a fully-cached range never hits NCEI. For the
+        # station's current LST month the underlying IEM CSV is mutable
+        # (new observations land every hour) so we force a refresh -
+        # otherwise a second call within the same month would aggregate
+        # the stale source-cache CSV from the first call (codex iter-3 P2).
+        from tradewinds.weather.cache import _is_current_lst_month
+
+        skip_source = _is_current_lst_month(info.icao, year, month)
+        iem_rows, iem_ok = _fetch_iem_month(
+            info, year, month, iem_dir, skip_source_cache=skip_source
+        )
 
         ghcnh_year_rows = _ensure_ghcnh_year(ghcnh_by_year, info, year, ghcnh_dir)
         ghcnh_month: list[dict[str, Any]] = [
@@ -433,7 +462,11 @@ def _fetch_climate_range(
 
     from tradewinds.weather._climate import parse_cli_response
     from tradewinds.weather._fetchers.iem_cli import download_cli
-    from tradewinds.weather.cache import read_climate_cache, write_climate_cache
+    from tradewinds.weather.cache import (
+        _is_current_lst_year,
+        read_climate_cache,
+        write_climate_cache,
+    )
 
     sources_root = _sources_root()
     cli_dir = sources_root / "iem_cli"
@@ -450,8 +483,18 @@ def _fetch_climate_range(
             result.extend(cached)
             continue
 
+        # For the station's current LST year the underlying IEM CLI JSON is
+        # mutable - overnight finals and corrections land throughout the
+        # year. Force a refresh so a call before today's final is published
+        # doesn't get stuck on the stale source-cache JSON until manual
+        # deletion (codex iter-3 P2).
         try:
-            path = download_cli(info.icao, year, cli_dir)
+            path = download_cli(
+                info.icao,
+                year,
+                cli_dir,
+                skip_cache=_is_current_lst_year(info.icao, year),
+            )
         except httpx.HTTPStatusError as exc:
             if exc.response.status_code == 404:
                 logger.info("IEM CLI %s %d: no data (404), skipping", info.icao, year)

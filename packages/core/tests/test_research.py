@@ -450,6 +450,142 @@ class TestCachePoisoningRegressions:
         assert len(df) == 7
 
 
+class TestSourceCacheAndPartialIEM:
+    """Codex iter-3 fixes for source-cache staleness + partial IEM caching."""
+
+    def test_partial_iem_failure_blocks_cache_write(self, tmp_cache_env: Path) -> None:
+        """Codex iter-3 P2: METAR ok + SPECI fail must NOT write parquet cache.
+
+        Iter-2 fixed the "neither succeeded" case; iter-3 tightens to "both
+        must succeed" because a partial cache (METAR-only) would still
+        permanently freeze the missing SPECI rows. The cache write is gated
+        on `iem_ok=True` which now requires BOTH report types.
+        """
+        import httpx
+        from tradewinds import research
+
+        def _iem_asos_partial(request: httpx.Request) -> httpx.Response:
+            params = dict(request.url.params)
+            # report_type=3 (METAR) succeeds; report_type=4 (SPECI) fails.
+            if params.get("report_type") == "4":
+                return httpx.Response(500, text="speci upstream error")
+            station = params.get("station", "")
+            year = int(params.get("year1", "2025"))
+            month = int(params.get("month1", "1"))
+            return httpx.Response(200, text=_iem_csv_for_month(station, year, month))
+
+        def _iem_cli_response(_request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=_cli_json_for_year(2025))
+
+        def _ghcnh_response(_request: httpx.Request) -> httpx.Response:
+            return httpx.Response(404, text="")
+
+        with respx.mock(assert_all_called=False) as router:
+            router.get(url__regex=r"mesonet\.agron\.iastate\.edu/cgi-bin/request/asos\.py.*").mock(
+                side_effect=_iem_asos_partial
+            )
+            router.get(url__regex=r"mesonet\.agron\.iastate\.edu/json/cli\.py.*").mock(
+                side_effect=_iem_cli_response
+            )
+            router.get(
+                url__regex=r"ncei\.noaa\.gov/.*global-historical-climatology-network/hourly.*"
+            ).mock(side_effect=_ghcnh_response)
+
+            # The call still returns rows (METAR rows survive the merge); it
+            # just must NOT cache the partial slice.
+            research("KNYC", "2025-01-06", "2025-01-12")
+
+        obs_path = tmp_cache_env / "v1" / "observations" / "KNYC" / "2025" / "01.parquet"
+        assert not obs_path.exists(), (
+            "observation cache must NOT be written when only METAR (or only SPECI) "
+            f"succeeded - found {obs_path}; future calls would skip retrying the "
+            "failed half forever"
+        )
+
+    def test_fetch_iem_month_skip_source_cache_propagates(
+        self, tmp_cache_env: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Codex iter-3 P2: skip_source_cache=True must reach download_iem_asos.
+
+        Locks the wiring contract: when the orchestrator decides the month
+        is the station's current LST month and forces a refresh, the
+        underlying IEM ASOS source-CSV cache MUST be bypassed too. Without
+        this, a second call in the same month aggregates a stale CSV from
+        the first call even though the parquet cache is correctly skipped.
+        """
+        from pathlib import Path as _Path
+
+        from tradewinds._internal._stations import STATIONS
+        from tradewinds.research import _fetch_iem_month
+
+        info = STATIONS["NYC"]
+        captured_kwargs: dict[str, Any] = {}
+
+        def _fake_download(*args: Any, **kwargs: Any) -> list[_Path]:
+            captured_kwargs.update(kwargs)
+            return []
+
+        monkeypatch.setattr(
+            "tradewinds.weather._fetchers.iem_asos.download_iem_asos",
+            _fake_download,
+        )
+
+        # skip_source_cache=False (default) - download called with skip_cache=False
+        _fetch_iem_month(info, 2025, 1, _Path("/tmp/iem_asos_test"))
+        assert captured_kwargs.get("skip_cache") is False
+
+        captured_kwargs.clear()
+        _fetch_iem_month(info, 2025, 1, _Path("/tmp/iem_asos_test"), skip_source_cache=True)
+        assert captured_kwargs.get("skip_cache") is True
+
+    def test_fetch_climate_skips_source_cache_for_current_lst_year(
+        self, tmp_cache_env: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Codex iter-3 P2: _fetch_climate_range must pass skip_cache=True
+        to download_cli when the year is the station's current LST year.
+
+        Otherwise users querying current-year climate before today's
+        overnight final propagates would stay stuck on the stale source
+        JSON forever (parquet cache no-ops for current LST year, but the
+        source cache silently reuses the old JSON).
+        """
+        import json as _json
+        from pathlib import Path as _Path
+
+        from tradewinds._internal._stations import STATIONS
+        from tradewinds.research import _fetch_climate_range
+
+        info = STATIONS["NYC"]
+        captured: list[bool] = []
+
+        # Stub download_cli to capture skip_cache + return a synthetic JSON
+        # path with an empty results array (parse_cli_response returns []).
+        def _fake_download_cli(
+            _icao: str, _year: int, _dest_dir: _Path, *, skip_cache: bool = False
+        ) -> _Path:
+            captured.append(skip_cache)
+            p = tmp_cache_env / f"cli_{_year}.json"
+            p.write_text(_json.dumps([]))
+            return p
+
+        # Stub _is_current_lst_year deterministically: 2026 is "current",
+        # 2025 is historical. The orchestrator must call download_cli with
+        # skip_cache=True for 2026 and skip_cache=False for 2025.
+        monkeypatch.setattr("tradewinds.weather._fetchers.iem_cli.download_cli", _fake_download_cli)
+
+        def _fake_current(_station: str, year: int) -> bool:
+            return year == 2026
+
+        monkeypatch.setattr("tradewinds.weather.cache._is_current_lst_year", _fake_current)
+
+        _fetch_climate_range(info, "2025-12-30", "2026-01-02")
+
+        assert captured == [False, True], (
+            "expected download_cli to be called with skip_cache=False for 2025 "
+            f"(historical) then skip_cache=True for 2026 (current LST year); got {captured}"
+        )
+
+
 # ---------------------------------------------------------------------------
 # Pure-function helper tests (no HTTP, no fixtures)
 # ---------------------------------------------------------------------------
