@@ -5,7 +5,7 @@ milestone_name: Parity Lift
 status: executing
 stopped_at: "ROADMAP enriched with 4 new phases (2.1, 3.1, 3.2, 3.3) for v0.1.0 scope expansion (international + multi-forecast + Polymarket + Sprint 2o lineage). Phase stubs created via `gsd-tools phase insert`; ROADMAP entries enriched with full Goal/Depends-on/Requirements/Success Criteria/Out-of-Scope/Review-panel blocks. STATE.md updated with Roadmap Evolution section + new decisions + new blockers/concerns. **Pending follow-ups before execution:** (1) add LINEAGE-01..05 + INTL-01..05 + NWP-01..06 + POLY-01..05 entries to REQUIREMENTS.md (POLY-01 currently a Sprint 0.5+ deferral — activate and split); (2) update PROJECT.md "Active scope" to reflect expanded v0.1.0; (3) run `/gsd-plan-phase` per new phase to write detailed PLAN.md; (4) decide whether to migrate existing `.planning/phase-NN-...` dirs to new `.planning/phases/NN.M-...` convention created by gsd-tools, or move the new dirs to match existing convention."
 last_updated: "2026-05-22T13:30:00.000Z"
-last_activity: 2026-05-22 -- Completed quick task 260522-n7n: Fix iter-9 P1/P2 (lock parent dir + dry-run no lock touch)
+last_activity: 2026-05-22 -- Completed quick task 260522-nbw: Apply iter-9 P1 mkdir pattern to all 3 FileLock sites (iter-10 architect)
 progress:
   total_phases: 12
   completed_phases: 0
@@ -123,6 +123,7 @@ Open decisions to resolve during execution (per research SUMMARY.md):
 | 260522-msx | Fix 3 iter-7 findings (count drift + self-lock + non-deterministic race) | 2026-05-22 | 3d35cd2 | [260522-msx-fix-3-iter-7-findings-count-drift-self-l](./quick/260522-msx-fix-3-iter-7-findings-count-drift-self-l/) |
 | 260522-n2e | Fix iter-8 P2 (migrate_to_v2 CLI needs lock around lock-free helper) | 2026-05-22 | 068c9c4 | [260522-n2e-fix-iter-8-p2-migrate-to-v2-cli-needs-lo](./quick/260522-n2e-fix-iter-8-p2-migrate-to-v2-cli-needs-lo/) |
 | 260522-n7n | Fix iter-9 P1/P2 (lock parent dir + dry-run no lock touch) | 2026-05-22 | 2238b2c | [260522-n7n-fix-iter-9-p1-p2-lock-parent-dir-dry-run](./quick/260522-n7n-fix-iter-9-p1-p2-lock-parent-dir-dry-run/) |
+| 260522-nbw | Apply iter-9 P1 mkdir pattern to all 3 FileLock sites (iter-10 architect) | 2026-05-22 | 1c1681d | [260522-nbw-fix-iter-10-architect-high-p1-bug-in-wri](./quick/260522-nbw-fix-iter-10-architect-high-p1-bug-in-wri/) |
 
 ## Session Continuity
 
