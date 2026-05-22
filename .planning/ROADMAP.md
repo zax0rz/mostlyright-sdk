@@ -102,7 +102,13 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Agent-generated connector pipeline accepts API docs/HTML/PDF and produces stored extraction configs; generated configs are persisted so re-use by the next agent is incremental, not from scratch; quality-review gate promotes vetted configs to pre-indexed status
   4. Temporal safety is SERVER-ENFORCED: `dataset.at_time("2024-01-15")`, `.between(...)`, `.as_of(...)` return exactly and only what was knowable on that date; the constraint is structural (no agent bypass possible); deterministic replay holds — same query + same cutoff = identical results
   5. Multi-vertical expansion proven: at least one non-weather vertical (sports prediction markets) ships as catalog entries + adapters atop the same temporal-safety layer; full provenance chain auditable for every transformation; schema contracts validated on both ingest and query
-**Plans**: TBD
+**Plans:** 6 plans
+- [ ] PLAN-00-requirements-id-cleanup.md — Wave 0 (prereq); pre-Phase-5 hygiene; deletes superseded narrow MCP-01..06 entries from REQUIREMENTS.md so MCP-01..MCP-10 is canonical
+- [ ] PLAN-01-mcp-server-skeleton-temporal-middleware.md — Wave 1; MCP-01 (partial) + MCP-04 + MCP-06 + MCP-07 + MCP-08; FastMCP server + 5 tool stubs + TemporalSafetyMiddleware + AuditLogger + CallerContext + Dataset point-in-time API
+- [ ] PLAN-02-catalog-format-weather-entries.md — Wave 2; MCP-02 + MCP-10 (weather portion, 7/10); 5-layer YAML catalog meta-schema + CatalogLoader + 7 weather catalog entries + _adapter_bridge dispatch
+- [ ] PLAN-03-agent-generated-connector-pipeline.md — Wave 3; MCP-03; scaffold + validator (4 checks + 3 warnings) + promotion CLI + catalog-promotion-gate CI workflow + CONTRIBUTING + AGENT-CONNECTOR-GUIDE
+- [ ] PLAN-04-second-vertical-macro.md — Wave 4a; MCP-05 + MCP-10 (macro portion, 3/10); USER_DECISION_GATE for vertical choice (researcher recommends macro over sports per 2026 legal blockers) + tradewinds-macro distribution (FRED+ALFRED+Kalshi macro) + 3 promoted catalog entries
+- [ ] PLAN-05-integration-tests-deterministic-replay-release.md — Wave 4b (parallel to PLAN-04); MCP-01 + MCP-04 + MCP-06 + MCP-09 (full E2E); JSON-RPC subprocess integration tests + deterministic-replay tests + cross-vertical join allow-list (RESEARCH.md §I.8) + v0.2.0 release infrastructure (CHANGELOG + release.yml extension + RELEASE-CHECKLIST)
 
 ## Progress
 
@@ -116,4 +122,4 @@ Phases execute in numeric order: 1 → **1.5** → 2 → 3 → 4 → **(v0.1.0 s
 | 2. Core Primitives + Catalog Adapters | 0/TBD | Not started (PLAN.md committed) | - |
 | 3. Mode 2 Integration + Migration Gate | 0/TBD | Not started | - |
 | 4. Coverage, Docs, CI/CD, Release | 0/TBD | Not started | - |
-| 5. MCP Data Platform [v0.2+] | 0/TBD | Vision committed (VISION.md); PLAN.md pending v0.1.0 ship | - |
+| 5. MCP Data Platform [v0.2+] | 0/6 | Plans committed (PLAN-00..PLAN-05); execution gated on v0.1.0 ship | - |
