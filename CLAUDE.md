@@ -7,7 +7,8 @@ Local-first Python SDK for quants researching prediction-market weather settleme
 - `packages/core/` → `tradewinds` PyPI distribution: `research()`, `snapshot`, shared `_internal/` utils. Also contains `tradewinds/_v02/` — the v0.2 foundations port (TimePoint, Schema, exceptions, formats; see [`docs/design.md`](docs/design.md)).
 - `packages/weather/` → `tradewinds-weather` PyPI distribution: AWC/IEM/GHCNh/NWS CLI clients + historical fetchers + cache
 - `packages/markets/` → `tradewinds-markets` PyPI distribution: Kalshi/Polymarket (v0.0.1 placeholder; v0.1.0 in Sprint 0.5)
-- `roadmap/` → Sprint plans for the CURRENT sprint (Sprint 0). Lane checklists at `roadmap/lanes/{vu,founder}-*-lane.md`.
+- `.planning/` → **THE canonical plan.** GSD-managed: ROADMAP.md (4 phases), PROJECT.md, REQUIREMENTS.md, STATE.md, per-phase PLAN.md + RESEARCH.md.
+- `roadmap/` → Historical (lane-based Sprint 0 plan, archived to `roadmap/_archive/`).
 - `docs/` → Forward-looking design. [`docs/design.md`](docs/design.md) is the v0.2 foundations spec (originally drafted as standalone "mostlyright-mcp v1," merged into tradewinds 2026-05-21).
 - `tests/` → pytest, includes `@pytest.mark.live` for network tests (excluded from CI)
 

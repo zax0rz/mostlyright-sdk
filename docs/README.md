@@ -8,20 +8,24 @@ This directory is the **forward-looking design** for tradewinds. It explains whe
 |---|---|
 | [`design.md`](./design.md) | **The v0.2 foundations design** (884 lines, approved 2026-05-21, amended across three Claude + Codex review passes). Describes the MCP-native primitives — `TimePoint`, `Schema` framework, source-identity invariants, MCP server with 3 tools — that build on top of Sprint 0's v0.1.0 wedge. Originally drafted under the working title "mostlyright-mcp v1" and merged into tradewinds on 2026-05-21. |
 
-## What lives in `roadmap/` (sibling directory)
+## What lives in `.planning/` (canonical project plan)
 
-Sprint plans and lane checklists for the **current sprint**:
+Current planning lives in the GSD-managed `.planning/` directory:
 
-- [`roadmap/sprint0.md`](../roadmap/sprint0.md) — Sprint 0 plan: ship `tradewinds` + `tradewinds-weather` v0.1.0 to PyPI with byte-equivalence to `mostlyright==0.14.1`'s `client.pairs()`. 3-4 days.
-- `roadmap/lanes/{founder,vu}-*-lane.md` — daily checklists per lane.
-- `roadmap/sprint0-validation.md` — N=3 yes-signal definition for the 7-day post-ship validation window.
+- [`.planning/ROADMAP.md`](../.planning/ROADMAP.md) — 4 phases over 14 days (v0.14.1 Parity Lift → Core Primitives → Mode 2 + Migration Gate → Coverage + Docs + CI/CD + Release)
+- [`.planning/PROJECT.md`](../.planning/PROJECT.md) — vision + requirement IDs
+- [`.planning/REQUIREMENTS.md`](../.planning/REQUIREMENTS.md) — full requirement specs
+- [`.planning/STATE.md`](../.planning/STATE.md) — current position
+- `.planning/phase-NN-<slug>/{RESEARCH.md, PLAN.md, REVIEW.md, VERIFICATION.md}` — per-phase artifacts
 
-## How docs/ and roadmap/ relate
+## What lives in `roadmap/` (historical)
 
-- **`roadmap/` = NOW.** Sprint 0 is the next thing shipping; everything in `roadmap/` is execution-grade.
-- **`docs/` = NEXT.** v0.2 foundations is the milestone after Sprint 0 (and after the 7-day validation window). The 266-test reference implementation already lives at `packages/core/src/tradewinds/_v02/` on the `feat/v0.2-foundations` branch (off `merged-vision`).
+`roadmap/` previously held a lane-based Sprint 0 plan that has been superseded by `.planning/`. Archived under `roadmap/_archive/`; see [`roadmap/README.md`](../roadmap/README.md) for the pointer.
 
-When Sprint 0 ships and the validation gate passes, Sprint 1 (v0.2 work) opens, and `roadmap/sprint1.md` will be derived from `docs/design.md`.
+## How docs/ and .planning/ relate
+
+- **`.planning/` = THE PLAN.** Phase 1 (in progress) → Phase 2 (planned, awaiting Phase 1 ship) → Phase 3 → Phase 4 → v0.1.0 publish.
+- **`docs/` = forward-looking design.** [`design.md`](./design.md) is the v0.2 foundations spec; not active planning. The 266-test reference implementation lives at `packages/core/src/tradewinds/_v02/` and gets rebranded to `tradewinds.core` in Phase 2.
 
 ## Branch workflow
 
