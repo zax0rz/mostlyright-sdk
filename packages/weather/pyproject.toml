@@ -1,6 +1,6 @@
 [project]
 name = "tradewinds-weather"
-version = "0.0.1"
+version = "0.1.0a1"
 description = "Weather data sources for tradewinds: AWC, IEM, GHCNh, NWS CLI. Direct public-API access; no hosted backend."
 readme = "README.md"
 license = "MIT"
@@ -18,7 +18,9 @@ dependencies = [
     # tradewinds (core) provides _internal._bounds, _internal._convert,
     # _internal._http, _internal.models, _internal.exceptions — used by the
     # parsers (_awc, _iem, _climate, _ghcnh) and fetchers under tradewinds.weather.
-    "tradewinds",
+    # Pinned to the matching alpha to prevent users from mixing core/weather
+    # releases across the parity gate (PKG-03).
+    "tradewinds>=0.1.0a1,<0.2",
     # Pinned to v0.14.1 mostlyright deps
     "httpx>=0.27",
     "jsonschema>=4.21",
@@ -27,15 +29,18 @@ dependencies = [
     "filelock>=3.12",
     # Codex P2 fix (Wave 1.4): pyarrow used at import time in tradewinds.weather.cache
     # for cache I/O. Cannot live in `parquet` optional extra — default install would
-    # fail to import the cache module.
-    "pyarrow>=17.0",
+    # fail to import the cache module. Upper bound (PKG-06) keeps a future
+    # pyarrow ABI break from silently invalidating the parity-critical cache.
+    "pyarrow>=17.0,<24.0",
 ]
 
 [project.optional-dependencies]
 # DataFrame return values (cache.py uses pyarrow directly; pandas only needed
-# for users who want to convert cache output to DataFrames).
+# for users who want to convert cache output to DataFrames). Upper bound
+# mirrors the core `parquet` extra so a fresh install cannot pull pandas 3.x
+# and silently drift the parity-critical DataFrame dtypes.
 parquet = [
-    "pandas>=2.2",
+    "pandas>=2.2,<3.0",
 ]
 
 [build-system]

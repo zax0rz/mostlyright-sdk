@@ -20,7 +20,7 @@ import machinery finds those subpackages from whichever site-packages location i
 # Split-distribution namespace: extend __path__ to discover sibling packages' contributions.
 __path__ = __import__("pkgutil").extend_path(__path__, __name__)
 
-__version__ = "0.0.1"
+__version__ = "0.1.0a1"
 
 from tradewinds.research import research
 

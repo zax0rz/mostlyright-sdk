@@ -14,7 +14,7 @@ import tradewinds
 
 
 def test_core_importable():
-    assert tradewinds.__version__ == "0.0.1"
+    assert tradewinds.__version__ == "0.1.0a1"
 
 
 def test_path_extended_for_split_distribution():
@@ -22,16 +22,14 @@ def test_path_extended_for_split_distribution():
     paths = list(tradewinds.__path__)
     assert len(paths) >= 1, "tradewinds.__path__ is empty — namespace declaration removed?"
     # Expect at least core's path; in dev install also weather + markets paths.
-    assert any("packages/core" in p for p in paths), (
-        f"core src not in __path__: {paths}"
-    )
+    assert any("packages/core" in p for p in paths), f"core src not in __path__: {paths}"
 
 
 def test_weather_subpackage_importable():
     """``import tradewinds.weather`` must succeed when tradewinds-weather is installed."""
     import tradewinds.weather
 
-    assert tradewinds.weather.__version__ == "0.0.1"
+    assert tradewinds.weather.__version__ == "0.1.0a1"
 
 
 def test_markets_subpackage_importable():
