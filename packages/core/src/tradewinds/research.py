@@ -178,12 +178,19 @@ def _fetch_iem_month(
     year: int,
     month: int,
     dest_dir: Path,
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], bool]:
     """Download + parse IEM ASOS METAR + SPECI rows for one (station, year, month).
 
     Fetches both ``report_type=3`` (METAR) and ``report_type=4`` (SPECI) so
     the merge layer can dedupe per-``observation_type`` and the parity-fixture
     coverage matches v0.14.1's server-side ingest (which gathered both).
+
+    Returns:
+        ``(rows, iem_ok)`` — ``iem_ok`` is ``True`` iff at least one of the two
+        IEM ASOS downloads succeeded (HTTP-wise) for this month. Callers use
+        the flag to gate cache writes: a month where every IEM call failed
+        must NOT be cached (otherwise a transient outage poisons the local
+        parquet cache and future calls never retry IEM — codex iter-2 P2).
     """
     # Local import: weather sibling package may not be importable from a
     # bare ``tradewinds`` install (no ``[parquet]`` extra), but ``research()``
@@ -193,6 +200,7 @@ def _fetch_iem_month(
 
     first, last = _month_window(year, month)
     rows: list[dict[str, Any]] = []
+    any_success = False
     for report_type, override in ((3, "METAR"), (4, "SPECI")):
         try:
             paths = download_iem_asos(
@@ -212,9 +220,10 @@ def _fetch_iem_month(
                 exc,
             )
             continue
+        any_success = True
         for p in paths:
             rows.extend(parse_iem_file(p, observation_type_override=override))
-    return rows
+    return rows, any_success
 
 
 def _fetch_awc_for_window(icao: str, hours: int = _AWC_LOOKBACK_HOURS) -> list[dict[str, Any]]:
@@ -261,6 +270,45 @@ def _fetch_ghcnh_year(
     return parse_ghcnh_file(path)
 
 
+def _is_writable_month(year: int, month: int, *, now: datetime | None = None) -> bool:
+    """True iff ``(year, month)`` is strictly in the past in UTC.
+
+    ``write_cache`` already no-ops the station's current **LST** month, but
+    that predicate lags UTC for negative-offset stations (the v0.1.0
+    registry is all US, UTC-5 .. UTC-10). At month boundaries — when UTC
+    has rolled into the next month but LST is still in the previous month
+    — the LST-only gate lets the orchestrator write a parquet for the
+    new UTC month with only the few hours of data IEM has so far. Once
+    LST catches up, ``read_cache`` would treat that partial file as
+    complete and return stale aggregates (codex iter-2 P2).
+
+    This stricter UTC-based predicate gates writes at the orchestrator
+    layer so the partial-month race cannot happen regardless of the
+    station's timezone offset.
+    """
+    now = now or datetime.now(UTC)
+    return (year, month) < (now.year, now.month)
+
+
+def _ensure_ghcnh_year(
+    cache: dict[int, list[dict[str, Any]]],
+    info: StationInfo,
+    year: int,
+    dest_dir: Path,
+) -> list[dict[str, Any]]:
+    """Lazy per-year GHCNh loader.
+
+    Populates ``cache[year]`` on first miss and returns the cached list on
+    subsequent calls. Used by :func:`_fetch_observations_range` to defer
+    every GHCNh HTTP/PSV parse until a month cache miss actually requires
+    it, preserving the documented local-first contract: a fully-cached
+    range never touches NCEI (codex iter-2 P2).
+    """
+    if year not in cache:
+        cache[year] = _fetch_ghcnh_year(info, year, dest_dir)
+    return cache[year]
+
+
 def _fetch_observations_range(
     info: StationInfo,
     from_date_iso: str,
@@ -273,19 +321,23 @@ def _fetch_observations_range(
     Per-month flow:
 
     1. Try the parquet cache (``read_cache``). On hit, extend the result and
-       skip the network round-trip entirely.
+       skip the network round-trip entirely — including GHCNh and AWC,
+       so a fully-cached range stays purely local.
     2. On miss, gather raw rows from IEM ASOS (always), AWC (only when the
-       month overlaps the last 168h), and GHCNh (annual, cached at the
-       per-year layer).
+       month overlaps the last 168h), and GHCNh (annual, fetched lazily
+       per-year on first miss).
     3. Merge via :func:`merge_observations` (AWC > IEM > GHCNh priority on
        ties; first-seen wins at equal priority - v0.14.1 byte-faithful
        semantics).
     4. **Pre-sort by ``observed_at`` before caching.** Risk R2 mitigation:
        float averaging in ``_obs_aggregates`` is non-associative; sorting
        deterministically keeps the parity fixtures byte-stable.
-    5. Write the cache (``write_cache`` no-ops the current LST month and
-       any ``.live`` source).
+    5. Write the cache iff (a) IEM ASOS succeeded at least once for the
+       month AND (b) the month is strictly in the past UTC. Both gates
+       protect against poisoning the cache with incomplete data — see
+       :func:`_is_writable_month` and :func:`_fetch_iem_month`.
     """
+    from tradewinds._internal.merge import merge_observations
     from tradewinds.weather.cache import read_cache, write_cache
 
     sources_root = _sources_root()
@@ -294,17 +346,27 @@ def _fetch_observations_range(
 
     months = _month_range(from_date_iso, extended_to_iso)
 
-    # GHCNh is annual - parse once per year and slice per month.
+    # Lazy by-year GHCNh cache. Populated on the first miss for a given year;
+    # a fully-cached range never touches NCEI.
     ghcnh_by_year: dict[int, list[dict[str, Any]]] = {}
-    years_needed = sorted({y for y, _ in months})
-    for year in years_needed:
-        ghcnh_by_year[year] = _fetch_ghcnh_year(info, year, ghcnh_dir)
 
-    # AWC is fetched at most once across the whole window. Filter per-month
-    # at the merge site. Skip entirely when no month overlaps the AWC lookback.
-    awc_rows: list[dict[str, Any]] = []
-    if any(_month_overlaps_awc_window(y, m, now=now) for y, m in months):
-        awc_rows = _fetch_awc_for_window(info.icao)
+    # Lazy AWC fetch — at most one call across the whole orchestrator run,
+    # and only on a cache miss for a month that overlaps the 168h lookback.
+    awc_rows: list[dict[str, Any]] | None = None
+
+    def _awc_for_month(year: int, month: int) -> list[dict[str, Any]]:
+        """Return the AWC observation rows that belong to ``(year, month)``."""
+        nonlocal awc_rows
+        if not _month_overlaps_awc_window(year, month, now=now):
+            return []
+        if awc_rows is None:
+            awc_rows = _fetch_awc_for_window(info.icao)
+        return [
+            r
+            for r in awc_rows
+            if r.get("station_code") == info.code
+            and _observed_at_month(r.get("observed_at", "")) == (year, month)
+        ]
 
     result: list[dict[str, Any]] = []
     for year, month in months:
@@ -313,34 +375,41 @@ def _fetch_observations_range(
             result.extend(cached)
             continue
 
-        iem_rows = _fetch_iem_month(info, year, month, iem_dir)
+        # Cache miss: pull IEM + AWC + GHCNh for the month. GHCNh is fetched
+        # lazily here so a fully-cached range never hits NCEI.
+        iem_rows, iem_ok = _fetch_iem_month(info, year, month, iem_dir)
 
+        ghcnh_year_rows = _ensure_ghcnh_year(ghcnh_by_year, info, year, ghcnh_dir)
         ghcnh_month: list[dict[str, Any]] = [
             r
-            for r in ghcnh_by_year.get(year, [])
+            for r in ghcnh_year_rows
             if r.get("station_code") == info.code
             and _observed_at_month(r.get("observed_at", "")) == (year, month)
         ]
 
-        if _month_overlaps_awc_window(year, month, now=now):
-            awc_month = [
-                r
-                for r in awc_rows
-                if r.get("station_code") == info.code
-                and _observed_at_month(r.get("observed_at", "")) == (year, month)
-            ]
-        else:
-            awc_month = []
-
-        from tradewinds._internal.merge import merge_observations
+        awc_month = _awc_for_month(year, month)
 
         merged = merge_observations(awc_month + iem_rows + ghcnh_month)
         # R2 mitigation: deterministic ordering before mean aggregation.
         merged.sort(key=lambda r: (r.get("observed_at") or "", r.get("source") or ""))
 
-        # write_cache is itself a no-op when (year, month) is the station's
-        # current LST month, so callers do not need to short-circuit here.
-        write_cache(info.icao, year, month, merged, source="iem")
+        # Cache-write gate: IEM must have succeeded (otherwise we'd freeze a
+        # partial AWC+GHCNh slice as authoritative) AND the month must be
+        # strictly in the UTC past (otherwise we'd freeze a not-yet-complete
+        # month at the UTC/LST boundary). ``write_cache`` itself also no-ops
+        # the LST current month and any ``.live`` source — these orchestrator
+        # gates are additional, not redundant.
+        if iem_ok and _is_writable_month(year, month, now=now):
+            write_cache(info.icao, year, month, merged, source="iem")
+        else:
+            logger.info(
+                "skip cache write for %s %04d-%02d (iem_ok=%s, writable=%s)",
+                info.code,
+                year,
+                month,
+                iem_ok,
+                _is_writable_month(year, month, now=now),
+            )
 
         result.extend(merged)
 

@@ -349,6 +349,107 @@ class TestUnknownStation:
             research("ZZZ", "2025-01-06", "2025-01-12")
 
 
+class TestCachePoisoningRegressions:
+    """Codex iter-2 fixes for the three cache-correctness findings.
+
+    Locks the orchestrator's cache-write gates so a regression cannot
+    silently re-introduce stale/partial parquet files.
+    """
+
+    def test_fully_cached_range_does_not_touch_network(
+        self, mocked_http: Any, tmp_cache_env: Path
+    ) -> None:
+        """Codex iter-2 P2: fully-cached call must not reach GHCNh/IEM/CLI.
+
+        Run ``research`` once with the mocked HTTP layer (populates cache),
+        then run again with a router that raises on any HTTP call. The
+        second call must succeed entirely from the parquet cache - including
+        GHCNh and AWC, which previously were pre-fetched eagerly.
+        """
+        from tradewinds import research
+
+        # Warm the cache.
+        research("KNYC", "2025-01-06", "2025-01-12")
+
+        # Reset respx so any new HTTP call raises (no routes registered).
+        with respx.mock(assert_all_called=False) as strict_router:
+            # No routes registered → any GET raises AllMockedAssertionError.
+            df = research("KNYC", "2025-01-06", "2025-01-12")
+            assert len(df) == 7
+            # Sanity: no calls landed against the strict router.
+            assert strict_router.calls.call_count == 0
+
+    def test_iem_failure_does_not_poison_cache(self, tmp_cache_env: Path) -> None:
+        """Codex iter-2 P2: transient IEM 5xx must NOT write a partial cache.
+
+        When the IEM ASOS endpoint is unhappy for both report types, the
+        orchestrator must skip ``write_cache`` for the affected month so the
+        next call retries. A poisoned cache would mask the failure forever.
+        """
+        import httpx
+        from tradewinds import research
+
+        def _iem_asos_fail(_request: httpx.Request) -> httpx.Response:
+            return httpx.Response(500, text="upstream error")
+
+        def _iem_cli_response(_request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=_cli_json_for_year(2025))
+
+        def _ghcnh_response(_request: httpx.Request) -> httpx.Response:
+            return httpx.Response(404, text="")
+
+        with respx.mock(assert_all_called=False) as router:
+            router.get(url__regex=r"mesonet\.agron\.iastate\.edu/cgi-bin/request/asos\.py.*").mock(
+                side_effect=_iem_asos_fail
+            )
+            router.get(url__regex=r"mesonet\.agron\.iastate\.edu/json/cli\.py.*").mock(
+                side_effect=_iem_cli_response
+            )
+            router.get(
+                url__regex=r"ncei\.noaa\.gov/.*global-historical-climatology-network/hourly.*"
+            ).mock(side_effect=_ghcnh_response)
+
+            # Call should not raise — degrades gracefully without IEM rows.
+            research("KNYC", "2025-01-06", "2025-01-12")
+
+        obs_path = tmp_cache_env / "v1" / "observations" / "KNYC" / "2025" / "01.parquet"
+        assert not obs_path.exists(), (
+            "observation cache must NOT be written when IEM ASOS fails — "
+            f"found {obs_path} which would poison subsequent calls"
+        )
+
+    def test_future_month_not_cached(
+        self, mocked_http: Any, tmp_cache_env: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Codex iter-2 P2: a UTC-future month must not be cached.
+
+        Freeze UTC ``now`` to a moment where January is still 'current' so
+        any extension into February (via ``extended_to``) lands in a UTC
+        month that has not started yet. The orchestrator's
+        ``_is_writable_month`` gate must short-circuit ``write_cache`` for
+        that month even though the cache layer's LST-current-month skip
+        would let it through.
+        """
+        from datetime import datetime as _dt
+
+        from tradewinds import research
+        from tradewinds.research import _is_writable_month
+
+        # Freeze "now" inside January so February is a UTC-future month.
+        frozen_now = _dt(2025, 1, 15, 12, 0, tzinfo=UTC)
+        assert _is_writable_month(2025, 2, now=frozen_now) is False
+        assert _is_writable_month(2025, 1, now=frozen_now) is False
+        assert _is_writable_month(2024, 12, now=frozen_now) is True
+
+        # Smoke: with the mocked HTTP layer and historical data (today is
+        # the GSD project date 2026-05-22 by default), a normal call still
+        # caches January 2025 - the regression is the predicate itself,
+        # locked above. Calling research here just guards against the
+        # public surface accidentally breaking on the new gate.
+        df = research("KNYC", "2025-01-06", "2025-01-12")
+        assert len(df) == 7
+
+
 # ---------------------------------------------------------------------------
 # Pure-function helper tests (no HTTP, no fixtures)
 # ---------------------------------------------------------------------------
