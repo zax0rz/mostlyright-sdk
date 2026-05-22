@@ -146,7 +146,7 @@ Close the 5 remaining gaps on `merged-vision` to ship the Day 3 HARD GATE (5-fix
 @.planning/ROADMAP.md
 @.planning/REQUIREMENTS.md
 @.planning/STATE.md
-@.planning/phase-01-v0-14-1-parity-lift/RESEARCH.md
+@.planning/phases/01-v0-14-1-parity-lift/RESEARCH.md
 @roadmap/sprint0.md
 @tests/fixtures/parity/README.md
 </execution_context>
@@ -1018,7 +1018,7 @@ Phase 1 is complete when:
 
 After Phase 1 completes:
 
-1. Create `.planning/phase-01-v0-14-1-parity-lift/SUMMARY.md` capturing:
+1. Create `.planning/phases/01-v0-14-1-parity-lift/SUMMARY.md` capturing:
    - Tolerance rung chosen (rung 1, 2, 3, or 4) + reason if relaxed below rung 1.
    - Per-fixture row counts (KNYC=7, KMDW=30, KLAX=31, KMIA=365, KMSY=15) confirmed.
    - Number of bug-fix iterations in Wave 3 (and what they fixed — feeds Phase 2's understanding of merge edge cases).

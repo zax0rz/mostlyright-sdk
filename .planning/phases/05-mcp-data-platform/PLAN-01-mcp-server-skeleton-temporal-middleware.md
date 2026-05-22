@@ -174,10 +174,10 @@ This plan is THE load-bearing plan of Phase 5. Waves 2 (catalog), 3 (agent-gener
 @.planning/REQUIREMENTS.md
 @.planning/STATE.md
 @.planning/REVIEW-DISCIPLINE.md
-@.planning/phase-05-mcp-data-platform/VISION.md
-@.planning/phase-05-mcp-data-platform/CONTEXT.md
-@.planning/phase-05-mcp-data-platform/RESEARCH.md
-@.planning/phase-05-mcp-data-platform/05-00-SUMMARY.md
+@.planning/phases/05-mcp-data-platform/VISION.md
+@.planning/phases/05-mcp-data-platform/CONTEXT.md
+@.planning/phases/05-mcp-data-platform/RESEARCH.md
+@.planning/phases/05-mcp-data-platform/05-00-SUMMARY.md
 @./CLAUDE.md
 </execution_context>
 
@@ -292,10 +292,10 @@ from fastmcp.utilities.tests import run_server_async, run_server_in_process
   <files>packages/mcp/pyproject.toml, packages/mcp/README.md, packages/mcp/src/tradewinds_mcp/__init__.py, packages/mcp/tests/__init__.py</files>
   <implements>MCP-01 (partial — distribution exists; tools come in 1.5)</implements>
   <read_first>
-    - .planning/phase-02-core-primitives-catalog-adapters/PLAN.md (Wave 5 — pyproject.toml pattern for tradewinds + tradewinds-weather + tradewinds-markets; PEP 420 namespace handling per CLAUDE.md PKG-02; cross-package version pin via Requires-Dist per PKG-03)
-    - .planning/phase-01-v0-14-1-parity-lift/PLAN.md (Day 1 scaffold-prep — wheel build verification via `uv build --all` + unzip check; same pattern applies to new packages/mcp/)
-    - .planning/phase-05-mcp-data-platform/RESEARCH.md (§A.5 — exact mcp SDK pin; §A.3 — transport configuration; §F.3 — TRADEWINDS_MCP_TRANSPORT env var seam)
-    - .planning/phase-05-mcp-data-platform/CONTEXT.md (decisions — "Catalog entries live at packages/mcp/catalog/"; "Claude's discretion — exact module structure inside packages/mcp/" — we pick packages/mcp/src/tradewinds_mcp/ sibling-package layout per RESEARCH.md Open Question #1, NOT tradewinds/mcp/ which would conflict with PEP 420 namespace)
+    - .planning/phases/02-core-primitives-catalog-adapters/PLAN.md (Wave 5 — pyproject.toml pattern for tradewinds + tradewinds-weather + tradewinds-markets; PEP 420 namespace handling per CLAUDE.md PKG-02; cross-package version pin via Requires-Dist per PKG-03)
+    - .planning/phases/01-v0-14-1-parity-lift/PLAN.md (Day 1 scaffold-prep — wheel build verification via `uv build --all` + unzip check; same pattern applies to new packages/mcp/)
+    - .planning/phases/05-mcp-data-platform/RESEARCH.md (§A.5 — exact mcp SDK pin; §A.3 — transport configuration; §F.3 — TRADEWINDS_MCP_TRANSPORT env var seam)
+    - .planning/phases/05-mcp-data-platform/CONTEXT.md (decisions — "Catalog entries live at packages/mcp/catalog/"; "Claude's discretion — exact module structure inside packages/mcp/" — we pick packages/mcp/src/tradewinds_mcp/ sibling-package layout per RESEARCH.md Open Question #1, NOT tradewinds/mcp/ which would conflict with PEP 420 namespace)
     - CLAUDE.md (Recommended Stack — pin floors for mcp, pydantic, pyyaml; PKG-02 PEP 420 rule; PKG-03 cross-package version pin enforcement)
     - existing packages/core/pyproject.toml + packages/weather/pyproject.toml + packages/markets/pyproject.toml (reference for naming conventions, build-system table, hatch build config — DO NOT copy verbatim because tradewinds-mcp uses sibling-package layout, not namespace-shared layout)
   </read_first>
@@ -447,10 +447,10 @@ from fastmcp.utilities.tests import run_server_async, run_server_in_process
   <files>packages/core/src/tradewinds/core/temporal/dataset.py, packages/core/src/tradewinds/core/temporal/__init__.py, packages/core/tests/core/temporal/test_dataset.py</files>
   <implements>MCP-08 (full — `dataset.at_time(date)`, `.between(start, end)`, `.as_of(timestamp)`)</implements>
   <read_first>
-    - .planning/phase-02-core-primitives-catalog-adapters/PLAN.md (Wave 1 — KnowledgeView is a plain class with __slots__ wrapping pd.DataFrame; constructor signature `KnowledgeView(df, *, as_of: datetime)`; `.rows()` returns filtered pd.DataFrame)
+    - .planning/phases/02-core-primitives-catalog-adapters/PLAN.md (Wave 1 — KnowledgeView is a plain class with __slots__ wrapping pd.DataFrame; constructor signature `KnowledgeView(df, *, as_of: datetime)`; `.rows()` returns filtered pd.DataFrame)
     - packages/core/src/tradewinds/core/temporal/knowledge_view.py (POST-Phase-2 file — CRITICAL read; confirm the public surface matches the interfaces block above; if KnowledgeView returned by `rows()` is a copy, .between() can safely filter further without mutating; if it's a view, defensive copy in Dataset.between())
     - packages/core/src/tradewinds/core/temporal/__init__.py (existing re-exports — Dataset must be added without breaking imports from Phase 2)
-    - .planning/phase-05-mcp-data-platform/RESEARCH.md (§D.2 — Dataset API design; at_time/between/as_of semantics; both spellings ship for ergonomics; key contract: as_of(t) == at_time(t))
+    - .planning/phases/05-mcp-data-platform/RESEARCH.md (§D.2 — Dataset API design; at_time/between/as_of semantics; both spellings ship for ergonomics; key contract: as_of(t) == at_time(t))
     - CLAUDE.md (TDD mandatory; ≥90% branch coverage on tradewinds.core — Dataset is core, applies)
   </read_first>
   <behavior>
@@ -598,8 +598,8 @@ from fastmcp.utilities.tests import run_server_async, run_server_in_process
   <files>packages/mcp/src/tradewinds_mcp/caller_context.py, packages/mcp/src/tradewinds_mcp/envelopes.py, packages/mcp/tests/test_caller_context.py, packages/mcp/tests/test_envelopes.py</files>
   <implements>MCP-01 (partial — envelope shapes), MCP-06 (partial — caller_identity field in audit log will reference CallerContext.identity in Task 1.4)</implements>
   <read_first>
-    - .planning/phase-05-mcp-data-platform/RESEARCH.md (§A.2 — Pydantic BaseModel envelope rationale; §F.3 — CallerContext shape: identity / caller_kind / granted_scopes; §G — caller_identity is the seam covering all 4 hosted-pricing models; §I.2 — pitfall: do NOT nest TOON inside structured dicts; flat envelope with `data: str`)
-    - .planning/phase-05-mcp-data-platform/CONTEXT.md (decisions — "toon at MCP boundary"; forbid raw pd.DataFrame returns; forbid parquet bytes; forbid pickled DataFrame)
+    - .planning/phases/05-mcp-data-platform/RESEARCH.md (§A.2 — Pydantic BaseModel envelope rationale; §F.3 — CallerContext shape: identity / caller_kind / granted_scopes; §G — caller_identity is the seam covering all 4 hosted-pricing models; §I.2 — pitfall: do NOT nest TOON inside structured dicts; flat envelope with `data: str`)
+    - .planning/phases/05-mcp-data-platform/CONTEXT.md (decisions — "toon at MCP boundary"; forbid raw pd.DataFrame returns; forbid parquet bytes; forbid pickled DataFrame)
     - packages/core/src/tradewinds/core/exceptions.py (Phase 2 — TradewindsError.to_dict() shape for JSON-RPC error envelopes; envelope failure mode reuses this)
     - mcp SDK docs (already loaded transitively — Pydantic v2 is the official runtime; BaseModel is fine; auto-validates input/output)
   </read_first>
@@ -749,8 +749,8 @@ from fastmcp.utilities.tests import run_server_async, run_server_in_process
   <files>packages/mcp/src/tradewinds_mcp/temporal_middleware.py, packages/mcp/src/tradewinds_mcp/audit.py, packages/mcp/tests/test_temporal_middleware.py, packages/mcp/tests/test_audit.py, packages/mcp/tests/test_meta_temporal_bypass_guard.py</files>
   <implements>MCP-04 (full — server-enforced temporal safety, structural anti-bypass), MCP-06 (full — auditable provenance JSONL)</implements>
   <read_first>
-    - .planning/phase-05-mcp-data-platform/RESEARCH.md (§D.1 — FastMCP `on_call_tool` middleware pattern; verbatim TemporalSafetyMiddleware skeleton at lines 274-310; §D.3 — deterministic replay design + hash format `sha256(toon_string.encode("utf-8")).hexdigest()`; §I.1 — pitfall: middleware vs decorator confusion; §I.3 — pitfall: dict iteration order broken by missing sort_keys=True; §I.6 — pitfall: stdio stdout corruption; §I.8 — pitfall: cross-vertical join — audit log records joins_to=undeclared for later analysis)
-    - .planning/phase-05-mcp-data-platform/CONTEXT.md (decisions — audit format `(timestamp, tool_name, source_id, schema_version, as_of, retrieval_timestamp, row_count, hash_of_result)`; per-instance file naming; deterministic replay test idiom)
+    - .planning/phases/05-mcp-data-platform/RESEARCH.md (§D.1 — FastMCP `on_call_tool` middleware pattern; verbatim TemporalSafetyMiddleware skeleton at lines 274-310; §D.3 — deterministic replay design + hash format `sha256(toon_string.encode("utf-8")).hexdigest()`; §I.1 — pitfall: middleware vs decorator confusion; §I.3 — pitfall: dict iteration order broken by missing sort_keys=True; §I.6 — pitfall: stdio stdout corruption; §I.8 — pitfall: cross-vertical join — audit log records joins_to=undeclared for later analysis)
+    - .planning/phases/05-mcp-data-platform/CONTEXT.md (decisions — audit format `(timestamp, tool_name, source_id, schema_version, as_of, retrieval_timestamp, row_count, hash_of_result)`; per-instance file naming; deterministic replay test idiom)
     - mcp + fastmcp middleware docs (already covered in interfaces block; key: `Middleware` base class, `on_call_tool(context, call_next)` hook, `context.message.name` + `context.message.arguments`, `ToolError` to raise)
     - packages/mcp/src/tradewinds_mcp/caller_context.py (Task 1.3 — AuditLogger.log() must accept a `caller_identity: str` field per RESEARCH.md §G)
   </read_first>
@@ -1073,8 +1073,8 @@ from fastmcp.utilities.tests import run_server_async, run_server_in_process
   <files>packages/mcp/src/tradewinds_mcp/server.py, packages/mcp/src/tradewinds_mcp/tools/__init__.py, packages/mcp/src/tradewinds_mcp/tools/query.py, packages/mcp/src/tradewinds_mcp/tools/ingest.py, packages/mcp/src/tradewinds_mcp/tools/list_sources.py, packages/mcp/src/tradewinds_mcp/tools/describe_source.py, packages/mcp/src/tradewinds_mcp/tools/get_schema.py, packages/mcp/tests/test_server_smoke.py, packages/mcp/tests/test_toon_deterministic.py, packages/mcp/tests/test_in_process_query.py</files>
   <implements>MCP-01 (server runs + all 5 tools registered), MCP-07 (get_schema reads Phase 2 registry), MCP-08 (query stub calls Dataset.at_time)</implements>
   <read_first>
-    - .planning/phase-05-mcp-data-platform/RESEARCH.md (§A — full server skeleton at lines 657-701; §A.3 — transport configuration; §A.4 — in-process FastMCP testing pattern via run_server_async; §D.3 — TOON determinism is mandatory; §I.5 — pitfall: TOON not deterministic in Phase 2 lifted code, fix in Wave 1)
-    - .planning/phase-05-mcp-data-platform/CONTEXT.md (decisions — server returns Pydantic envelope with `data: str` TOON-encoded; logging.basicConfig stream=sys.stderr; never print() to stdout)
+    - .planning/phases/05-mcp-data-platform/RESEARCH.md (§A — full server skeleton at lines 657-701; §A.3 — transport configuration; §A.4 — in-process FastMCP testing pattern via run_server_async; §D.3 — TOON determinism is mandatory; §I.5 — pitfall: TOON not deterministic in Phase 2 lifted code, fix in Wave 1)
+    - .planning/phases/05-mcp-data-platform/CONTEXT.md (decisions — server returns Pydantic envelope with `data: str` TOON-encoded; logging.basicConfig stream=sys.stderr; never print() to stdout)
     - packages/core/src/tradewinds/core/schemas/__init__.py (Phase 2 — eager-registered SchemaRegistration; get_schema reads from here)
     - packages/core/src/tradewinds/core/temporal/dataset.py (Task 1.2 — Dataset.at_time is the canonical filter call in query tool body)
     - packages/core/src/tradewinds/core/formats/toon.py (Phase 2 — serializer signature; this task TESTS its determinism)
@@ -1338,8 +1338,8 @@ from fastmcp.utilities.tests import run_server_async, run_server_in_process
   <files>packages/mcp/CONTRIBUTING.md, packages/mcp/THREAT-MODEL.md</files>
   <implements>Wave 1 closeout — durable engineering hygiene</implements>
   <read_first>
-    - .planning/phase-05-mcp-data-platform/RESEARCH.md (§I — all 8 pitfalls; CONTRIBUTING.md memorializes each as a "do/don't" rule)
-    - .planning/phase-05-mcp-data-platform/CONTEXT.md (decisions — auth model, audit log, temporal middleware lock)
+    - .planning/phases/05-mcp-data-platform/RESEARCH.md (§I — all 8 pitfalls; CONTRIBUTING.md memorializes each as a "do/don't" rule)
+    - .planning/phases/05-mcp-data-platform/CONTEXT.md (decisions — auth model, audit log, temporal middleware lock)
     - .planning/REVIEW-DISCIPLINE.md (2-reviewer loop applies; reviewer prompt rules)
     - packages/mcp/src/tradewinds_mcp/temporal_middleware.py (Task 1.4 — referenced in CONTRIBUTING rule "all temporal validation lives in temporal_middleware.py")
     - packages/mcp/src/tradewinds_mcp/server.py (Task 1.5 — referenced in CONTRIBUTING rule "stderr only; never print() to stdout")
@@ -1456,7 +1456,7 @@ from fastmcp.utilities.tests import run_server_async, run_server_in_process
   <implements>Wave 1 closeout — REVIEW-DISCIPLINE.md 2-reviewer loop + merge gate</implements>
   <read_first>
     - .planning/REVIEW-DISCIPLINE.md (2-reviewer loop, never-skip list, severity gate)
-    - .planning/phase-05-mcp-data-platform/RESEARCH.md (§I.5 — TOON determinism is a HARD prerequisite; if it failed in Task 1.5, escalate)
+    - .planning/phases/05-mcp-data-platform/RESEARCH.md (§I.5 — TOON determinism is a HARD prerequisite; if it failed in Task 1.5, escalate)
     - Plan-level success criteria below
   </read_first>
   <what-built>
@@ -1628,7 +1628,7 @@ grep -c "TRADEWINDS_MCP_TRANSPORT" packages/mcp/src/tradewinds_mcp/server.py | g
 </success_criteria>
 
 <output>
-After completion, create `.planning/phase-05-mcp-data-platform/05-01-SUMMARY.md` documenting:
+After completion, create `.planning/phases/05-mcp-data-platform/05-01-SUMMARY.md` documenting:
 
 - All 5 MCP-XX requirements (MCP-01 partial / MCP-04 / MCP-06 / MCP-07 / MCP-08) shipped with the code that implements each
 - TOON determinism verdict (PASS / required Phase 2 fix / count of distinct hashes if it failed)

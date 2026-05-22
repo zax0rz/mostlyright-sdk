@@ -29,7 +29,7 @@ files_modified:
   - packages/mcp/pyproject.toml                                                       # MODIFY — bump version to 0.2.0 (already there from PLAN-01; verify and update Release-Date classifier if needed)
   - packages/macro/pyproject.toml                                                     # MODIFY — version stays at 0.2.0
   - .github/workflows/release.yml                                                     # MODIFY (or NEW if Phase 4 didn't ship) — add tradewinds-mcp + tradewinds-macro to the trusted-publishing release workflow
-  - .planning/phase-05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md                   # NEW — pre-publish checklist documenting exact commands to run + verifications + sign-off
+  - .planning/phases/05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md                   # NEW — pre-publish checklist documenting exact commands to run + verifications + sign-off
   # Coverage gate updates
   - .github/workflows/mcp-tests.yml                                                   # MODIFY — extend matrix to include macro test runs alongside mcp tests; coverage bar stays at 85% mcp + 80% macro
 must_haves:
@@ -45,7 +45,7 @@ must_haves:
     - "`packages/mcp/tests/test_jsonrpc_subprocess_integration.py` runs in CI (`uv run pytest packages/mcp/tests/test_jsonrpc_subprocess_integration.py -m 'not live' -q` exits 0). NOTE: subprocess tests are SLOWER than in-process tests (~100ms per spawn per RESEARCH.md §A.4); the in-process tests from Wave 1 stay as the fast pyramid; subprocess tests run on every PR but are bounded to ≤ 6 tests."
     - "CHANGELOG.md has a `[v0.2.0]` section listing all 10 MCP-XX requirements as 'Added' + the new packages (`tradewinds-mcp`, `tradewinds-macro`) under 'Added' + dependency bumps (`mcp>=1.27,<2.0`) under 'Changed' + the migration note that Phase 2 surface added `tradewinds.core.temporal.Dataset` under 'Added'."
     - "`.github/workflows/release.yml` is configured to publish 5 PyPI distributions on v0.2.0 tag: tradewinds, tradewinds-weather, tradewinds-markets (carried from Phase 4), PLUS tradewinds-mcp, tradewinds-macro. Each via trusted publishing (PyPI 'pending publisher' pre-registered before first publish, per CLAUDE.md CI section + Phase 4 PKG-01)."
-    - "`.planning/phase-05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md` exists with: (a) the exact `uv build --all` + wheel-METADATA grep commands; (b) trusted-publishing rehearsal steps; (c) manual sample-data live tests for all 10 catalog entries; (d) the deterministic-replay test running over real network calls; (e) sign-off line for user explicit approval before tagging v0.2.0."
+    - "`.planning/phases/05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md` exists with: (a) the exact `uv build --all` + wheel-METADATA grep commands; (b) trusted-publishing rehearsal steps; (c) manual sample-data live tests for all 10 catalog entries; (d) the deterministic-replay test running over real network calls; (e) sign-off line for user explicit approval before tagging v0.2.0."
     - "Full repo suite green: `uv run pytest -m 'not live' -q` exits 0 (Wave 1+2+3+4 tests + new Wave 4b tests = ~110+ MCP tests + Phase 2/3/4 baseline)."
     - "Wheel build dry-run for all 5 packages: `uv build --all` succeeds; `for whl in dist/*.whl; do unzip -l \"$whl\" | grep -c '/__init__.py'; done` — no whl ships two `tradewinds/__init__.py` (PKG-02)."
     - "PRE-PUBLISH ONLY: trusted-publishing dry-run via `.github/workflows/release.yml` against TestPyPI (configured in workflow as an optional pre-release rehearsal). Documented in 05-05-RELEASE-CHECKLIST.md; not run as part of this plan's automation — manual step before tagging."
@@ -72,7 +72,7 @@ must_haves:
     - path: .github/workflows/release.yml
       provides: "Trusted-publishing workflow extended for tradewinds-mcp + tradewinds-macro"
       contains: "tradewinds-mcp"
-    - path: .planning/phase-05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md
+    - path: .planning/phases/05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md
       provides: "Pre-publish checklist with explicit commands, verifications, sign-off line"
       contains: "Sign-off"
   key_links:
@@ -130,10 +130,10 @@ This plan is the v0.2.0 ship gate. Wave 1 shipped the server skeleton with in-pr
 @.planning/REQUIREMENTS.md
 @.planning/STATE.md
 @.planning/REVIEW-DISCIPLINE.md
-@.planning/phase-05-mcp-data-platform/CONTEXT.md
-@.planning/phase-05-mcp-data-platform/RESEARCH.md
-@.planning/phase-05-mcp-data-platform/05-04-SUMMARY.md
-@.planning/phase-05-mcp-data-platform/05-04-VERTICAL-DECISION.md
+@.planning/phases/05-mcp-data-platform/CONTEXT.md
+@.planning/phases/05-mcp-data-platform/RESEARCH.md
+@.planning/phases/05-mcp-data-platform/05-04-SUMMARY.md
+@.planning/phases/05-mcp-data-platform/05-04-VERTICAL-DECISION.md
 @./CLAUDE.md
 </execution_context>
 
@@ -214,7 +214,7 @@ CLAUDE.md tech stack confirms:
   <files>packages/mcp/tests/test_jsonrpc_subprocess_integration.py, packages/mcp/tests/test_jsonrpc_temporal_safety_e2e.py</files>
   <implements>MCP-01 (end-to-end via real subprocess transport); MCP-04 (E2E temporal safety); MCP-07 (E2E schema validation errors)</implements>
   <read_first>
-    - .planning/phase-05-mcp-data-platform/RESEARCH.md (§A.4 — testing pyramid; run_server_in_process for stdio subprocess; jlowin.dev/blog/stop-vibe-testing-mcp-servers — don't manually test via Claude Desktop; §I.6 — stdout corruption pitfall — these tests catch it because subprocess framing is real)
+    - .planning/phases/05-mcp-data-platform/RESEARCH.md (§A.4 — testing pyramid; run_server_in_process for stdio subprocess; jlowin.dev/blog/stop-vibe-testing-mcp-servers — don't manually test via Claude Desktop; §I.6 — stdout corruption pitfall — these tests catch it because subprocess framing is real)
     - Wave 1 + 2 + 4a tests in packages/mcp/tests/ for context on tool surface and envelope shapes
     - packages/mcp/src/tradewinds_mcp/server.py (entry point for the subprocess)
   </read_first>
@@ -307,7 +307,7 @@ CLAUDE.md tech stack confirms:
   <files>packages/mcp/tests/test_deterministic_replay.py, packages/mcp/tests/test_replay_audit_consistency.py, packages/mcp/tests/test_deterministic_replay_property.py</files>
   <implements>MCP-09 (deterministic replay — same query + same cutoff = identical bytes)</implements>
   <read_first>
-    - .planning/phase-05-mcp-data-platform/RESEARCH.md (§D.3 — deterministic replay design + 5 technical challenges; idiom at lines 754-775; §I.5 — TOON determinism guard from Wave 1)
+    - .planning/phases/05-mcp-data-platform/RESEARCH.md (§D.3 — deterministic replay design + 5 technical challenges; idiom at lines 754-775; §I.5 — TOON determinism guard from Wave 1)
     - packages/mcp/tests/test_toon_deterministic.py (Wave 1 — TOON determinism prerequisite — should be green; if not, fix before Wave 4b)
     - packages/macro/src/tradewinds_macro/catalog/alfred.py (PLAN-04 — vintage dedup logic; replay test verifies it holds)
     - Phase 2 CORE-08 (Hypothesis pattern — constrained datetime ranges to avoid shrinking pathology; `from hypothesis.strategies import datetimes, just`; range [2018-01-01, 2027-12-31] UTC)
@@ -422,7 +422,7 @@ CLAUDE.md tech stack confirms:
   <files>packages/mcp/src/tradewinds_mcp/_join_validator.py, packages/mcp/tests/test_cross_vertical_join_rejection.py, packages/mcp/src/tradewinds_mcp/tools/query.py</files>
   <implements>RESEARCH.md §I.8 pitfall mitigation; reinforces MCP-04 trust thesis (agent literally cannot do undeclared joins)</implements>
   <read_first>
-    - .planning/phase-05-mcp-data-platform/RESEARCH.md (§I.8 — cross-vertical join silently produces wrong rows; mitigation: `joins_to` is allow-list, v0.2 hard-rejects)
+    - .planning/phases/05-mcp-data-platform/RESEARCH.md (§I.8 — cross-vertical join silently produces wrong rows; mitigation: `joins_to` is allow-list, v0.2 hard-rejects)
     - packages/mcp/catalog/iem.archive.yaml (PLAN-02 — its `relationship_mappings.joins_to` is the allow-list; verify it lists `ghcnh.archive` + `kalshi.weather` but NOT macro sources)
     - packages/mcp/catalog/fred.archive.yaml (PLAN-04 — its joins_to lists `alfred.archive` + `kalshi.macro` but NOT weather sources)
     - packages/mcp/src/tradewinds_mcp/tools/query.py (Wave 2 — extending to call the join validator before fetching)
@@ -543,14 +543,14 @@ CLAUDE.md tech stack confirms:
 
 <task type="auto">
   <name>Task 5.4: CHANGELOG [v0.2.0] + release.yml extension + RELEASE-CHECKLIST</name>
-  <files>CHANGELOG.md, .github/workflows/release.yml, .planning/phase-05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md, .github/workflows/mcp-tests.yml</files>
+  <files>CHANGELOG.md, .github/workflows/release.yml, .planning/phases/05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md, .github/workflows/mcp-tests.yml</files>
   <implements>v0.2.0 release infrastructure</implements>
   <read_first>
     - .planning/phase-04-coverage-docs-cicd-release/PLAN.md (when shipped — pattern for release.yml; PyPI trusted publishing per CI-01)
     - .github/workflows/release.yml (post-Phase-4 — base file to extend; if missing, Phase 4 deliverable hasn't shipped and this task needs to coordinate)
     - existing CHANGELOG.md (post-Phase-1.5+Phase-4 — base section structure; if missing, create with the Keep-a-Changelog template)
     - CLAUDE.md (CI section — astral-sh/trusted-publishing-examples pattern; PKG-01 — three PyPI registrations, now extending to 5)
-    - .planning/phase-05-mcp-data-platform/05-04-SUMMARY.md (PLAN-04 outputs — what shipped + the vertical decision)
+    - .planning/phases/05-mcp-data-platform/05-04-SUMMARY.md (PLAN-04 outputs — what shipped + the vertical decision)
   </read_first>
   <action>
     Step 1 — Modify (or create) `CHANGELOG.md`. Append a `[v0.2.0]` section:
@@ -593,7 +593,7 @@ CLAUDE.md tech stack confirms:
 
     ### Vertical decision
 
-    The v0.2 second vertical is **macro indicators** (FRED + ALFRED + Kalshi macro). The original brief language suggested sports prediction markets; 2026 legal landscape (horse racing federally blocked May 2026; NFL/NBA in active litigation; MLB exclusive deal Polymarket) made sports non-viable in v0.2 timeframe. Sports deferred to v0.3+ pending 2026-2027 legal landscape settlement. See `.planning/phase-05-mcp-data-platform/05-04-VERTICAL-DECISION.md` for full rationale.
+    The v0.2 second vertical is **macro indicators** (FRED + ALFRED + Kalshi macro). The original brief language suggested sports prediction markets; 2026 legal landscape (horse racing federally blocked May 2026; NFL/NBA in active litigation; MLB exclusive deal Polymarket) made sports non-viable in v0.2 timeframe. Sports deferred to v0.3+ pending 2026-2027 legal landscape settlement. See `.planning/phases/05-mcp-data-platform/05-04-VERTICAL-DECISION.md` for full rationale.
 
     ### Migration notes
 
@@ -651,7 +651,7 @@ CLAUDE.md tech stack confirms:
         uv run pytest packages/mcp/tests/ packages/macro/tests/ -m "not live" -v
     ```
 
-    Step 4 — Create `.planning/phase-05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md`:
+    Step 4 — Create `.planning/phases/05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md`:
 
     ```markdown
     # v0.2.0 Release Checklist — Phase 5 MCP Data Platform
@@ -783,7 +783,7 @@ CLAUDE.md tech stack confirms:
     Step 6 — Commit: `release(phase-5): CHANGELOG v0.2.0 + release workflow extension + RELEASE-CHECKLIST`.
   </action>
   <verify>
-    <automated>grep -c "## \\[v0.2.0\\]" CHANGELOG.md | grep -E "^1$" && grep -c "tradewinds-mcp" .github/workflows/release.yml | awk '$1 >= 1 {exit 0} {exit 1}' && grep -c "tradewinds-macro" .github/workflows/release.yml | awk '$1 >= 1 {exit 0} {exit 1}' && test -f .planning/phase-05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md && grep -c "Sign-off" .planning/phase-05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md | awk '$1 >= 5 {exit 0} {exit 1}' && uv run pre-commit run --all-files</automated>
+    <automated>grep -c "## \\[v0.2.0\\]" CHANGELOG.md | grep -E "^1$" && grep -c "tradewinds-mcp" .github/workflows/release.yml | awk '$1 >= 1 {exit 0} {exit 1}' && grep -c "tradewinds-macro" .github/workflows/release.yml | awk '$1 >= 1 {exit 0} {exit 1}' && test -f .planning/phases/05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md && grep -c "Sign-off" .planning/phases/05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md | awk '$1 >= 5 {exit 0} {exit 1}' && uv run pre-commit run --all-files</automated>
   </verify>
   <acceptance_criteria>
     - `grep "## \\[v0.2.0\\]" CHANGELOG.md` returns non-empty
@@ -794,10 +794,10 @@ CLAUDE.md tech stack confirms:
     - `grep -c "vertical decision" CHANGELOG.md | grep -E "^[1-9]"` (case-insensitive; vertical decision section present)
     - `grep -c "publish-mcp:\|publish-macro:" .github/workflows/release.yml` returns ≥ 2 (jobs added)
     - `python -c "import yaml; yaml.safe_load(open('.github/workflows/release.yml'))"` exits 0
-    - `test -f .planning/phase-05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md` returns 0
-    - `grep -c "Sign-off" .planning/phase-05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md` returns ≥ 5 (multiple sign-off checkpoints)
-    - `grep -c "git tag v0.2.0" .planning/phase-05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md` returns ≥ 1
-    - `grep -c "pip install" .planning/phase-05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md` returns ≥ 1 (post-publish smoke)
+    - `test -f .planning/phases/05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md` returns 0
+    - `grep -c "Sign-off" .planning/phases/05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md` returns ≥ 5 (multiple sign-off checkpoints)
+    - `grep -c "git tag v0.2.0" .planning/phases/05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md` returns ≥ 1
+    - `grep -c "pip install" .planning/phases/05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md` returns ≥ 1 (post-publish smoke)
     - `uv run pre-commit run --all-files` exits 0
     - One commit on the branch
     - No `--no-verify`
@@ -814,7 +814,7 @@ CLAUDE.md tech stack confirms:
   <read_first>
     - .planning/REVIEW-DISCIPLINE.md
     - Plan-level success criteria below
-    - .planning/phase-05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md (Task 5.4 output)
+    - .planning/phases/05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md (Task 5.4 output)
   </read_first>
   <what-built>
     Tasks 5.1–5.4 complete: 10 JSON-RPC subprocess tests; 7 deterministic-replay tests (+ Hypothesis property); 5 cross-vertical-join enforcement tests; CHANGELOG [v0.2.0] section; release workflow extended; RELEASE-CHECKLIST.md committed. The infrastructure for v0.2.0 release is COMPLETE; tagging is the user's next manual step.
@@ -889,7 +889,7 @@ CLAUDE.md tech stack confirms:
     - MCP-09: ✓ Deterministic replay (10-iteration hash stability + Hypothesis property)
     - MCP-10: ✓ 10 pre-indexed catalog entries (7 weather + 3 macro)
 
-    Next step (USER ACTION): Run through `.planning/phase-05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md` and, when all sign-off lines green, run:
+    Next step (USER ACTION): Run through `.planning/phases/05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md` and, when all sign-off lines green, run:
         git tag v0.2.0 && git push origin v0.2.0
 
     The release.yml workflow fires automatically; trusted publishing ships all 5 distributions to PyPI."
@@ -945,7 +945,7 @@ CLAUDE.md tech stack confirms:
 | Cross-package version pins | `unzip -p dist/tradewinds_mcp-0.2.0-*.whl "*/METADATA" \| grep "Requires-Dist: tradewinds>=0.2.0,<0.3"` | non-empty |
 | CHANGELOG v0.2.0 section | `grep "## \\[v0.2.0\\]" CHANGELOG.md` | non-empty |
 | release.yml extended | `grep -c "publish-mcp:\\|publish-macro:" .github/workflows/release.yml` | ≥ 2 |
-| RELEASE-CHECKLIST.md | `test -f .planning/phase-05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md && grep -c "Sign-off" $_` | ≥ 5 |
+| RELEASE-CHECKLIST.md | `test -f .planning/phases/05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md && grep -c "Sign-off" $_` | ≥ 5 |
 | 2-reviewer loop | (manual) | PASS x2 |
 
 ## Static Regression Guards
@@ -978,7 +978,7 @@ echo "OK"
 - [ ] CHANGELOG [v0.2.0] section documents all 10 MCP-XX requirements + 2 new distributions + dependency bumps + vertical decision.
 - [ ] `.github/workflows/release.yml` extended for `tradewinds-mcp` + `tradewinds-macro` via trusted publishing.
 - [ ] `.github/workflows/mcp-tests.yml` extended to test `packages/macro/tests/` alongside `packages/mcp/tests/`.
-- [ ] `.planning/phase-05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md` is a complete runbook with ≥ 5 sign-off lines.
+- [ ] `.planning/phases/05-mcp-data-platform/05-05-RELEASE-CHECKLIST.md` is a complete runbook with ≥ 5 sign-off lines.
 - [ ] All 5 distributions build cleanly via `uv build --all`: tradewinds, tradewinds-weather, tradewinds-markets, tradewinds-mcp, tradewinds-macro. No PEP 420 namespace collisions.
 - [ ] METADATA `Requires-Dist` for tradewinds-mcp + tradewinds-macro pins `tradewinds>=0.2.0,<0.3` (PKG-03 enforced for new distributions too).
 - [ ] Coverage gates: `tradewinds.core` ≥ 90%; `tradewinds_mcp` ≥ 85%; `tradewinds_macro` ≥ 80%.
@@ -989,7 +989,7 @@ echo "OK"
 </success_criteria>
 
 <output>
-After completion, create `.planning/phase-05-mcp-data-platform/05-05-SUMMARY.md` documenting:
+After completion, create `.planning/phases/05-mcp-data-platform/05-05-SUMMARY.md` documenting:
 
 - All 10 MCP-XX requirements verified end-to-end (each with link to the test that proves it)
 - JSON-RPC subprocess test outcomes (6 + 4 = 10)

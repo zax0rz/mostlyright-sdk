@@ -826,8 +826,8 @@ async def test_query_same_args_byte_identical_two_runs(server_fixture):
 - [federalreserve.gov/econres/feds/files/2026010pap.pdf](https://www.federalreserve.gov/econres/feds/files/2026010pap.pdf) — "Kalshi and the Rise of Macro Markets" Fed working paper (2026)
 - [docs.kalshi.com/welcome](https://docs.kalshi.com/welcome) — Kalshi Exchange API documentation
 - CLAUDE.md (this repo) — Recommended Stack table, "Deferred to v0.2 — Reserve the Seam", Project Constraints
-- `.planning/phase-02-core-primitives-catalog-adapters/PLAN.md` (this repo) — Phase 2 KnowledgeView/Schema/TOON foundations
-- `.planning/phase-05-mcp-data-platform/VISION.md` + `CONTEXT.md` (this repo) — locked decisions and open questions
+- `.planning/phases/02-core-primitives-catalog-adapters/PLAN.md` (this repo) — Phase 2 KnowledgeView/Schema/TOON foundations
+- `.planning/phases/05-mcp-data-platform/VISION.md` + `CONTEXT.md` (this repo) — locked decisions and open questions
 
 ### Secondary (MEDIUM confidence — multiple sources cross-verified)
 - [jlowin.dev/blog/fastmcp-3-whats-new](https://jlowin.dev/blog/fastmcp-3-whats-new) — FastMCP 3.0 changes Jan 2026

@@ -102,8 +102,8 @@ Lift mostlyright PR #85 (commit `cf9eb85`, 2026-05-12) byte-faithfully into trad
 @.planning/REQUIREMENTS.md
 @.planning/STATE.md
 @.planning/REVIEW-DISCIPLINE.md
-@.planning/phase-01-5-fetcher-optimization-cross-source-parallelism/CONTEXT.md
-@.planning/phase-01-5-fetcher-optimization-cross-source-parallelism/RESEARCH.md
+@.planning/phases/01.5-fetcher-optimization-cross-source-parallelism/CONTEXT.md
+@.planning/phases/01.5-fetcher-optimization-cross-source-parallelism/RESEARCH.md
 @./CLAUDE.md
 </execution_context>
 
@@ -137,8 +137,8 @@ Lift mostlyright PR #85 (commit `cf9eb85`, 2026-05-12) byte-faithfully into trad
   <files>packages/weather/src/tradewinds/weather/_fetchers/_iem_chunks.py, packages/weather/tests/_fetchers/test_iem_chunks.py</files>
   <implements>PERF-01 (shared leap-year-safe calendar chunker)</implements>
   <read_first>
-    - .planning/phase-01-5-fetcher-optimization-cross-source-parallelism/RESEARCH.md (lines 95-137 — verbatim PR #85 `_iem_chunks.py` source; lines 274-282 — Pitfall 1 leap-year landmine)
-    - .planning/phase-01-5-fetcher-optimization-cross-source-parallelism/CONTEXT.md (Specifics section — chunk helper API contract)
+    - .planning/phases/01.5-fetcher-optimization-cross-source-parallelism/RESEARCH.md (lines 95-137 — verbatim PR #85 `_iem_chunks.py` source; lines 274-282 — Pitfall 1 leap-year landmine)
+    - .planning/phases/01.5-fetcher-optimization-cross-source-parallelism/CONTEXT.md (Specifics section — chunk helper API contract)
     - packages/weather/src/tradewinds/weather/_fetchers/iem_asos.py (existing _monthly_chunks for reference of CURRENT pattern — will be replaced in Task 1.2, but read NOW to see the current docstring style)
     - packages/weather/src/tradewinds/weather/_fetchers/__init__.py (verify module exports pattern)
     - CLAUDE.md (TDD mandatory + 80% coverage minimum on new code)
@@ -227,8 +227,8 @@ Lift mostlyright PR #85 (commit `cf9eb85`, 2026-05-12) byte-faithfully into trad
   <files>packages/weather/src/tradewinds/weather/_fetchers/iem_asos.py, packages/weather/tests/_fetchers/test_iem_asos.py</files>
   <implements>PERF-01 (chunker swap from _monthly_chunks → yearly_chunks_exclusive_end), PERF-02 (cache-filename + _partial + UTC + OR)</implements>
   <read_first>
-    - .planning/phase-01-5-fetcher-optimization-cross-source-parallelism/RESEARCH.md (lines 141-188 — Pattern 2 cache-filename design; lines 152-188 — exact `_iem_cache_filename` + download_iem loop from PR #85; lines 285-301 — Pitfalls 2 (UTC) and 3 (OR-not-AND); lines 379-432 — full IEM ASOS fetcher diff shape)
-    - .planning/phase-01-5-fetcher-optimization-cross-source-parallelism/CONTEXT.md (decisions section — "Cache scope — fetcher-internal CSV staging only"; "IEM rate-limit risk" — informational, not blocking this task)
+    - .planning/phases/01.5-fetcher-optimization-cross-source-parallelism/RESEARCH.md (lines 141-188 — Pattern 2 cache-filename design; lines 152-188 — exact `_iem_cache_filename` + download_iem loop from PR #85; lines 285-301 — Pitfalls 2 (UTC) and 3 (OR-not-AND); lines 379-432 — full IEM ASOS fetcher diff shape)
+    - .planning/phases/01.5-fetcher-optimization-cross-source-parallelism/CONTEXT.md (decisions section — "Cache scope — fetcher-internal CSV staging only"; "IEM rate-limit risk" — informational, not blocking this task)
     - packages/weather/src/tradewinds/weather/_fetchers/iem_asos.py (CURRENT FILE — read fully; you are replacing `_monthly_chunks` (lines 52-99) and the cache filename pattern at line 182. Keep the existing `report_type` keyword signature — RESEARCH.md note #1 at line 436 says do NOT change to multi-report-type-loop)
     - packages/weather/tests/_fetchers/test_iem_asos.py (CURRENT FILE — read to see existing test patterns and fixtures; do NOT regress them)
     - packages/weather/src/tradewinds/weather/_fetchers/_iem_chunks.py (Task 1.1 output — confirm the import path you will use)
@@ -337,7 +337,7 @@ Lift mostlyright PR #85 (commit `cf9eb85`, 2026-05-12) byte-faithfully into trad
   <files>packages/core/src/tradewinds/_internal/_http.py, packages/core/tests/_internal/test_http.py</files>
   <implements>PERF-03 (HTTP_TIMEOUT bump for 12x payload increase per yearly chunk)</implements>
   <read_first>
-    - .planning/phase-01-5-fetcher-optimization-cross-source-parallelism/RESEARCH.md (lines 190-206 — Pattern 3 verbatim diff; lines 442-454 — exact before/after content for `_internal/_http.py`)
+    - .planning/phases/01.5-fetcher-optimization-cross-source-parallelism/RESEARCH.md (lines 190-206 — Pattern 3 verbatim diff; lines 442-454 — exact before/after content for `_internal/_http.py`)
     - packages/core/src/tradewinds/_internal/_http.py (CURRENT FILE — read fully; line 18 has `HTTP_TIMEOUT = 30.0`; this is the only line to change. Line 19 has `TRANSIENT_CODES`, line 31 uses `httpx.Client(timeout=HTTP_TIMEOUT)` — verify no other constant needs touching)
     - packages/core/tests/_internal/ (check if `test_http.py` exists; if not, you'll create it)
     - .planning/REVIEW-DISCIPLINE.md (the never-skip list — `_internal/*` triggers the 3-reviewer panel automatically)
@@ -404,8 +404,8 @@ Lift mostlyright PR #85 (commit `cf9eb85`, 2026-05-12) byte-faithfully into trad
   <implements>ROADMAP.md Phase 1.5 parity-gate handling — mandatory pre-merge re-run; Pitfall 4 cheap pre-flight</implements>
   <read_first>
     - .planning/ROADMAP.md (lines 51-52 — parity gate handling: cheap pre-flight + full sweep mandatory pre-merge; revert vs `>` → `>=` decision is post-spike)
-    - .planning/phase-01-5-fetcher-optimization-cross-source-parallelism/CONTEXT.md (decisions: "Parity gate handling — re-run all 5 fixtures pre-merge")
-    - .planning/phase-01-5-fetcher-optimization-cross-source-parallelism/RESEARCH.md (lines 303-318 — Pitfall 4 chunk-iteration-order affects merge tie-break; lines 568-576 — pre-flight cheap parity-check methodology)
+    - .planning/phases/01.5-fetcher-optimization-cross-source-parallelism/CONTEXT.md (decisions: "Parity gate handling — re-run all 5 fixtures pre-merge")
+    - .planning/phases/01.5-fetcher-optimization-cross-source-parallelism/RESEARCH.md (lines 303-318 — Pitfall 4 chunk-iteration-order affects merge tie-break; lines 568-576 — pre-flight cheap parity-check methodology)
     - tests/test_parity.py (existing — Phase 1 Wave 3 deliverable; verify it parametrizes over all 5 fixtures and uses `assert_frame_equal(check_dtype=True, check_exact=True)`)
     - tests/fixtures/parity/ (existing — verify all 5 fixtures present)
     - packages/core/src/tradewinds/_internal/merge/observations.py (read to confirm the strict `>` priority comparison RESEARCH.md Pitfall 4 references — informs the post-flight fallback decision if needed)
@@ -545,7 +545,7 @@ grep -c "timedelta(days=365)" packages/weather/src/tradewinds/weather/_fetchers/
 </success_criteria>
 
 <output>
-After completion, create `.planning/phase-01-5-fetcher-optimization-cross-source-parallelism/01-5-01-SUMMARY.md` documenting:
+After completion, create `.planning/phases/01.5-fetcher-optimization-cross-source-parallelism/01-5-01-SUMMARY.md` documenting:
 
 - Three changes shipped (PERF-01/02/03) with PR #85 commit `cf9eb85` reference
 - Parity-sweep result (5/5 green | drift detected + decision taken)

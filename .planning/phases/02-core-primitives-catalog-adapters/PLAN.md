@@ -111,7 +111,7 @@ Build the architectural spine of tradewinds v0.1.0 on top of the now-stable Phas
 @.planning/ROADMAP.md
 @.planning/REQUIREMENTS.md
 @.planning/STATE.md
-@.planning/phase-02-core-primitives-catalog-adapters/RESEARCH.md
+@.planning/phases/02-core-primitives-catalog-adapters/RESEARCH.md
 @docs/design.md
 </execution_context>
 
@@ -157,7 +157,7 @@ Promote the dormant `packages/core/src/tradewinds/_v02/` reference implementatio
 #### Task 1.0: Validator engine spike (Day 5 morning, 2 hours)
 
 - **Branch:** `phase-2/wave-1-rebrand/spike-validator` (throwaway; outcome is a decision, not merged code).
-- **Files:** `spike/validator_engine.py` (delete before wave merge); `.planning/phase-02-core-primitives-catalog-adapters/DECISIONS.md` (NEW, append).
+- **Files:** `spike/validator_engine.py` (delete before wave merge); `.planning/phases/02-core-primitives-catalog-adapters/DECISIONS.md` (NEW, append).
 - **Action:** Implement two prototype Validators against `_v02/schemas/observation.py` — one using `jsonschema` (≤200 LOC manual ColumnSpec→jsonschema translation), one using `pandera` 0.29 (sketch). Measure: LOC delta, first-import time, dep tree depth, runtime on a 10k-row fixture.
 - **Decision rule:** keep jsonschema (RESEARCH.md Decision 2 default) unless pandera shows >30% LOC reduction net of deps AND first-import <500ms cold. Document outcome in `DECISIONS.md` under `D-02: Validator engine`.
 - **Codex review priority:** medium (decision artifact, not shipped code).
@@ -813,7 +813,7 @@ Hard-code `KALSHI_SETTLEMENT_STATIONS` with citations, ship `kalshi_nhigh.resolv
   | (18 more rows)     |                |              |                  |
   ```
 - **What the executor does:** if Task 5.0 unblocked: proceed to 5.1. If blocked at wave start: skip Wave 5 entirely for now, mark CATALOG-04/MARKETS-01/02/03 as "blocked on operator", and continue to Phase 3 planning. Wave 5 can resume out-of-band when operator delivers the table.
-- **Acceptance:** operator pastes (or commits to a NEW file `.planning/phase-02-core-primitives-catalog-adapters/kalshi_stations_OPERATOR.md`) the 20-row table with Kalshi page URLs as citations. The Task 5.1 implementation copies from this operator file verbatim.
+- **Acceptance:** operator pastes (or commits to a NEW file `.planning/phases/02-core-primitives-catalog-adapters/kalshi_stations_OPERATOR.md`) the 20-row table with Kalshi page URLs as citations. The Task 5.1 implementation copies from this operator file verbatim.
 
 #### Task 5.1: KALSHI_SETTLEMENT_STATIONS constant + contract specs (parallel sub-branch)
 
@@ -1089,14 +1089,14 @@ Phase 2 is complete when:
 
 <output>
 
-Wave-merge SUMMARY files will be created per wave at `.planning/phase-02-core-primitives-catalog-adapters/SUMMARY-wave-{N}.md` documenting:
+Wave-merge SUMMARY files will be created per wave at `.planning/phases/02-core-primitives-catalog-adapters/SUMMARY-wave-{N}.md` documenting:
 - Files created/modified
 - Atomic commits made
 - Codex review outcomes (per sub-branch)
 - Open questions resolved (e.g., Open Q1 outcome at Wave 4)
 - Test counts before/after
 
-Phase-level SUMMARY at `.planning/phase-02-core-primitives-catalog-adapters/SUMMARY.md` after Wave 5 merge, covering:
+Phase-level SUMMARY at `.planning/phases/02-core-primitives-catalog-adapters/SUMMARY.md` after Wave 5 merge, covering:
 - Total LOC added/moved (target: ~3,500 LOC moved from `_v02/` + ~2,500 LOC new for KnowledgeView/LeakageDetector/Validator/adapters/Kalshi)
 - Total test count (target: 266 retained + ~250 new)
 - Branch coverage on `tradewinds.core.*`

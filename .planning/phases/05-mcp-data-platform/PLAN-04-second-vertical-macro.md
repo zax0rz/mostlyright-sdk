@@ -41,7 +41,7 @@ files_modified:
   - packages/mcp/tests/test_adapter_bridge_macro_dispatch.py                          # NEW — bridge.fetch(entry) for fred.archive dispatches to tradewinds_macro adapter; kalshi.macro raises "use markets module directly" like kalshi.weather
 must_haves:
   truths:
-    - "**USER_DECISION_GATE resolved BEFORE adapter/catalog work begins.** User has explicitly confirmed one of: (a) macro indicators per RESEARCH.md §E researcher recommendation, (b) sports prediction markets — overriding the 2026 legal-blocker finding with the user's risk acceptance, or (c) another vertical (user-specified). The decision is recorded in `.planning/phase-05-mcp-data-platform/05-04-VERTICAL-DECISION.md`."
+    - "**USER_DECISION_GATE resolved BEFORE adapter/catalog work begins.** User has explicitly confirmed one of: (a) macro indicators per RESEARCH.md §E researcher recommendation, (b) sports prediction markets — overriding the 2026 legal-blocker finding with the user's risk acceptance, or (c) another vertical (user-specified). The decision is recorded in `.planning/phases/05-mcp-data-platform/05-04-VERTICAL-DECISION.md`."
     - "If macro chosen: `packages/macro/` distribution exists; `tradewinds_macro.catalog.get_adapter('fred.archive')` returns a FREDAdapter; `get_adapter('alfred.archive')` returns an ALFREDAdapter; `get_adapter('kalshi.macro')` returns a contract spec resolver."
     - "If macro chosen: `FREDAdapter.fetch(series_id='CPIAUCSL', start=..., end=..., as_of=...)` returns a `pd.DataFrame` with canonical columns (event_time, knowledge_time, source='fred.archive', retrieved_at, value, series_id). For non-vintage-aware FRED, knowledge_time defaults to event_time + FRED publish-delay per series (documented per series in the catalog entry); for vintage-aware ALFRED, knowledge_time = `realtime_start` (the natural vintage primitive per RESEARCH.md §E.2)."
     - "If macro chosen: `ALFREDAdapter.fetch(...)` honors vintage semantics — same `as_of` produces the same row set (deterministic replay; RESEARCH.md §I.7 pitfall mitigated: dedup logic uses `realtime_start <= as_of`)."
@@ -55,7 +55,7 @@ must_haves:
     - "Full MCP suite green: `uv run pytest packages/mcp/tests/ packages/macro/tests/ -m 'not live' -q` exits 0 (Wave 1+2+3 tests + new Wave 4 tests; macro adapter tests use recorded fixtures via pytest-recording per CLAUDE.md tech-stack research)."
     - "Pre-commit + pre-push hooks green (no `--no-verify`)."
   artifacts:
-    - path: .planning/phase-05-mcp-data-platform/05-04-VERTICAL-DECISION.md
+    - path: .planning/phases/05-mcp-data-platform/05-04-VERTICAL-DECISION.md
       provides: "User-confirmed decision: which vertical, rationale, any deviation from RESEARCH.md §E recommendation, risk acceptance for sports if chosen"
       contains: "Vertical:"
     - path: packages/macro/pyproject.toml
@@ -150,9 +150,9 @@ This plan delivers tradewinds' first non-weather vertical, proving the multi-ver
 @.planning/REQUIREMENTS.md
 @.planning/STATE.md
 @.planning/REVIEW-DISCIPLINE.md
-@.planning/phase-05-mcp-data-platform/CONTEXT.md
-@.planning/phase-05-mcp-data-platform/RESEARCH.md
-@.planning/phase-05-mcp-data-platform/05-03-SUMMARY.md
+@.planning/phases/05-mcp-data-platform/CONTEXT.md
+@.planning/phases/05-mcp-data-platform/RESEARCH.md
+@.planning/phases/05-mcp-data-platform/05-03-SUMMARY.md
 @./CLAUDE.md
 </execution_context>
 
@@ -225,11 +225,11 @@ ALFRED API (sibling to FRED for vintage data):
 
 <task type="checkpoint:decision" gate="blocking">
   <name>Task 4.0: [USER_DECISION_GATE] Second-vertical choice — confirm or override</name>
-  <files>.planning/phase-05-mcp-data-platform/05-04-VERTICAL-DECISION.md (NEW after user input)</files>
+  <files>.planning/phases/05-mcp-data-platform/05-04-VERTICAL-DECISION.md (NEW after user input)</files>
   <implements>RESEARCH.md §E vertical recommendation; CONTEXT.md "MUST NOT silently choose"; original brief language honored via explicit confirmation</implements>
   <read_first>
-    - .planning/phase-05-mcp-data-platform/RESEARCH.md (§E full section — 2026 sports legal landscape, macro rationale, top-10 entries)
-    - .planning/phase-05-mcp-data-platform/CONTEXT.md (decisions — "Multi-vertical proof — second-vertical SELECTION is a user-owned decision")
+    - .planning/phases/05-mcp-data-platform/RESEARCH.md (§E full section — 2026 sports legal landscape, macro rationale, top-10 entries)
+    - .planning/phases/05-mcp-data-platform/CONTEXT.md (decisions — "Multi-vertical proof — second-vertical SELECTION is a user-owned decision")
     - .planning/REQUIREMENTS.md (line 242 — MCP-05: "Multi-vertical catalog expansion: v0.2 = weather + MCP server; v0.3 = sports prediction markets; v0.4 = politics + finance" — sports was the initial v0.3 target; researcher recommends macro as v0.2 second vertical with sports deferred to v0.3+)
   </read_first>
   <decision>
@@ -313,7 +313,7 @@ ALFRED API (sibling to FRED for vintage data):
     - `other:<vertical-name>` (e.g., `other:fixed-income` or `other:supply-chain`)
     - `defer` (skip second vertical in v0.2; requires REQUIREMENTS.md amendment to MCP-05)
 
-    Whatever the choice, the planner will create `.planning/phase-05-mcp-data-platform/05-04-VERTICAL-DECISION.md` documenting the decision + rationale + any deviations from RESEARCH.md.
+    Whatever the choice, the planner will create `.planning/phases/05-mcp-data-platform/05-04-VERTICAL-DECISION.md` documenting the decision + rationale + any deviations from RESEARCH.md.
   </resume-signal>
 </task>
 
@@ -323,10 +323,10 @@ ALFRED API (sibling to FRED for vintage data):
   <implements>MCP-05 (multi-vertical foundation), MCP-10 (fred.archive component)</implements>
   <conditional>If Task 4.0 resolved to `sports` or `other`, planner re-scopes this task to `packages/sports/` or `packages/<vertical>/` with vertical-specific adapter requirements. The structure below assumes macro.</conditional>
   <read_first>
-    - .planning/phase-05-mcp-data-platform/RESEARCH.md (§E.2 — FRED API rationale; series IDs CPIAUCSL/CORECPI/PCEPI/CORE PCE/PAYEMS/DFF/UNRATE; §I.4 hallucination mitigation; §I.7 — vintage backfill pitfall — ONLY ALFRED is vintage-aware; FRED is one-shot publish)
-    - Task 4.0 output (.planning/phase-05-mcp-data-platform/05-04-VERTICAL-DECISION.md)
-    - .planning/phase-01-v0-14-1-parity-lift/PLAN.md (Wave 1 — pyproject.toml + hatch build pattern for tradewinds-* packages; sibling-package layout under packages/<name>/src/tradewinds_<name>/)
-    - .planning/phase-02-core-primitives-catalog-adapters/PLAN.md (Wave 3 — WeatherAdapter Protocol + eager registry pattern; mirror this for macro adapters)
+    - .planning/phases/05-mcp-data-platform/RESEARCH.md (§E.2 — FRED API rationale; series IDs CPIAUCSL/CORECPI/PCEPI/CORE PCE/PAYEMS/DFF/UNRATE; §I.4 hallucination mitigation; §I.7 — vintage backfill pitfall — ONLY ALFRED is vintage-aware; FRED is one-shot publish)
+    - Task 4.0 output (.planning/phases/05-mcp-data-platform/05-04-VERTICAL-DECISION.md)
+    - .planning/phases/01-v0-14-1-parity-lift/PLAN.md (Wave 1 — pyproject.toml + hatch build pattern for tradewinds-* packages; sibling-package layout under packages/<name>/src/tradewinds_<name>/)
+    - .planning/phases/02-core-primitives-catalog-adapters/PLAN.md (Wave 3 — WeatherAdapter Protocol + eager registry pattern; mirror this for macro adapters)
     - packages/weather/src/tradewinds/weather/catalog/__init__.py (existing — confirm registry structure to mirror)
     - CLAUDE.md (pytest-recording for VCR; httpx for HTTP; ≥80% line coverage on adapter wrappers)
   </read_first>
@@ -604,7 +604,7 @@ ALFRED API (sibling to FRED for vintage data):
   <implements>MCP-05 (vintage-aware temporal safety); MCP-10 (alfred.archive component)</implements>
   <read_first>
     - Task 4.1 outputs (FREDAdapter pattern)
-    - .planning/phase-05-mcp-data-platform/RESEARCH.md (§E.2 — ALFRED vintage API is the temporal-safety primitive; §I.7 — pitfall: ALFRED inflated row counts; mitigation: filter realtime_start <= as_of BEFORE returning)
+    - .planning/phases/05-mcp-data-platform/RESEARCH.md (§E.2 — ALFRED vintage API is the temporal-safety primitive; §I.7 — pitfall: ALFRED inflated row counts; mitigation: filter realtime_start <= as_of BEFORE returning)
     - alfred.stlouisfed.org docs (linked in RESEARCH.md sources) — confirm endpoint shape for vintage-aware fetches; the `/fred/series/observations` endpoint accepts `realtime_start` + `realtime_end` query params
   </read_first>
   <behavior>
@@ -768,8 +768,8 @@ ALFRED API (sibling to FRED for vintage data):
   <files>packages/macro/src/tradewinds_macro/catalog/kalshi_macro.py, packages/macro/tests/test_kalshi_macro_specs.py</files>
   <implements>MCP-05 (macro market contract specs); MCP-10 (kalshi.macro component)</implements>
   <read_first>
-    - .planning/phase-05-mcp-data-platform/RESEARCH.md (§E.2 — Kalshi macro markets; settlement sources are BLS / BEA / Fed direct; §E.3 — kalshi.macro is contract specs only, no orderbook)
-    - .planning/phase-02-core-primitives-catalog-adapters/PLAN.md (Wave 4 — Kalshi NHIGH/NLOW contract spec pattern; KALSHI_SETTLEMENT_STATIONS hard-coded dict; mirror this for macro)
+    - .planning/phases/05-mcp-data-platform/RESEARCH.md (§E.2 — Kalshi macro markets; settlement sources are BLS / BEA / Fed direct; §E.3 — kalshi.macro is contract specs only, no orderbook)
+    - .planning/phases/02-core-primitives-catalog-adapters/PLAN.md (Wave 4 — Kalshi NHIGH/NLOW contract spec pattern; KALSHI_SETTLEMENT_STATIONS hard-coded dict; mirror this for macro)
     - packages/markets/src/tradewinds/markets/catalog/ (Phase 2 — existing kalshi_nhigh/kalshi_nlow contract spec implementations to mirror; KALSHI_SETTLEMENT_STATIONS pattern with citation URLs)
   </read_first>
   <behavior>
@@ -911,7 +911,7 @@ ALFRED API (sibling to FRED for vintage data):
   <files>packages/mcp/catalog/_generated/fred.archive.yaml, packages/mcp/catalog/_generated/alfred.archive.yaml, packages/mcp/catalog/_generated/kalshi.macro.yaml</files>
   <implements>MCP-02 (catalog entries for second vertical); MCP-10 macro portion (still in _generated/; promotion in Task 4.5)</implements>
   <read_first>
-    - .planning/phase-05-mcp-data-platform/RESEARCH.md (§E.2 — FRED+ALFRED+Kalshi macro rationale; §B.2 — YAML catalog skeleton)
+    - .planning/phases/05-mcp-data-platform/RESEARCH.md (§E.2 — FRED+ALFRED+Kalshi macro rationale; §B.2 — YAML catalog skeleton)
     - packages/mcp/AGENT-CONNECTOR-GUIDE.md (Wave 3 — worked example for filling in 5 layers)
     - packages/mcp/src/tradewinds_mcp/_generated_scaffold.py (Wave 3 — use this to scaffold)
     - packages/mcp/src/tradewinds_mcp/_generated_validator.py (Wave 3 — use this to validate)
@@ -1181,7 +1181,7 @@ ALFRED API (sibling to FRED for vintage data):
   <implements>Wave 4a closeout</implements>
   <read_first>
     - .planning/REVIEW-DISCIPLINE.md (never-skip — new package distribution + Kalshi contract spec literal table + catalog YAML — three reviewer-flagged surfaces)
-    - .planning/phase-05-mcp-data-platform/05-04-VERTICAL-DECISION.md (the user's decision artifact)
+    - .planning/phases/05-mcp-data-platform/05-04-VERTICAL-DECISION.md (the user's decision artifact)
     - Plan-level success criteria below
   </read_first>
   <what-built>
@@ -1287,7 +1287,7 @@ ALFRED API (sibling to FRED for vintage data):
 
 | Check | Command | Expected |
 |-------|---------|----------|
-| Vertical decision recorded | `test -f .planning/phase-05-mcp-data-platform/05-04-VERTICAL-DECISION.md` | exit 0 |
+| Vertical decision recorded | `test -f .planning/phases/05-mcp-data-platform/05-04-VERTICAL-DECISION.md` | exit 0 |
 | packages/macro/ built | `uv build packages/macro/` | exit 0 |
 | Wheel does NOT contain tradewinds/__init__.py | `unzip -l packages/macro/dist/*.whl \| grep -c "^.*tradewinds/__init__.py$"` | 0 |
 | FREDAdapter registers required env var | `grep -c "FRED_API_KEY" packages/macro/src/tradewinds_macro/catalog/fred.py` | ≥ 1 |
@@ -1321,7 +1321,7 @@ grep -c "kalshi\\." packages/mcp/src/tradewinds_mcp/_adapter_bridge.py | grep -E
 </verification>
 
 <success_criteria>
-- [ ] Task 4.0 USER_DECISION_GATE resolved; `.planning/phase-05-mcp-data-platform/05-04-VERTICAL-DECISION.md` records the choice + rationale.
+- [ ] Task 4.0 USER_DECISION_GATE resolved; `.planning/phases/05-mcp-data-platform/05-04-VERTICAL-DECISION.md` records the choice + rationale.
 - [ ] MCP-05 (full): multi-vertical proof shipped — weather + macro (or user-chosen alternative). At least one non-weather vertical exists as a catalog entries + adapter atop the same temporal-safety layer.
 - [ ] MCP-10 (full, with PLAN-02): 10 catalog entries in `packages/mcp/catalog/` (7 weather from PLAN-02 + 3 macro from this plan: fred.archive, alfred.archive, kalshi.macro).
 - [ ] `tradewinds-macro==0.2.0` distribution builds with no PKG-02 namespace collision; ships FREDAdapter + ALFREDAdapter + KalshiMacroContractSpec.
@@ -1338,7 +1338,7 @@ grep -c "kalshi\\." packages/mcp/src/tradewinds_mcp/_adapter_bridge.py | grep -E
 </success_criteria>
 
 <output>
-After completion, create `.planning/phase-05-mcp-data-platform/05-04-SUMMARY.md` documenting:
+After completion, create `.planning/phases/05-mcp-data-platform/05-04-SUMMARY.md` documenting:
 
 - USER_DECISION_GATE outcome — which vertical, deviation from researcher recommendation (if any)
 - MCP-05 + MCP-10 (macro portion) delivered
