@@ -17,14 +17,20 @@ log = logging.getLogger(__name__)
 MAX_RETRIES = 3
 BASE_DELAY = 1.0
 HTTP_TIMEOUT = 30.0
-TRANSIENT_CODES = frozenset({500, 502, 503, 504})
+# Retryable HTTP responses. 429 (Too Many Requests) is included because IEM
+# ASOS rate-limits bursts of monthly downloads (12+ months x 2 report_types
+# in quick succession is enough to trip it on a fresh cache). Without retry,
+# research() silently swallows partial fetch failures and emits a degraded
+# parity output - which is exactly what the Wave 3 HARD GATE caught when
+# cache isolation was added. Codex iter-2 wave-3 follow-up.
+TRANSIENT_CODES = frozenset({429, 500, 502, 503, 504})
 
 
 def download_with_retry(url: str, dest: Path) -> None:
     """Download URL to dest with exponential backoff.
 
     404 raises immediately (permanent error).
-    500/502/503/504 are retried up to MAX_RETRIES times.
+    429/500/502/503/504 are retried up to MAX_RETRIES times.
     Writes to a .tmp file first, then atomic rename.
     """
     dest.parent.mkdir(parents=True, exist_ok=True)

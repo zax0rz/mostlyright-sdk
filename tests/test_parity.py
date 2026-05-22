@@ -66,6 +66,29 @@ CASES: list[tuple[int, str, str, str]] = [
 ]
 
 
+@pytest.fixture(autouse=True)
+def _isolated_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Force a fresh, per-test ``TRADEWINDS_CACHE_DIR`` for the parity gate.
+
+    Without this, ``tradewinds.research()`` reads and writes the user's
+    persistent ``~/.tradewinds/cache``: a populated cache from an earlier
+    (potentially buggy) build can let the gate go green by serving stale
+    rows, hiding a fetcher/parser regression - exactly the "leaked state"
+    HIGH-severity failure mode that REVIEW-DISCIPLINE.md calls out, and
+    the second-order pollution of the developer's real cache.
+
+    ``_cache_root()`` and ``_sources_root()`` both re-read this env var on
+    every call (no module-level memoization), so monkeypatching at fixture
+    scope cleanly isolates both the parquet observation cache and the
+    raw IEM/AWC/GHCNh/CLI source caches under the same tmp_path.
+
+    Codex iter-2 P2 on wave-3, escalated to HIGH per REVIEW-DISCIPLINE's
+    leaked-state calibration. Applies to ``test_dtypes_match_ground_truth``
+    too (no-op there - it never touches the cache).
+    """
+    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+
+
 def _canon(df: pd.DataFrame) -> pd.DataFrame:
     """Promote ``date`` to a column, drop any spurious ``index``, sort.
 
