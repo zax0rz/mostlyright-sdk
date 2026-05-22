@@ -30,6 +30,7 @@ import time
 from pathlib import Path
 
 import httpx
+from tradewinds._internal._bounds import validate_ghcnh_id_for_path
 from tradewinds._internal._http import download_with_retry
 
 log = logging.getLogger(__name__)
@@ -92,6 +93,12 @@ def download_ghcnh(
         transient retries (500/502/503/504). Callers wanting the
         404-skip behavior should use :func:`download_ghcnh_range`.
     """
+    # Rob C1/H8: validate station_id at the boundary. GHCNh ids carry digits
+    # and hyphens (unlike ICAO), so GHCNH_STATION_ID_RE is a separate pattern.
+    # The boundary check rejects any path-separator before the value flows
+    # into the URL or the per-station cache subdirectory.
+    validate_ghcnh_id_for_path(station_id, field="station_id")
+
     filename = _ghcnh_filename(station_id, year)
     dest = dest_dir / station_id / filename
 
@@ -137,6 +144,9 @@ def download_ghcnh_range(
         Paths to the local PSV files (one per year that produced data),
         in chronological order. 404 years are omitted from the list.
     """
+    # Validate up front (per-year loop would also catch on first iteration).
+    validate_ghcnh_id_for_path(station_id, field="station_id")
+
     paths: list[Path] = []
     for year in range(start_year, end_year + 1):
         try:

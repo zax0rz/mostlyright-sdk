@@ -33,6 +33,7 @@ import time
 from datetime import date
 from pathlib import Path
 
+from tradewinds._internal._bounds import validate_icao_for_path
 from tradewinds._internal._http import download_with_retry
 from tradewinds._internal.models.station import StationInfo
 
@@ -175,6 +176,11 @@ def download_iem_asos(
     """
     if report_type not in _REPORT_TYPE_SUFFIX:
         raise ValueError(f"report_type must be 3 (METAR) or 4 (SPECI), got {report_type!r}")
+    # Rob C1/H8: validate station.code at the boundary BEFORE it goes into the
+    # IEM URL param or the per-station cache subdirectory. StationInfo.code is
+    # supposed to be a curated 3-letter no-K-prefix ICAO, but defense-in-depth
+    # the check at the boundary catches any registry corruption or mis-call.
+    validate_icao_for_path(station.code, field="station.code")
     suffix = _REPORT_TYPE_SUFFIX[report_type]
     chunks = _monthly_chunks(start, end)
     paths: list[Path] = []

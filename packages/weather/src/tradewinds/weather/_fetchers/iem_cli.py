@@ -27,6 +27,7 @@ from pathlib import Path
 
 import httpx
 from filelock import FileLock
+from tradewinds._internal._bounds import validate_icao_for_path
 from tradewinds._internal._http import download_with_retry
 
 # Match cache.py's lock timeout so concurrent downloaders surface deadlocks
@@ -85,6 +86,10 @@ def download_cli(
         ValueError: IEM returned a response that is neither a list nor a
             dict containing a ``"results"`` list.
     """
+    # Rob C1/H8: validate at the boundary BEFORE the string flows into the
+    # URL param or the cache path. STATION_CODE_RE rejects any path-separator
+    # or shell-special character; the regex anchors require a strict ICAO.
+    validate_icao_for_path(station_icao, field="station_icao")
     dest = _cache_path(station_icao, year, dest_dir)
     if dest.exists() and not skip_cache:
         return dest
@@ -169,6 +174,11 @@ def download_cli_range(
     """
     if end_year < start_year:
         raise ValueError(f"end_year ({end_year}) must be >= start_year ({start_year})")
+
+    # Validate once up front so a bad string fails fast (per-year loop would
+    # also catch it on the first iteration, but this keeps the error site
+    # next to the public argument).
+    validate_icao_for_path(station_icao, field="station_icao")
 
     paths: list[Path] = []
     for year in range(start_year, end_year + 1):

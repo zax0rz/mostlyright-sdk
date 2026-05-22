@@ -433,3 +433,44 @@ class TestContiguousRange:
         assert paths[0].read_bytes() == b"fetched-2022"
         assert paths[1].read_bytes() == b"cached-2023"
         assert paths[2].read_bytes() == b"fetched-2024"
+
+
+# ---------------------------------------------------------------------------
+# Station-id boundary validation (Rob PR #2 C1/H8)
+# ---------------------------------------------------------------------------
+class TestStationBoundaryValidation:
+    """``download_ghcnh`` + ``download_ghcnh_range`` reject path-traversal payloads.
+
+    GHCNh uses its own id pattern (alphanumeric + hyphen), so the validator
+    is ``validate_ghcnh_id_for_path`` not ``validate_icao_for_path``. No HTTP
+    mock - validation must fail BEFORE any request is built.
+    """
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            "../evil",
+            "..",
+            "../../../tmp/evil",
+            "USW/../etc",
+            "USW/etc",
+            "USW\\windows",
+            "USW\x00",
+            "USW\n",
+            "USW 94728",  # space
+            "usw00094728",  # lowercase
+            "-leading-hyphen",
+        ],
+    )
+    def test_download_ghcnh_rejects_traversal(self, tmp_path: Path, payload: str) -> None:
+        from tradewinds.weather._fetchers.ghcnh import download_ghcnh
+
+        with pytest.raises(ValueError, match="GHCNH_STATION_ID_RE"):
+            download_ghcnh(payload, 2024, tmp_path)
+
+    @pytest.mark.parametrize("payload", ["../evil", "USW/etc", "usw00094728"])
+    def test_download_ghcnh_range_rejects_traversal(self, tmp_path: Path, payload: str) -> None:
+        from tradewinds.weather._fetchers.ghcnh import download_ghcnh_range
+
+        with pytest.raises(ValueError, match="GHCNH_STATION_ID_RE"):
+            download_ghcnh_range(payload, 2023, 2024, tmp_path)

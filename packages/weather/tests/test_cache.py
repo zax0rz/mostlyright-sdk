@@ -162,6 +162,60 @@ class TestPathLayout:
         assert cache_path("KNYC", 2025, 1).name == "01.parquet"
         assert cache_path("KNYC", 2025, 12).name == "12.parquet"
 
+
+# ---------------------------------------------------------------------------
+# Path-boundary hardening (Rob PR #2 C1: path traversal at cache entry points)
+# ---------------------------------------------------------------------------
+class TestPathTraversalRejection:
+    """``cache_path`` and ``climate_cache_path`` reject path-escape payloads.
+
+    These tests ARE the regression guard against Rob's C1 finding: a station
+    value like ``"../../../tmp/evil"`` flowing into the path resolves outside
+    the cache root. The validators in ``_bounds`` plus the
+    ``assert_path_under`` backstop must reject both forms.
+    """
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            "../evil",
+            "..",
+            "../../../tmp/evil",
+            "KNYC/../etc",
+            "KNYC/etc",
+            "KNYC\\windows",
+            "KNYC\x00",
+            "KNYC\n",
+            "K NYC",
+            "knyc",
+        ],
+    )
+    def test_cache_path_rejects_traversal(self, tmp_cache_dir: Path, payload: str) -> None:
+        with pytest.raises(ValueError):
+            cache_path(payload, 2025, 1)
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            "../evil",
+            "..",
+            "../../../tmp/evil",
+            "KNYC/../etc",
+            "KNYC/etc",
+        ],
+    )
+    def test_climate_cache_path_rejects_traversal(self, tmp_cache_dir: Path, payload: str) -> None:
+        with pytest.raises(ValueError):
+            climate_cache_path(payload, 2025)
+
+    def test_cache_path_under_root_on_valid_station(self, tmp_cache_dir: Path) -> None:
+        """Backstop check: even after regex passes, the path must stay under root."""
+        path = cache_path("KNYC", 2025, 1)
+        # The `assert_path_under` defense-in-depth check would have raised
+        # before returning if the path escaped, so reaching this assertion at
+        # all proves the backstop accepted the path. Belt + suspenders.
+        assert path.resolve().is_relative_to(tmp_cache_dir.resolve())
+
     def test_year_is_four_digits(self, tmp_cache_dir: Path) -> None:
         # Year 2025 directory must be exactly "2025"
         assert "2025" in cache_path("KNYC", 2025, 1).parts

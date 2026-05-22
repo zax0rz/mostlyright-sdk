@@ -46,6 +46,10 @@ from typing import TYPE_CHECKING
 import pyarrow as pa
 import pyarrow.parquet as pq
 from filelock import FileLock
+from tradewinds._internal._bounds import (
+    assert_path_under,
+    validate_icao_for_path,
+)
 
 if TYPE_CHECKING:
     pass
@@ -175,15 +179,16 @@ def cache_path(station: str, year: int, month: int) -> Path:
 
     The month is zero-padded to two digits so a lexicographic directory listing
     matches chronological order.
+
+    Validates ``station`` against STATION_CODE_RE (Rob C1) and asserts the
+    resolved path stays under the cache root (defense-in-depth backstop -
+    Rob C1).
     """
-    return (
-        _cache_root()
-        / CACHE_VERSION
-        / "observations"
-        / station
-        / f"{year:04d}"
-        / f"{month:02d}.parquet"
-    )
+    validate_icao_for_path(station, field="station")
+    root = _cache_root()
+    raw = root / CACHE_VERSION / "observations" / station / f"{year:04d}" / f"{month:02d}.parquet"
+    assert_path_under(raw, root, field="cache_path")
+    return raw
 
 
 def climate_cache_path(station: str, year: int) -> Path:
@@ -193,8 +198,14 @@ def climate_cache_path(station: str, year: int) -> Path:
 
         climate_cache_path("KNYC", 2025)
         # -> Path("$HOME/.tradewinds/cache/v1/climate/KNYC/2025.parquet")
+
+    Same validation contract as :func:`cache_path` (Rob C1).
     """
-    return _cache_root() / CACHE_VERSION / "climate" / station / f"{year:04d}.parquet"
+    validate_icao_for_path(station, field="station")
+    root = _cache_root()
+    raw = root / CACHE_VERSION / "climate" / station / f"{year:04d}.parquet"
+    assert_path_under(raw, root, field="climate_cache_path")
+    return raw
 
 
 # ---------------------------------------------------------------------------

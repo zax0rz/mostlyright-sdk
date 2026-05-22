@@ -11,6 +11,7 @@ coverage transitively via their own parser-level tests.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import pytest
 from tradewinds._internal._bounds import (
@@ -225,3 +226,143 @@ class TestStationCodeRegex:
         assert STATION_CODE_RE.match("../K") is None
         assert STATION_CODE_RE.match("..") is None
         assert STATION_CODE_RE.match("K/../") is None
+
+
+# -----------------------------------------------------------------------------
+# Path-boundary validators (Rob PR #2 C1/H8)
+# -----------------------------------------------------------------------------
+
+
+class TestValidateIcaoForPath:
+    """``validate_icao_for_path`` is the URL/path entry-point guard."""
+
+    @pytest.mark.parametrize("code", ["KJFK", "KORD", "KDEN", "ABC", "EGLL"])
+    def test_valid_icao_returned(self, code):
+        from tradewinds._internal._bounds import validate_icao_for_path
+
+        assert validate_icao_for_path(code) == code
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            "../evil",
+            "..",
+            "../../../tmp/evil",
+            "KNYC/../etc",
+            "KNYC/etc",
+            "KNYC\\windows",
+            "KNYC\x00",
+            "KNYC\n",
+            "K NYC",
+            "knyc",  # lowercase rejected
+            "AB",  # too short
+            "ABCDE",  # too long
+            "",
+        ],
+    )
+    def test_traversal_payloads_rejected(self, payload):
+        from tradewinds._internal._bounds import validate_icao_for_path
+
+        with pytest.raises(ValueError, match="STATION_CODE_RE"):
+            validate_icao_for_path(payload)
+
+    @pytest.mark.parametrize("bad", [None, 123, b"KNYC", 1.5, ["KNYC"]])
+    def test_non_string_rejected(self, bad):
+        from tradewinds._internal._bounds import validate_icao_for_path
+
+        with pytest.raises(ValueError, match="must be a str"):
+            validate_icao_for_path(bad)
+
+    def test_field_in_error_message(self):
+        from tradewinds._internal._bounds import validate_icao_for_path
+
+        with pytest.raises(ValueError, match="station_icao"):
+            validate_icao_for_path("../evil", field="station_icao")
+
+
+class TestValidateGhcnhIdForPath:
+    """``validate_ghcnh_id_for_path`` accepts ICAO-derived and NCEI native ids."""
+
+    @pytest.mark.parametrize(
+        "sid",
+        [
+            "744860-94789",  # ICAO-derived (KJFK)
+            "725030-94728",  # ICAO-derived (KLGA)
+            "USW00094728",  # 11-char native NCEI
+            "A",  # 1 char minimum
+            "Z" * 32,  # 32 char maximum
+        ],
+    )
+    def test_valid_ids_returned(self, sid):
+        from tradewinds._internal._bounds import validate_ghcnh_id_for_path
+
+        assert validate_ghcnh_id_for_path(sid) == sid
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            "../evil",
+            "..",
+            "../../../tmp/evil",
+            "USW/etc",
+            "USW\\windows",
+            "USW\x00",
+            "USW\n",
+            "USW 94728",  # space
+            "usw00094728",  # lowercase
+            "-leading-hyphen",  # first char not alphanumeric
+            "Z" * 33,  # too long
+            "",
+        ],
+    )
+    def test_traversal_payloads_rejected(self, payload):
+        from tradewinds._internal._bounds import validate_ghcnh_id_for_path
+
+        with pytest.raises(ValueError, match="GHCNH_STATION_ID_RE"):
+            validate_ghcnh_id_for_path(payload)
+
+    @pytest.mark.parametrize("bad", [None, 123, b"744860-94789", ["x"]])
+    def test_non_string_rejected(self, bad):
+        from tradewinds._internal._bounds import validate_ghcnh_id_for_path
+
+        with pytest.raises(ValueError, match="must be a str"):
+            validate_ghcnh_id_for_path(bad)
+
+
+class TestAssertPathUnder:
+    """``assert_path_under`` is the defense-in-depth backstop."""
+
+    def test_path_under_root_returns_resolved(self, tmp_path):
+        from tradewinds._internal._bounds import assert_path_under
+
+        root = tmp_path / "cache"
+        root.mkdir()
+        target = root / "KNYC" / "2025.parquet"
+        result = assert_path_under(target, root)
+        assert result == target.resolve()
+
+    def test_path_escaping_via_dotdot_rejected(self, tmp_path):
+        from tradewinds._internal._bounds import assert_path_under
+
+        root = tmp_path / "cache"
+        root.mkdir()
+        # Build a path with literal ".." segments that escape the root.
+        escape = root / ".." / ".." / "etc" / "passwd"
+        with pytest.raises(ValueError, match="path-traversal"):
+            assert_path_under(escape, root)
+
+    def test_completely_unrelated_path_rejected(self, tmp_path):
+        from tradewinds._internal._bounds import assert_path_under
+
+        root = tmp_path / "cache"
+        root.mkdir()
+        with pytest.raises(ValueError, match="path-traversal"):
+            assert_path_under(Path("/tmp/elsewhere"), root)
+
+    def test_field_in_error_message(self, tmp_path):
+        from tradewinds._internal._bounds import assert_path_under
+
+        root = tmp_path / "cache"
+        root.mkdir()
+        with pytest.raises(ValueError, match="cache_path="):
+            assert_path_under(Path("/etc/passwd"), root, field="cache_path")
