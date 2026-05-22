@@ -538,6 +538,125 @@ class TestSourceCacheAndPartialIEM:
         _fetch_iem_month(info, 2025, 1, _Path("/tmp/iem_asos_test"), skip_source_cache=True)
         assert captured_kwargs.get("skip_cache") is True
 
+    def test_fetch_ghcnh_skips_source_cache_for_current_lst_year(
+        self, tmp_cache_env: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Iter-4 architect: GHCNh source-cache must be bypassed for current LST year.
+
+        NCEI republishes ``GHCNh_<id>_<YEAR>.psv`` as new months land. For
+        the station's current LST year the local copy goes stale just like
+        the IEM CSV / IEM CLI JSON did in iter-3 — symmetric fix.
+        """
+        from pathlib import Path as _Path
+
+        from tradewinds._internal._stations import STATIONS
+        from tradewinds.research import _fetch_ghcnh_year
+
+        info = STATIONS["NYC"]
+        captured: list[bool] = []
+
+        def _fake_download_ghcnh(
+            _station_id: str,
+            _year: int,
+            _dest_dir: _Path,
+            *,
+            skip_cache: bool = False,
+        ) -> _Path:
+            captured.append(skip_cache)
+            # Return a path that doesn't exist so parse_ghcnh_file returns
+            # an empty list (we don't care about parse output here).
+            return tmp_cache_env / f"ghcnh_stub_{_year}.psv"
+
+        def _fake_parse(_path: _Path) -> list[dict[str, Any]]:
+            return []
+
+        monkeypatch.setattr(
+            "tradewinds.weather._fetchers.ghcnh.download_ghcnh", _fake_download_ghcnh
+        )
+        monkeypatch.setattr("tradewinds.weather._ghcnh.parse_ghcnh_file", _fake_parse)
+
+        _fetch_ghcnh_year(info, 2025, tmp_cache_env)
+        _fetch_ghcnh_year(info, 2025, tmp_cache_env, skip_source_cache=True)
+
+        assert captured == [False, True], (
+            "expected download_ghcnh to receive skip_cache=False by default and "
+            f"skip_cache=True when caller requests it; got {captured}"
+        )
+
+    def test_iem_source_skipped_for_utc_current_tail_month(
+        self, tmp_cache_env: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Codex iter-4: at UTC May 1 / LST Apr 30, the May source CSV is mutable.
+
+        The orchestrator must bypass the IEM source cache when the iterated
+        month is the current UTC month even if it's not the current LST
+        month (LST<UTC rollover window). The fix is a union predicate:
+        ``skip = _is_current_lst_month(...) or not _is_writable_month(...)``.
+        """
+        from datetime import datetime as _dt
+        from pathlib import Path as _Path
+
+        from tradewinds._internal._stations import STATIONS
+        from tradewinds.research import _fetch_observations_range
+
+        info = STATIONS["NYC"]
+        # Freeze "now" to 2025-05-01 00:30 UTC. At NYC's UTC-5 offset that is
+        # LST 2025-04-30 19:30 - LST is April but UTC is May. Iter-4 cases:
+        #   - (2025, 4): LST-current True   → skip=True
+        #   - (2025, 5): LST-current False, UTC-current True → skip=True (NEW)
+        frozen_now = _dt(2025, 5, 1, 0, 30, tzinfo=UTC)
+
+        captured: list[tuple[int, int, bool]] = []
+
+        def _fake_fetch_iem_month(
+            _info: Any,
+            year: int,
+            month: int,
+            _dest_dir: _Path,
+            *,
+            skip_source_cache: bool = False,
+        ) -> tuple[list[dict[str, Any]], bool]:
+            captured.append((year, month, skip_source_cache))
+            return [], True
+
+        # ``tradewinds.research`` resolves to the re-exported ``research``
+        # function (not the submodule) due to ``from tradewinds.research
+        # import research`` in ``tradewinds/__init__.py``. Pull the actual
+        # submodule out of ``sys.modules`` to patch the module-level helpers.
+        import sys
+
+        research_module = sys.modules["tradewinds.research"]
+
+        monkeypatch.setattr(research_module, "_fetch_iem_month", _fake_fetch_iem_month)
+        # Stub GHCNh + cache to avoid touching disk / network unrelated paths.
+        monkeypatch.setattr(
+            research_module,
+            "_fetch_ghcnh_year",
+            lambda _info, _year, _dir, *, skip_source_cache=False: [],
+        )
+        monkeypatch.setattr(
+            "tradewinds.weather.cache.read_cache",
+            lambda _icao, _year, _month: None,
+        )
+        monkeypatch.setattr(
+            "tradewinds.weather.cache.write_cache",
+            lambda *_a, **_k: None,
+        )
+
+        _fetch_observations_range(info, "2025-04-25", "2025-05-01", now=frozen_now)
+
+        # The iter-4 finding is specifically the UTC-current tail month
+        # bypass. The LST-current case is well-covered by the iter-3 unit
+        # test (`test_fetch_iem_month_skip_source_cache_propagates`); here
+        # we only need to prove the orchestrator union-predicate emits the
+        # additional `not _is_writable_month(...)` skip even when LST is
+        # not current. ``_is_current_lst_month`` uses real wall-clock and
+        # is False at GSD test runtime for (2025, 4), so this test isolates
+        # the UTC leg cleanly.
+        assert (
+            (2025, 5, True) in captured
+        ), f"expected (2025, 5) to skip IEM source cache (UTC-current leg); got {captured}"
+
     def test_fetch_climate_skips_source_cache_for_current_lst_year(
         self, tmp_cache_env: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:

@@ -269,11 +269,21 @@ def _fetch_ghcnh_year(
     info: StationInfo,
     year: int,
     dest_dir: Path,
+    *,
+    skip_source_cache: bool = False,
 ) -> list[dict[str, Any]]:
     """Download + parse a GHCNh PSV for ``(info, year)`` and return rows.
 
     GHCNh is annual-granularity, so callers cache the parsed rows for the
     year and slice by month at the caller site.
+
+    Args:
+        skip_source_cache: When ``True``, force ``download_ghcnh`` to
+            re-fetch the PSV even when a local copy exists. NCEI republishes
+            ``GHCNh_<id>_<YEAR>.psv`` as new months land, so for the
+            station's current LST year the source cache would otherwise
+            stay pinned to the early-year snapshot (codex iter-4 symmetric
+            extension of the iter-3 IEM ASOS / IEM CLI source-cache fixes).
     """
     import httpx
 
@@ -281,7 +291,7 @@ def _fetch_ghcnh_year(
     from tradewinds.weather._ghcnh import parse_ghcnh_file
 
     try:
-        path = download_ghcnh(info.ghcnh_id, year, dest_dir)
+        path = download_ghcnh(info.ghcnh_id, year, dest_dir, skip_cache=skip_source_cache)
     except httpx.HTTPStatusError as exc:
         if exc.response.status_code == 404:
             logger.info("GHCNh %s %d: no data (404), skipping", info.ghcnh_id, year)
@@ -315,6 +325,8 @@ def _ensure_ghcnh_year(
     info: StationInfo,
     year: int,
     dest_dir: Path,
+    *,
+    skip_source_cache: bool = False,
 ) -> list[dict[str, Any]]:
     """Lazy per-year GHCNh loader.
 
@@ -323,9 +335,14 @@ def _ensure_ghcnh_year(
     every GHCNh HTTP/PSV parse until a month cache miss actually requires
     it, preserving the documented local-first contract: a fully-cached
     range never touches NCEI (codex iter-2 P2).
+
+    ``skip_source_cache`` is forwarded to :func:`_fetch_ghcnh_year` so the
+    PSV is re-downloaded when the caller has decided the year's local copy
+    may be stale (e.g. the station's current LST year, which NCEI
+    republishes as new months land — iter-4 architect finding).
     """
     if year not in cache:
-        cache[year] = _fetch_ghcnh_year(info, year, dest_dir)
+        cache[year] = _fetch_ghcnh_year(info, year, dest_dir, skip_source_cache=skip_source_cache)
     return cache[year]
 
 
@@ -396,19 +413,41 @@ def _fetch_observations_range(
             continue
 
         # Cache miss: pull IEM + AWC + GHCNh for the month. GHCNh is fetched
-        # lazily here so a fully-cached range never hits NCEI. For the
-        # station's current LST month the underlying IEM CSV is mutable
-        # (new observations land every hour) so we force a refresh -
-        # otherwise a second call within the same month would aggregate
-        # the stale source-cache CSV from the first call (codex iter-3 P2).
-        from tradewinds.weather.cache import _is_current_lst_month
-
-        skip_source = _is_current_lst_month(info.icao, year, month)
-        iem_rows, iem_ok = _fetch_iem_month(
-            info, year, month, iem_dir, skip_source_cache=skip_source
+        # lazily here so a fully-cached range never hits NCEI.
+        #
+        # Source-cache skip predicate is a UNION of:
+        #   - the station's current LST month (live observations still
+        #     landing - codex iter-3 P2);
+        #   - any month that is NOT strictly in the past UTC (the new UTC
+        #     tail month at LST<UTC rollover - codex iter-4 P2). Without
+        #     this leg, a query that extends `extended_to` into the new UTC
+        #     month while LST is still in the previous month reuses the
+        #     stale `iem_<new-UTC-YYYYMM>_*.csv` from the prior call.
+        # The same union applies to the annual GHCNh PSV (NCEI republishes
+        # as new months land - iter-4 architect finding).
+        from tradewinds.weather.cache import (
+            _is_current_lst_month,
+            _is_current_lst_year,
         )
 
-        ghcnh_year_rows = _ensure_ghcnh_year(ghcnh_by_year, info, year, ghcnh_dir)
+        month_is_writable_utc = _is_writable_month(year, month, now=now)
+        skip_iem_source = _is_current_lst_month(info.icao, year, month) or not month_is_writable_utc
+        iem_rows, iem_ok = _fetch_iem_month(
+            info, year, month, iem_dir, skip_source_cache=skip_iem_source
+        )
+
+        # GHCNh PSV is annual; the year is "mutable" iff it is the station's
+        # current LST year OR not strictly in the UTC past.
+        _now = now or datetime.now(UTC)
+        year_is_writable_utc = year < _now.year
+        skip_ghcnh_source = _is_current_lst_year(info.icao, year) or not year_is_writable_utc
+        ghcnh_year_rows = _ensure_ghcnh_year(
+            ghcnh_by_year,
+            info,
+            year,
+            ghcnh_dir,
+            skip_source_cache=skip_ghcnh_source,
+        )
         ghcnh_month: list[dict[str, Any]] = [
             r
             for r in ghcnh_year_rows
@@ -476,6 +515,7 @@ def _fetch_climate_range(
     if start > end:
         return []
 
+    _now = datetime.now(UTC)
     result: list[dict[str, Any]] = []
     for year in range(start.year, end.year + 1):
         cached = read_climate_cache(info.icao, year)
@@ -483,17 +523,21 @@ def _fetch_climate_range(
             result.extend(cached)
             continue
 
-        # For the station's current LST year the underlying IEM CLI JSON is
-        # mutable - overnight finals and corrections land throughout the
-        # year. Force a refresh so a call before today's final is published
-        # doesn't get stuck on the stale source-cache JSON until manual
-        # deletion (codex iter-3 P2).
+        # Source-cache skip predicate (union, mirrors the observation path):
+        #   - station's current LST year (overnight finals + corrections
+        #     still landing - codex iter-3 P2);
+        #   - any year not strictly in the past UTC (year-rollover window
+        #     where LST and UTC may straddle a year boundary - iter-4
+        #     architect/codex extension).
+        # Without the union a call straddling Dec 31 UTC / Dec 31 LST
+        # in a different timezone could pin the stale source JSON.
+        skip_cli_source = _is_current_lst_year(info.icao, year) or year >= _now.year
         try:
             path = download_cli(
                 info.icao,
                 year,
                 cli_dir,
-                skip_cache=_is_current_lst_year(info.icao, year),
+                skip_cache=skip_cli_source,
             )
         except httpx.HTTPStatusError as exc:
             if exc.response.status_code == 404:
