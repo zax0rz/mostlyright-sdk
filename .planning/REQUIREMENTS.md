@@ -98,15 +98,6 @@ Requirements for initial release. Each maps to a roadmap phase.
 
 Acknowledged but not in v0.1.0 roadmap.
 
-### MCP Server (v0.2 milestone)
-
-- **MCP-01**: `tradewinds-mcp-server` console script registers with Claude Code via `mcp` Python SDK (FastMCP pattern)
-- **MCP-02**: `catalog_search(market, contract_type) → JSON` tool — returns source matrix with validated/known-bad source-tuple combinations
-- **MCP-03**: `pull_pairs(contract, sources, from_date, to_date, format="toon") → bytes|str` tool — wraps `research()` Mode 2, registers schema server-side, returns `schema_id` for later validation
-- **MCP-04**: `validate_dataframe(data, schema_id, format, allow_source_drift=None) → JSON` tool — runs Validator, returns violations + quarantine summary + source-mismatch flags
-- **MCP-05**: JSON-RPC subprocess integration tests for all 3 tools
-- **MCP-06**: TOON serialization at MCP tool boundary (no raw `pd.DataFrame` returns)
-
 ### Pandas 3.0 Migration (v0.2)
 
 - **PANDAS3-01**: Pandas 3.0 compatibility — re-capture parity fixtures, audit CoW assumptions, migrate offset aliases, validate timestamp resolution handling
@@ -233,8 +224,6 @@ Per-requirement phase assignments (filled by roadmapper 2026-05-21).
 
 Post-v0.1.0 requirements for the MCP-native data platform vision. See [`phase-05-mcp-data-platform/VISION.md`](phase-05-mcp-data-platform/VISION.md).
 
-> **ID-collision note:** The earlier `## v2 Requirements (Deferred) > ### MCP Server (v0.2 milestone)` section uses the identifiers `MCP-01..MCP-06` for narrow MCP tool surface (`tradewinds-mcp-server` console script, `catalog_search`, `pull_pairs`, `validate_dataframe`, JSON-RPC tests, TOON serialization). Those entries are SUPERSEDED by the broader Phase 5 vision below — same identifiers, expanded scope. Resolve before Phase 5 PLAN.md is written: either (a) renumber the old entries (e.g. `MCP-LEGACY-01..06`), (b) delete the old entries and treat Phase 5 as canonical, or (c) renumber Phase 5 (e.g. `PLAT-01..10`). Default recommendation: option (b) — the Phase 5 vision subsumes the old narrow MCP tools list.
-
 - [ ] **MCP-01**: MCP server exposes `list_sources`, `describe_source`, `ingest`, `query`, `get_schema` tools via the MCP protocol; any MCP client (Claude, Cursor, custom) can drive end-to-end pipelines
 - [ ] **MCP-02**: Data catalog stores 5-layer context per source — schema semantics, temporal rules, quality notes, relationship mappings, operational context — functioning as agent-readable onboarding docs
 - [ ] **MCP-03**: Agent-generated connector pipeline accepts API docs/HTML/PDF, builds schema mental model, generates extraction config, persists for re-use; quality-review gate before promotion to pre-indexed status
@@ -265,4 +254,4 @@ Post-v0.1.0 requirements for the MCP-native data platform vision. See [`phase-05
 
 ---
 *Requirements defined: 2026-05-21*
-*Last updated: 2026-05-22 — added Phase 5 (MCP Data Platform, MCP-01..MCP-10) post-v0.1.0 vision*
+*Last updated: 2026-05-22 — resolved MCP-01..06 ID collision; Phase 5 entries are canonical*
