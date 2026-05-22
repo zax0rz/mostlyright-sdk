@@ -61,7 +61,13 @@ ignore = ["E501"]  # line length handled by formatter
 markers = [
     "live: tests that hit live public APIs (skipped by default per testing playbook)",
 ]
-testpaths = ["packages"]
+testpaths = ["packages", "tests"]
+# Include both the per-package tests under packages/*/tests AND the
+# repo-root tests/ directory. The repo-root tree holds the Sprint 0 Day 3
+# HARD GATE (`tests/test_parity.py`) and the packaging tests; without
+# `tests` in testpaths, the parity gate is invisible to `uv run pytest -m
+# live` and the documented all-tests workflow — codex iter-1 P2/HIGH on
+# wave-3 ("test that won't catch what it claims" per REVIEW-DISCIPLINE).
 # -m "not live" excludes live tests by default — codex W3A P2: marker labelling
 # alone does not skip; CI/offline runs hit the network without this. Opt in
 # explicitly: uv run pytest -m live.

@@ -35,7 +35,10 @@ class TestModuleConstants:
         assert HTTP_TIMEOUT == 30.0
 
     def test_transient_codes(self) -> None:
-        assert frozenset({500, 502, 503, 504}) == TRANSIENT_CODES
+        # 429 (Too Many Requests) is retryable so IEM ASOS rate-limit bursts
+        # during a fresh-cache parity run get backed-off + retried instead of
+        # silently degrading research() output. Codex iter-2 wave-3 follow-up.
+        assert frozenset({429, 500, 502, 503, 504}) == TRANSIENT_CODES
 
 
 class TestDownloadWithRetry:
@@ -71,7 +74,9 @@ class TestDownloadWithRetry:
                 download_with_retry(url, dest)
         assert not dest.exists()
 
-    def test_503_retried_then_succeeds(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_503_retried_then_succeeds(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         url = "https://example.test/flaky.csv"
         dest = tmp_path / "flaky.csv"
         try:
@@ -87,6 +92,35 @@ class TestDownloadWithRetry:
             route.side_effect = [
                 httpx.Response(503),
                 httpx.Response(503),
+                httpx.Response(200, content=b"OK"),
+            ]
+            download_with_retry(url, dest)
+
+        assert dest.read_bytes() == b"OK"
+
+    def test_429_retried_then_succeeds(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """429 Too Many Requests is treated as transient (Codex iter-2 wave-3).
+
+        Locks in the IEM ASOS rate-limit retry behaviour relied on by the
+        Wave 3 parity gate: without retry on 429, fresh-cache fetches for
+        long-range cases (e.g. case 4 KMIA, 12 months x 2 report_types)
+        silently lose months when IEM rate-limits the burst.
+        """
+        url = "https://example.test/rate-limited.csv"
+        dest = tmp_path / "rate-limited.csv"
+        try:
+            import respx
+        except ImportError:
+            pytest.skip("respx not installed")
+
+        monkeypatch.setattr("tradewinds._internal._http.time.sleep", lambda _: None)
+
+        with respx.mock(assert_all_called=True) as mock:
+            route = mock.get(url)
+            route.side_effect = [
+                httpx.Response(429),
                 httpx.Response(200, content=b"OK"),
             ]
             download_with_retry(url, dest)
