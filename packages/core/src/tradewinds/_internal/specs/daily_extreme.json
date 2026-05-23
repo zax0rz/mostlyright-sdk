@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mostlyright.xyz/schemas/daily_extreme.json",
+  "title": "Daily Extreme (station-local calendar day high/low)",
+  "description": "STORAGE SCHEMA for the Phase 3.1 daily_extremes() rollup. One row per (station, local_date) describing the calendar-day temperature extremes derived from cached hourly METAR observations. Used as the resolution source for Polymarket weather markets in non-US locales (and as a parity sanity check for US settlements). Calendar day is in the station's IANA timezone (NOT UTC). Whole-degree-C precision for international stations (round half-up to match issuer reporting); 0.1°C precision for US stations.",
+  "type": "object",
+  "required": ["station", "local_date", "n_obs"],
+  "additionalProperties": false,
+  "properties": {
+    "station": {
+      "type": "string",
+      "description": "4-letter ICAO identifier (e.g. \"EGLL\", \"KNYC\"). Daily extremes are computed per-ICAO; multi-airport cities (e.g. Paris LFPG vs LFPB) get separate rows that the per-event resolver picks between.",
+      "pattern": "^[A-Z]{3,4}$",
+      "examples": ["EGLL", "RJTT", "KNYC", "LFPG"]
+    },
+    "local_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Calendar day in the station's IANA timezone (YYYY-MM-DD). NOT UTC — the station-local convention matches how Polymarket resolves NHIGH/NLOW-style markets internationally."
+    },
+    "n_obs": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Count of non-null hourly temperature observations contributing to this row. Daily aggregates with ``n_obs < 12`` are flagged ``low_coverage``: tmin/tmax/tmean are set to null and a WARNING is logged (not a hard failure — the row still ships so downstream consumers see the coverage gap explicitly)."
+    },
+    "tmin_c": {
+      "description": "Daily minimum temperature in Celsius. Null when ``n_obs < 12`` (low coverage). Precision: whole °C for international stations, 0.1°C for US.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "tmax_c": {
+      "description": "Daily maximum temperature in Celsius. Null when ``n_obs < 12``. Precision matches tmin_c.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "tmean_c": {
+      "description": "Daily mean temperature in Celsius (simple arithmetic mean across all non-null hourly samples — NOT (tmin+tmax)/2). Null when ``n_obs < 12``.",
+      "oneOf": [{ "type": "number" }, { "type": "null" }]
+    },
+    "precip_inches": {
+      "description": "Daily accumulated precipitation in inches (sum of non-null hourly ``precip_1hr_inches``). Zero (not null) when the day had no rain but had observations.",
+      "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }]
+    },
+    "source_tmin": {
+      "description": "Source identifier of the observation row that achieved the daily minimum (e.g. ``\"iem\"``, ``\"awc\"``, ``\"ghcnh\"``). Null when tmin_c is null.",
+      "oneOf": [{ "type": "string" }, { "type": "null" }]
+    },
+    "source_tmax": {
+      "description": "Source identifier of the observation row that achieved the daily maximum. Null when tmax_c is null.",
+      "oneOf": [{ "type": "string" }, { "type": "null" }]
+    },
+    "country": {
+      "description": "Informational: ISO 3166-1 alpha-2 country code of the station (e.g. ``\"US\"``, ``\"GB\"``). Informational only — not used for join keys.",
+      "oneOf": [{ "type": "string", "pattern": "^[A-Z]{2}$" }, { "type": "null" }]
+    }
+  },
+  "$comment": "ARCHITECTURE DECISIONS: (1) Local-calendar-day key NOT UTC — matches how Polymarket and most international issuers resolve daily weather markets. (2) source_tmin / source_tmax preserve per-extreme provenance so a downstream consumer can tell whether a record-setting hour came from a primary METAR or a backfill PSV. (3) Coverage gate at n_obs<12 was chosen to mirror WMO's ≥1/day-as-significant rule but is intentionally permissive: half a day of obs is enough to flag a hot/cold spike but not enough to claim a reliable mean. (4) precip_inches is NOT nulled on low coverage — zero rain with two obs is still a valid ‘sum’ (it just means we only saw two zeros), and Polymarket precipitation contracts care about the total, not the sample count. (5) Whole-°C international rounding is round-half-up to match the issuer-side reporting convention (most non-US authorities publish whole °C in daily summaries); US stays at 0.1°C because that's what NWS CLI publishes."
+}

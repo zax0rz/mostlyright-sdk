@@ -36,6 +36,8 @@ _SCHEMA_FILES: dict[str, str] = {
     "omo": "omo.json",
     # brackets.json is available for bracket/range queries
     "brackets": "brackets.json",
+    # Phase 3.1 — daily_extreme.v1 resolution schema for daily_extremes() rollup.
+    "daily_extreme": "daily_extreme.json",
 }
 
 # 5 additional specs ship in ``tradewinds/_internal/specs/`` but are intentionally
