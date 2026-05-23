@@ -223,7 +223,7 @@ def awc_to_observation(m: dict[str, Any]) -> dict[str, Any] | None:
         return None
 
     obs_time = m.get("obsTime")
-    if not isinstance(obs_time, (int, float)):
+    if not isinstance(obs_time, int | float):
         return None
 
     station_code = icao_to_station_code(icao_id)
@@ -245,7 +245,7 @@ def awc_to_observation(m: dict[str, Any]) -> dict[str, Any] | None:
     wdir: int | None = None
     raw_wdir = m.get("wdir")
     if raw_wdir is not None:
-        if isinstance(raw_wdir, (int, float)):
+        if isinstance(raw_wdir, int | float):
             wdir = bounded_int(int(raw_wdir), *WIND_DIR_BOUNDS)
         elif raw_wdir != "VRB":
             try:
