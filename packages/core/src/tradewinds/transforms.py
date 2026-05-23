@@ -69,11 +69,18 @@ def rolling(
 
 
 def calendar_features(df: pd.DataFrame, date_column: str) -> pd.DataFrame:
-    """Add cyclical month / day-of-week / hour features.
+    """Add cyclical calendar features to ``df``.
 
     Returns a NEW DataFrame with added columns:
-    ``month_sin``, ``month_cos``, ``dow_sin``, ``dow_cos``,
-    ``hour_sin``, ``hour_cos``.
+
+    - ``day_of_year_sin``, ``day_of_year_cos`` — cyclical year position.
+    - ``hour_sin``, ``hour_cos`` — cyclical time-of-day.
+    - ``month_sin``, ``month_cos`` — cyclical month.
+    - ``dow_sin``, ``dow_cos`` — cyclical day-of-week.
+
+    Cyclical pairs satisfy ``sin² + cos² ≈ 1`` so a model sees the
+    wraparound (Dec → Jan is 1 day, not 11 months apart). Property
+    test asserts this invariant via Hypothesis (Phase 3.5 ROADMAP SC-2).
     """
     import numpy as np
     import pandas as pd
@@ -86,6 +93,10 @@ def calendar_features(df: pd.DataFrame, date_column: str) -> pd.DataFrame:
     out["dow_cos"] = np.cos(2 * np.pi * ts.dt.dayofweek / 7)
     out["hour_sin"] = np.sin(2 * np.pi * ts.dt.hour / 24)
     out["hour_cos"] = np.cos(2 * np.pi * ts.dt.hour / 24)
+    # Phase 3.5 ROADMAP SC-2: day_of_year cyclical pair so a model
+    # sees seasonal periodicity directly (DOY 365 wraps to DOY 1).
+    out["day_of_year_sin"] = np.sin(2 * np.pi * ts.dt.dayofyear / 365.0)
+    out["day_of_year_cos"] = np.cos(2 * np.pi * ts.dt.dayofyear / 365.0)
     return out
 
 
