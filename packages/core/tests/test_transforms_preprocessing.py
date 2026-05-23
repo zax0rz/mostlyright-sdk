@@ -94,6 +94,18 @@ class TestClipOutliers:
         _ = clip_outliers(df, "temp_c")
         assert df["temp_c"].tolist() == snapshot
 
+    def test_std_zero_or_negative_raises(self) -> None:
+        """Architect iter-1 HIGH: std<=0 in sigma fallback would silently
+        collapse every row to the mean. Refuse loudly instead.
+        """
+        from tradewinds.preprocessing import clip_outliers
+
+        df = pd.DataFrame({"custom_col": [1.0, 2.0, 3.0, 4.0, 100.0]})
+        with pytest.raises(ValueError, match="std must be > 0"):
+            clip_outliers(df, "custom_col", std=0)
+        with pytest.raises(ValueError, match="std must be > 0"):
+            clip_outliers(df, "custom_col", std=-1.0)
+
 
 # ---------------------------------------------------------------------------
 # preprocessing.iem_crosscheck (standalone)

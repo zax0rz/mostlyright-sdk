@@ -79,6 +79,13 @@ def clip_outliers(
     physics = PHYSICS_BOUNDS.get(column)
     if physics is not None:
         return s.clip(lower=physics[0], upper=physics[1])
+    # Architect iter-1 HIGH: std<=0 in the sigma fallback collapses every
+    # row to the mean — silent dataset corruption. Refuse explicitly.
+    if std <= 0:
+        raise ValueError(
+            f"clip_outliers: std must be > 0 for the sigma fallback (got {std}); "
+            "pass bounds=(lo, hi) or use a physics-default column",
+        )
     mu = s.mean()
     sigma = s.std()
     return s.clip(lower=mu - std * sigma, upper=mu + std * sigma)
