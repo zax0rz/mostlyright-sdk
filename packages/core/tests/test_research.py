@@ -944,6 +944,21 @@ class TestResolveStation:
         with pytest.raises(ValueError, match="Unknown station"):
             _resolve_station("ZZZ")
 
+    def test_intl_station_rejected_with_pointer_to_daily_extremes(self) -> None:
+        """Phase 3.1 expanded STATIONS to include intl ICAOs (EGLL, RJTT, ...);
+        ``research()`` itself still ships US-only in v0.1.0 because NWS CLI
+        (the settlement source) is US-only and the LST settlement math is
+        calibrated for US offsets. The architect review caught that
+        ``_resolve_station`` silently accepted intl stations and returned a
+        DataFrame with all-null CLI columns — wrong. Verify the gate fires.
+        """
+        from tradewinds.research import _resolve_station
+
+        with pytest.raises(ValueError, match="research\\(\\) v0.1.0 supports only"):
+            _resolve_station("EGLL")
+        with pytest.raises(ValueError, match="daily_extremes"):
+            _resolve_station("RJTT")
+
 
 class TestFetchObservationsRangeCacheGating:
     """Iter-1 finding [HIGH]: GHCNh annual fetch + AWC fetch fired
@@ -1096,9 +1111,9 @@ class TestMergeInputOrderingDeterminism:
         assert obs_path.exists(), f"expected observation cache at {obs_path}"
         rows = pq.read_table(obs_path).to_pylist()
         observed_ats = [r["observed_at"] for r in rows]
-        assert observed_ats == sorted(observed_ats), (
-            "persisted rows must be sorted by observed_at; " f"got {observed_ats[:5]}..."
-        )
+        assert observed_ats == sorted(
+            observed_ats
+        ), f"persisted rows must be sorted by observed_at; got {observed_ats[:5]}..."
 
     def test_research_smoke_obs_count_stable_after_presort(
         self, mocked_http: Any, tmp_cache_env: Path

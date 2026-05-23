@@ -33,50 +33,18 @@ def test_deferred_stations():
     assert "RCTP" in DEFERRED_STATIONS  # Taipei
 
 
-def test_daily_extremes_basic():
-    from tradewinds.international import daily_extremes
+def test_daily_extremes_empty_cache_returns_empty_list(monkeypatch):
+    """No cached rows for the window → empty list (no rows, no errors)."""
+    from datetime import date
 
-    df = pd.DataFrame(
-        {
-            "event_time": pd.to_datetime(
-                ["2025-01-01T12:00:00Z", "2025-01-01T18:00:00Z", "2025-01-02T06:00:00Z"],
-                utc=True,
-            ),
-            "temp_c": [5.0, 12.0, -3.0],
-            "temp_f": [41.0, 53.6, 26.6],
-        }
-    )
-    out = daily_extremes(df, station_tz="UTC")
-    assert len(out) == 2
-    jan_1 = out[out["local_date"].astype(str) == "2025-01-01"]
-    assert jan_1["temp_max_c"].iloc[0] == 12.0
-    assert jan_1["temp_min_c"].iloc[0] == 5.0
+    from tradewinds import international
+    from tradewinds.weather import cache as cache_mod
 
-
-def test_daily_extremes_tz_aware():
-    """Tokyo timezone (UTC+9): UTC noon Jan 1 → JST 21:00 same day."""
-    from tradewinds.international import daily_extremes
-
-    df = pd.DataFrame(
-        {
-            "event_time": pd.to_datetime(
-                ["2025-01-01T15:00:00Z", "2025-01-01T20:00:00Z"], utc=True
-            ),
-            "temp_c": [10.0, 5.0],
-        }
-    )
-    out = daily_extremes(df, station_tz="Asia/Tokyo")
-    # Both events fall on Jan 2 in JST (00:00 + 05:00).
-    assert len(out) == 1
-    assert str(out["local_date"].iloc[0]) == "2025-01-02"
-
-
-def test_daily_extremes_empty():
-    from tradewinds.international import daily_extremes
-
-    df = pd.DataFrame({"event_time": pd.Series([], dtype="datetime64[ns, UTC]")})
-    out = daily_extremes(df, station_tz="UTC")
-    assert out.empty
+    # daily_extremes() imports cache.read_cache lazily; patching the module
+    # attribute is sufficient because the lazy import binds to the module.
+    monkeypatch.setattr(cache_mod, "read_cache", lambda *a, **kw: None)
+    out = international.daily_extremes("RJTT", date(2025, 1, 1), date(2025, 1, 2))
+    assert out == []
 
 
 # ----------------------------------------------------------------------

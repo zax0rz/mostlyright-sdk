@@ -58,9 +58,7 @@ def forecast_nwp(
             ``[nwp]`` extra is finalized.
     """
     if model not in SUPPORTED_NWP_MODELS:
-        raise ValueError(
-            f"NWP model must be one of {sorted(SUPPORTED_NWP_MODELS)}; " f"got {model!r}"
-        )
+        raise ValueError(f"NWP model must be one of {sorted(SUPPORTED_NWP_MODELS)}; got {model!r}")
 
     try:
         import cfgrib  # noqa: F401

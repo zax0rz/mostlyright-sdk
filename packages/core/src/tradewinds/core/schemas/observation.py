@@ -59,9 +59,7 @@ class ObservationSchema(Schema):
             units=None,
             nullable=False,
             enum_values=_OBSERVATION_TYPE_VALUES,
-            notes=(
-                "METAR | SPECI; defaults METAR when source can't distinguish " "(e.g. AWC JSON)"
-            ),
+            notes=("METAR | SPECI; defaults METAR when source can't distinguish (e.g. AWC JSON)"),
         ),
         ColumnSpec(
             name="temp_c",
@@ -103,7 +101,7 @@ class ObservationSchema(Schema):
             dtype="float64",
             units="hPa",
             nullable=True,
-            notes=("sea-level pressure (canonical aviation unit, not converted " "across modes)"),
+            notes=("sea-level pressure (canonical aviation unit, not converted across modes)"),
         ),
         ColumnSpec(
             name="visibility_m",
@@ -181,7 +179,7 @@ class ObservationSchema(Schema):
             dtype="string",
             units=None,
             nullable=True,
-            notes=("raw METAR text if source has it; null for AWC JSON " "(structured-only)"),
+            notes=("raw METAR text if source has it; null for AWC JSON (structured-only)"),
         ),
     ]
 

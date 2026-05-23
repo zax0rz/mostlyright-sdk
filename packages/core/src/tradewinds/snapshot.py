@@ -142,8 +142,11 @@ _STATION_TZ: dict[str, str] = {
     "KOA": "Pacific/Honolulu",
 }
 
-# Reference datetime in January (no DST in Northern Hemisphere US)
+# Reference datetime in January (no DST in Northern Hemisphere US).
+# July reference is the southern-hemisphere fallback: Sydney / Auckland /
+# São Paulo / Buenos Aires are on standard time in July (their winter).
 _JAN_REF = datetime(2024, 1, 15, 12, 0)
+_JUL_REF = datetime(2024, 7, 15, 12, 0)
 
 # NWS CLI typical publication time: 10 hours after midnight LST
 # (overnight final issued ~04:00-10:00 UTC = midnight-5 AM ET)
@@ -182,13 +185,39 @@ def _lst_offset(station: str, tz_override: str | None = None) -> timedelta:
     elif code in _STATION_TZ:
         tz_name = _STATION_TZ[code]
     else:
-        raise ValueError(
-            f"Unknown station timezone: {code!r}. "
-            f"Add it to _STATION_TZ or pass tz_override='America/...'."
-        )
+        # Phase 3.1 extension: fall back to the expanded STATIONS registry
+        # so intl ICAOs (EGLL, RJTT, ...) resolve without a tz_override.
+        # The original 20-US tz map stays the primary lookup (preserves the
+        # v0.14.1 byte-equivalence path for US settlement-date math).
+        from tradewinds._internal._stations import STATIONS
+
+        info = STATIONS.get(code)
+        if info is None:
+            # Also accept the raw ICAO key in case the caller passed an ICAO
+            # whose normalization didn't match (e.g. non-K-prefix intl ICAO).
+            for s in STATIONS.values():
+                if s.icao == station.strip().upper() or s.code == code:
+                    info = s
+                    break
+        if info is None:
+            raise ValueError(
+                f"Unknown station timezone: {code!r}. "
+                f"Add it to _STATION_TZ or pass tz_override='America/...'."
+            )
+        tz_name = info.tz
     tz = ZoneInfo(tz_name)
+    # Phase 3.1: pick a reference moment that is NOT in DST so the returned
+    # offset is the true LST offset. Sample January first (correct for every
+    # US station and every northern-hemisphere zone). If January reports DST
+    # (which happens for southern-hemisphere zones — YSSY/YMML/NZAA/NZWN/
+    # SBGR/SAEZ all sit in their summer in January), fall back to July, which
+    # is winter (= no DST) for those zones.
     aware_jan = _JAN_REF.replace(tzinfo=tz)
-    offset = aware_jan.utcoffset()
+    if aware_jan.dst() == timedelta(0):
+        offset = aware_jan.utcoffset()
+    else:
+        aware_jul = _JUL_REF.replace(tzinfo=tz)
+        offset = aware_jul.utcoffset()
     return offset if offset is not None else timedelta(hours=-5)
 
 

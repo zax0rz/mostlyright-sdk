@@ -79,7 +79,7 @@ def get_adapter(source: str) -> WeatherAdapter:
     cls = _REGISTRY.get(source)
     if cls is None:
         raise SourceUnavailableError(
-            f"Unknown source {source!r}; " f"known sources: {sorted(_REGISTRY)}",
+            f"Unknown source {source!r}; known sources: {sorted(_REGISTRY)}",
             source=source,
         )
     return cls()

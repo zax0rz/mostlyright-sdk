@@ -45,11 +45,9 @@ def test_drift_compare_runs() -> None:
         text=True,
         check=False,
     )
-    assert result.returncode == 0, (
-        f"compare.py exited {result.returncode}\n"
-        f"stdout:\n{result.stdout}\n"
-        f"stderr:\n{result.stderr}"
-    )
+    assert (
+        result.returncode == 0
+    ), f"compare.py exited {result.returncode}\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
 
 
 def test_parity_baseline_present() -> None:

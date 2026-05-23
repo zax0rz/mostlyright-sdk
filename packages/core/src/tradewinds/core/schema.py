@@ -71,7 +71,7 @@ class ColumnSpec:
             )
         if self.dtype == "enum" and not self.enum_values:
             raise ValueError(
-                f"ColumnSpec {self.name!r}: dtype='enum' requires non-empty " f"enum_values"
+                f"ColumnSpec {self.name!r}: dtype='enum' requires non-empty enum_values"
             )
         if self.dtype != "enum" and self.enum_values is not None:
             raise ValueError(
@@ -330,5 +330,5 @@ class Schema:
         Track at: <ticket>
         """
         raise NotImplementedError(
-            "Schema.from_dataframe is deferred to v0.1.1; " "use declarative subclasses for v0.1.0."
+            "Schema.from_dataframe is deferred to v0.1.1; use declarative subclasses for v0.1.0."
         )

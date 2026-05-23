@@ -70,7 +70,7 @@ def _lookup_schema(schema_id: str) -> type[Schema]:
     cls = _SCHEMA_REGISTRY.get(schema_id)
     if cls is None:
         raise SchemaValidationError(
-            f"Unknown schema_id {schema_id!r}; " f"known: {sorted(_SCHEMA_REGISTRY)}",
+            f"Unknown schema_id {schema_id!r}; known: {sorted(_SCHEMA_REGISTRY)}",
             schema_id=schema_id,
             violations=[{"rule": "unknown_schema_id"}],
         )
@@ -241,7 +241,7 @@ def validate_dataframe(
     data_source = df.attrs.get("source")
     if data_source is None:
         raise SchemaValidationError(
-            "DataFrame missing df.attrs['source']; " "cannot validate source-identity",
+            "DataFrame missing df.attrs['source']; cannot validate source-identity",
             schema_id=schema_id,
             violations=[{"rule": "source_attr_required"}],
             quarantine_count=len(df),
@@ -255,7 +255,7 @@ def validate_dataframe(
         and allow_source_drift is None
     ):
         raise SourceMismatchError(
-            f"Source drift: data is {data_source!r}, " f"schema expects {registered_source!r}",
+            f"Source drift: data is {data_source!r}, schema expects {registered_source!r}",
             schema_source=registered_source,
             data_source=data_source,
             role=None,
@@ -373,7 +373,7 @@ def validate_dataframe(
         # First _SAMPLE_CAP violations as the inline sample.
         sample = violations[:_SAMPLE_CAP]
         raise SchemaValidationError(
-            f"Schema {schema_id!r} validation failed with " f"{len(violations)} violation(s)",
+            f"Schema {schema_id!r} validation failed with {len(violations)} violation(s)",
             schema_id=schema_id,
             violations=violations,
             quarantine_count=0,

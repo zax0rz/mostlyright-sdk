@@ -42,10 +42,9 @@ def test_knyc_5yr_backfill_under_12min(tmp_path, monkeypatch) -> None:
     df = research(station="KNYC", from_date="2020-01-01", to_date="2024-12-31")
     wall_time = time.monotonic() - t0
 
-    assert wall_time <= STATION_BASELINES_SECONDS["KNYC"], (
-        f"KNYC 5-year backfill took {wall_time:.1f}s "
-        f"(gate {STATION_BASELINES_SECONDS['KNYC']}s)."
-    )
+    assert (
+        wall_time <= STATION_BASELINES_SECONDS["KNYC"]
+    ), f"KNYC 5-year backfill took {wall_time:.1f}s (gate {STATION_BASELINES_SECONDS['KNYC']}s)."
 
     # Shape sanity: 5 years of daily settlement rows ~= 1826 (one extra for the
     # leap year). Allow a wide-ish range to absorb fixture drift.

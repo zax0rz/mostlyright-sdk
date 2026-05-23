@@ -352,7 +352,7 @@ def __getattr__(name: str) -> Any:
     if name == "MostlyRightMCPError":
         if name not in _DEPRECATION_WARNINGS_EMITTED:
             warnings.warn(
-                "MostlyRightMCPError is deprecated; use TradewindsError. " "Removal in v0.3.",
+                "MostlyRightMCPError is deprecated; use TradewindsError. Removal in v0.3.",
                 DeprecationWarning,
                 stacklevel=2,
             )

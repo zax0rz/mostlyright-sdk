@@ -165,7 +165,7 @@ def to_json_safe(obj: Any, seen: set[int] | None = None) -> Any:
                 for k in obj:
                     if not isinstance(k, str):
                         raise TypeError(
-                            "to_json_safe dict keys must be str; " f"got {type(k).__name__}"
+                            f"to_json_safe dict keys must be str; got {type(k).__name__}"
                         )
                 return {k: to_json_safe(v, seen) for k, v in obj.items()}
             # list / tuple

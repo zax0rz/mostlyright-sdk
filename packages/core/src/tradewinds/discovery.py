@@ -115,7 +115,7 @@ def describe(schema_id: str) -> str:
 
     cls = _SCHEMA_REGISTRY.get(schema_id)
     if cls is None:
-        raise ValueError(f"Unknown schema_id {schema_id!r}; " f"known: {sorted(_SCHEMA_REGISTRY)}")
+        raise ValueError(f"Unknown schema_id {schema_id!r}; known: {sorted(_SCHEMA_REGISTRY)}")
     lines = [f"Schema: {schema_id}"]
     lines.append(f"  Class: {cls.__name__}")
     if getattr(cls, "_registered_source", None):

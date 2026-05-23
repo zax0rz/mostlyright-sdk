@@ -100,9 +100,7 @@ def _parse_temp(val: Any) -> int | None:
         return None
 
 
-def parse_cli_record(
-    record: dict[str, Any], station_code: str
-) -> dict[str, Any] | None:
+def parse_cli_record(record: dict[str, Any], station_code: str) -> dict[str, Any] | None:
     """Parse a single IEM CLI record into a climate schema dict.
 
     Returns dict with 9 fields (8 schema + report_type_priority), or None
@@ -178,9 +176,7 @@ def parse_cli_record(
     }
 
 
-def parse_cli_response(
-    data: list[dict[str, Any]], station_code: str
-) -> list[dict[str, Any]]:
+def parse_cli_response(data: list[dict[str, Any]], station_code: str) -> list[dict[str, Any]]:
     """Parse all CLI records, filter None (both temps missing)."""
     results: list[dict[str, Any]] = []
     for record in data:

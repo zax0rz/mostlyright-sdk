@@ -337,9 +337,7 @@ class TestUnitConversions:
     def test_precipitation_mm_to_inches(self):
         from tradewinds.weather._ghcnh import parse_ghcnh_row
 
-        obs = parse_ghcnh_row(
-            _make_row(precipitation="4.8", precipitation_Quality_Code="1")
-        )
+        obs = parse_ghcnh_row(_make_row(precipitation="4.8", precipitation_Quality_Code="1"))
         assert obs is not None
         expected = 4.8 / 25.4
         assert obs["precip_1hr_inches"] == pytest.approx(expected, rel=1e-6)
@@ -396,9 +394,7 @@ class TestUnitConversions:
     def test_negative_precip_is_none(self):
         from tradewinds.weather._ghcnh import parse_ghcnh_row
 
-        obs = parse_ghcnh_row(
-            _make_row(precipitation="-1.0", precipitation_Quality_Code="1")
-        )
+        obs = parse_ghcnh_row(_make_row(precipitation="-1.0", precipitation_Quality_Code="1"))
         assert obs is not None
         assert obs["precip_1hr_inches"] is None
 
@@ -825,9 +821,7 @@ class TestParseGhcnhFile:
         results = parse_ghcnh_file(fixture_path)
         pattern = re.compile(r"^[A-Z]{3,4}$")
         for obs in results:
-            assert pattern.match(obs["station_code"]), (
-                f"Invalid station: {obs['station_code']}"
-            )
+            assert pattern.match(obs["station_code"]), f"Invalid station: {obs['station_code']}"
 
     def test_no_rounding_on_temperatures(self, fixture_path):
         from tradewinds._internal._convert import celsius_to_fahrenheit

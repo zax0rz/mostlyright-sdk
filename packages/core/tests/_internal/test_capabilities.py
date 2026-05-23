@@ -67,6 +67,31 @@ def test_load_schema_returns_copy_not_mutable_original():
 
 
 # ---------------------------------------------------------------------------
+# Phase 3.1 — daily_extreme.v1
+# ---------------------------------------------------------------------------
+
+
+def test_load_schema_daily_extreme_has_required_fields():
+    """daily_extreme.v1 ships with station/local_date/n_obs required."""
+    schema = load_schema("daily_extreme")
+    assert isinstance(schema, dict)
+    assert schema["title"].startswith("Daily Extreme")
+    assert set(schema["required"]) >= {"station", "local_date", "n_obs"}
+    props = schema["properties"]
+    # Nullable extremes.
+    for col in ("tmin_c", "tmax_c", "tmean_c", "source_tmin", "source_tmax"):
+        assert col in props, f"missing column {col}"
+    # n_obs must be a non-negative integer.
+    assert props["n_obs"]["type"] == "integer"
+    assert props["n_obs"]["minimum"] == 0
+
+
+def test_daily_extreme_in_schema_files_mapping():
+    assert "daily_extreme" in _SCHEMA_FILES
+    assert _SCHEMA_FILES["daily_extreme"] == "daily_extreme.json"
+
+
+# ---------------------------------------------------------------------------
 # _METHOD_INDEX
 # ---------------------------------------------------------------------------
 

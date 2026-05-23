@@ -58,7 +58,7 @@ from tradewinds._internal._pairs import (
     date_range,
     pairs_to_dataframe,
 )
-from tradewinds._internal._stations import STATIONS, StationInfo
+from tradewinds._internal._stations import STATIONS, StationInfo, is_us_station
 from tradewinds.snapshot import (
     _station_code_normalized,
     settlement_date_for,
@@ -83,9 +83,15 @@ def _resolve_station(station: str) -> StationInfo:
 
     Raises:
         ValueError: when ``station`` is not in the 20-station Phase 1
-            registry. Phase 3.1 expands this to international stations;
-            in v0.1.0 the orchestrator refuses unknown stations rather than
-            silently returning empty data.
+            registry, OR when ``station`` resolves to an international
+            entry (Phase 3.1 expanded STATIONS to 60 — but ``research()``
+            still ships only the v0.14.1 Kalshi US-only join in v0.1.0
+            because NWS CLI (settlement source) is US-only and the
+            settlement-window math (``snapshot._lst_offset``) is calibrated
+            for US standard-time offsets). Intl callers should use
+            :func:`tradewinds.international.daily_extremes` after warming
+            the cache with their own observation fetcher; full intl
+            ``research()`` ships in a follow-up phase.
     """
     code = _station_code_normalized(station)
     info = STATIONS.get(code)
@@ -94,6 +100,14 @@ def _resolve_station(station: str) -> StationInfo:
             f"Unknown station: {station!r} (normalized {code!r}). "
             f"v0.1.0 supports the 20 Kalshi-traded stations from "
             f"``tradewinds._internal._stations.STATIONS``."
+        )
+    if not is_us_station(info.icao):
+        raise ValueError(
+            f"research() v0.1.0 supports only the 20 US Kalshi-traded stations; "
+            f"got {station!r} (intl ICAO {info.icao!r}, country={info.country!r}). "
+            f"For international weather aggregates use "
+            f"tradewinds.international.daily_extremes(station, from_date, to_date) "
+            f"after warming the observation cache."
         )
     return info
 
@@ -463,20 +477,35 @@ def _fetch_observations_range(
         # current LST year OR not strictly in the UTC past.
         _now = now or datetime.now(UTC)
         year_is_writable_utc = year < _now.year
-        skip_ghcnh_source = _is_current_lst_year(info.icao, year) or not year_is_writable_utc
-        ghcnh_year_rows = _ensure_ghcnh_year(
-            ghcnh_by_year,
-            info,
-            year,
-            ghcnh_dir,
-            skip_source_cache=skip_ghcnh_source,
-        )
-        ghcnh_month: list[dict[str, Any]] = [
-            r
-            for r in ghcnh_year_rows
-            if r.get("station_code") == info.code
-            and _observed_at_month(r.get("observed_at", "")) == (year, month)
-        ]
+        # Phase 3.1 adapter-coverage gate: NCEI GHCNh ships only US first-order
+        # stations (USW00*). For international ICAOs the PSV doesn't exist
+        # (404), and the IEM ASOS network already carries global METAR/AWOS
+        # at primary precision — fetching GHCNh would just generate noise.
+        if not is_us_station(info.icao):
+            if year not in ghcnh_by_year:
+                logger.info(
+                    "skip GHCNh fetch for non-US station %s (year=%d); "
+                    "GHCNh is US-only, IEM covers international observations",
+                    info.icao,
+                    year,
+                )
+                ghcnh_by_year[year] = []
+            ghcnh_month: list[dict[str, Any]] = []
+        else:
+            skip_ghcnh_source = _is_current_lst_year(info.icao, year) or not year_is_writable_utc
+            ghcnh_year_rows = _ensure_ghcnh_year(
+                ghcnh_by_year,
+                info,
+                year,
+                ghcnh_dir,
+                skip_source_cache=skip_ghcnh_source,
+            )
+            ghcnh_month = [
+                r
+                for r in ghcnh_year_rows
+                if r.get("station_code") == info.code
+                and _observed_at_month(r.get("observed_at", "")) == (year, month)
+            ]
 
         awc_month = _awc_for_month(year, month)
 
@@ -776,11 +805,22 @@ def _prefetch_sources(
                 )
 
     def _warm_ghcnh() -> None:
-        """Warm GHCNh annual PSV cache for years STRICTLY past UTC."""
+        """Warm GHCNh annual PSV cache for years STRICTLY past UTC.
+
+        Phase 3.1: short-circuit for non-US stations. NCEI GHCNh is US-only;
+        the PSV doesn't exist for international ICAOs, so prefetching would
+        only produce 404s.
+        """
         import httpx
 
         from tradewinds.weather._fetchers.ghcnh import download_ghcnh
 
+        if not is_us_station(info.icao):
+            logger.info(
+                "PERF-04 prefetch GHCNh: skipping non-US station %s",
+                info.icao,
+            )
+            return
         for year in range(from_d.year, min(extended_to.year, _now.year - 1) + 1):
             try:
                 download_ghcnh(info.ghcnh_id, year, ghcnh_dir, skip_cache=False)

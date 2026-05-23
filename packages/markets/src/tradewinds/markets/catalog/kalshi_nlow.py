@@ -58,7 +58,7 @@ def resolve(contract_id: str, settlement_date: _date) -> NLowResolution:
         )
     if not isinstance(contract_id, str):
         raise TypeError(
-            "contract_id must be a string " f"(got {type(contract_id).__name__}={contract_id!r})"
+            f"contract_id must be a string (got {type(contract_id).__name__}={contract_id!r})"
         )
 
     cid = contract_id.upper()

@@ -100,7 +100,7 @@ def polymarket_settle(event_id: str, *, description: str | None = None) -> dict:
     if description is not None:
         if not isinstance(description, str):
             raise PolymarketEventError(
-                "description must be a string or None; " f"got {type(description).__name__}",
+                f"description must be a string or None; got {type(description).__name__}",
             )
         if len(description.encode("utf-8")) > _MAX_DESCRIPTION_BYTES:
             raise PolymarketEventError(

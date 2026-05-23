@@ -159,6 +159,29 @@ class TestLstOffset:
         offset_k = _lst_offset("KNYC")
         assert offset_bare == offset_k
 
+    def test_southern_hemisphere_returns_standard_time_not_dst(self) -> None:
+        """Sydney (YSSY) is on AEDT (+11) in January but AEST (+10) is the LST.
+
+        Phase 3.1 caught: the original Jan-reference implementation returned the
+        Jan offset directly, which for southern-hemisphere stations is their
+        DST offset, not LST. Settlement-window math would be off by 1 hour.
+        Fix: if Jan reports DST != 0, fall back to July (= their winter).
+        """
+        offset = _lst_offset("YSSY")
+        assert offset == timedelta(hours=10), f"Sydney LST should be AEST UTC+10, got {offset}"
+
+    def test_southern_hemisphere_buenos_aires_standard_time(self) -> None:
+        # Buenos Aires is on America/Argentina/Buenos_Aires (UTC-3, no DST in
+        # current era — Argentina dropped DST in 2009). January is fine here
+        # because there's no DST shift; the fallback should still produce -3.
+        offset = _lst_offset("SAEZ")
+        assert offset == timedelta(hours=-3)
+
+    def test_northern_hemisphere_intl_returns_january_offset(self) -> None:
+        # London (EGLL) — GMT in January, BST (UTC+1) in July. LST = GMT (UTC+0).
+        offset = _lst_offset("EGLL")
+        assert offset == timedelta(hours=0)
+
 
 # ---------------------------------------------------------------------------
 # _parse_as_of

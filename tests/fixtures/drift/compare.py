@@ -71,7 +71,7 @@ def _compare_frames(case_num: int, parity_df: pd.DataFrame, drift_df: pd.DataFra
     # Shape check first — diverging row counts is the most common drift.
     if parity_c.shape != drift_c.shape:
         findings.append(
-            f"case {case_num}: shape mismatch — parity={parity_c.shape}, " f"drift={drift_c.shape}"
+            f"case {case_num}: shape mismatch — parity={parity_c.shape}, drift={drift_c.shape}"
         )
         return findings
 
