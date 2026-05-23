@@ -157,6 +157,113 @@ class TestRunQcDirectly:
         assert path.exists()
 
 
+class TestProductionShapeIntegration:
+    """Architect iter-1 HIGH-2: real adapter rows use station_code + observed_at.
+
+    Production parsers (_iem.py, _ghcnh.py, _awc.py) emit `station_code`
+    + `observed_at` (NOT `station` + `event_time`). The QC engine and
+    crosscheck both read `station` + `event_time`. _run_qc_and_write_sidecar
+    normalizes these so the wiring works for real research(qc=True) calls.
+    """
+
+    def test_production_row_shape_fires_temp_rule_and_writes_sidecar(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        from tradewinds.research import _run_qc_and_write_sidecar
+        from tradewinds.weather.qc_sidecar import qc_sidecar_path
+
+        monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+        raw = [
+            {
+                "station_code": "KNYC",
+                "observed_at": "2025-01-06T12:00:00+00:00",
+                "source": "iem.archive",
+                "tmpf": 500.0,  # fires temp_c.out_of_range
+                "dwpf": 30.0,
+            },
+        ]
+        summary = _run_qc_and_write_sidecar(
+            info=_make_info(),
+            raw_obs=raw,
+            from_date="2025-01-06",
+            to_date="2025-01-12",
+        )
+        assert summary["rows_total"] == 1
+        assert summary["rows_flagged"] == 1
+        # Sidecar must actually land on disk — the field-name normalization
+        # is what makes this possible (previously the sidecar rows got an
+        # empty `observed_at`, which the per-month split dropped silently).
+        assert len(summary["sidecar_paths"]) == 1
+        path = Path(summary["sidecar_paths"][0])
+        assert path == qc_sidecar_path("KNYC", 2025, 1)
+        assert path.exists()
+
+    def test_production_dewpoint_kt_mb_columns_normalized(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
+        """Codex iter-1 P2: dewpoint_c, wind_speed_kt, wind_dir_degrees,
+        sea_level_pressure_mb (the actual parser-emitted names) must
+        normalize to the QC engine's expected names so dewpoint, wind,
+        and pressure rules fire on real data.
+        """
+        from tradewinds.research import _run_qc_and_write_sidecar
+
+        monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+        raw = [
+            {
+                "station_code": "KNYC",
+                "observed_at": "2025-01-06T12:00:00+00:00",
+                "source": "iem.archive",
+                "temp_c": 5.0,
+                "dewpoint_c": 10.0,  # dewpoint > temp → fires
+                "wind_speed_kt": -1,  # negative → fires
+                "wind_dir_degrees": 500,  # out of [0, 360] → fires
+                "sea_level_pressure_mb": 700,  # < 870 → fires
+            },
+        ]
+        summary = _run_qc_and_write_sidecar(
+            info=_make_info(),
+            raw_obs=raw,
+            from_date="2025-01-06",
+            to_date="2025-01-12",
+        )
+        assert summary["rows_total"] == 1
+        # All four rules should fire on this synthesized-but-realistic row.
+        assert "dew_point_c.exceeds_temp" in summary["rules_fired"]
+        assert "wind_speed_ms.negative" in summary["rules_fired"]
+        assert "wind_dir_deg.out_of_range" in summary["rules_fired"]
+        assert "slp_hpa.out_of_range" in summary["rules_fired"]
+
+    def test_production_row_shape_crosscheck_fires(self, tmp_path: Path, monkeypatch) -> None:
+        from tradewinds.research import _run_qc_and_write_sidecar
+
+        monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+        raw = [
+            {
+                "station_code": "KNYC",
+                "observed_at": "2025-01-06T12:00:00+00:00",
+                "source": "iem.archive",
+                "tmpf": 40.0,  # 4.4 C
+                "dwpf": 30.0,
+            },
+            {
+                "station_code": "KNYC",
+                "observed_at": "2025-01-06T12:00:00+00:00",
+                "source": "ghcnh",
+                "tmpf": 60.0,  # 15.5 C
+                "dwpf": 30.0,
+            },
+        ]
+        summary = _run_qc_and_write_sidecar(
+            info=_make_info(),
+            raw_obs=raw,
+            from_date="2025-01-06",
+            to_date="2025-01-12",
+        )
+        assert summary.get("crosscheck_error") is None
+        assert summary["crosscheck_disagreements"] >= 1
+
+
 # ---------------------------------------------------------------------------
 # Sidecar writer
 # ---------------------------------------------------------------------------

@@ -966,21 +966,52 @@ def _run_qc_and_write_sidecar(
         summary["error"] = f"QC DataFrame construction failed: {exc}"
         return summary
 
+    # Architect iter-1 HIGH-1: production parsers (_iem.py, _ghcnh.py,
+    # _awc.py) emit `station_code` + `observed_at`, but the QC engine
+    # and crosscheck functions read `station` + `event_time`. Normalize
+    # column names here so the engine sees what it expects. This is
+    # NON-DESTRUCTIVE to raw_obs (we work on the DataFrame copy).
+    if obs_df.empty:
+        # Nothing to QC; return the skeleton summary unchanged.
+        return summary
+    obs_df = obs_df.copy()
+    if "station" not in obs_df.columns and "station_code" in obs_df.columns:
+        obs_df["station"] = obs_df["station_code"]
+    if "event_time" not in obs_df.columns and "observed_at" in obs_df.columns:
+        obs_df["event_time"] = obs_df["observed_at"]
+
     engine = QCEngine()
     try:
-        # Rename canonical observation column names to the QC engine's
-        # expected ones. Raw observations carry tmpf/dwpf etc; the QC
-        # engine reads temp_c / dew_point_c. Convert non-destructively
-        # by adding the derived columns only when missing.
+        # Codex iter-1 P2 + architect iter-1 HIGH-1: map production
+        # parser column names → QC engine column names. Production
+        # observation rows (from _iem.py / _ghcnh.py / _awc.py) use
+        # `dewpoint_c`, `wind_speed_kt`, `wind_dir_degrees`,
+        # `sea_level_pressure_mb`, `temp_c`. The QC engine reads
+        # `dew_point_c`, `wind_speed_ms`, `wind_dir_deg`, `slp_hpa`,
+        # `temp_c`. Map non-destructively (add derived columns only
+        # when missing) so the alpha rules can fire on real data.
+        #
+        # Where the unit also differs (kt → m/s), apply the conversion.
         if "temp_c" not in obs_df.columns and "tmpf" in obs_df.columns:
-            obs_df = obs_df.copy()
             obs_df["temp_c"] = pd.to_numeric(obs_df["tmpf"], errors="coerce").apply(
                 lambda f: (f - 32.0) * 5.0 / 9.0 if pd.notna(f) else None
             )
-        if "dew_point_c" not in obs_df.columns and "dwpf" in obs_df.columns:
-            obs_df["dew_point_c"] = pd.to_numeric(obs_df["dwpf"], errors="coerce").apply(
-                lambda f: (f - 32.0) * 5.0 / 9.0 if pd.notna(f) else None
+        if "dew_point_c" not in obs_df.columns:
+            if "dewpoint_c" in obs_df.columns:
+                obs_df["dew_point_c"] = obs_df["dewpoint_c"]
+            elif "dwpf" in obs_df.columns:
+                obs_df["dew_point_c"] = pd.to_numeric(obs_df["dwpf"], errors="coerce").apply(
+                    lambda f: (f - 32.0) * 5.0 / 9.0 if pd.notna(f) else None
+                )
+        if "wind_speed_ms" not in obs_df.columns and "wind_speed_kt" in obs_df.columns:
+            obs_df["wind_speed_ms"] = pd.to_numeric(obs_df["wind_speed_kt"], errors="coerce").apply(
+                lambda kt: kt * 0.514444 if pd.notna(kt) else None
             )
+        if "wind_dir_deg" not in obs_df.columns and "wind_dir_degrees" in obs_df.columns:
+            obs_df["wind_dir_deg"] = obs_df["wind_dir_degrees"]
+        if "slp_hpa" not in obs_df.columns and "sea_level_pressure_mb" in obs_df.columns:
+            # 1 mb == 1 hPa; rename only.
+            obs_df["slp_hpa"] = obs_df["sea_level_pressure_mb"]
         flagged = engine.apply(obs_df)
         # Tally per-rule firings + total flagged rows.
         if "obs_qc_status" in flagged.columns:
