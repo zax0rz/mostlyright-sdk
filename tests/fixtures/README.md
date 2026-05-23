@@ -20,20 +20,27 @@ Tradewinds keeps two independent fixture trees, with strict policy on each:
 
 ## How to refresh `drift/`
 
-`drift/` is populated by a cron-scheduled CI job (TBD: `.github/workflows/drift-refresh.yml`,
-weekly). The job runs::
+`drift/` is populated by the weekly cron in
+`.github/workflows/drift-rotate.yml` (Mondays 07:00 UTC). The job runs:
 
-    uv run python scripts/capture_drift_fixtures.py  # NOT YET IMPLEMENTED
+    uv run python tests/fixtures/drift/capture_drift.py
+    uv run python tests/fixtures/drift/compare.py
 
 against the 5 stations + windows used by `parity/`, writes the result to
-`drift/case_*.parquet`, then compares against `parity/case_*.parquet`:
+`drift/case_*.parquet`, then compares against `parity/case_*.parquet`.
 
-- Structural drift (column set / dtype change) → CI fails, opens an issue.
+**Soft-fail policy.** This watchdog NEVER fails CI:
+
+- Structural drift (column set / dtype change) → `drift-report.md`
+  written, GH issue opened with labels `drift`,`phase-4`.
 - Numeric drift outside the Rung-3 tolerance band (`atol=1e-12` for float
-  aggregates, exact equality elsewhere) → CI fails with the offending
-  column + magnitude.
-- Within-tolerance drift → CI passes with a logged warning; the drift
-  fixture is committed for forensics.
+  aggregates, exact equality elsewhere) → same: report + issue.
+- Within-tolerance drift → silent OK; clean week.
+
+Drift is a signal, not a gate. The hard parity gate lives at
+`tests/test_parity.py` and is run pre-publish only. If `compare.py` finds
+real regression, the FIX is on the tradewinds side — never refresh
+`parity/`.
 
 ## How to NEVER refresh `parity/`
 
@@ -47,6 +54,8 @@ approval, which Sprint 0 will never grant.
 ## Status
 
 - `parity/`: 5 fixtures present + `expected_dtypes.json` (Phase 1 Day 0.5).
-- `drift/`: scaffold only (this README). Cron job + capture script ship in
-  Phase 4 follow-up alpha; the directory layout is documented now so
-  fixture-rotation downstream tooling can target it from day one.
+- `drift/`: capture + compare scripts shipped Phase 4 (`capture_drift.py`,
+  `compare.py`). Weekly cron at `.github/workflows/drift-rotate.yml`. The
+  `case_*.parquet` files themselves are populated by the cron at first
+  run; fresh clones see an empty `drift/` and `tests/test_drift.py`
+  skips the comparator until fixtures are present.
