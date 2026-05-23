@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v0.14.1
 milestone_name: Parity Lift
 status: executing
-stopped_at: "Phase 1.5 complete (PERF-01/02/03/04/05): yearly-chunk lift from mostlyright PR #85 + HTTP_TIMEOUT bump + research.py 4-way ThreadPoolExecutor prefetch (Option C from .planning/research/SOURCE-LIMITS.md spike) + live perf gate + parallelism-ratio assertion. Two-iteration review discipline: iter-1 closed 6 HIGH findings from codex+python-architect; iter-2 both reviewers PASS clean. Merged to main as 738232e (--no-ff), pushed to origin/main. KNYC 5-year live wall time: 50.3s vs 720s gate (~14x under budget). 5-fixture parity gate green. Next: Phase 2 — Core Primitives + Catalog Adapters."
-last_updated: "2026-05-23T12:00:00.000Z"
-last_activity: 2026-05-23 -- Phase 1.5 merged to main (commit 738232e) after iter-2 review PASS
+stopped_at: "Phase 2 complete (CORE-01..05/07/08 + CATALOG-01..05 + MARKETS-01..03 + PKG-03): _v02/ → tradewinds.core/ rebrand (266 tests preserved); TradewindsError hierarchy with MostlyRightMCPError deprecation alias; KnowledgeView + LeakageDetector temporal primitives; jsonschema-backed Validator with source-identity invariant + per-row source column required; 4 weather catalog adapters (IEM/AWC/CLI/GHCNh) with canonical-units projection (kt→m/s, mi→m, ft→m, in→mm); WeatherAdapter Protocol + registry; Kalshi NHIGH/NLOW resolvers + 20-city station whitelist; markets pkg bumped 0.0.1→0.1.0a1 with PKG-03 pin. Review discipline: 10 iterations of codex high + 1 Python Architect; iter-10 codex PASS, architect no BLOCKERS. 1393 tests passing. Next: Phase 2.1 — Sprint 2o Lineage Refactor."
+last_updated: "2026-05-23T18:00:00.000Z"
+last_activity: 2026-05-23 -- Phase 2 review discipline complete (codex iter-10 PASS + architect no BLOCKERS); ready to merge to main
 progress:
   total_phases: 12
-  completed_phases: 2
-  total_plans: 15
-  completed_plans: 7
-  percent: 17
+  completed_phases: 3
+  total_plans: 20
+  completed_plans: 12
+  percent: 25
 ---
 
 # Project State
