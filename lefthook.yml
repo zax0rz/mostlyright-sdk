@@ -12,6 +12,13 @@ pre-commit:
   commands:
     biome-check:
       glob: "*.{ts,tsx,js,jsx,json}"
+      # Exclude exporter-owned + generated artifacts. biome.json also ignores
+      # these (see files.ignore), but lefthook's `exclude` short-circuits before
+      # invoking biome at all — keeps the staged-file list deterministic.
+      exclude:
+        - "schemas/**"
+        - "**/src/**/generated/**"
+        - "packages-ts/*/src/**/generated/**"
       run: pnpm biome check --apply-unsafe {staged_files}
       stage_fixed: true
 

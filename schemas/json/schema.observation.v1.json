@@ -17,7 +17,10 @@
   "properties": {
     "dew_point_c": {
       "description": "units: celsius \u2014 bounded",
-      "type": ["null", "number"]
+      "type": [
+        "null",
+        "number"
+      ]
     },
     "event_time": {
       "description": "observation valid time",
@@ -26,56 +29,124 @@
     },
     "metar_raw": {
       "description": "raw METAR text if source has it; null for AWC JSON (structured-only)",
-      "type": ["null", "string"]
+      "type": [
+        "null",
+        "string"
+      ]
     },
     "observation_type": {
       "description": "METAR | SPECI; defaults METAR when source can't distinguish (e.g. AWC JSON)",
-      "enum": ["METAR", "SPECI"],
+      "enum": [
+        "METAR",
+        "SPECI"
+      ],
       "type": "string"
     },
     "precip_mm_1h": {
       "description": "units: mm \u2014 hourly precip (METAR p01i, converted from inches)",
-      "type": ["null", "number"]
+      "type": [
+        "null",
+        "number"
+      ]
     },
     "sky_base_1_m": {
       "description": "units: meters \u2014 first cloud layer base height (converted from feet)",
-      "type": ["null", "number"]
+      "type": [
+        "null",
+        "number"
+      ]
     },
     "sky_base_2_m": {
       "description": "units: meters",
-      "type": ["null", "number"]
+      "type": [
+        "null",
+        "number"
+      ]
     },
     "sky_base_3_m": {
       "description": "units: meters",
-      "type": ["null", "number"]
+      "type": [
+        "null",
+        "number"
+      ]
     },
     "sky_base_4_m": {
       "description": "units: meters",
-      "type": ["null", "number"]
+      "type": [
+        "null",
+        "number"
+      ]
     },
     "sky_cover_1": {
       "description": "first cloud layer cover code",
-      "enum": ["BKN", "CLR", "FEW", "OVC", "SCT", "VV", null],
-      "type": ["null", "string"]
+      "enum": [
+        "BKN",
+        "CLR",
+        "FEW",
+        "OVC",
+        "SCT",
+        "VV",
+        null
+      ],
+      "type": [
+        "null",
+        "string"
+      ]
     },
     "sky_cover_2": {
       "description": "second layer; null if not present",
-      "enum": ["BKN", "CLR", "FEW", "OVC", "SCT", "VV", null],
-      "type": ["null", "string"]
+      "enum": [
+        "BKN",
+        "CLR",
+        "FEW",
+        "OVC",
+        "SCT",
+        "VV",
+        null
+      ],
+      "type": [
+        "null",
+        "string"
+      ]
     },
     "sky_cover_3": {
       "description": "third layer; null if not present",
-      "enum": ["BKN", "CLR", "FEW", "OVC", "SCT", "VV", null],
-      "type": ["null", "string"]
+      "enum": [
+        "BKN",
+        "CLR",
+        "FEW",
+        "OVC",
+        "SCT",
+        "VV",
+        null
+      ],
+      "type": [
+        "null",
+        "string"
+      ]
     },
     "sky_cover_4": {
       "description": "fourth layer; null if not present",
-      "enum": ["BKN", "CLR", "FEW", "OVC", "SCT", "VV", null],
-      "type": ["null", "string"]
+      "enum": [
+        "BKN",
+        "CLR",
+        "FEW",
+        "OVC",
+        "SCT",
+        "VV",
+        null
+      ],
+      "type": [
+        "null",
+        "string"
+      ]
     },
     "slp_hpa": {
       "description": "units: hPa \u2014 sea-level pressure (canonical aviation unit, not converted across modes)",
-      "type": ["null", "number"]
+      "type": [
+        "null",
+        "number"
+      ]
     },
     "station": {
       "description": "ICAO/ASOS station ID (e.g. KORD)",
@@ -83,26 +154,45 @@
     },
     "temp_c": {
       "description": "units: celsius \u2014 bounded TEMP_MIN_C..TEMP_MAX_C",
-      "type": ["null", "number"]
+      "type": [
+        "null",
+        "number"
+      ]
     },
     "visibility_m": {
       "description": "units: meters \u2014 converted from statute miles",
-      "type": ["null", "number"]
+      "type": [
+        "null",
+        "number"
+      ]
     },
     "wind_dir_deg": {
       "description": "units: degrees \u2014 0-360, bounded",
-      "type": ["integer", "null"]
+      "type": [
+        "integer",
+        "null"
+      ]
     },
     "wind_gust_ms": {
       "description": "units: m/s \u2014 converted from kt",
-      "type": ["null", "number"]
+      "type": [
+        "null",
+        "number"
+      ]
     },
     "wind_speed_ms": {
       "description": "units: m/s \u2014 converted from kt",
-      "type": ["null", "number"]
+      "type": [
+        "null",
+        "number"
+      ]
     }
   },
-  "required": ["event_time", "observation_type", "station"],
+  "required": [
+    "event_time",
+    "observation_type",
+    "station"
+  ],
   "title": "schema.observation.v1",
   "type": "object",
   "version": "v1"

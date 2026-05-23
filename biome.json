@@ -5,7 +5,9 @@
       "**/dist/**",
       "**/node_modules/**",
       "**/src/**/generated/**",
-      "**/coverage/**"
+      "packages-ts/*/src/**/generated/**",
+      "**/coverage/**",
+      "schemas/**"
     ]
   },
   "formatter": {

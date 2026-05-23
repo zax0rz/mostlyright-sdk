@@ -4,33 +4,56 @@
   "properties": {
     "as_of_time": {
       "format": "date-time",
-      "type": ["null", "string"]
+      "type": [
+        "null",
+        "string"
+      ]
     },
     "detector_metadata": {
       "description": "JSON-serialized detector payload; shape per qc_system.",
-      "type": ["null", "string"]
+      "type": [
+        "null",
+        "string"
+      ]
     },
     "field": {
       "description": "Observation column the rule evaluated (e.g. temp_c).",
       "type": "string"
     },
     "flag": {
-      "enum": ["clean", "flagged", "suspect"],
+      "enum": [
+        "clean",
+        "flagged",
+        "suspect"
+      ],
       "type": "string"
     },
     "ingestion_id": {
-      "type": ["null", "string"]
+      "type": [
+        "null",
+        "string"
+      ]
     },
     "observation_kind": {
-      "enum": ["METAR", "SPECI", null],
-      "type": ["null", "string"]
+      "enum": [
+        "METAR",
+        "SPECI",
+        null
+      ],
+      "type": [
+        "null",
+        "string"
+      ]
     },
     "observed_at": {
       "format": "date-time",
       "type": "string"
     },
     "parser_name": {
-      "type": ["null", "string"]
+      "type": [
+        "null",
+        "string"
+      ]
     },
     "qc_system": {
       "type": "string"
@@ -42,7 +65,12 @@
       "type": "string"
     },
     "source": {
-      "enum": ["awc", "ghcnh", "iem", "ncei"],
+      "enum": [
+        "awc",
+        "ghcnh",
+        "iem",
+        "ncei"
+      ],
       "type": "string"
     },
     "station_code": {

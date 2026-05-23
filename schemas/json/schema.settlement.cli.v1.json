@@ -4,7 +4,13 @@
   "properties": {
     "cli_data_quality": {
       "description": "NWS CLI data-quality marker (Pitfall 6/16). Allows downstream code to filter or weight settlement rows by issuer quality without re-parsing the product header.",
-      "enum": ["clean", "flagged_instrument", "flagged_late", "flagged_other", "missing"],
+      "enum": [
+        "clean",
+        "flagged_instrument",
+        "flagged_late",
+        "flagged_other",
+        "missing"
+      ],
       "type": "string"
     },
     "event_time": {
@@ -19,7 +25,10 @@
     },
     "precipitation_in": {
       "description": "units: inches",
-      "type": ["null", "number"]
+      "type": [
+        "null",
+        "number"
+      ]
     },
     "product_release_time": {
       "description": "parsed from CLI product header (_climate.py::_parse_product_timestamp)",
@@ -28,17 +37,28 @@
     },
     "report_type": {
       "description": "preliminary | final | correction; dedup priority preliminary < final < correction",
-      "enum": ["correction", "final", "preliminary"],
+      "enum": [
+        "correction",
+        "final",
+        "preliminary"
+      ],
       "type": "string"
     },
     "settlement_finality": {
       "description": "provisional | final | superseded. Kalshi NHIGH/NLOW settlement contractually requires 'final'; 'provisional' values are kept for early-look research only.",
-      "enum": ["final", "provisional", "superseded"],
+      "enum": [
+        "final",
+        "provisional",
+        "superseded"
+      ],
       "type": "string"
     },
     "snowfall_in": {
       "description": "units: inches",
-      "type": ["null", "number"]
+      "type": [
+        "null",
+        "number"
+      ]
     },
     "station": {
       "description": "ICAO/ASOS station ID",
@@ -50,11 +70,17 @@
     },
     "temp_max_F": {
       "description": "units: fahrenheit \u2014 daily high (uppercase F for consistency with obs imperial mode)",
-      "type": ["null", "number"]
+      "type": [
+        "null",
+        "number"
+      ]
     },
     "temp_min_F": {
       "description": "units: fahrenheit \u2014 daily low",
-      "type": ["null", "number"]
+      "type": [
+        "null",
+        "number"
+      ]
     }
   },
   "required": [
