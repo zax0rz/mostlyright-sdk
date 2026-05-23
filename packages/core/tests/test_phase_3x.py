@@ -104,8 +104,8 @@ def test_polymarket_event_id_validation():
         polymarket_settle,
     )
 
-    with pytest.raises(PolymarketEventError, match="UUID4"):
-        polymarket_settle("not-a-uuid")
+    with pytest.raises(PolymarketEventError, match=r"\[A-Za-z0-9_-\]"):
+        polymarket_settle("not a valid id with spaces!")
 
 
 def test_polymarket_description_oversize_raises():
