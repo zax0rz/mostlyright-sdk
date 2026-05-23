@@ -35,6 +35,7 @@ def _row(**overrides):
         "sky_cover_4": None,
         "sky_base_4_ft": None,
         "visibility_miles": 10.0,
+        "precip_1hr_inches": 0.0,
         "raw_metar": "METAR KNYC 011200Z ...",
     }
     base.update(overrides)
@@ -111,3 +112,49 @@ def test_pitfall_8_missing_data_preservation():
     # Simulate parser output with missing temp_c (M → None).
     df = IEMAdapter.from_rows([_row(temp_c=None)])
     assert df["temp_c"].iloc[0] is None or pd.isna(df["temp_c"].iloc[0])
+
+
+# ----------------------------------------------------------------------
+# Unit conversion correctness (codex Phase 2 review HIGH finding fix)
+# ----------------------------------------------------------------------
+def test_wind_speed_kt_converted_to_ms():
+    """Parser yields knots; canonical column is m/s. 1 kt = 0.514444 m/s."""
+    df = IEMAdapter.from_rows([_row(wind_speed_kt=10)])
+    # 10 kt = 10 * 1852/3600 m/s ≈ 5.1444 m/s
+    val = df["wind_speed_ms"].iloc[0]
+    assert val == pytest.approx(5.1444, abs=1e-3)
+
+
+def test_wind_gust_kt_converted_to_ms():
+    df = IEMAdapter.from_rows([_row(wind_gust_kt=20)])
+    val = df["wind_gust_ms"].iloc[0]
+    assert val == pytest.approx(10.2889, abs=1e-3)
+
+
+def test_visibility_miles_converted_to_metres():
+    """Parser yields statute miles; canonical column is metres. 1 mi = 1609.344 m."""
+    df = IEMAdapter.from_rows([_row(visibility_miles=10.0)])
+    val = df["visibility_m"].iloc[0]
+    assert val == pytest.approx(16093.44, abs=1e-2)
+
+
+def test_sky_base_ft_converted_to_metres():
+    """Parser yields feet; canonical column is metres. 1 ft = 0.3048 m."""
+    df = IEMAdapter.from_rows([_row(sky_base_1_ft=1000)])
+    val = df["sky_base_1_m"].iloc[0]
+    assert val == pytest.approx(304.8, abs=1e-3)
+
+
+def test_precip_inches_converted_to_mm():
+    """Parser yields precip_1hr_inches; canonical column is precip_mm_1h. 1 in = 25.4 mm."""
+    df = IEMAdapter.from_rows([_row(precip_1hr_inches=0.5)])
+    assert "precip_mm_1h" in df.columns
+    val = df["precip_mm_1h"].iloc[0]
+    assert val == pytest.approx(12.7, abs=1e-3)
+
+
+def test_none_preserved_through_conversion():
+    """Missing-data sentinels survive unit conversion as None (not 0.0)."""
+    df = IEMAdapter.from_rows([_row(wind_speed_kt=None, visibility_miles=None)])
+    assert pd.isna(df["wind_speed_ms"].iloc[0])
+    assert pd.isna(df["visibility_m"].iloc[0])

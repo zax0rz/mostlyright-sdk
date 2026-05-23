@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 _KT_TO_MPH = 1.15078
 _KT_TO_MS = 1852.0 / 3600.0  # Exact: 1 knot = 1852 m / 3600 s
 _MI_TO_KM = 1.609344  # Exact by definition
+_MI_TO_M = 1609.344  # Exact by definition (mile -> metre)
+_FT_TO_M = 0.3048  # Exact by definition (foot -> metre)
 _IN_TO_MM = 25.4  # Exact by definition
 _HPA_TO_INHG = 0.0295299875  # WMO standard conversion factor
 
@@ -52,6 +54,28 @@ def mi_to_km(mi: float | None) -> float | None:
     if not math.isfinite(v):
         return None
     return v * _MI_TO_KM
+
+
+def mi_to_m(mi: float | None) -> float | None:
+    """Statute miles to metres. No rounding. Used by catalog adapters projecting
+    AWC/IEM/GHCNh ``visibility_miles`` to the canonical ``visibility_m`` column."""
+    if mi is None:
+        return None
+    v = float(mi)
+    if not math.isfinite(v):
+        return None
+    return v * _MI_TO_M
+
+
+def ft_to_m(ft: float | None) -> float | None:
+    """Feet to metres. No rounding. Used by catalog adapters projecting parser
+    ``sky_base_N_ft`` to the canonical ``sky_base_N_m`` column."""
+    if ft is None:
+        return None
+    v = float(ft)
+    if not math.isfinite(v):
+        return None
+    return v * _FT_TO_M
 
 
 def inches_to_mm(inches: float | None) -> float | None:
@@ -131,9 +155,7 @@ def hpa_to_inhg(hpa: float | None) -> float | None:
         return None
 
 
-def compute_relative_humidity(
-    temp_c: float | None, dewp_c: float | None
-) -> float | None:
+def compute_relative_humidity(temp_c: float | None, dewp_c: float | None) -> float | None:
     """Compute RH from temp and dewpoint (Celsius) via Magnus formula.
 
     Returns value in [0, 100] as raw float64 (no rounding), or None.
@@ -183,9 +205,7 @@ def compute_feels_like(
 
         # Wind Chill (NWS): valid for temp <= 50F and wind > 3 mph
         if t <= 50.0 and w_mph > 3.0:
-            return (
-                35.74 + 0.6215 * t - 35.75 * (w_mph**0.16) + 0.4275 * t * (w_mph**0.16)
-            )
+            return 35.74 + 0.6215 * t - 35.75 * (w_mph**0.16) + 0.4275 * t * (w_mph**0.16)
 
         # Heat Index (NWS): requires known RH
         if t >= 80.0 and rh is not None:

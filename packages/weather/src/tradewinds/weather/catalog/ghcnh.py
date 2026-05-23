@@ -2,7 +2,8 @@
 
 Wraps :func:`tradewinds.weather._ghcnh.parse_ghcnh_row` into a class that
 satisfies the ``WeatherAdapter`` Protocol and emits a canonical
-``schema.observation.v1`` DataFrame with overlay columns.
+``schema.observation.v1`` DataFrame with overlay columns + correct SI units
+(see :mod:`tradewinds.weather.catalog._obs_projection`).
 
 GHCNh is the lowest-priority observation source in the v0.14.1 merge
 policy (AWC=3 > IEM=2 > GHCNh=1). It carries QC-accepted hourly records
@@ -16,33 +17,15 @@ from typing import ClassVar
 
 import pandas as pd
 from tradewinds.weather._ghcnh import parse_ghcnh_row
+from tradewinds.weather.catalog._obs_projection import (
+    add_overlay_columns,
+    empty_observation_df,
+    project_row,
+)
 
 #: GHCNh publishes with a longer lag than ASOS/AWC (hour-summary archive).
 #: Treat as known 6 hours after the observation hour ends.
 GHCNH_LAG = timedelta(hours=6)
-
-
-_OBSERVATION_PROJECTION: dict[str, str] = {
-    "station_code": "station",
-    "observed_at": "event_time",
-    "observation_type": "observation_type",
-    "temp_c": "temp_c",
-    "dewpoint_c": "dew_point_c",
-    "wind_speed_kt": "wind_speed_ms",
-    "wind_dir_degrees": "wind_dir_deg",
-    "wind_gust_kt": "wind_gust_ms",
-    "sea_level_pressure_mb": "slp_hpa",
-    "visibility_miles": "visibility_m",
-    "sky_cover_1": "sky_cover_1",
-    "sky_base_1_ft": "sky_base_1_m",
-    "sky_cover_2": "sky_cover_2",
-    "sky_base_2_ft": "sky_base_2_m",
-    "sky_cover_3": "sky_cover_3",
-    "sky_base_3_ft": "sky_base_3_m",
-    "sky_cover_4": "sky_cover_4",
-    "sky_base_4_ft": "sky_base_4_m",
-    "raw_metar": "metar_raw",
-}
 
 
 class GHCNhAdapter:
@@ -71,7 +54,9 @@ class GHCNhAdapter:
         source: str = "ghcnh.archive",
         retrieved_at: datetime | None = None,
     ) -> pd.DataFrame:
-        """Project GHCNh parser rows to a canonical observation DataFrame."""
+        """Project GHCNh parser rows to a canonical observation DataFrame
+        with SI units (knots → m/s, miles → metres, feet → metres, inches → mm).
+        """
         if retrieved_at is None:
             retrieved_at = datetime.now(UTC)
         if source not in GHCNhAdapter.SUPPORTED_SOURCES:
@@ -80,22 +65,14 @@ class GHCNhAdapter:
                 f"supported: {GHCNhAdapter.SUPPORTED_SOURCES}"
             )
 
-        cols = [*list(_OBSERVATION_PROJECTION.values()), "source", "retrieved_at", "knowledge_time"]
         if not rows:
-            df = pd.DataFrame({c: [] for c in cols})
+            df = empty_observation_df()
         else:
-            projected = [
-                {dst: row.get(src) for src, dst in _OBSERVATION_PROJECTION.items()} for row in rows
-            ]
-            df = pd.DataFrame(projected)
+            df = pd.DataFrame([project_row(row) for row in rows])
 
-        df["event_time"] = pd.to_datetime(df["event_time"], utc=True, errors="coerce")
-        df["source"] = source
-        df["retrieved_at"] = pd.Timestamp(retrieved_at).tz_convert("UTC")
-        df["knowledge_time"] = df["event_time"] + GHCNH_LAG
-        df.attrs["source"] = source
-        df.attrs["retrieved_at"] = retrieved_at
-        return df
+        return add_overlay_columns(
+            df, source=source, retrieved_at=retrieved_at, lag=pd.Timedelta(GHCNH_LAG)
+        )
 
 
 __all__ = ["GHCNhAdapter", "parse_ghcnh_row"]
