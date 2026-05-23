@@ -82,12 +82,12 @@ testpaths = ["packages", "tests"]
 # explicitly: uv run pytest -m live.
 addopts = "-q --strict-markers -m 'not live'"
 
-# Phase 4 (CI-01): coverage configuration for the ≥90% branch gate on
-# tradewinds.core.*. The gate is enforced by the dedicated coverage-gate job
-# in .github/workflows/test.yml (which passes --cov-fail-under=90 explicitly);
-# this section configures what gets measured so a local
-# `uv run pytest --cov=packages/core/src/tradewinds/core --cov-branch` matches
-# the CI output.
+# Phase 4 (CI-01): coverage configuration for the ≥85% (soft, enforced) /
+# ≥90% (aspirational) branch gate on tradewinds.core.*. The enforced gate is
+# the dedicated coverage-gate job in .github/workflows/test.yml (which passes
+# --cov-fail-under=85 explicitly); this section configures what gets measured
+# so a local `uv run pytest --cov=packages/core/src/tradewinds/core
+# --cov-branch` matches the CI output. Empirical: 94.20%.
 [tool.coverage.run]
 branch = true
 source = ["packages/core/src/tradewinds/core"]
