@@ -342,11 +342,11 @@ def test_per_source_times_are_positive(monkeypatch, tmp_path) -> None:
         ),
         patch(
             "tradewinds.weather._fetchers.iem_cli.download_cli",
-            side_effect=lambda *a, **k: (time.sleep(0.05) or Path("/tmp/x")),
+            side_effect=lambda *a, **k: time.sleep(0.05) or Path("/tmp/x"),
         ),
         patch(
             "tradewinds.weather._fetchers.ghcnh.download_ghcnh",
-            side_effect=lambda *a, **k: (time.sleep(0.05) or Path("/tmp/x")),
+            side_effect=lambda *a, **k: time.sleep(0.05) or Path("/tmp/x"),
         ),
         patch("tradewinds.research._fetch_awc_for_window", side_effect=slow_noop),
     ):

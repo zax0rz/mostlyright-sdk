@@ -1096,9 +1096,9 @@ class TestMergeInputOrderingDeterminism:
         assert obs_path.exists(), f"expected observation cache at {obs_path}"
         rows = pq.read_table(obs_path).to_pylist()
         observed_ats = [r["observed_at"] for r in rows]
-        assert observed_ats == sorted(observed_ats), (
-            "persisted rows must be sorted by observed_at; " f"got {observed_ats[:5]}..."
-        )
+        assert observed_ats == sorted(
+            observed_ats
+        ), f"persisted rows must be sorted by observed_at; got {observed_ats[:5]}..."
 
     def test_research_smoke_obs_count_stable_after_presort(
         self, mocked_http: Any, tmp_cache_env: Path
