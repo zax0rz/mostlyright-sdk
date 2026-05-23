@@ -89,17 +89,21 @@ def load_polymarket_city_stations() -> dict[str, dict[str, str]]:
 def _detect_measure(text: str) -> str:
     """Return ``"high"``, ``"low"``, or ``"default"`` from event title/slug.
 
-    First match wins:
-    1. ``low`` keyword → ``"low"``
-    2. ``high`` keyword → ``"high"``
-    3. otherwise → ``"default"``
-
-    The ``low`` check goes first so a title containing both keywords (e.g.
-    a comparison market) routes to the more constrained measure.
+    Decision table:
+      - Exactly one of {high, low} keyword present → that measure.
+      - Both keywords present → ``"default"``. A title that mentions both
+        "high" AND "low" is ambiguous (e.g. an explainer market like
+        ``"Will Paris see a record-low AND record-high this week?"``) and
+        the safer answer is to route to whichever airport the city map
+        nominated as the default measure — silently picking ``low`` for
+        such an event would tag the wrong airport for the wrong resolution.
+      - Neither keyword present → ``"default"``.
     """
-    if _LOW_RE.search(text):
+    has_low = _LOW_RE.search(text) is not None
+    has_high = _HIGH_RE.search(text) is not None
+    if has_low and not has_high:
         return "low"
-    if _HIGH_RE.search(text):
+    if has_high and not has_low:
         return "high"
     return "default"
 

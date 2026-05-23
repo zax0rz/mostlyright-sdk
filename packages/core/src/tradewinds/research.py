@@ -83,9 +83,15 @@ def _resolve_station(station: str) -> StationInfo:
 
     Raises:
         ValueError: when ``station`` is not in the 20-station Phase 1
-            registry. Phase 3.1 expands this to international stations;
-            in v0.1.0 the orchestrator refuses unknown stations rather than
-            silently returning empty data.
+            registry, OR when ``station`` resolves to an international
+            entry (Phase 3.1 expanded STATIONS to 60 — but ``research()``
+            still ships only the v0.14.1 Kalshi US-only join in v0.1.0
+            because NWS CLI (settlement source) is US-only and the
+            settlement-window math (``snapshot._lst_offset``) is calibrated
+            for US standard-time offsets). Intl callers should use
+            :func:`tradewinds.international.daily_extremes` after warming
+            the cache with their own observation fetcher; full intl
+            ``research()`` ships in a follow-up phase.
     """
     code = _station_code_normalized(station)
     info = STATIONS.get(code)
@@ -94,6 +100,14 @@ def _resolve_station(station: str) -> StationInfo:
             f"Unknown station: {station!r} (normalized {code!r}). "
             f"v0.1.0 supports the 20 Kalshi-traded stations from "
             f"``tradewinds._internal._stations.STATIONS``."
+        )
+    if not is_us_station(info.icao):
+        raise ValueError(
+            f"research() v0.1.0 supports only the 20 US Kalshi-traded stations; "
+            f"got {station!r} (intl ICAO {info.icao!r}, country={info.country!r}). "
+            f"For international weather aggregates use "
+            f"tradewinds.international.daily_extremes(station, from_date, to_date) "
+            f"after warming the observation cache."
         )
     return info
 

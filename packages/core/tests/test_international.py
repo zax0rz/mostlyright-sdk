@@ -52,15 +52,25 @@ def _build_hourly_rows(
 
 
 def _patch_cache_with_rows(monkeypatch, rows: list[dict]) -> None:
-    """Patch ``tradewinds.weather.cache.read_cache`` to return ``rows`` per call.
+    """Patch ``read_cache`` to behave like the real UTC-keyed parquet cache.
 
-    For multi-month windows the same rows would be returned for every month;
-    callers building cross-month tests should restrict ``rows`` to a single
-    month or pass an explicit (station, year, month) → rows mapping.
+    Returns only the rows whose ``observed_at`` UTC year/month matches the
+    requested ``(year, month)`` key. This mirrors the production behavior:
+    the on-disk cache file at ``<icao>/<UTC-year>/<UTC-month>.parquet``
+    only contains rows whose UTC year-month equals the file's key.
+
+    Phase 3.1 review caught: the original lambda returned the same list for
+    EVERY ``(y, m)`` call, which (a) duplicated rows when ``daily_extremes``
+    legitimately reads an adjacent UTC month to cover a station-local day,
+    and (b) hid the month-boundary bug it was meant to detect.
     """
     from tradewinds.weather import cache as cache_mod
 
-    monkeypatch.setattr(cache_mod, "read_cache", lambda s, y, m: rows)
+    def _read_cache(station: str, year: int, month: int):
+        out = [r for r in rows if r.get("observed_at", "").startswith(f"{year:04d}-{month:02d}-")]
+        return out or None
+
+    monkeypatch.setattr(cache_mod, "read_cache", _read_cache)
 
 
 def _patch_cache_with_month_map(monkeypatch, by_month: dict[tuple[int, int], list[dict]]) -> None:
@@ -320,6 +330,90 @@ def test_daily_extremes_partial_cache_skips_silently(monkeypatch):
     assert "2025-01-01" in dates
     # No Feb rows shipped — month was None.
     assert not any(d.startswith("2025-02") for d in dates)
+
+
+# ---------------------------------------------------------------------------
+# Month-boundary correctness — the UTC cache month and the station-local
+# calendar month don't line up for any non-UTC station. The codex + arch
+# review caught that reading only the local-month cache files silently drops
+# the leading or trailing slice of a local day at the month boundary; the
+# fix is to compute the UTC-month envelope from the local window + tz, so
+# the cache is consulted for every month that could possibly contain rows
+# falling into the requested local-day window.
+# ---------------------------------------------------------------------------
+def test_daily_extremes_month_boundary_reads_adjacent_utc_month_tokyo(monkeypatch):
+    """JST Feb 1 = UTC Jan 31 15:00 → UTC Feb 1 14:59. Code must read both UTC months."""
+    # UTC Jan 31 15:00..23:00 → JST Feb 1 00:00..08:00 (9 rows).
+    rows_jan = _build_hourly_rows(
+        datetime(2025, 1, 31, 15, 0, tzinfo=UTC),
+        9,
+        temps=[-10.0, -8.0, -6.0, -4.0, -2.0, 0.0, 2.0, 4.0, 6.0],
+        station_code="RJTT",
+    )
+    # UTC Feb 1 00:00..14:00 → JST Feb 1 09:00..23:00 (15 rows).
+    rows_feb = _build_hourly_rows(
+        datetime(2025, 2, 1, 0, 0, tzinfo=UTC),
+        15,
+        temps=[
+            8.0,
+            9.0,
+            10.0,
+            11.0,
+            12.0,
+            13.0,
+            14.0,
+            15.0,
+            14.0,
+            13.0,
+            12.0,
+            11.0,
+            10.0,
+            9.0,
+            8.0,
+        ],
+        station_code="RJTT",
+    )
+    _patch_cache_with_month_map(
+        monkeypatch,
+        {(2025, 1): rows_jan, (2025, 2): rows_feb},
+    )
+    out = intl.daily_extremes("RJTT", date(2025, 2, 1), date(2025, 2, 1))
+    assert len(out) == 1
+    row = out[0]
+    assert row["local_date"] == "2025-02-01"
+    # All 24 hours (9 from Jan UTC + 15 from Feb UTC) bucketed into JST Feb 1.
+    assert row["n_obs"] == 24
+    # tmax_c is 15.0 (mid-afternoon JST); tmin_c is -10.0 (just after midnight JST).
+    # Whole-°C rounding for intl: 15.0 and -10.0 both stay whole.
+    assert row["tmax_c"] == 15.0
+    assert row["tmin_c"] == -10.0
+
+
+def test_daily_extremes_month_boundary_negative_offset_buenos_aires(monkeypatch):
+    """Buenos Aires UTC-3 — local Jan 31 ends at UTC Feb 1 03:00. Code must read Feb cache too."""
+    # UTC Jan 31 03:00..23:00 → ART Jan 31 00:00..20:00 (21 rows).
+    rows_jan = _build_hourly_rows(
+        datetime(2025, 1, 31, 3, 0, tzinfo=UTC),
+        21,
+        temps=[20.0 + i * 0.5 for i in range(21)],
+        station_code="SAEZ",
+    )
+    # UTC Feb 1 00:00..02:00 → ART Jan 31 21:00..23:00 (3 rows).
+    rows_feb = _build_hourly_rows(
+        datetime(2025, 2, 1, 0, 0, tzinfo=UTC),
+        3,
+        temps=[26.0, 25.5, 25.0],
+        station_code="SAEZ",
+    )
+    _patch_cache_with_month_map(
+        monkeypatch,
+        {(2025, 1): rows_jan, (2025, 2): rows_feb},
+    )
+    out = intl.daily_extremes("SAEZ", date(2025, 1, 31), date(2025, 1, 31))
+    assert len(out) == 1
+    row = out[0]
+    assert row["local_date"] == "2025-01-31"
+    assert row["n_obs"] == 24  # 21 from Jan UTC + 3 from Feb UTC.
 
 
 # ---------------------------------------------------------------------------

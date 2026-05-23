@@ -112,6 +112,23 @@ def test_paris_keyword_in_slug(city_map):
     assert icao == "LFPB"
 
 
+def test_paris_ambiguous_high_AND_low_title_falls_back_to_default(city_map):
+    """Ambiguous titles must route to default — never silently pick low.
+
+    Architect review caught: the original implementation ran the "low" regex
+    first, so any title with BOTH "low" and "high" tokens silently routed to
+    LFPB. Fix: when both keywords are present, return "default" (let the city
+    map decide), and the city's chosen default airport handles the event.
+    """
+    event = {
+        "city": "paris",
+        "title": "Will Paris see a record-LOW precipitation AND record-HIGH temperature?",
+    }
+    icao, measure = resolve_station_for_event(event, city_map)
+    assert measure == "default"
+    assert icao == "LFPG"  # default in the bundled map
+
+
 # ---------------------------------------------------------------------------
 # Deferred markets.
 # ---------------------------------------------------------------------------

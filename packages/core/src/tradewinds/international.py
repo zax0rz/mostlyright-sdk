@@ -116,6 +116,65 @@ def _month_range(start: _date, end: _date) -> list[tuple[int, int]]:
     return out
 
 
+def _utc_month_envelope(
+    local_from: _date,
+    local_to: _date,
+    tz: Any,
+) -> list[tuple[int, int]]:
+    """Return UTC-keyed ``(year, month)`` tuples covering a local-date range.
+
+    The observation cache is keyed by **UTC** year/month
+    (``cache/<icao>/<UTC-year>/<UTC-month>.parquet``), but
+    ``daily_extremes()`` aggregates by **station-local** calendar day.
+    For any non-UTC station, the UTC observations that compose the local
+    day at the *edges* of the requested window can live in the adjacent
+    UTC month — e.g. Tokyo (UTC+9) local Feb 1 spans UTC Jan 31 15:00 →
+    UTC Feb 1 14:59, so reading only ``(2025, 2)`` from cache would silently
+    miss the leading 9 hours of the local day.
+
+    This helper resolves the UTC envelope by converting the local-day
+    boundary moments (``[local_from 00:00, local_to+1 day 00:00)``) to
+    UTC, then iterating UTC months from the floor of the start to the
+    ceiling of the end. Both endpoints are inclusive.
+
+    Args:
+        local_from: First station-local calendar date in the window.
+        local_to: Last station-local calendar date in the window
+            (inclusive).
+        tz: ``zoneinfo.ZoneInfo`` for the station.
+
+    Returns:
+        List of ``(year, month)`` UTC-keyed cache months to read.
+    """
+    from datetime import UTC, datetime, time, timedelta
+
+    # Local-day window endpoints. The end is exclusive — we want every
+    # UTC instant in [local_from 00:00, local_to+1day 00:00) so the
+    # tmax/tmin aggregate sees the full closing local day.
+    start_local = datetime.combine(local_from, time.min, tzinfo=tz)
+    end_local = datetime.combine(local_to + timedelta(days=1), time.min, tzinfo=tz)
+
+    # Translate to UTC for cache-month lookup.
+    start_utc = start_local.astimezone(UTC)
+    end_utc = end_local.astimezone(UTC)
+
+    # Floor start, ceiling end so we never drop a partially-overlapping
+    # UTC month. ``end_utc`` is exclusive at the day level but inclusive
+    # at the month level — if it lands at the very top of a month
+    # (e.g. 2025-02-01 00:00 UTC) we still want to read 2025-02 to catch
+    # rows stamped exactly at that boundary by upstream sources.
+    out: list[tuple[int, int]] = []
+    y, m = start_utc.year, start_utc.month
+    end_y, end_m = end_utc.year, end_utc.month
+    while (y, m) <= (end_y, end_m):
+        out.append((y, m))
+        m += 1
+        if m == 13:
+            m = 1
+            y += 1
+    return out
+
+
 def _parse_observed_at(observed_at: str) -> Any:
     """Parse an ``"YYYY-MM-DDTHH:MM:SSZ"`` string to a UTC-aware datetime.
 
@@ -223,11 +282,14 @@ def daily_extremes(
     is_us = is_us_station(info.icao)
     precision = 1 if is_us else 0  # 0.1°C for US, whole °C for intl.
 
-    # Gather hourly rows from cache, month by month. ``read_cache`` already
-    # handles the current-LST-month skip + the file-doesn't-exist case
-    # (returns None for both).
+    # Gather hourly rows from cache, month by month. The cache is keyed by
+    # UTC year/month — for non-UTC stations the local-day window straddles
+    # adjacent UTC months at the edges, so we resolve the proper UTC-month
+    # envelope from the local window + tz instead of naively iterating local
+    # months. ``read_cache`` already handles the current-LST-month skip + the
+    # file-doesn't-exist case (returns None for both).
     rows: list[dict[str, Any]] = []
-    for year, month in _month_range(from_date, to_date):
+    for year, month in _utc_month_envelope(from_date, to_date, tz):
         cached = read_cache(info.icao, year, month)
         if cached:
             rows.extend(cached)
