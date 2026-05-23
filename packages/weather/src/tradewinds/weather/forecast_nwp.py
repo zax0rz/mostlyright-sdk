@@ -313,6 +313,108 @@ def _try_fetch_records_for_mirror(
     return plan, filtered, content_length
 
 
+class _MirrorTransportFailed(Exception):
+    """Internal sentinel — a byte-range HTTP call failed mid-extraction.
+
+    Raised by :func:`_extract_records` so the outer mirror loop in
+    :func:`forecast_nwp` can fall back to the next mirror instead of
+    raising :class:`GribIntegrityError` out of the whole call. Carries
+    the variable + ``httpx`` underlying message for the log.
+    """
+
+    def __init__(self, variable: str, underlying: str) -> None:
+        super().__init__(f"transport failed for {variable}: {underlying}")
+        self.variable = variable
+        self.underlying = underlying
+
+
+def _extract_records(
+    *,
+    plan: NwpFetchPlan,
+    filtered_records: list[IdxRecord],
+    variable_map: dict[str, tuple[str, str]],
+    station_coords: list[tuple[float, float]],
+    column_values: dict[str, list[float | None]],
+    distances_km: list[float | None],
+    model: str,
+    client: httpx.Client,
+) -> None:
+    """Fetch + decode + extract every variable in ``variable_map`` for ``plan``.
+
+    Mutates ``column_values`` and ``distances_km`` in place. On HTTP
+    failure raises :class:`_MirrorTransportFailed` so the caller can
+    fall back to the next mirror. On structural / cfgrib failure raises
+    :class:`GribIntegrityError` (bytes were valid HTTP but the upstream
+    GRIB2 is broken — fallback won't help, surface to the user).
+    """
+    from . import _fetchers  # noqa: F401 — package guard
+    from ._fetchers import _nwp_extract
+
+    record_groups: dict[tuple[str, str], list[IdxRecord]] = {}
+    for rec in filtered_records:
+        record_groups.setdefault((rec.variable, rec.level), []).append(rec)
+
+    with tempfile.TemporaryDirectory(prefix="tradewinds_nwp_") as tmpdir:
+        tmp = Path(tmpdir)
+        for col, key in variable_map.items():
+            group = record_groups.get(key)
+            if not group:
+                rec = None
+            elif len(group) == 1:
+                rec = group[0]
+            else:
+                raise GribIntegrityError(
+                    f"ambiguous .idx records for {key}: "
+                    f"{[r.forecast_period for r in group]} — "
+                    "tradewinds v0.1 picks one record per (variable, level); "
+                    "for accumulated fields with multiple windows, "
+                    "extend VARIABLE_MAP to a (variable, level, forecast_period) "
+                    "tuple or pin the desired window via Phase 3.4 QC engine.",
+                    model=model,
+                    variable=key[0],
+                )
+            if rec is None or rec.byte_end is None:
+                continue
+            try:
+                payload = fetch_byte_range(
+                    plan,
+                    start=rec.byte_offset,
+                    end=rec.byte_end,
+                    client=client,
+                )
+            except (httpx.HTTPStatusError, httpx.RequestError) as exc:
+                # Codex iter-3 P2: byte-range failure is a transport
+                # error, not bad upstream data — give the next mirror a
+                # chance instead of raising GribIntegrityError.
+                raise _MirrorTransportFailed(key[0], str(exc)) from exc
+            record_path = (
+                tmp / f"{rec.record_no}_{rec.variable}_{rec.level.replace(' ', '_')}.grib2"
+            )
+            record_path.write_bytes(payload)
+            try:
+                ds = _nwp_extract.open_grib2_dataset(str(record_path))
+            except Exception as exc:  # cfgrib raises a variety; coerce.
+                raise GribIntegrityError(
+                    f"cfgrib failed to decode {key} (mirror={plan.mirror})",
+                    model=model,
+                    variable=key[0],
+                    byte_offset=rec.byte_offset,
+                    byte_end=rec.byte_end,
+                    underlying=str(exc),
+                ) from exc
+            try:
+                cfgrib_name = _cfgrib_variable_name(ds, key, model=model)
+                extracted = _nwp_extract.extract_stations(
+                    ds, variable=cfgrib_name, station_coords=station_coords
+                )
+            finally:
+                ds.close()
+            for i, (value, dist_km) in enumerate(extracted):
+                column_values[col][i] = value
+                if distances_km[i] is None:
+                    distances_km[i] = dist_km
+
+
 def forecast_nwp(
     station: str | list[str],
     model: str,
@@ -383,7 +485,9 @@ def forecast_nwp(
     # Lazy-import the heavy deps so the module imports without [nwp].
     try:
         from . import _fetchers  # noqa: F401 — package guard
-        from ._fetchers import _nwp_extract
+        from ._fetchers import (
+            _nwp_extract,  # noqa: F401 — extract path used inside _extract_records
+        )
     except ImportError as exc:  # pragma: no cover — unexpected, modules ship in same wheel
         raise SourceUnavailableError(
             f"NWP forecast wiring failed to import: {exc}",
@@ -420,6 +524,13 @@ def forecast_nwp(
         cycle = _default_cycle_for(model, fxx=fxx)
     if cycle.tzinfo is None or cycle.tzinfo.utcoffset(cycle) is None:
         raise ValueError(f"cycle must be timezone-aware (UTC); got naive {cycle!r}")
+    # Codex iter-3 P2: build_fetch_plan astimezone(UTC)s the cycle for
+    # path construction, but the row-build loop below still used the
+    # caller-supplied cycle for issued_at / valid_at. That would write
+    # non-UTC timestamps into a `timestamp_utc`-typed column and break
+    # downstream UTC joins. Normalize here so issued_at / valid_at and
+    # the plan all reference the same UTC instant.
+    cycle = cycle.astimezone(UTC)
 
     station_list: list[str] = [station] if isinstance(station, str) else list(station)
     resolved = _resolve_stations(station_list)
@@ -435,8 +546,18 @@ def forecast_nwp(
     if owns_client:
         client = httpx.Client(timeout=HTTP_TIMEOUT)
     try:
+        station_coords: list[tuple[float, float]] = [(lat, lon) for _, lat, lon in resolved]
+        # Codex iter-3 P2: byte-range failures on one mirror should also
+        # fall back to the next mirror, not raise GribIntegrityError out
+        # of the whole forecast_nwp call. A transient 5xx / 416 on AWS
+        # shouldn't make NWP unavailable if NOMADS has the same cycle.
+        # _MirrorTransportFailed is a sentinel that aborts the inner
+        # per-record loop and lets the outer mirror loop continue.
         plan: NwpFetchPlan | None = None
-        filtered_records: list[IdxRecord] = []
+        column_values: dict[str, list[float | None]] = {
+            col: [None] * len(resolved) for col in variable_map
+        }
+        distances_km: list[float | None] = [None] * len(resolved)
         for m in mirrors_to_try:
             attempt = _try_fetch_records_for_mirror(
                 model=model,
@@ -449,13 +570,9 @@ def forecast_nwp(
             if attempt is None:
                 continue
             plan_candidate, filtered_records_candidate, _ = attempt
-            # Codex iter-2 P2: an upstream layout change could leave the
-            # .idx intact but match zero records under our variable map.
-            # The old code accepted that as success and produced a
-            # frame of all-NaN rows with `grid_dist_km=NaN` — violating
-            # the schema (grid_dist_km is non-nullable). Treat as
-            # "this mirror has nothing for us" and fall through to the
-            # next one; if every mirror returns nothing, NoLiveForNwpError.
+            # Codex iter-2 P2: empty filter results mean an upstream
+            # layout change made our variable map miss every record.
+            # Treat as "this mirror has nothing for us" and try next.
             if not filtered_records_candidate:
                 log.info(
                     "forecast_nwp: mirror %s served .idx but matched zero "
@@ -464,7 +581,30 @@ def forecast_nwp(
                     sorted(variable_map.keys()),
                 )
                 continue
-            plan, filtered_records = plan_candidate, filtered_records_candidate
+            # Reset per-attempt extraction state (a partial earlier
+            # attempt could have left values from another mirror).
+            column_values = {col: [None] * len(resolved) for col in variable_map}
+            distances_km = [None] * len(resolved)
+            try:
+                _extract_records(
+                    plan=plan_candidate,
+                    filtered_records=filtered_records_candidate,
+                    variable_map=variable_map,
+                    station_coords=station_coords,
+                    column_values=column_values,
+                    distances_km=distances_km,
+                    model=model,
+                    client=client,
+                )
+            except _MirrorTransportFailed as exc:
+                log.info(
+                    "forecast_nwp: mirror %s byte-range failed for %s: %s",
+                    m,
+                    exc.variable,
+                    exc.underlying,
+                )
+                continue
+            plan = plan_candidate
             break
         if plan is None:
             raise NoLiveForNwpError(
@@ -472,91 +612,6 @@ def forecast_nwp(
                 model=model,
                 mirrors_tried=list(mirrors_to_try),
             )
-
-        station_coords: list[tuple[float, float]] = [(lat, lon) for _, lat, lon in resolved]
-        column_values: dict[str, list[float | None]] = {
-            col: [None] * len(resolved) for col in variable_map
-        }
-        distances_km: list[float | None] = [None] * len(resolved)
-
-        with tempfile.TemporaryDirectory(prefix="tradewinds_nwp_") as tmpdir:
-            tmp = Path(tmpdir)
-            # Group records by (variable, level). Codex iter-1 P2:
-            # NCEP .idx files can list MULTIPLE records with the same
-            # (variable, level) but different forecast_period strings —
-            # most commonly for accumulated fields like APCP:surface
-            # which can ship a "0-1 hour acc" and "1-2 hour acc" window
-            # in the same file. The old single-entry dict silently kept
-            # the last one, which could decode the wrong accumulation
-            # window. Now we keep the full list per key and raise
-            # GribIntegrityError when ambiguous so the caller can audit
-            # rather than silently get the wrong precip total.
-            record_groups: dict[tuple[str, str], list[IdxRecord]] = {}
-            for rec in filtered_records:
-                record_groups.setdefault((rec.variable, rec.level), []).append(rec)
-            for col, key in variable_map.items():
-                group = record_groups.get(key)
-                if not group:
-                    rec = None
-                elif len(group) == 1:
-                    rec = group[0]
-                else:
-                    raise GribIntegrityError(
-                        f"ambiguous .idx records for {key}: "
-                        f"{[r.forecast_period for r in group]} — "
-                        "tradewinds v0.1 picks one record per (variable, level); "
-                        "for accumulated fields with multiple windows, "
-                        "extend VARIABLE_MAP to a (variable, level, forecast_period) "
-                        "tuple or pin the desired window via Phase 3.4 QC engine.",
-                        model=model,
-                        variable=key[0],
-                    )
-                if rec is None or rec.byte_end is None:
-                    # Variable missing from this cycle's .idx — column
-                    # stays null for every station. NOT a fatal error.
-                    continue
-                try:
-                    payload = fetch_byte_range(
-                        plan,
-                        start=rec.byte_offset,
-                        end=rec.byte_end,
-                        client=client,
-                    )
-                except (httpx.HTTPStatusError, httpx.RequestError) as exc:
-                    raise GribIntegrityError(
-                        f"byte-range fetch failed for {key} on {plan.mirror}",
-                        model=model,
-                        variable=key[0],
-                        byte_offset=rec.byte_offset,
-                        byte_end=rec.byte_end,
-                        underlying=str(exc),
-                    ) from exc
-                record_path = (
-                    tmp / f"{rec.record_no}_{rec.variable}_{rec.level.replace(' ', '_')}.grib2"
-                )
-                record_path.write_bytes(payload)
-                try:
-                    ds = _nwp_extract.open_grib2_dataset(str(record_path))
-                except Exception as exc:  # cfgrib raises a variety; coerce.
-                    raise GribIntegrityError(
-                        f"cfgrib failed to decode {key} (mirror={plan.mirror})",
-                        model=model,
-                        variable=key[0],
-                        byte_offset=rec.byte_offset,
-                        byte_end=rec.byte_end,
-                        underlying=str(exc),
-                    ) from exc
-                try:
-                    cfgrib_name = _cfgrib_variable_name(ds, key, model=model)
-                    extracted = _nwp_extract.extract_stations(
-                        ds, variable=cfgrib_name, station_coords=station_coords
-                    )
-                finally:
-                    ds.close()
-                for i, (value, dist_km) in enumerate(extracted):
-                    column_values[col][i] = value
-                    if distances_km[i] is None:
-                        distances_km[i] = dist_km
 
         retrieved_at = datetime.now(UTC)
         rows: list[dict[str, Any]] = []
