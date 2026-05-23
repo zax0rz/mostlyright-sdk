@@ -1,0 +1,71 @@
+name: Test (TypeScript)
+
+# TS-W0 / TS-CI-01 — TypeScript fast suite on every push/PR.
+# Pipeline: pnpm install -> codegen -> typecheck -> biome -> vitest -> size-limit.
+#
+# Triggers narrowly on TS-relevant paths so we don't burn CI minutes when only
+# Python source moves. The Python lane has its own `test.yml` with disjoint
+# path filters.
+
+on:
+  push:
+    paths:
+      - "packages-ts/**"
+      - "schemas/**"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+      - "tsconfig.base.json"
+      - "biome.json"
+      - ".github/workflows/test-ts.yml"
+  pull_request:
+    paths:
+      - "packages-ts/**"
+      - "schemas/**"
+      - "package.json"
+      - "pnpm-workspace.yaml"
+      - "tsconfig.base.json"
+      - "biome.json"
+      - ".github/workflows/test-ts.yml"
+
+jobs:
+  test-ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: "9.12.0"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+
+      # NOTE (TS-W0 bootstrap): the first PR landing this workflow ships
+      # without a committed pnpm-lock.yaml. Once Wave 1's pnpm-workspace lands
+      # and the lockfile is committed, this MUST be swapped to
+      # `pnpm install --frozen-lockfile` to enforce reproducible installs.
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Codegen (schemas -> generated TS)
+        run: pnpm codegen
+
+      - name: Typecheck (tsc --noEmit across workspaces)
+        run: pnpm -r run typecheck
+
+      - name: Lint (biome check)
+        run: pnpm -r run lint
+
+      - name: Test (vitest + coverage)
+        run: pnpm -r run test --run -- --coverage
+
+      # Size-limit is a SOFT GATE until TS-W2 ships the first stable bundle
+      # (no committed baseline yet, so a hard failure would block every PR).
+      # Promote to hard-gate once the bundle stabilizes; track in TS-W2 PLAN.
+      - name: Bundle size budget (size-limit, soft gate)
+        run: pnpm -r run size-limit
+        continue-on-error: true

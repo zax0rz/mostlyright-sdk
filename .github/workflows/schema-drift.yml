@@ -1,0 +1,84 @@
+name: Schema Drift Gate
+
+# TS-W0 / CROSS-SDK-SYNC.md §1 — runs the canonical exporter +
+# @tradewinds/codegen on every PR/push that could affect generated schemas
+# or TS generated bindings. Fails on any diff in `schemas/` or
+# `packages-ts/*/src/**/generated/` — drift is fixed by re-running the
+# exporter + codegen locally and committing the result.
+#
+# This is a HARD GATE. There is no legitimate case where the Python source
+# of truth and the committed schemas/codegen outputs should disagree.
+
+on:
+  push:
+    paths:
+      - "packages/core/src/tradewinds/core/schemas/**"
+      - "packages/core/src/tradewinds/_internal/_stations.py"
+      - "packages/core/src/tradewinds/_internal/merge/**"
+      - "packages/core/src/tradewinds/international.py"
+      - "packages/core/src/tradewinds/qc.py"
+      - "packages/markets/src/tradewinds/markets/catalog/kalshi_stations.py"
+      - "packages/markets/src/tradewinds/markets/_per_event_station.py"
+      - "packages/markets/src/tradewinds/markets/polymarket_city_stations.json"
+      - "scripts/export_schemas.py"
+      - "schemas/**"
+      - "packages-ts/codegen/**"
+      - "packages-ts/*/src/**/generated/**"
+      - ".github/workflows/schema-drift.yml"
+  pull_request:
+    paths:
+      - "packages/core/src/tradewinds/core/schemas/**"
+      - "packages/core/src/tradewinds/_internal/_stations.py"
+      - "packages/core/src/tradewinds/_internal/merge/**"
+      - "packages/core/src/tradewinds/international.py"
+      - "packages/core/src/tradewinds/qc.py"
+      - "packages/markets/src/tradewinds/markets/catalog/kalshi_stations.py"
+      - "packages/markets/src/tradewinds/markets/_per_event_station.py"
+      - "packages/markets/src/tradewinds/markets/polymarket_city_stations.json"
+      - "scripts/export_schemas.py"
+      - "schemas/**"
+      - "packages-ts/codegen/**"
+      - "packages-ts/*/src/**/generated/**"
+      - ".github/workflows/schema-drift.yml"
+
+jobs:
+  schema-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Sync Python workspace
+        run: uv sync --all-packages
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: "9.12.0"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+
+      - name: Install JS dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Run schema exporter (Python -> schemas/)
+        run: uv run python scripts/export_schemas.py
+
+      - name: Run codegen (schemas/ -> generated TS)
+        run: pnpm codegen
+
+      - name: Check for schema or codegen drift
+        run: |
+          if ! git diff --exit-code schemas/ packages-ts/*/src/**/generated/; then
+            echo "::error::Schema or codegen drift detected. Run 'uv run python scripts/export_schemas.py && pnpm codegen' locally and commit the result."
+            exit 1
+          fi

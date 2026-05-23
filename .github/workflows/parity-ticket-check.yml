@@ -1,0 +1,98 @@
+name: Parity Ticket Check
+
+# TS-W0 / CROSS-SDK-SYNC.md §2 — every PR that touches the parity-trigger
+# surface (defined in .github/parity-trigger-paths.json) MUST satisfy one of:
+#   1. Include a paired-language change in the same diff (Python + TS both).
+#   2. Reference a parity ticket via `Parity-Ticket: #<num>` in the PR body.
+#   3. Declare `python_only: true` or `typescript_only: true` (with a one-
+#      sentence justification) in the PR body, OR carry the equivalent
+#      label.
+#
+# This is a HARD GATE on pull requests. The actual rule logic lives in
+# scripts/parity_ticket_check.py (stdlib-only Python; unit-testable
+# independently of GitHub Actions context).
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - edited
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  parity-ticket-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so the diff against the PR base ref resolves cleanly.
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Run parity-ticket gate
+        id: parity-gate
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set +e
+          uv run python scripts/parity_ticket_check.py \
+            --pr-body "$PR_BODY" \
+            --base "origin/$BASE_REF" \
+            --head "$HEAD_SHA" \
+            --label-list "$PR_LABELS" \
+            | tee parity-gate-output.txt
+          echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          # Capture multi-line body for the sticky comment step. Use the
+          # GitHub Actions delimiter pattern (heredoc-style) to preserve
+          # newlines safely.
+          {
+            echo "comment_body<<__PARITY_EOF__"
+            cat parity-gate-output.txt
+            echo "__PARITY_EOF__"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post sticky verdict comment
+        uses: actions/github-script@v7
+        if: always()
+        env:
+          GATE_EXIT: ${{ steps.parity-gate.outputs.exit_code }}
+          GATE_BODY: ${{ steps.parity-gate.outputs.comment_body }}
+        with:
+          script: |
+            const exitCode = process.env.GATE_EXIT;
+            const gateBody = process.env.GATE_BODY || "(no output)";
+            const status = exitCode === "0" ? "PASSED" : "FAILED";
+            const marker = "<!-- parity-ticket-check-comment -->";
+            const body = `${marker}\n**Parity ticket gate: ${status}**\n\n\`\`\`\n${gateBody}\n\`\`\`\n\nSee [\`CROSS-SDK-SYNC.md\` §2](../blob/main/.planning/CROSS-SDK-SYNC.md) for the workflow.`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const existing = await github.rest.issues.listComments({
+              owner, repo, issue_number, per_page: 100,
+            });
+            const prior = existing.data.find(c => c.body && c.body.includes(marker));
+            if (prior) {
+              await github.rest.issues.updateComment({
+                owner, repo, comment_id: prior.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number, body,
+              });
+            }
+
+      - name: Fail step on gate violation
+        if: steps.parity-gate.outputs.exit_code != '0'
+        run: exit 1
