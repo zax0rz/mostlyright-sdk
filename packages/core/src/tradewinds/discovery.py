@@ -90,6 +90,12 @@ class DataVersion:
         Hashes the current SDK version + the (station, from_date, to_date)
         triple + a deterministic data-cache fingerprint so two callers
         running the same query against the same cache get the same token.
+
+        Note: the ``sources`` tuple is the SDK's source-priority contract,
+        not the per-call subset that actually returned rows. v0.1.0 has
+        no source-filter kwarg, so the contract matches reality; v0.2
+        with explicit source toggles should narrow this to the actually-
+        consulted set.
         """
         if sdk_version is None:
             from tradewinds import __version__ as _sdk_version
