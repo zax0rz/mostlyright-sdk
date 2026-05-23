@@ -128,6 +128,17 @@ def test_empty_records():
     assert df.attrs["source"] == "cli.archive"
 
 
+def test_empty_records_pass_validator():
+    """codex iter-6 HIGH fix: zero-row CLI pulls must validate cleanly."""
+    from tradewinds.core import validate_dataframe
+
+    df = CLIAdapter.from_records(
+        [], retrieved_at=datetime(2025, 1, 2, 13, tzinfo=UTC), station_tz="UTC"
+    )
+    reg = validate_dataframe(df, "schema.settlement.cli.v1")
+    assert reg.rows == 0
+
+
 def test_retrieved_at_propagates():
     when = datetime(2025, 1, 2, 13, tzinfo=UTC)
     df = CLIAdapter.from_records([_rec()], retrieved_at=when, station_tz="UTC")

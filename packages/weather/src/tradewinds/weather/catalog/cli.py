@@ -135,11 +135,21 @@ class CLIAdapter:
             df = pd.DataFrame(projected)
 
         # Datatypes + overlay columns.
+        # codex iter-6 HIGH fix: also coerce on the empty-DataFrame path so
+        # zero-row pulls satisfy the Validator. Previously the
+        # "if not df.empty" gate skipped these casts and the empty df
+        # carried object/float64 dtypes that mismatched the schema.
         if not df.empty:
             df["observation_date"] = pd.to_datetime(df["observation_date"], errors="coerce").dt.date
             df["product_release_time"] = pd.to_datetime(
                 df["product_release_time"], utc=True, errors="coerce"
             )
+        else:
+            # Empty: ensure observation_date is a date-typed object series and
+            # product_release_time is tz-aware datetime64 so Validator's date /
+            # timestamp_utc checks succeed.
+            df["observation_date"] = pd.Series([], dtype="object")
+            df["product_release_time"] = pd.Series([], dtype="datetime64[ns, UTC]")
 
         # codex iter-5 HIGH fix: parse_cli_record emits int temps; the
         # canonical settlement schema declares float64. Coerce here so
