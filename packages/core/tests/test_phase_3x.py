@@ -137,14 +137,28 @@ def test_polymarket_disallowed_url_raises():
 
 
 def test_polymarket_allowed_url_passes_to_settlement():
-    """Wunderground URL passes the boundary; settlement engine raises
-    NotImplementedError (Phase 3.3 wiring)."""
-    from tradewinds.markets.polymarket import polymarket_settle
+    """Wunderground URL passes the boundary; real settlement now needs an event payload.
 
-    with pytest.raises(NotImplementedError):
+    With the real Phase 3.3 implementation the function attempts an HTTP
+    fetch to Gamma when no `event=` is provided. Without an event, the
+    description-only check still passes URL validation but settlement
+    needs the slug for the resolution date — assert that path raises
+    something sensible (not NotImplementedError anymore).
+    """
+
+    # Test the description-validation path WITHOUT triggering an HTTP
+    # call by passing an event with no slug — the validator passes the
+    # URL but the slug-date parser raises PolymarketSettlementError.
+    from tradewinds.markets.polymarket import PolymarketSettlementError, polymarket_settle
+
+    # Title has no high/low keyword, so the architect iter-1 HIGH-3
+    # ambiguity-guard fires before the slug-date parser. Use a "highest"
+    # title to bypass it and hit the slug-date check.
+    with pytest.raises(PolymarketSettlementError, match="no resolution date in slug"):
         polymarket_settle(
             "01234567-89ab-4cde-8f01-23456789abcd",
             description="Resolves via https://www.wunderground.com/data",
+            event={"slug": "no-date-here", "city": "london", "title": "highest temp in London"},
         )
 
 
