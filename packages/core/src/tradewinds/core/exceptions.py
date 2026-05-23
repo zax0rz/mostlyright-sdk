@@ -24,7 +24,11 @@ from typing import Any
 from ._json_safe import to_json_safe
 
 __all__ = [
+    "GribIntegrityError",
     "LeakageError",
+    "NoLiveForNwpError",
+    "NwpError",
+    "NwpModelNotAvailableError",
     "PayloadTooLargeError",
     "SchemaValidationError",
     "SourceMismatchError",
@@ -335,6 +339,150 @@ class PayloadTooLargeError(TradewindsError):
             declared_size=self.declared_size,
             limit=self.limit,
             accepted_modes=self.accepted_modes,
+        )
+        return payload
+
+
+# ----------------------------------------------------------------------
+# Phase 3.2: NWP forecast errors
+# ----------------------------------------------------------------------
+
+
+class NwpError(TradewindsError):
+    """Base class for Phase 3.2 NWP forecast errors.
+
+    Subclasses cover the three failure modes a quant fetching live NWP
+    data hits in practice: an unsupported model (ECMWF Tier-2 reserved
+    for v0.2), no live cycle reachable from any wired mirror, or
+    decoded GRIB2 bytes that failed integrity / structural validation.
+    """
+
+    default_error_code = "NWP_ERROR"
+
+
+class NwpModelNotAvailableError(NwpError):
+    """Model is declared in the public enum but not implemented in this version.
+
+    Raised for the four ECMWF Tier-2 models (``ecmwf_ifs_hres``,
+    ``ecmwf_ifs_ens``, ``ecmwf_aifs_single``, ``ecmwf_aifs_ens``) which
+    require hosted infrastructure to backfill and are deferred to v0.2.
+    ``model`` carries the offending model id and ``available_in`` names
+    the release that will land it.
+    """
+
+    default_error_code = "NWP_MODEL_NOT_AVAILABLE"
+
+    def __init__(
+        self,
+        message: str = "",
+        *,
+        model: str,
+        available_in: str = "v0.2",
+        request_id: str | None = None,
+        error_code: str | None = None,
+    ) -> None:
+        super().__init__(
+            message,
+            error_code=error_code,
+            source=f"nwp.{model}",
+            request_id=request_id,
+        )
+        self.model: str = model
+        self.available_in: str = available_in
+
+    def _payload(self) -> dict[str, Any]:
+        payload = super()._payload()
+        payload.update(model=self.model, available_in=self.available_in)
+        return payload
+
+
+class NoLiveForNwpError(NwpError):
+    """All wired mirrors failed to serve a live cycle for ``(model, cycle)``.
+
+    Carries the mirror chain that was tried and the per-mirror failure
+    summary so callers can audit why every fallback failed. Distinct
+    from :class:`SourceUnavailableError` because the recovery action is
+    different — for NWP, the typical fix is to wait for the next cycle
+    rather than retry the same one.
+    """
+
+    default_error_code = "NWP_NO_LIVE"
+
+    def __init__(
+        self,
+        message: str = "",
+        *,
+        model: str,
+        mirrors_tried: list[str] | None = None,
+        last_status: int | None = None,
+        request_id: str | None = None,
+        error_code: str | None = None,
+    ) -> None:
+        super().__init__(
+            message,
+            error_code=error_code,
+            source=f"nwp.{model}",
+            request_id=request_id,
+        )
+        self.model: str = model
+        self.mirrors_tried: list[str] = list(mirrors_tried or [])
+        self.last_status: int | None = last_status
+
+    def _payload(self) -> dict[str, Any]:
+        payload = super()._payload()
+        payload.update(
+            model=self.model,
+            mirrors_tried=self.mirrors_tried,
+            last_status=self.last_status,
+        )
+        return payload
+
+
+class GribIntegrityError(NwpError):
+    """A fetched GRIB2 byte-range failed structural / integrity validation.
+
+    Raised when the GRIB2 record retrieved via byte-range does not match
+    its ``.idx`` claim, decodes with missing variables, or cfgrib
+    surfaces an "unexpected end of message" / "messages out of order"
+    error. Carries the variable that triggered the error plus the
+    ``(byte_offset, byte_end)`` of the offending record so the caller
+    can replay or skip.
+    """
+
+    default_error_code = "NWP_GRIB_INTEGRITY"
+
+    def __init__(
+        self,
+        message: str = "",
+        *,
+        model: str,
+        variable: str | None = None,
+        byte_offset: int | None = None,
+        byte_end: int | None = None,
+        underlying: str = "",
+        request_id: str | None = None,
+        error_code: str | None = None,
+    ) -> None:
+        super().__init__(
+            message,
+            error_code=error_code,
+            source=f"nwp.{model}",
+            request_id=request_id,
+        )
+        self.model: str = model
+        self.variable: str | None = variable
+        self.byte_offset: int | None = byte_offset
+        self.byte_end: int | None = byte_end
+        self.underlying: str = underlying
+
+    def _payload(self) -> dict[str, Any]:
+        payload = super()._payload()
+        payload.update(
+            model=self.model,
+            variable=self.variable,
+            byte_offset=self.byte_offset,
+            byte_end=self.byte_end,
+            underlying=self.underlying,
         )
         return payload
 

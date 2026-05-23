@@ -954,7 +954,7 @@ class TestResolveStation:
         """
         from tradewinds.research import _resolve_station
 
-        with pytest.raises(ValueError, match="research\\(\\) v0.1.0 supports only"):
+        with pytest.raises(ValueError, match=r"research\(\) v0\.1\.0 supports only"):
             _resolve_station("EGLL")
         with pytest.raises(ValueError, match="daily_extremes"):
             _resolve_station("RJTT")

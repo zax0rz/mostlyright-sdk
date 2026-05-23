@@ -48,7 +48,7 @@ def test_daily_extremes_empty_cache_returns_empty_list(monkeypatch):
 
 
 # ----------------------------------------------------------------------
-# Phase 3.2 — NWP forecast seam
+# Phase 3.2 — NWP forecast real implementation
 # ----------------------------------------------------------------------
 def test_nwp_models():
     from tradewinds.forecasts import SUPPORTED_NWP_MODELS
@@ -63,13 +63,36 @@ def test_nwp_unknown_model_raises():
         forecast_nwp("KNYC", "bogus")
 
 
-def test_nwp_dispatch_seam_raises():
-    """v0.1.0 dispatch seam — NWP fetch wiring lands in 3.2 alpha."""
+def test_nwp_reserved_ecmwf_model_raises_specific_error():
+    """ECMWF Tier-2 ids predeclared in the enum raise NwpModelNotAvailableError."""
+    from tradewinds.core.exceptions import NwpModelNotAvailableError
     from tradewinds.forecasts import forecast_nwp
 
-    # Either SourceUnavailableError (no cfgrib) or NotImplementedError.
-    with pytest.raises((Exception,)):
+    with pytest.raises(NwpModelNotAvailableError) as exc_info:
+        forecast_nwp("KNYC", "ecmwf_ifs_hres")
+    assert exc_info.value.model == "ecmwf_ifs_hres"
+
+
+def test_nwp_dispatch_requires_extra_or_runs():
+    """Without [nwp], surfaces SourceUnavailableError with install hint.
+
+    The full live path (cfgrib + xarray + sklearn) is covered by the
+    network-bound, ``@pytest.mark.live``-gated tests in
+    ``packages/weather/tests/test_forecast_nwp.py``.
+    """
+    import importlib.util
+
+    from tradewinds.core.exceptions import SourceUnavailableError
+    from tradewinds.forecasts import forecast_nwp
+
+    has_extra = all(
+        importlib.util.find_spec(m) is not None for m in ("cfgrib", "xarray", "sklearn")
+    )
+    if has_extra:
+        pytest.skip("path exercised by live tests when [nwp] is installed")
+    with pytest.raises(SourceUnavailableError) as exc_info:
         forecast_nwp("KNYC", "hrrr")
+    assert "[nwp]" in str(exc_info.value)
 
 
 # ----------------------------------------------------------------------
