@@ -1,7 +1,7 @@
-// @tradewinds/codegen — placeholder scaffold for TS-W0 Wave 1.
-// Real implementation (read schemas/*.json + schemas/json/*.json, emit .d.ts types +
-// ajv-standalone validators + typed data modules into packages-ts/*/src/**/generated/)
-// lands in TS-W0 Wave 3.
+// @tradewinds/codegen — public entry. The CLI implementation lives in
+// `./codegen.ts`. This file just re-exports the small public surface so
+// downstream tooling can import `runCodegen` programmatically if it ever
+// wants to (today nothing does — CI calls the CLI script directly).
 
 export const version = "0.0.0";
 
@@ -9,7 +9,13 @@ export function helloCodegen(): string {
   return "hello @tradewinds/codegen";
 }
 
-export function runCodegen(): void {
-  // eslint-disable-next-line no-console
-  console.log("@tradewinds/codegen - implementation lands in Wave 3");
+/**
+ * Programmatic entry point. Spawns the CLI under the same Node process by
+ * delegating to the implementation module, which performs file I/O.
+ *
+ * Most callers should invoke the CLI (`pnpm --filter @tradewinds/codegen
+ * run codegen`) rather than calling this. Kept for API stability and tests.
+ */
+export async function runCodegen(): Promise<void> {
+  await import("./codegen.js");
 }

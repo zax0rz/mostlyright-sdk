@@ -15,21 +15,20 @@
       "require": "./dist/index.cjs"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "scripts": {
     "build": "tsup",
     "test": "vitest",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist coverage .tsbuildinfo",
-    "codegen": "node -e \"console.log('@tradewinds/codegen placeholder — implementation lands in TS-W0 Wave 3')\""
+    "codegen": "tsx src/codegen.ts",
+    "codegen:check": "tsx src/codegen.ts --check"
   },
   "devDependencies": {
-    "ajv": "8.17.1",
-    "ajv-cli": "5.0.0",
+    "@types/node": "20.16.10",
     "json-schema-to-typescript": "15.0.4",
     "tsup": "8.3.5",
+    "tsx": "4.19.2",
     "typescript": "5.6.3",
     "vitest": "2.1.9"
   }

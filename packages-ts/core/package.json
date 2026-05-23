@@ -14,10 +14,9 @@
       "require": "./dist/index.cjs"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "scripts": {
+    "prebuild": "pnpm --filter @tradewinds/codegen run codegen",
     "build": "tsup",
     "test": "vitest",
     "typecheck": "tsc --noEmit",
