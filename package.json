@@ -13,8 +13,31 @@
     "test": "pnpm -r run test",
     "lint": "biome check .",
     "format": "biome format --write .",
-    "typecheck": "pnpm -r run typecheck"
+    "typecheck": "pnpm -r run typecheck",
+    "size": "size-limit"
   },
+  "size-limit": [
+    {
+      "name": "@tradewinds/core (W1 surface, gzipped ESM)",
+      "path": "packages-ts/core/dist/index.mjs",
+      "limit": "25 KB"
+    },
+    {
+      "name": "@tradewinds/weather (W1: AWC+CLI only, gzipped ESM)",
+      "path": "packages-ts/weather/dist/index.mjs",
+      "limit": "20 KB"
+    },
+    {
+      "name": "@tradewinds/markets (W1: Kalshi NHIGH/NLOW, gzipped ESM)",
+      "path": "packages-ts/markets/dist/index.mjs",
+      "limit": "15 KB"
+    },
+    {
+      "name": "tradewinds meta (W1 subset, gzipped ESM)",
+      "path": "packages-ts/meta/dist/index.mjs",
+      "limit": "30 KB"
+    }
+  ],
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "@size-limit/preset-small-lib": "11.1.6",
