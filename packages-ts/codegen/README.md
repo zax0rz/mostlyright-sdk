@@ -1,0 +1,3 @@
+# @tradewinds/codegen
+
+Build-only codegen for the [tradewinds](https://github.com/helloiamvu/tradewinds) TypeScript SDK. Reads the schema artifacts under `schemas/` (emitted by the Python-side `scripts/export_schemas.py`) and produces `.d.ts` types via `json-schema-to-typescript`, ajv-standalone validator modules, and typed data modules (station registry, Kalshi map, source priority, QC alpha rules) into the `src/**/generated/` directories of each consumer package. Private; never published to npm. The current scaffold ships only a placeholder hello function; the real codegen pipeline lands in TS-W0 Wave 3.

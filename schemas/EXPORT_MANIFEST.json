@@ -1,0 +1,64 @@
+{
+  "files": [
+    {
+      "gated": false,
+      "path": "json/schema.forecast.iem_mos.v1.json",
+      "sha256": "e0fde462b663ef02f5426a3afd9ad9d533048ea31deae9ed5cd0eaddb77664fa",
+      "size_bytes": 1780
+    },
+    {
+      "gated": false,
+      "path": "json/schema.observation.v1.json",
+      "sha256": "243043dd10d23707caba361eb12cd7b7f07a4964400e3f81e54e5f8354fef243",
+      "size_bytes": 4001
+    },
+    {
+      "gated": false,
+      "path": "json/schema.observation_ledger.v1.json",
+      "sha256": "5ccc3d92ebce4ff9945cfa738a2d1e624f65c099c1661dacab19eb49fe3ec9e4",
+      "size_bytes": 2283
+    },
+    {
+      "gated": false,
+      "path": "json/schema.observation_qc.v1.json",
+      "sha256": "c27f5051a1579afc655311bfe42e708a9a1011d47591c29333609970e8c0557a",
+      "size_bytes": 1593
+    },
+    {
+      "gated": false,
+      "path": "json/schema.settlement.cli.v1.json",
+      "sha256": "2b98e22e9b14ec6a5dbaf3c584e5150ff884c1b8dd5373a939b09ae8d9f64598",
+      "size_bytes": 2754
+    },
+    {
+      "gated": false,
+      "path": "kalshi-settlement-stations.json",
+      "sha256": "652e1e9636de9d34f6eb14bb93155916526802d93acfe908263d770dd9c80180",
+      "size_bytes": 2768
+    },
+    {
+      "gated": false,
+      "path": "polymarket-city-stations.json",
+      "sha256": "dae8e737c37f999e1e02eef1a828c1f142d65fc1ac82109a8a4b13671a5275de",
+      "size_bytes": 2086
+    },
+    {
+      "gated": false,
+      "path": "qc-alpha-rules.json",
+      "sha256": "0ba062bd85ced7b78da31473be593749d859f891db02e5d6e5a09edbca693c97",
+      "size_bytes": 921
+    },
+    {
+      "gated": false,
+      "path": "source-priority.json",
+      "sha256": "8d547c74b56ea7b06bcc5b71c5c7f5e8148f3162f84eb167f78b73af7e124636",
+      "size_bytes": 418
+    },
+    {
+      "gated": false,
+      "path": "stations.json",
+      "sha256": "ebba0e597a78e8c1e239bc8fc6588088157b37877c3a8eeda392751fee78bca1",
+      "size_bytes": 14056
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "$id": "https://tradewinds.dev/schemas/schema.forecast.iem_mos.v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "imperialRenames": {
+    "dew_point_c": "dew_point_F",
+    "temp_c": "temp_F",
+    "wind_speed_ms": "wind_speed_kt"
+  },
+  "properties": {
+    "dew_point_c": {
+      "description": "units: celsius",
+      "nullable": true,
+      "type": "number"
+    },
+    "forecast_hour": {
+      "description": "units: hours \u2014 (valid_at - issued_at).total_seconds() / 3600",
+      "type": "integer"
+    },
+    "issued_at": {
+      "description": "model run time (from source `runtime` field)",
+      "format": "date-time",
+      "type": "string"
+    },
+    "model": {
+      "description": "e.g. NBE, GFS, LAV, MET",
+      "type": "string"
+    },
+    "precip_probability": {
+      "description": "units: probability \u2014 bounded [0, 1]",
+      "nullable": true,
+      "type": "number"
+    },
+    "sky_cover_pct": {
+      "description": "units: percent \u2014 bounded [0, 100]",
+      "nullable": true,
+      "type": "integer"
+    },
+    "station": {
+      "type": "string"
+    },
+    "temp_c": {
+      "description": "units: celsius",
+      "nullable": true,
+      "type": "number"
+    },
+    "valid_at": {
+      "description": "forecast target time (from source `ftime`)",
+      "format": "date-time",
+      "type": "string"
+    },
+    "wind_dir_deg": {
+      "description": "units: degrees",
+      "nullable": true,
+      "type": "integer"
+    },
+    "wind_speed_ms": {
+      "description": "units: m/s",
+      "nullable": true,
+      "type": "number"
+    }
+  },
+  "required": [
+    "forecast_hour",
+    "issued_at",
+    "model",
+    "station",
+    "valid_at"
+  ],
+  "title": "schema.forecast.iem_mos.v1",
+  "type": "object",
+  "version": "v1"
+}

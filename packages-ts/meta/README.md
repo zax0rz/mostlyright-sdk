@@ -1,0 +1,3 @@
+# tradewinds (meta)
+
+Convenience meta-package for the [tradewinds](https://github.com/helloiamvu/tradewinds) TypeScript SDK. Re-exports the surface of `@tradewinds/core`, `@tradewinds/weather`, and `@tradewinds/markets` so a single `import { research } from "tradewinds"` works. The unscoped npm name `tradewinds` is reserved pending an availability check (see `.planning/research/TS-SDK-DESIGN.md` §13.1); if unavailable at publish time the meta will be re-named (e.g. `@tradewinds/sdk`). The current scaffold ships only placeholder hello functions; real implementation tracks the underlying packages.
