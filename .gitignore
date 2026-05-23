@@ -44,3 +44,11 @@ tests/fixtures/drift/drift-report.md
 .DS_Store
 Thumbs.db
 .claude/scheduled_tasks.lock
+
+# TypeScript / pnpm workspace (packages-ts/)
+node_modules/
+coverage/
+.tsbuildinfo
+packages-ts/*/dist/
+packages-ts/*/coverage/
+# Note: top-level `dist/` and `build/` already covered by Python section above.

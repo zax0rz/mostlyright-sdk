@@ -1,0 +1,39 @@
+{
+  "name": "@tradewinds/markets",
+  "version": "0.0.0",
+  "description": "Prediction-market resolvers (Kalshi NHIGH/NLOW, Polymarket) for the tradewinds TypeScript SDK (placeholder scaffold; implementation lands in TS-W1+).",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist coverage .tsbuildinfo",
+    "codegen": "echo \"@tradewinds/markets — no codegen step at this layer\""
+  },
+  "peerDependencies": {
+    "@tradewinds/core": "^0.0.0"
+  },
+  "devDependencies": {
+    "@tradewinds/core": "workspace:*",
+    "tsup": "8.3.5",
+    "typescript": "5.6.3",
+    "vitest": "2.1.9"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

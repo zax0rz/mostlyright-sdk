@@ -1,0 +1,28 @@
+{
+  "name": "tradewinds-ts-workspace",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Workspace root for @tradewinds/* TypeScript SDK packages. Not published.",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "codegen": "pnpm -r run codegen",
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "typecheck": "pnpm -r run typecheck"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "@size-limit/preset-small-lib": "11.1.6",
+    "@vitest/coverage-v8": "2.1.9",
+    "lefthook": "1.7.22",
+    "size-limit": "11.1.6",
+    "tsup": "8.3.5",
+    "typescript": "5.6.3",
+    "vitest": "2.1.9"
+  }
+}
