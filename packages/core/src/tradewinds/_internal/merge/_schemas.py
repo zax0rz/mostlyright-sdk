@@ -51,3 +51,70 @@ OBSERVATION_SCHEMA = pa.schema(
         pa.field("raw_metar", pa.string()),
     ]
 )
+
+
+# Phase 2.1 (LINEAGE-01..05): silver-tier observation_ledger.v1 schema.
+# Rows-per-source long format — natural key is
+# (station_code, observed_at, source, parser_name, as_of_time, ingestion_id).
+# Multiple rows per (station_code, observed_at) are valid silver outputs
+# (one per contributing source AWC, IEM, GHCNh). Read-time
+# ObservationMergePolicy materializes the single-row-per-key gold for
+# Mode-1 parity callers.
+#
+# Source enum extends to ["awc", "iem", "ghcnh", "ncei"] — ncei reserved
+# per D-2.1-09; never written in v0.1.0.
+#
+# 9 additive lineage fields (all nullable):
+#   parser_name, parser_version, ingestion_id, as_of_time,
+#   source_received_at, qc_status, observation_kind, provenance,
+#   observation_quality.
+OBSERVATION_LEDGER_SCHEMA = pa.schema(
+    [
+        # 30 v0.14.1 fields (verbatim).
+        *OBSERVATION_SCHEMA,
+        # 9 new lineage fields.
+        pa.field("parser_name", pa.string()),
+        pa.field("parser_version", pa.string()),
+        pa.field("ingestion_id", pa.string()),
+        pa.field("as_of_time", pa.string()),
+        pa.field("source_received_at", pa.string()),
+        pa.field("qc_status", pa.string()),
+        pa.field("observation_kind", pa.string()),
+        pa.field("provenance", pa.string()),
+        pa.field("observation_quality", pa.string()),
+    ]
+)
+
+
+# QC sidecar — one row per QC rule firing per (station_code, observed_at,
+# source) ledger key. Writer hooks land in Phase 3.4; this declaration is
+# forward-compat. 13 fields per the Phase 2.1 spec
+# (packages/core/src/tradewinds/_internal/specs/observation_qc.json):
+# ledger lineage keys + QC system identifiers + detector metadata payload.
+QC_SIDECAR_SCHEMA = pa.schema(
+    [
+        # Ledger lineage keys.
+        pa.field("station_code", pa.string()),
+        pa.field("observed_at", pa.string()),
+        pa.field("observation_kind", pa.string()),
+        pa.field("source", pa.string()),
+        pa.field("parser_name", pa.string()),
+        pa.field("as_of_time", pa.string()),
+        pa.field("ingestion_id", pa.string()),
+        # QC system identifiers.
+        pa.field("qc_system", pa.string()),
+        pa.field("qc_version", pa.string()),
+        pa.field("rule_id", pa.string()),
+        pa.field("field", pa.string()),
+        pa.field("flag", pa.string()),
+        # Detector payload (JSON-serialized; concrete shape per qc_system).
+        pa.field("detector_metadata", pa.string()),
+    ]
+)
+
+
+__all__ = [
+    "OBSERVATION_LEDGER_SCHEMA",
+    "OBSERVATION_SCHEMA",
+    "QC_SIDECAR_SCHEMA",
+]
