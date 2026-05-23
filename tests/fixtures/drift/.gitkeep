@@ -1,0 +1,3 @@
+# Phase 4 SC-5: scaffold for the weekly-rotated drift fixture set.
+# Populated by scripts/capture_drift_fixtures.py (ships in a follow-up alpha).
+# See tests/fixtures/README.md for the two-tier policy.

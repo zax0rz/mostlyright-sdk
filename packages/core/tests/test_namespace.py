@@ -14,7 +14,7 @@ import tradewinds
 
 
 def test_core_importable():
-    assert tradewinds.__version__ == "0.1.0a1"
+    assert tradewinds.__version__ == "0.1.0rc1"
 
 
 def test_path_extended_for_split_distribution():
@@ -29,7 +29,7 @@ def test_weather_subpackage_importable():
     """``import tradewinds.weather`` must succeed when tradewinds-weather is installed."""
     import tradewinds.weather
 
-    assert tradewinds.weather.__version__ == "0.1.0a1"
+    assert tradewinds.weather.__version__ == "0.1.0rc1"
 
 
 def test_markets_subpackage_importable():

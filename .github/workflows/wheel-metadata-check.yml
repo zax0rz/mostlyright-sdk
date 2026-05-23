@@ -1,0 +1,40 @@
+name: Wheel METADATA Pin Check (PKG-03)
+
+# Phase 4 CI-04 (originally Phase 2 PKG-03): block any PR that builds a
+# sibling-package wheel without the `Requires-Dist: tradewinds >=0.1.0,<0.2`
+# pin. A missing pin would let downstream users mix core/weather/markets
+# releases across an incompatible boundary, silently breaking the parity
+# gate.
+
+on:
+  # codex iter-4 HIGH fix: no branch filter. PKG-03 must fire on every
+  # integration-branch push (where pyproject.toml dep changes land first),
+  # not only on the post-merge main push.
+  push:
+    paths:
+      - "packages/**/pyproject.toml"
+      - "scripts/check_wheel_metadata.py"
+      - ".github/workflows/wheel-metadata-check.yml"
+  pull_request:
+    paths:
+      - "packages/**/pyproject.toml"
+      - "scripts/check_wheel_metadata.py"
+      - ".github/workflows/wheel-metadata-check.yml"
+
+jobs:
+  wheel-metadata-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Build all sibling-package wheels
+        run: uv build --all
+
+      - name: Verify METADATA pins
+        run: uv run python scripts/check_wheel_metadata.py

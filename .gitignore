@@ -25,6 +25,13 @@ htmlcov/
 # Local cache (tradewinds runtime cache lives in $HOME/.tradewinds/; this catches any test-time fixtures that leak)
 .tradewinds-cache/
 
+# Phase 4 CI-05 — drift watchdog populates tests/fixtures/drift/ from the
+# weekly cron. The scripts + README are tracked; the captured parquets
+# and the drift-report are not (rotation is the whole point — git history
+# isn't the storage layer for drift fixtures).
+tests/fixtures/drift/case_*.parquet
+tests/fixtures/drift/drift-report.md
+
 # uv — uv.lock IS committed for dev reproducibility across Lane F + Lane V (decision: lockfile-tracked for dev parity)
 
 # IDE

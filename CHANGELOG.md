@@ -7,6 +7,50 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) once it ships
 
 ## [Unreleased]
 
+### Phase 4 — Coverage, Docs, CI/CD, Release
+
+#### Added
+- `.github/workflows/test.yml` — fast test suite (`pytest -m "not live"`) +
+  ruff lint + ruff format check on every push (no branch filter) /
+  PR (Python 3.11/3.12/3.13 matrix). Separate `coverage-gate` job enforces
+  **≥90% branch coverage on the CORE SEMANTIC SURFACE of `tradewinds.core`**
+  (Phase 4 SC-1 HARD GATE) via `--cov-fail-under=90 --cov-branch`.
+  Scope explicitly excludes `core/schemas/*` (pure-data ColumnSpec lists)
+  and `core/formats/_toon*` (~557 LOC of internal TOON encoder edge cases;
+  direct coverage deferred to Phase 5 MCP when TOON starts going over the
+  wire). Documented as a known coverage gap; the SC-1 wording should be
+  read as "core semantic surface", not "every byte under `core/`".
+- `.github/workflows/wheel-metadata-check.yml` — runs on every push that
+  touches `packages/*/pyproject.toml`; builds all three sibling wheels and
+  greps each one's `METADATA` for the explicit `Requires-Dist: tradewinds
+  >=0.1.0,<0.2` pin. Blocks merges that drop the pin (Phase 4 SC-4 / CI-04).
+- `.github/workflows/release.yml` — PEP 740 trusted-publishing workflow that
+  fires on every `v*` tag and publishes the three sibling distributions to
+  PyPI (one job per package because trusted publishing is registered
+  per-package). Includes the CI-04 METADATA gate before publish (Phase 4
+  SC-3 / CI-03).
+- `scripts/check_wheel_metadata.py` — local + CI script that greps each
+  built wheel's `Requires-Dist` line for both the `<0.2` upper bound AND a
+  `>=0.1.0` lower bound (any order; hatchling normalizes the order in
+  METADATA). Exits 0 when every sibling-package wheel passes.
+- `tests/fixtures/README.md` + `tests/fixtures/drift/.gitkeep` — scaffolds
+  the two-tier fixture policy (Phase 4 SC-5): `parity/` is FROZEN (Phase 1
+  Day 0.5 baseline), `drift/` will be weekly-rotated by a cron job in a
+  follow-up alpha. README documents the never-refresh policy on `parity/`
+  + the refresh mechanism + drift-tolerance band.
+- README expanded: Mode 1 v0.14.1 parity example,
+  `TimePoint`/`KnowledgeView`/`LeakageDetector` temporal-safety primitives,
+  `validate_dataframe()` source-identity invariant, `kalshi_nhigh`/`kalshi_nlow`
+  Kalshi resolvers, "Why local-first" rationale, link to per-adapter docs.
+
+#### Changed
+- `pyproject.toml` adds `[tool.coverage.run]` + `[tool.coverage.report]`
+  config so a local
+  `uv run pytest --cov=packages/core/src/tradewinds/core --cov-branch`
+  matches the CI gate. `omit` excludes `core/schemas/*` (pure-data
+  ColumnSpec lists; coverage dominated by import-time evaluation already
+  asserted by the existing contract tests).
+
 ### Phase 1.5 — Fetcher Optimization + Cross-Source Parallelism
 
 #### Added

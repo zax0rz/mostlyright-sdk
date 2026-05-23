@@ -37,6 +37,25 @@ class KnowledgeView:
     Construction validates the shape of the input DataFrame. After
     construction, :meth:`dataframe` returns a defensive copy of the rows
     where ``knowledge_time <= as_of``.
+
+    Examples
+    --------
+    Build a 3-row DataFrame with a tz-aware UTC ``knowledge_time`` column
+    and view only the rows knowable as of ``2025-01-02T12:00:00Z``:
+
+    >>> import pandas as pd
+    >>> from tradewinds.core import KnowledgeView, TimePoint
+    >>> df = pd.DataFrame({
+    ...     "knowledge_time": pd.to_datetime([
+    ...         "2025-01-01T00:00:00Z",
+    ...         "2025-01-02T00:00:00Z",
+    ...         "2025-01-03T00:00:00Z",
+    ...     ], utc=True),
+    ...     "value": [10, 20, 30],
+    ... })
+    >>> view = KnowledgeView(df, TimePoint("2025-01-02T12:00:00Z"))
+    >>> len(view.dataframe())
+    2
     """
 
     __slots__ = ("_df", "_as_of")

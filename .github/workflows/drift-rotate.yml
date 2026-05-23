@@ -1,0 +1,67 @@
+name: Drift Watchdog (weekly)
+
+# Phase 4 CI-05 — weekly Monday 07:00 UTC cron that captures the current
+# tradewinds.research() output for the same 5 case inputs as the frozen
+# parity gate, diffs against parity/, and opens a GH issue on any mismatch.
+#
+# Soft-fail policy: this workflow NEVER fails CI. Drift is a watchdog
+# signal — if research() drifts from the v0.14.1 byte-equivalence
+# contract, we want a labelled issue in the queue, not a red main branch.
+# The hard parity gate lives at tests/test_parity.py (run pre-publish only).
+#
+# This workflow MUST NEVER write to tests/fixtures/parity/. The whole
+# point of the two-tier fixture policy is that parity/ is the immutable
+# v0.14.1 ground truth. capture_drift.py writes only to drift/.
+
+on:
+  schedule:
+    # Mondays 07:00 UTC. Far enough into European Monday morning that
+    # weekend upstream maintenance windows have closed.
+    - cron: "0 7 * * 1"
+  # Allow manual dispatch for ad-hoc verification (e.g. after a known
+  # upstream API change).
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Sync workspace
+        run: uv sync --all-packages
+
+      - name: Capture current research() output → drift/
+        run: uv run python tests/fixtures/drift/capture_drift.py
+
+      - name: Compare drift/ vs parity/ (soft-fail watchdog)
+        run: uv run python tests/fixtures/drift/compare.py
+
+      - name: Check for drift report
+        id: report
+        run: |
+          if [ -f tests/fixtures/drift/drift-report.md ]; then
+            echo "report_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "report_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open drift issue (if report exists)
+        if: steps.report.outputs.report_exists == 'true'
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "Drift detected: weekly watchdog (${{ github.run_id }})"
+          content-filepath: tests/fixtures/drift/drift-report.md
+          labels: |
+            drift
+            phase-4

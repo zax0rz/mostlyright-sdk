@@ -199,6 +199,25 @@ def validate_dataframe(
     Raises:
         SchemaValidationError: column / dtype / enum / null-sentinel violations.
         SourceMismatchError: source identity violated without opt-out.
+
+    Examples
+    --------
+    The source-identity invariant fires when ``df.attrs["source"]`` differs
+    from the schema's registered canonical source (here
+    ``schema.observation.v1`` is registered to ``iem.archive``):
+
+    >>> import pandas as pd
+    >>> from tradewinds.core import SourceMismatchError, validate_dataframe
+    >>> df = pd.DataFrame({"date": pd.to_datetime(["2025-01-06"])})
+    >>> df.attrs["source"] = "awc.live"
+    >>> try:
+    ...     validate_dataframe(df, "schema.observation.v1")
+    ... except SourceMismatchError as err:
+    ...     print(err.data_source, "!=", err.schema_source)
+    awc.live != iem.archive
+
+    A full passing example requires the canonical column set; see
+    ``packages/core/tests/core/test_validator.py`` for end-to-end fixtures.
     """
     schema_cls = _lookup_schema(schema_id)
 

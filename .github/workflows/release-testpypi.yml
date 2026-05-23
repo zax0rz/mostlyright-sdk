@@ -1,0 +1,98 @@
+name: Release (TestPyPI dry-run on rc tags)
+
+# Phase 4 CI-01 — dry-run publish to test.pypi.org for any v*rc* tag
+# (e.g. v0.1.0rc1, v0.1.0rc2). Mirror of release.yml in structure, but:
+#   - triggered ONLY on rc tags (v*rc*), never on v* finals
+#   - uploads to https://test.pypi.org/legacy/ via the TestPyPI trusted
+#     publisher (registered separately from the prod PyPI one)
+#   - environment name is "testpypi" so GH treats prod and dry-run as
+#     separate gates (operator can require manual approval for either)
+#
+# Setup checklist (one-time, before the first v*rc* tag):
+#   1. On test.pypi.org, register each of tradewinds / tradewinds-weather /
+#      tradewinds-markets as a "pending publisher":
+#        owner = helloiamvu (GH account that pushes the tag)
+#        repo = tradewinds
+#        workflow filename = release-testpypi.yml
+#        environment name = testpypi
+#      https://docs.pypi.org/trusted-publishers/adding-a-publisher/
+#   2. Create the GH repo Environment "testpypi" (Settings → Environments).
+#      Optionally add helloiamvu as required reviewer so accidental rc
+#      tag pushes don't auto-publish.
+#
+# After the first publish the pending entries on TestPyPI become permanent.
+# PyPI's filename immutability bites for rc tags too — a botched rc1 cannot
+# be re-uploaded under the same version. If we need to retry, bump to rc2.
+
+on:
+  push:
+    tags:
+      - "v*rc*"
+
+# Trusted publishing requires id-token write permission per
+# https://docs.pypi.org/trusted-publishers/using-a-publisher/.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish-core:
+    name: Publish tradewinds (core) → TestPyPI
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/tradewinds/
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+      - name: Set up Python
+        run: uv python install 3.12
+      - name: Build tradewinds wheel + sdist
+        run: uv build --package tradewinds
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  publish-weather:
+    name: Publish tradewinds-weather → TestPyPI
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/tradewinds-weather/
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+      - name: Set up Python
+        run: uv python install 3.12
+      - name: Build tradewinds-weather wheel + sdist
+        run: uv build --package tradewinds-weather
+      - name: Verify Requires-Dist pin (CI-04 gate)
+        run: uv run python scripts/check_wheel_metadata.py
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  publish-markets:
+    name: Publish tradewinds-markets → TestPyPI
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/tradewinds-markets/
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+      - name: Set up Python
+        run: uv python install 3.12
+      - name: Build tradewinds-markets wheel + sdist
+        run: uv build --package tradewinds-markets
+      - name: Verify Requires-Dist pin (CI-04 gate)
+        run: uv run python scripts/check_wheel_metadata.py
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
