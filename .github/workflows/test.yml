@@ -47,6 +47,18 @@ jobs:
       - name: Run fast test suite (excludes @pytest.mark.live)
         run: uv run pytest -m "not live" -q
 
+      # Phase 4 DOCS-01: doctests on 4 public-surface modules. We pass
+      # explicit module paths (NOT --doctest-modules with package discovery)
+      # because lifted _internal/* and _v02/* modules may carry legacy
+      # >>>-style comments that aren't intended as runnable doctests.
+      - name: Run doctests (research / KnowledgeView / LeakageDetector / validate_dataframe)
+        run: |
+          uv run pytest --doctest-modules \
+            packages/core/src/tradewinds/research.py \
+            packages/core/src/tradewinds/core/temporal/knowledge_view.py \
+            packages/core/src/tradewinds/core/temporal/leakage.py \
+            packages/core/src/tradewinds/core/validator.py
+
   coverage-gate:
     runs-on: ubuntu-latest
     steps:

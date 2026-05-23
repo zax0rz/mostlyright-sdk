@@ -46,6 +46,31 @@ def assert_no_leakage(df: pd.DataFrame, as_of: TimePoint) -> None:
         TypeError: if ``as_of`` is not a :class:`TimePoint`.
         LeakageError: if ≥1 rows have ``knowledge_time > as_of``. Payload
             carries ``violating_count`` and a sample (≤10) of violations.
+
+    Examples
+    --------
+    A leak-free frame passes silently:
+
+    >>> import pandas as pd
+    >>> from tradewinds.core import TimePoint, assert_no_leakage
+    >>> df = pd.DataFrame({
+    ...     "knowledge_time": pd.to_datetime(["2025-01-01T00:00:00Z"], utc=True),
+    ...     "value": [10],
+    ... })
+    >>> assert_no_leakage(df, TimePoint("2025-01-02T00:00:00Z"))
+
+    A row past the cutoff raises :class:`LeakageError`:
+
+    >>> from tradewinds.core import LeakageError
+    >>> leaky = pd.DataFrame({
+    ...     "knowledge_time": pd.to_datetime(["2025-01-03T00:00:00Z"], utc=True),
+    ...     "value": [99],
+    ... })
+    >>> try:
+    ...     assert_no_leakage(leaky, TimePoint("2025-01-02T00:00:00Z"))
+    ... except LeakageError as err:
+    ...     print(err.violating_count)
+    1
     """
     if "knowledge_time" not in df.columns:
         raise SchemaValidationError(

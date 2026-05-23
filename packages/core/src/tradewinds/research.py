@@ -939,6 +939,17 @@ def research(
         NotImplementedError: when ``include_forecast=True`` in Phase 1.
         ValueError: when ``station`` is not in the v0.1.0 registry, or when
             ``from_date``/``to_date`` are not ISO-8601 dates.
+
+    Examples
+    --------
+    Fetch one week of joined observation + climate rows for KNYC. The call
+    hits public APIs (AWC, IEM, GHCNh, NWS CLI) directly, so the doctest is
+    network-bound and skipped by default — invoke manually before publish:
+
+    >>> import tradewinds as tw
+    >>> df = tw.research("KNYC", "2025-01-06", "2025-01-12")  # doctest: +SKIP
+    >>> list(df.columns)[:4]  # doctest: +SKIP
+    ['station', 'cli_high_f', 'cli_low_f', 'cli_report_type']
     """
     if include_forecast:
         raise NotImplementedError(
