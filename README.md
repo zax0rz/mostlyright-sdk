@@ -62,13 +62,18 @@ assert_no_leakage(df, TimePoint("2025-02-15T00:00:00+00:00"))
 ```python
 from tradewinds.core import validate_dataframe
 
-# Raises SourceMismatchError if df.attrs["source"] != registered_source.
+# Catalog adapters stamp df.attrs["source"] when producing rows; the schema
+# class carries the pinned source-of-record. Validator compares the two.
+df.attrs["source"] = "iem.archive"
+reg = validate_dataframe(df, schema_id="schema.observation.v1")
+print(reg.audit_log())  # [{"event": "registered", "ts": "...", ...}]
+
+# Source drift raises SourceMismatchError unless you opt out with a reason:
 reg = validate_dataframe(
     df,
     schema_id="schema.observation.v1",
-    registered_source="iem.archive",
+    allow_source_drift="manual backfill from ghcnh.archive",
 )
-print(reg.audit_log())  # [{"event": "registered", "ts": "...", ...}]
 ```
 
 ### Kalshi NHIGH/NLOW resolvers
@@ -77,9 +82,18 @@ print(reg.audit_log())  # [{"event": "registered", "ts": "...", ...}]
 from datetime import date
 from tradewinds.markets.catalog import kalshi_nhigh, kalshi_nlow
 
-source, station = kalshi_nhigh.resolve("NYC", date(2025, 1, 15))
-# ("cli.archive", "KNYC")  — NOT KLGA/KJFK
-assert kalshi_nhigh.resolve("NYC", date.today()) == kalshi_nlow.resolve("NYC", date.today())
+# Contract IDs follow Kalshi's KHIGH<CITY> / KLOW<CITY> ticker convention.
+nhigh = kalshi_nhigh.resolve("KHIGHNYC", date(2025, 1, 15))
+print(nhigh.settlement_source, nhigh.settlement_station)
+# cli.archive KNYC  -- NOT KLGA / NOT KJFK (Pitfall 1 canary)
+
+# NHIGH and NLOW share the same NWS CLI product; both directions for a
+# given city resolve to the same (source, station) -- the contract test
+# guards against silent divergence between the two resolvers.
+nlow = kalshi_nlow.resolve("KLOWNYC", date(2025, 1, 15))
+assert (nhigh.settlement_source, nhigh.settlement_station) == (
+    nlow.settlement_source, nlow.settlement_station
+)
 ```
 
 ### Why local-first

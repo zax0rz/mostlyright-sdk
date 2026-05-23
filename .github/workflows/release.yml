@@ -26,8 +26,52 @@ permissions:
   contents: read
 
 jobs:
+  # codex iter-1 HIGH fix: tag/version-match preflight.
+  # release.yml fires on every v* tag, but the 3 sibling pyproject.toml files
+  # each carry their own version. Tagging v0.1.0 while one of the packages is
+  # still at 0.1.0a1 would publish stale alpha artifacts OR fail mid-job (a
+  # PyPI publish step that finds the version already exists fails the build,
+  # but the OTHER two jobs have already published their wheels — leaving PyPI
+  # in a half-released state). This preflight extracts the version from each
+  # pyproject and refuses to proceed unless GITHUB_REF_NAME == "v{version}"
+  # for ALL three.
+  version-guard:
+    name: Verify tag matches all 3 package versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        run: |
+          # tomllib ships in 3.11+; avoid the uv-install round trip for a
+          # ~10-line python script.
+          python3 --version
+      - name: Assert tag matches each package version
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          python3 - <<'PY'
+          import os, sys, tomllib
+          ref = os.environ["REF_NAME"]
+          if not ref.startswith("v"):
+              sys.exit(f"ERROR: tag {ref!r} does not start with 'v'")
+          tag_version = ref[1:]
+          for pkg in ("packages/core/pyproject.toml",
+                      "packages/weather/pyproject.toml",
+                      "packages/markets/pyproject.toml"):
+              with open(pkg, "rb") as f:
+                  pyproj = tomllib.load(f)
+              pkg_version = pyproj["project"]["version"]
+              if pkg_version != tag_version:
+                  sys.exit(
+                      f"ERROR: tag {ref!r} (version {tag_version!r}) does not "
+                      f"match {pkg} version {pkg_version!r}. Bump or re-tag."
+                  )
+              print(f"OK: {pkg} version {pkg_version} matches tag")
+          PY
+
   publish-core:
     name: Publish tradewinds (core)
+    needs: version-guard
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -45,6 +89,7 @@ jobs:
 
   publish-weather:
     name: Publish tradewinds-weather
+    needs: version-guard
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -64,6 +109,7 @@ jobs:
 
   publish-markets:
     name: Publish tradewinds-markets
+    needs: version-guard
     runs-on: ubuntu-latest
     environment:
       name: pypi
