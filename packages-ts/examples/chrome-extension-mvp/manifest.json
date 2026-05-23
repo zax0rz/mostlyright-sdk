@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "tradewinds Chrome smoke (TS-W1)",
+  "version": "0.0.0",
+  "description": "TS-W1 MVP smoke test — overlay weather on Kalshi pages",
+  "host_permissions": ["https://aviationweather.gov/*", "https://mesonet.agron.iastate.edu/*"],
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "tradewinds smoke"
+  }
+}
