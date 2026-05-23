@@ -354,6 +354,32 @@ def test_per_row_source_null_raises():
     assert "null" in str(exc.value).lower()
 
 
+def test_allow_source_drift_must_be_string_not_bool():
+    """codex iter-7 HIGH: allow_source_drift=True must NOT bypass the
+    invariant. Only a non-empty reason string is allowed.
+    """
+    df = _good_observation_df(source="awc.archive")
+    with pytest.raises(TypeError, match="must be a non-empty reason string"):
+        validate_dataframe(df, "schema.observation.v1", allow_source_drift=True)
+
+
+def test_allow_source_drift_empty_string_raises():
+    """Empty/whitespace-only reason strings raise ValueError."""
+    df = _good_observation_df(source="awc.archive")
+    with pytest.raises(ValueError, match="must be a non-empty reason string"):
+        validate_dataframe(df, "schema.observation.v1", allow_source_drift="")
+    df2 = _good_observation_df(source="awc.archive")
+    with pytest.raises(ValueError, match="must be a non-empty reason string"):
+        validate_dataframe(df2, "schema.observation.v1", allow_source_drift="   ")
+
+
+def test_allow_source_drift_int_raises():
+    """Integers / other non-string types raise TypeError."""
+    df = _good_observation_df(source="awc.archive")
+    with pytest.raises(TypeError):
+        validate_dataframe(df, "schema.observation.v1", allow_source_drift=1)
+
+
 def test_per_row_source_all_match_passes():
     """All rows matching df.attrs['source'] is the happy path."""
     df = _good_observation_df(source="iem.archive")

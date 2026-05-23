@@ -202,6 +202,22 @@ def validate_dataframe(
     """
     schema_cls = _lookup_schema(schema_id)
 
+    # codex iter-7 HIGH fix: validate allow_source_drift type explicitly.
+    # design.md §J requires a non-empty reason string; booleans, ints, and
+    # other truthy values must NOT bypass the source-identity invariant.
+    if allow_source_drift is not None:
+        if not isinstance(allow_source_drift, str):
+            raise TypeError(
+                "allow_source_drift must be a non-empty reason string or None; "
+                f"got {type(allow_source_drift).__name__}={allow_source_drift!r}"
+            )
+        if not allow_source_drift.strip():
+            raise ValueError(
+                "allow_source_drift must be a non-empty reason string "
+                "(stripped whitespace); the audit log requires the reason "
+                "to be machine-greppable per design.md §J."
+            )
+
     # --- 1. Source-identity invariant ---
     data_source = df.attrs.get("source")
     if data_source is None:
