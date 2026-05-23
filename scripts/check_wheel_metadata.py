@@ -89,26 +89,36 @@ def check_wheel(wheel_path: Path) -> list[str]:
     if req is None:
         errors.append(f"{wheel_path.name}: missing Requires-Dist: tradewinds line")
         return errors
-    # The wheel's specifier MUST be at least as strict as the required
-    # range. Two correctness checks:
-    #   1. <0.2 is present (no 0.2+ slipping through).
-    #   2. >=0.1.0... lower bound is present (no 0.0.x pulled).
+    # The wheel's specifier MUST be at least as strict as the required range
+    # ``>=0.1.0a1,<0.2``. Two checks via SpecifierSet.contains() on sentinel
+    # versions chosen to fail loose specifiers that look superficially correct:
+    #
+    # - Upper bound: 0.2.0 (and 0.2.0a1 via prereleases=True) MUST NOT satisfy.
+    #   Catches the iter-5 case (<0.20) and the more subtle (<0.3, or no upper).
+    # - Lower bound: 0.1.0a0 MUST NOT satisfy. Catches the iter-6 case
+    #   (>=0.1.0a0 — alpha-0 is older than alpha-1 per PEP 440 ordering;
+    #   our floor is alpha-1) AND the looser case (>0.0.9 — anything that
+    #   accepts 0.0.9.post1 or 0.1.0a0 is below the parity floor). 0.0.9
+    #   itself is also checked because >0.0.9 specifically excludes 0.0.9
+    #   but accepts 0.1.0a0, which still fails this stricter check.
     wheel_spec = str(req.specifier)
-    # Check upper bound: every spec in wheel must EXCLUDE 0.2.0 + 0.2.0a1.
-    # Use SpecifierSet membership: if 0.2.0 satisfies the wheel's spec,
-    # the upper bound is missing or too loose.
     if req.specifier.contains("0.2.0", prereleases=True):
         errors.append(
             f"{wheel_path.name}: Requires-Dist: tradewinds {wheel_spec!s} "
             f"allows 0.2.0 (upper bound missing or too loose; required "
             f"<0.2). Fix the pyproject.toml dep to '>=0.1.0a1,<0.2'."
         )
-    # Lower bound: 0.0.9 must NOT satisfy.
-    if req.specifier.contains("0.0.9", prereleases=True):
+    # codex iter-6 HIGH fix: tighten lower-bound sentinel from 0.0.9 to
+    # 0.1.0a0. PEP 440 orders 0.1.0a0 < 0.1.0a1, so a wheel pinning
+    # ``>=0.1.0a0`` previously slipped through (passed the 0.0.9 check).
+    # Our parity floor is alpha-1; any spec that lets alpha-0 (or any 0.0.x)
+    # in is a HIGH gate failure.
+    if req.specifier.contains("0.1.0a0", prereleases=True):
         errors.append(
             f"{wheel_path.name}: Requires-Dist: tradewinds {wheel_spec!s} "
-            f"allows 0.0.x (lower bound missing or too loose; required "
-            f">=0.1.0a1). Fix the pyproject.toml dep to '>=0.1.0a1,<0.2'."
+            f"allows tradewinds 0.1.0a0 or older (lower bound missing or "
+            f"too loose; required >=0.1.0a1). Fix the pyproject.toml dep "
+            f"to '>=0.1.0a1,<0.2'."
         )
     return errors
 
