@@ -2,7 +2,13 @@
 
 ## What This Is
 
-A local-first Python SDK for quants researching prediction-market weather contracts (Kalshi NHIGH/NLOW, daily temperature high/low). Calls public APIs (AWC, IEM, GHCNh, NWS CLI) directly — no hosted backend. Subsumes the user's prior `mostlyright` package, adds temporal-safety primitives and source-identity invariants from day 1, and reserves a seam for an MCP server in v0.2.
+A local-first SDK for quants and traders researching prediction-market weather contracts (Kalshi NHIGH/NLOW, daily temperature high/low). Calls public APIs (AWC, IEM, GHCNh, NWS CLI, NOAA BDP, Polymarket Gamma) directly — no hosted backend.
+
+**Two SDKs, one repo, one roadmap:**
+- **Python** (`tradewinds` / `tradewinds-weather` / `tradewinds-markets` on PyPI) — v0.1.0rc1 ready 2026-05-23. Primary consumer: quants in notebooks + `mostly-light` trading runtime.
+- **TypeScript** (`@tradewinds/core` / `@tradewinds/weather` / `@tradewinds/markets` + meta `tradewinds` on npm) — v0.1.0 in planning 2026-05-23. Primary consumer: Rob's Chrome extension overlaying weather data on kalshi.com; future web dashboards; any browser-based consumer.
+
+Both SDKs hit the same public endpoints, share canonical schemas via codegen (`scripts/export_schemas.py` writes `schemas/json/`), and return row-equivalent output. Going forward, **every new feature gets a paired work item in both lanes** unless explicitly flagged as `python_only` or `typescript_only` with a reason. Subsumes the user's prior `mostlyright` package, adds temporal-safety primitives and source-identity invariants from day 1, and reserves a seam for an MCP server in Python v0.2.
 
 ## Core Value
 
@@ -29,28 +35,48 @@ This vision lives in `phase-05-mcp-data-platform/VISION.md`. It depends on Phase
 
 (None yet — pre-Sprint-0)
 
-### Active
+### Validated (Python v0.1.0 — all 12 phases on `main`)
 
-- [ ] **PARITY-01**: `research(station, from_date, to_date)` is byte-equivalent to `mostlyright==0.14.1`'s `client.pairs(...)` (5 fixture parity test as hard gate)
-- [ ] **CORE-01**: Temporal-safety primitives (`TimePoint`, `KnowledgeView`, `LeakageDetector`) with property-based tests (Hypothesis), ≥90% branch coverage
-- [ ] **CORE-02**: `Schema` + `Validator` with source-identity invariant (train/infer source mismatch raises `SourceMismatchError`)
-- [ ] **CORE-03**: Three canonical schemas pinned: `schema.observation.v1`, `schema.forecast.iem_mos.v1`, `schema.settlement.cli.v1` with contract tests
-- [ ] **CORE-04**: Exception hierarchy with structured payloads (`TradewindsError`, `SourceUnavailableError`, `SchemaValidationError`, `SourceMismatchError`, `LeakageError`)
-- [ ] **CORE-05**: Format serializers (dataframe, json, parquet, toon, csv) with roundtrip tests
-- [ ] **CATALOG-01**: IEM adapter (observations + MOS forecasts, source IDs `iem.archive` + `iem.live`)
-- [ ] **CATALOG-02**: AWC adapter (METAR JSON, source ID `awc.live`)
-- [ ] **CATALOG-03**: NWS CLI adapter (daily settlement, source ID `cli.archive`, preliminary/final/correction dedup)
-- [ ] **CATALOG-04**: GHCNh adapter (hourly historical, source ID `ghcnh.archive`)
-- [ ] **CATALOG-05**: Kalshi NHIGH/NLOW contract specs (settlement source resolution)
-- [ ] **RESEARCH-01**: `research()` Mode 2 (source-explicit) emits per-role source + retrieved_at columns; validates each role independently
-- [ ] **CACHE-01**: Local parquet cache (`$HOME/.tradewinds/cache/`), `filelock`-guarded, LST current-month-skip, 30-day volatile-window exclusion
-- [ ] **CACHE-02**: Cache rows preserve source identity (cache is a speedup, not a different source ID)
-- [ ] **PKG-01**: Three-package workspace publishes as `tradewinds`, `tradewinds-weather`, `tradewinds-markets` to PyPI at v0.1.0
-- [ ] **QUICKSTART-01**: README quickstart works end-to-end in <5 minutes for fresh installer (timed by external person)
-- [ ] **MIGRATION-01**: `mostly-light/strategies/kxhigh` dry-run against tradewinds matches `therminal-py` baseline
-- [ ] **CI-01**: GitHub Actions: test on push, release on tag, PyPI trusted publishing
+Python v0.1.0rc1 ships the entire Active list below. See STATE.md and REQUIREMENTS.md for traceability.
 
-### Out of Scope (v0.1)
+### Active (TypeScript v0.1.0 milestone — `@tradewinds/*` on npm)
+
+> Specifies the TS surface, gates, and consumer contracts. Detailed IDs land in REQUIREMENTS.md §TS Requirements.
+
+- [ ] **TS-PARITY-01**: TS `research(station, from, to)` row-equivalent (exact numeric equality on all 19 columns) to Python `research()` Mode 1 across all 5 parity fixtures; HTTP replay via `msw`
+- [ ] **TS-CHROME-EXT-01**: `@tradewinds/core` + `@tradewinds/weather` + `@tradewinds/markets` run inside Chrome MV3 service worker; smoke test fetches AWC + IEM CLI live and resolves a Kalshi NHIGH/NLOW contract
+- [ ] **TS-CODEGEN-01**: `scripts/export_schemas.py` writes deterministic JSON Schema files + station registry + Kalshi map to `schemas/`; CI fails on drift
+- [ ] **TS-CORE-01**: TS port of `TradewindsError` + 7 first-class subclasses + `toDict()` JSON-safe coercion matching Python `to_json_safe` semantics (null/NaN/inf/cycle handling)
+- [ ] **TS-CORE-02**: `TimePoint` / `KnowledgeView<T>` / `LeakageDetector` / `assertNoLeakage` ported; `validateRows(rows, schemaId, opts)` ships with ajv-standalone validators
+- [ ] **TS-WEATHER-01**: AWC + IEM ASOS + IEM CLI + GHCNh fetchers + parsers; CSV/PSV parsing without DataFrames; retry/backoff/timeout via `fetch()` + `AbortController`
+- [ ] **TS-MERGE-01**: `mergeObservations`/`mergeClimate` byte-equivalent to Python source-priority + first-seen-tiebreak semantics
+- [ ] **TS-CACHE-01**: `CacheStore` interface + `IndexedDBStore` (browser) + `FsStore` (Node) + `MemoryStore` (Workers); `defaultCacheStore()` auto-detects runtime; LST/`.live`/30-day rules match Python
+- [ ] **TS-TRANSFORM-01**: 9 transforms (`lag`/`diff`/`diff2`/`rolling`/`calendarFeatures`/`spread`/`windChill`/`heatIndex`/`clipOutliers`) match Python output byte-for-byte on shared fixture
+- [ ] **TS-QC-01**: ≥ 5 QC alpha rules + `QCEngine.apply()` bitfield + `crosscheckIemGhcnh` matching Python rule IDs and bit positions
+- [ ] **TS-MARKETS-01**: Kalshi NHIGH/NLOW resolvers from codegen; `KNOWN_WRONG_STATIONS` contract test ports
+- [ ] **TS-POLY-01**: Polymarket Gamma client + discover + settle activated in TS (Python ships these as `NotImplementedError` in v0.1.0)
+- [ ] **TS-DISCOVERY-01**: `availability(station)` reads from CacheStore; `describe(schemaId)` reads from JSON Schema descriptions; `featureCatalog()` enumerates transforms
+- [ ] **TS-VERSION-01**: `DataVersion` via Web Crypto SHA-256 produces same token as Python `discovery.DataVersion` for identical inputs
+- [ ] **TS-SNAPSHOT-01**: `buildSnapshot(...)` + `DataSnapshot` interface + `.toDict()` + `.toToon()` matching Python output on 3-case fixture
+- [ ] **TS-PKG-01**: Four npm packages publish at v0.1.0: `@tradewinds/core`, `@tradewinds/weather`, `@tradewinds/markets`, `tradewinds` (meta) via OIDC trusted publishing
+- [ ] **TS-BUNDLE-01**: `size-limit` gates: core ≤25KB, weather ≤35KB, markets ≤10KB, meta ≤70KB (all min+gzip)
+- [ ] **TS-DOCS-01**: README quickstart timed <5min by external person; typedoc reference; `docs/chrome-extension-integration.md` guide for Rob
+- [ ] **TS-CI-01**: GitHub Actions `test-ts.yml` + `schema-drift.yml` + `release-ts.yml` + `drift-rotate-ts.yml` (weekly soft-fail watchdog)
+
+### Active (Python v0.2 milestone — Phase 5 MCP Data Platform)
+
+See ROADMAP.md Phase 5 entry. Gated on Python v0.1.0 ship (operator-gated PyPI tag) AND TS v0.1.0 ship (resourcing constraint — TS lane is Rob's primary work for ~3 weeks).
+
+### Out of Scope (TS v0.1.0)
+
+- **NWP (HRRR/GFS/NBM) GRIB decode in browser** — Python ships dispatch stub; TS does the same (no `cfgrib`-equivalent in browser at acceptable bundle size in 2026). Deferred to TS v0.2.
+- **Parquet I/O** — TS cache stores JSON; `parquet-wasm` integration is a v0.2 stretch.
+- **Pandas-cache compatibility** — TS writes its own root `~/.tradewinds/cache-ts/v1/...`; Python writes `~/.tradewinds/cache/v1/...`. No cross-language read.
+- **MCP server in TS** — entirely Python-side (Phase 5).
+- **CLI binary** — both languages; v1.1+.
+- **DataFrame API** — TS uses plain object arrays; `apache-arrow` adapter optional/opt-in.
+
+### Out of Scope (Python v0.1 — unchanged from pre-TS-planning)
 
 - **MCP server** — deferred to v0.2; `packages/mcp/` scaffolded as stub only
 - **Hosted R2 cache** — deferred to v0.2; requires 60-day validation gate first
@@ -73,26 +99,47 @@ This vision lives in `phase-05-mcp-data-platform/VISION.md`. It depends on Phase
 
 ## Constraints
 
+### Python
+
 - **Tech stack:** Python 3.11+. uv workspace. `httpx`, `pandas`, `pyarrow`, `filelock`, `jsonschema`, `hypothesis` (dev). No FastAPI, no Docker, no hosted infra in v0.1.
-- **Timeline:** 14 calendar days from Day 1. Phase A (parity lift) Days 1-4, Phase B (core+catalog) Days 5-14. v0.2 (MCP) is a later milestone.
-- **Execution model:** Two-lane parallel — Lane V (Vu) lifts from `monorepo-v0.14.1/`, Lane F (Founder) builds new code. Cross-review mandatory. Every PR runs the two-reviewer loop (Codex `high` + Python Architect) per [`REVIEW-DISCIPLINE.md`](REVIEW-DISCIPLINE.md) — applies to ALL branches, not just parity-critical paths.
-- **Testing discipline:** TDD mandatory (RED → GREEN → REFACTOR). Pre-commit hooks; no `--no-verify`. ≥90% branch coverage on `tradewinds.core`. 80% line coverage on `catalog/` and adapter wrappers. Lifted `_vendor/` code retains its monorepo coverage.
-- **Parity gate (HARD):** Day 3 — all 5 byte-equivalent parity fixtures vs `mostlyright==0.14.1` must pass. Sprint 0 ships only if green.
+- **Timeline:** v0.1.0rc1 shipped on `main` 2026-05-23 (12/12 phases complete, 1453 tests). Operator-gated PyPI publish remains.
+- **Execution model:** Two-lane parallel — Lane V (Vu) lifts from `monorepo-v0.14.1/`, Lane F (Rob, founder) builds new code. Cross-review mandatory. Every PR runs the two-reviewer loop (Codex `high` + Python Architect) per [`REVIEW-DISCIPLINE.md`](REVIEW-DISCIPLINE.md) — applies to ALL branches, not just parity-critical paths.
+- **Testing discipline:** TDD mandatory (RED → GREEN → REFACTOR). Pre-commit hooks; no `--no-verify`. ≥90% branch coverage on `tradewinds.core` (empirical 94.20%); 85% enforced floor in CI. 80% line coverage on `catalog/` and adapter wrappers. Lifted `_vendor/` code retains its monorepo coverage.
+- **Parity gate (HARD):** All 5 byte-equivalent parity fixtures vs `mostlyright==0.14.1` must pass. Frozen, never re-recorded.
 - **License:** MIT (matches mostlyright, lowest friction for external adoption).
 - **No direct commits to main:** every change goes through PR + cross-lane review.
+
+### TypeScript
+
+- **Tech stack:** TypeScript 5.x (strict mode). pnpm workspace under `packages-ts/`. `tsup` (build), `vitest` (test), `msw` (HTTP mock), `fast-check` (property-based), `biome` (lint+format), `idb` (IndexedDB), `proper-lockfile` (Node), `ajv` (compiled standalone validators — not runtime dep), `@changesets/cli` (release). Target ES2022. No backend, no FastAPI-equivalent, no Docker.
+- **Runtime targets:** Chrome MV3 service worker (primary), modern browsers (ES2022+), Node ≥20, Bun, Deno, Cloudflare Workers. Bundle size gates: core ≤25KB, weather ≤35KB, markets ≤10KB, meta ≤70KB (min+gzip).
+- **Timeline:** 8 phases (TS-W0..TS-W7). ~18-25 days single-lane; ~12-15 days with W5↔W6 parallelism after W4. Rob owns TS lane; Vu reviews.
+- **Schema source of truth:** Python. `scripts/export_schemas.py` writes deterministic JSON Schema files + station registry + Kalshi map to `schemas/`. `@tradewinds/codegen` reads `schemas/` and emits TS types + ajv-standalone validators. Drift fails CI.
+- **Testing discipline:** TDD per phase. Pre-commit via lefthook (biome + tsc + vitest --run -m '!live'). ≥90% branch on `@tradewinds/core`; ≥80% line on `@tradewinds/weather` and `@tradewinds/markets`.
+- **Parity gate (HARD):** TS `research()` row-equivalent (exact numeric equality on all 19 columns) to Python `research()` Mode 1 across all 5 fixtures; HTTP via `msw` against recordings captured from Python.
+- **License:** MIT (matches Python).
+- **No direct commits to main:** same PR discipline as Python.
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Merge mostlyright-mcp vision into tradewinds workspace, not standalone | tradewinds has the cleaner scaffold + parity gate; mostlyright-mcp has the spine. Both > either. | — Pending |
-| Defer MCP server to v0.2 | Cuts 6 weeks of work that doesn't move v0.1 user value. Seam at `packages/mcp/` preserves later integration. | — Pending |
-| Three-package workspace (`tradewinds`/`tradewinds-weather`/`tradewinds-markets`) instead of single PyPI package | Lets notebook users `pip install tradewinds-weather` without dragging in Kalshi markets code. Pre-shapes for vertical N+1. | — Pending |
-| `research()` two-mode: v0.14.1 parity mode (no `sources`) + source-explicit mode (`sources={...}`) | Parity mode passes the byte-equivalent test gate. Source-explicit mode introduces the mostlyright-mcp semantics without breaking v0.14.1 callers. Mode 1 deprecates v0.2, removes v0.3. | — Pending |
-| GHCNh in v0.1 (not deferred to v0.2 as mostlyright-mcp planned) | tradewinds had it in scope already; lift is cheap. | — Pending |
+| Merge mostlyright-mcp vision into tradewinds workspace, not standalone | tradewinds has the cleaner scaffold + parity gate; mostlyright-mcp has the spine. Both > either. | ✓ Good (Python v0.1.0rc1 shipped) |
+| Defer MCP server to Python v0.2 | Cuts 6 weeks of work that doesn't move v0.1 user value. Seam at `packages/mcp/` preserves later integration. | ✓ Good (Python v0.1.0rc1 shipped without it) |
+| Three-package PyPI workspace (`tradewinds`/`tradewinds-weather`/`tradewinds-markets`) instead of single package | Lets notebook users `pip install tradewinds-weather` without dragging in Kalshi markets code. Pre-shapes for vertical N+1. | ✓ Good (shipped) |
+| `research()` two-mode: v0.14.1 parity mode + source-explicit mode | Parity mode passes the byte-equivalent test gate. Source-explicit mode introduces the mostlyright-mcp semantics without breaking v0.14.1 callers. Mode 1 deprecates v0.2, removes v0.3. | ✓ Good (shipped) |
+| GHCNh in v0.1 (not deferred) | tradewinds had it in scope already; lift is cheap. | ✓ Good (shipped) |
 | Lift source pinned to `monorepo-v0.14.1/` tag, not head | Monorepo head (v0.17.0) has diverged behavior (Open-Meteo removed, settlement_v1 intake) that would break parity. | ✓ Good |
-| Exception root: `TradewindsError` (renamed from mostlyright-mcp's `MostlyRightMCPError`) | Repo name is tradewinds. Provide `MostlyRightMCPError = TradewindsError` alias for one release. | — Pending |
+| Exception root: `TradewindsError` (renamed from `MostlyRightMCPError`) | Repo name is tradewinds. Provide `MostlyRightMCPError = TradewindsError` alias for one release. | ✓ Good (shipped); TS drops the alias (clean start) |
 | Open-Meteo NOT in v0.1 (or any v0.x) | Licensing blocks redistribution into the v0.2 hosted cache and out of `mostly-light`'s call path. | ✓ Good |
+| **TS SDK lives in same repo as Python under `packages-ts/`, not standalone repo** | "Roadmap and planning must cover BOTH" (user direction 2026-05-23). Same repo = paired PLAN.md per feature, single CI source, codegen lives next to source schemas, single PR-review path for cross-language drift. | ✓ Good (Decided 2026-05-23) |
+| **Python is canonical for schemas + station registry + Kalshi map; TS consumes via codegen** | One source of truth eliminates manual duplication risk. `scripts/export_schemas.py` + CI drift gate enforce this. | ✓ Good (Decided 2026-05-23) |
+| **TS uses plain object arrays, not DataFrames; opt-in `apache-arrow` adapter** | Browser bundle size + zero-dep "just works" matter more than DataFrame API. Python keeps pandas as canonical surface; TS is a parallel-shape port. | ✓ Good (Decided 2026-05-23) |
+| **TS cache root distinct from Python (`cache-ts/` vs `cache/`); JSON not parquet** | Avoids partial-write read between Python writer and TS reader. Cross-language cache compat is a v0.2 problem. | ✓ Good (Decided 2026-05-23) |
+| **npm scope `@tradewinds/*` + unscoped meta `tradewinds`** | Mirrors PyPI three-distribution layout. Meta package for one-import ergonomics. Scope availability check is open decision (see TS-SDK-DESIGN.md §13). | Pending verification of npm scope availability |
+| **TS port activates Polymarket discover/settle live (Python ships these as `NotImplementedError`)** | Chrome extension's primary use case is overlaying Kalshi + Polymarket settlement context. Stubs aren't useful. Python catches up in its v0.2 cycle. | ✓ Good (Decided 2026-05-23) |
+| **NWP (HRRR/GFS/NBM) stays a `NotImplementedError` stub in TS v0.1 too** | GRIB decode in browser at acceptable bundle size doesn't exist in 2026. Same disposition as Python. | ✓ Good (Decided 2026-05-23) |
+| **Schema drift CI gate is mandatory** | Without it, Python and TS schemas diverge silently. `schema-drift.yml` runs `scripts/export_schemas.py` and `git diff --exit-code schemas/` on every PR. | ✓ Good (Decided 2026-05-23) |
 
 ## Evolution
 

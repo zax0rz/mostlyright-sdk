@@ -2,16 +2,29 @@
 
 ## Overview
 
-tradewinds is a local-first Python SDK for prediction-market weather contracts on Kalshi (US NHIGH/NLOW) and Polymarket (US + international daily-extremes), shipping in v0.1.0 with three-package PyPI distribution (`tradewinds` / `tradewinds-weather` / `tradewinds-markets`), byte-equivalent parity to `mostlyright==0.14.1` for the Mode-1 lift baseline, structural temporal-safety primitives (`KnowledgeView`, `TimePoint`), and source-identity enforcement (`SourceMismatchError`). The v0.1.0 release follows a ~45-day phased plan (single-lane wall-clock; ~28 days with 2 parallel lanes): **Phase A — Parity Foundation** (Days 1-9) lifts v0.14.1 parity behavior verbatim, builds core primitives + catalog adapters, gates on a 5-fixture byte-equivalent parity test; **Phase B — Lineage** (Days 9.5-15.5) lifts mostlyright Sprint 2o per-source provenance refactor so observations carry per-source identity; **Phase C — Scope Expansion** (Days 16-41) wires Mode 2 dispatch + international stations (40 ICAOs) + multi-forecast live path (HRRR/GFS/NBM via NOAA Big Data Program) + Polymarket discovery & settlement + **QC engine alpha** (flag-and-keep semantics + IEM/GHCNh crosscheck) + **transforms DSL** (lag/diff/rolling/calendar/cross-features) + **discovery + public settlement + DataVersion** (ergonomic surface quants hit on session one); **Phase D — Release** (Days 42-45) ships coverage + docs + CI/CD + v0.1.0 final. The MCP server is deferred to v0.2; its seam (`packages/mcp/`) is scaffolded as a stub only. ECMWF Tier-2, historical NWP backfill, forecast QC, climate QC, Polymarket order book, and Kalshi orderbook clients are also deferred to v0.2 (hosted-backend gates or Sprint 0.5+ scope). Two-lane parallel execution (Lane V / Lane F — Rob ↔ Vu) with cross-review is mandatory throughout; PR cadence is per-wave (not per-phase) per `REVIEW-DISCIPLINE.md`.
+tradewinds is now a **dual-SDK platform** (Python + TypeScript) for prediction-market weather contracts on Kalshi (US NHIGH/NLOW) and Polymarket (US + international daily-extremes). Both SDKs call the SAME public APIs (AWC, IEM, GHCNh, NWS CLI, NOAA BDP, Polymarket Gamma) directly with no backend, mirror the SAME canonical schemas (codegen-shared via JSON Schema), and return row-equivalent output. Python ships first; TypeScript follows the same v0.1.0 surface so a Chrome extension (Rob, kalshi.com overlay) and future web dashboards can consume tradewinds in-browser.
+
+**Status snapshot (2026-05-23):**
+- **Python v0.1.0** — 12/12 phases complete on `main`, 1453 tests passing, rc1 ready to tag (operator-gated PyPI trusted-publisher setup). Three PyPI distributions: `tradewinds` / `tradewinds-weather` / `tradewinds-markets`.
+- **TypeScript v0.1.0** — Planning underway (2026-05-23). 8 phases (TS-W0 → TS-W7) scoped against the Python public surface. npm topology: `@tradewinds/core` / `@tradewinds/weather` / `@tradewinds/markets` + meta `tradewinds`, pnpm workspace under `packages-ts/`.
+
+The Python v0.1.0 release followed a ~45-day phased plan (single-lane wall-clock; ~28 days with 2 parallel lanes): **Phase A — Parity Foundation** (Days 1-9) lifted v0.14.1 parity behavior verbatim, built core primitives + catalog adapters, gated on a 5-fixture byte-equivalent parity test; **Phase B — Lineage** (Days 9.5-15.5) lifted mostlyright Sprint 2o per-source provenance refactor so observations carry per-source identity; **Phase C — Scope Expansion** (Days 16-41) wired Mode 2 dispatch + international stations (40 ICAOs) + multi-forecast live path (HRRR/GFS/NBM via NOAA Big Data Program) + Polymarket discovery & settlement + **QC engine alpha** (flag-and-keep semantics + IEM/GHCNh crosscheck) + **transforms DSL** (lag/diff/rolling/calendar/cross-features) + **discovery + public settlement + DataVersion** (ergonomic surface quants hit on session one); **Phase D — Release** (Days 42-45) shipped coverage + docs + CI/CD + v0.1.0 final.
+
+The MCP server is deferred to v0.2 (Python phase 5); its seam (`packages/mcp/`) is scaffolded as a stub only. ECMWF Tier-2, historical NWP backfill, forecast QC, climate QC, Polymarket order book, and Kalshi orderbook clients are also deferred to v0.2 (hosted-backend gates or Sprint 0.5+ scope).
+
+**Dual-SDK rule going forward:** Every new feature opened under this roadmap MUST have a paired TS work item once the surface lands in Python (or a paired Python work item if TS leads — rare). Schemas are codegen-shared via `scripts/export_schemas.py` writing to `schemas/json/`; manual schema duplication in TS is forbidden. New features either ship Python-first with a `paired_ts:` reference, ship simultaneously with both lanes planned in one PLAN.md, or get a `python_only: true` / `typescript_only: true` flag explaining why.
+
+Two-lane parallel execution (Lane V / Lane F — Vu ↔ Rob) with cross-review is mandatory throughout; PR cadence is per-wave per `REVIEW-DISCIPLINE.md`. Rob's lane shifts toward TypeScript starting the TS milestone.
 
 ## Phases
 
 **Phase Numbering:**
-- Integer phases (1, 2, 3, 4): Planned milestone work for v0.1.0
-- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
-- Phase 5+: Post-v0.1 milestones (v0.2+)
+- Integer phases (1, 2, 3, 4): Python v0.1.0 milestone work (complete)
+- Decimal phases (1.5, 2.1, 3.1-3.6): Urgent insertions to Python v0.1.0 (complete)
+- Phase 5+: Post-v0.1 Python milestones (v0.2+)
+- **TS-W0..TS-W7**: TypeScript v0.1.0 milestone (planning — runs in parallel with Python v0.2 work)
 
-Decimal phases appear between their surrounding integers in numeric order.
+Decimal phases appear between their surrounding integers in numeric order. TS phases sort separately under their own milestone heading.
 
 - [ ] **Phase 1: v0.14.1 Parity Lift** - Day 1 scaffold-prep + lift v0.14.1 parsers/cache; ship 5-fixture byte-equivalent parity gate and alpha1 wheels (Days 1-4)
 - [ ] **Phase 1.5: Fetcher Optimization + Cross-Source Parallelism** [INSERTED 2026-05-22] - Lift mostlyright PR #85 (365-day chunks, cache-poison fix, leap-year + UTC + HTTP_TIMEOUT) + add cross-source parallelism in `research.py` + rate-limit spike for AWC/GHCNh (Days 4.5-5.5). **Sequenced strictly between Phase 1 and Phase 2** — see architect-review notes; co-execution with Phase 2 was rejected.
@@ -25,7 +38,20 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 3.5: Transforms DSL + Preprocessing Primitives** [INSERTED 2026-05-22] - Lift `mostlyright/src/mostlyright/transforms.py` + `preprocessing.py`: `tradewinds.transforms.{lag, diff, diff2, rolling, calendar_features, spread, wind_chill, heat_index}` + `tradewinds.preprocessing.{clip_outliers, iem_crosscheck}`. Baseline quant ergonomics: lag/diff/rolling stats + cyclical calendar encoding + cross-features. Removes the "Sprint 0.5+ preprocessing" defer (Days 35-38)
 - [ ] **Phase 3.6: Discovery API + Public Settlement + DataVersion** [INSERTED 2026-05-22] - `tradewinds.discovery.{availability, climate_gaps, describe, feature_catalog}` answers "what do I have for KNYC?" on session one; `tradewinds.settlement.{settlement_date_for, settlement_window_utc}` exposes the math from `snapshot.py` at top level; `tradewinds.DataVersion` reproducibility token stamps every `research()` call. 3 small surface bundles — pure additive (Days 39-41)
 - [ ] **Phase 4: Coverage, Docs, CI/CD, Release** - ≥90% branch coverage on `core/`; <5-min quickstart timed by external person; GH Actions trusted publishing; two-tier fixture set; v0.1.0 ship (Days 42-45)
-- [ ] **Phase 5: MCP Data Platform** [v0.2+] - MCP server layer at `packages/mcp/` exposing tradewinds as MCP-native data platform for prediction market ML; 5-layer context-engineered data catalog; agent-generated connector pipeline; server-enforced temporal safety; multi-vertical expansion (weather → sports → politics → finance). See [`phases/05-mcp-data-platform/VISION.md`](phases/05-mcp-data-platform/VISION.md). **Post-v0.1.0; depends on Phase 2 (temporal primitives + catalog) and Phase 4 (CI/CD).**
+- [ ] **Phase 5: MCP Data Platform** [Python v0.2+] - MCP server layer at `packages/mcp/` exposing tradewinds as MCP-native data platform for prediction market ML; 5-layer context-engineered data catalog; agent-generated connector pipeline; server-enforced temporal safety; multi-vertical expansion (weather → sports → politics → finance). See [`phases/05-mcp-data-platform/VISION.md`](phases/05-mcp-data-platform/VISION.md). **Post-v0.1.0; depends on Phase 2 (temporal primitives + catalog) and Phase 4 (CI/CD).**
+
+### TypeScript SDK milestone (v0.1.0 — `@tradewinds/*` on npm)
+
+Mirrors the Python v0.1.0 public surface from the same repo (`packages-ts/`). Same APIs, same schemas (codegen-shared), row-equivalent output (no DataFrames; plain object arrays). Primary consumer: Rob's Chrome extension overlay on kalshi.com. See [`research/TS-SDK-DESIGN.md`](research/TS-SDK-DESIGN.md) for the design contract and [`research/PYTHON-SURFACE-INVENTORY.md`](research/PYTHON-SURFACE-INVENTORY.md) for the surface map the port works against. **Runs in parallel with Python v0.2 (Phase 5) work.**
+
+- [ ] **Phase TS-W0: Foundations + Schema Codegen + CORS Matrix** - pnpm workspace under `packages-ts/`, tsup/vitest/biome scaffolds, `scripts/export_schemas.py` Python→JSON-Schema exporter, `@tradewinds/codegen` reads `schemas/json/` and emits typed station registry + Kalshi map + ajv-standalone validators, one-shot CORS empirical test against AWC/IEM/GHCNh/Polymarket endpoints written to `.planning/research/TS-CORS-MATRIX.md`, CI workflows `test-ts.yml` + `schema-drift.yml`.
+- [ ] **Phase TS-W1: Chrome-extension MVP (AWC + CLI subset of `research()`)** - Exception hierarchy, `_convert`/`_bounds` ports, retry wrapper around `fetch()`, station registry + Kalshi NHIGH/NLOW resolvers, AWC live-METAR fetcher+parser, IEM CLI fetcher+parser+range, `market_close_utc` + `settlement_*` math, minimal `research()` (AWC + CLI only, no cache). Unblocks Rob's extension overlay. Bundle ≤30KB minified+gzipped.
+- [ ] **Phase TS-W2: Parity Gate** - IEM ASOS fetcher (yearly chunks, lifted from Python Phase 1.5), GHCNh fetcher (with CORS workaround), CSV/PSV parsers, `merge_observations` + `merge_climate` ports with strict-`>` priority and first-seen tiebreak, `build_pairs` join, 5 Python parity fixtures re-exported as JSON+msw recordings, parity test asserts row-equivalent output, drift cron `drift-rotate-ts.yml`.
+- [ ] **Phase TS-W3: Cache + Temporal Primitives + Validator** - `CacheStore` interface + `IndexedDBStore`/`FsStore`/`MemoryStore` implementations + `defaultCacheStore()` auto-detection, LST/`.live`/30-day-volatile cache-skip rules, Web Locks API (browser) + `proper-lockfile` (Node) for `withLock`, `TimePoint`/`KnowledgeView<T>`/`LeakageDetector`+`assertNoLeakage`, `validateRows(rows, schemaId, opts)` using ajv-standalone, fast-check property tests.
+- [ ] **Phase TS-W4: Mode 2 + Transforms + QC Alpha** - `researchBySource` dispatch + `assertSourceIdentity`, transforms (lag/diff/diff2/rolling/calendarFeatures/spread/windChill/heatIndex/clipOutliers) with NWS-reference-table tests, QC alpha rules (≥5: temp/dewpoint/wind/pressure bounds + METAR-corruption) populating `obsQcStatus` bitfield, `crosscheckIemGhcnh` disagreement output.
+- [ ] **Phase TS-W5: Markets (Polymarket Live + Kalshi Wiring)** - Polymarket Gamma API client (rate-limit 0.2s, retries, pagination, dedup), `polymarketDiscover()` + Tier 0/1/2/3 resolver, `polymarketSettle(eventId)` engine using `internationalDailyExtremes()` resolution + half-up whole-degree rounding + `TooEarlyToSettleError`, UUID4/16KB-cap/netloc-allowlist defenses tested.
+- [ ] **Phase TS-W6: Discovery + Snapshot + DataVersion** - `availability(station)` reads from `CacheStore`, `describe(schemaId)`/`featureCatalog()`, `internationalDailyExtremes(rows, {stationTz})` with UTC-wrap tests (RJTT/SAEZ/NZWN DST), `buildSnapshot(...)` + `DataSnapshot` interface + `toDict()`/`toToon()`, `DataVersion` (discovery v2 shape) via Web Crypto SHA-256, reproducibility round-trip property test.
+- [ ] **Phase TS-W7: Docs + npm Publish** - README quickstart (<5min external-timer), typedoc, `docs/chrome-extension-integration.md`, Changesets + npm OIDC trusted publishing (4 pending publishers: 3 scoped + 1 meta), `release-ts.yml` workflow, tag `vts-0.1.0rc1` → npm `--tag next` for soak, then `vts-0.1.0` → npm `latest`, Chrome-extension end-to-end smoke test on `latest`.
 
 ## Phase Details
 
@@ -252,6 +278,102 @@ Decimal phases appear between their surrounding integers in numeric order.
   5. Two-tier fixture structure in place: `tests/fixtures/parity/` (frozen, never re-recorded — 5 byte-equivalent fixtures from Day 0.5) + `tests/fixtures/drift/` (weekly cron-rotated, compared against parity set); rotation policy documented in `tests/fixtures/README.md`
 **Plans**: TBD
 
+### Phase TS-W0: TypeScript Foundations + Schema Codegen + CORS Matrix
+**Goal**: Establish the TS workspace, build/test tooling, and the codegen pipeline so every subsequent TS phase consumes Python schemas + station registry + Kalshi map from a single source of truth. Capture empirical CORS posture per upstream endpoint before any fetcher port — this gates which sources are usable in non-extension web-app consumers.
+**Depends on**: Python v0.1.0 final (canonical schemas + station registry + Kalshi map must be frozen for codegen)
+**Requirements**: TS-PKG-01, TS-PKG-02, TS-CODEGEN-01, TS-CODEGEN-02, TS-CORS-01, TS-CI-01
+**Success Criteria** (what must be TRUE):
+  1. `pnpm install && pnpm codegen && pnpm -r build && pnpm -r test --run` from a clean clone exits 0 (no network).
+  2. `scripts/export_schemas.py` is deterministic — two consecutive runs produce identical `schemas/json/*.json` + `schemas/stations.json` + `schemas/kalshi-settlement-stations.json` + `schemas/source-priority.json`.
+  3. `@tradewinds/codegen` reads `schemas/` and emits typed station registry + Kalshi map + ajv-standalone validators into `packages-ts/*/src/**/generated/`; CI `schema-drift.yml` workflow fails the build on uncommitted diff.
+  4. `.planning/research/TS-CORS-MATRIX.md` documents empirical CORS posture (Access-Control-Allow-Origin headers) for AWC, IEM ASOS, IEM CLI, GHCNh, Polymarket Gamma — captured from a real browser fetch, not theorized.
+  5. CI workflow `test-ts.yml` green: biome check + `tsc --noEmit` + vitest with `@vitest/coverage-v8` + `size-limit` bundle-size gate on all 5 TS packages.
+**Plans**: TBD (run `/gsd-plan-phase ts-w0` to break down — directory: `.planning/phases/ts-w0-foundations-schema-codegen-cors-matrix/`)
+
+### Phase TS-W1: Chrome-extension MVP (AWC + CLI subset of `research()`)
+**Goal**: Smallest useful TS surface to unblock Rob's Chrome extension overlay. Ship station lookup + Kalshi NHIGH/NLOW resolver + AWC live observations + IEM CLI settlement readings + a minimal `research()` (AWC + CLI only, no cache, no GHCNh, no IEM ASOS yet). Bundle size must stay tight so the extension service worker loads fast.
+**Depends on**: Phase TS-W0
+**Requirements**: TS-CORE-01, TS-CORE-02, TS-WEATHER-01, TS-WEATHER-02, TS-MARKETS-01, TS-RESEARCH-01
+**Success Criteria** (what must be TRUE):
+  1. `await research('NYC', '2025-01-01', '2025-01-07')` from a Node script returns `ResearchRow[]` with non-null `cliHighF`/`cliLowF` AND non-null `obsHighF`/`obsLowF` (forecast + GHCNh-derived columns may be null in W1).
+  2. `resolve('KHIGHNYC', new Date('2025-01-06'))` returns `{settlementSource: 'cli.archive', settlementStation: 'KNYC', cityTicker: 'NYC', contractDate: '2025-01-06'}`; `KNOWN_WRONG_STATIONS` contract test passes (no `KLGA`/`KJFK`/`KORD`/`KIAD`/`KBWI`/`KOAK`/`KHOU`/`KDAL` appears as a Kalshi-station value).
+  3. Exception hierarchy (`TradewindsError` + 7 first-class subclasses) ships with `toDict()` matching Python `to_json_safe` shape on `null/NaN/inf/cycle` edge cases.
+  4. Chrome-extension end-to-end smoke test (one-page test extension fetching `research()` from its service worker against AWC + IEM CLI live) passes.
+  5. `size-limit` reports W1 subset (`@tradewinds/core` + `@tradewinds/weather`'s W1 surface + `@tradewinds/markets`) ≤ 30 KB minified+gzipped.
+**Plans**: TBD (run `/gsd-plan-phase ts-w1` to break down — directory: `.planning/phases/ts-w1-chrome-extension-mvp-awc-cli/`)
+
+### Phase TS-W2: Parity Gate
+**Goal**: Pass the 5-fixture parity gate against Python `research()` Mode 1 output. Land IEM ASOS + GHCNh fetchers + parsers + the two merge policies that Python ships with strict-`>` priority + first-seen tiebreak. Without this, the TS port is a "looks similar" port — with it, the TS SDK is byte-equivalent for the canonical demo cases.
+**Depends on**: Phase TS-W1
+**Requirements**: TS-WEATHER-03, TS-WEATHER-04, TS-MERGE-01, TS-PARITY-01
+**Success Criteria** (what must be TRUE):
+  1. All 5 Python parity fixtures pass against the TS implementation with exact numeric equality on every column (no tolerance loosening). HTTP replay via `msw` against recordings captured from the Python tests.
+  2. IEM ASOS fetcher uses yearly chunks (calendar-aligned, leap-year safe — lifted from Python Phase 1.5 logic) at 1 req/sec politeness; CSV parser handles `#`-prefix comments + `M`/`T` sentinel values + multi-column expansion identical to `_iem.iem_to_observation`.
+  3. GHCNh PSV fetcher handles 404-as-no-data per Python `download_ghcnh_range`; CORS workaround documented in `TS-CORS-MATRIX.md` if blocked.
+  4. `mergeObservations` and `mergeClimate` reproduce Python source priority + secondary-key behavior; property test asserts `mergeObservations(shuffleRows(rows)) === mergeObservations(rows)` byte-for-byte over Hypothesis-equivalent fast-check inputs.
+  5. Weekly drift cron `drift-rotate-ts.yml` lands and writes `drift-report.md` on mismatch (soft-fail, opens GH issue, NEVER blocks CI).
+**Plans**: TBD (run `/gsd-plan-phase ts-w2` to break down — directory: `.planning/phases/ts-w2-parity-gate/`)
+
+### Phase TS-W3: Cache + Temporal Primitives + Validator
+**Goal**: Persistence layer + temporal safety + structural validation. After this phase, repeat `research()` calls hit cache (≤10% of first-call wall time), the SDK enforces no-leakage and source-identity invariants the same way Python does, and `validateRows` ships with ajv-standalone validators generated by the codegen pipeline (no runtime ajv dependency).
+**Depends on**: Phase TS-W2
+**Requirements**: TS-CACHE-01, TS-CACHE-02, TS-TEMPORAL-01, TS-TEMPORAL-02, TS-VALIDATOR-01
+**Success Criteria** (what must be TRUE):
+  1. `CacheStore` interface + `IndexedDBStore` (browser, via `idb`) + `FsStore` (Node, via `node:fs/promises` + `proper-lockfile`) + `MemoryStore` (default for Workers); `defaultCacheStore()` auto-detects runtime correctly under vitest + jsdom + Node + msw simulated worker.
+  2. Second `research()` call for same `(station, fromDate, toDate)` is ≤ 10% of first-call wall time on cached-month data; LST current-month skip + `.live`-source skip + 30-day volatile-window rules match Python behavior on a 5-case fixture.
+  3. `TimePoint(value)` rejects naive datetimes + date-only strings + `NaN`/`Infinity`; `KnowledgeView<Row>(rows, asOf).rows()` returns only rows where `knowledge_time <= asOf` (property tested with fast-check over constrained date range `[2018-01-01, 2027-12-31]` UTC).
+  4. `assertNoLeakage(rows, asOf)` throws `LeakageError` whose `toDict()` includes `as_of`/`violating_count`/`sample_violations` with the same shape Python emits.
+  5. `validateRows(rows, schemaId, {allowSourceDrift?})` throws `SchemaValidationError` with the Python-vocabulary `violations` array (`source_attr_required`/`source_column_required`/`retrieved_at_required`/`required_column_missing`/`non_nullable_has_nulls`/`mixed_null_sentinels`/`dtype_mismatch`/`enum_value_violation`/etc); ≥ 90% branch coverage on `@tradewinds/core`.
+**Plans**: TBD (run `/gsd-plan-phase ts-w3` to break down — directory: `.planning/phases/ts-w3-cache-temporal-validator/`)
+
+### Phase TS-W4: Mode 2 + Transforms + QC Alpha
+**Goal**: Quality layer matching Python Phase 3 + 3.4 + 3.5 — source-explicit dispatch with role-scoped source-identity errors, transforms (lag/diff/rolling/calendar/cross-features) for baseline quant ergonomics, QC alpha rules producing the `obsQcStatus` bitfield.
+**Depends on**: Phase TS-W3
+**Requirements**: TS-MODE2-01, TS-TRANSFORM-01, TS-TRANSFORM-02, TS-QC-01, TS-QC-02
+**Success Criteria** (what must be TRUE):
+  1. `researchBySource(station, source, fromDate, toDate)` dispatches per `source ∈ {iem.archive, iem.live, awc.live, ghcnh.archive}`; `assertSourceIdentity(rows, expectedSource)` throws `SourceMismatchError` naming the offending role (`observations`/`forecasts`/`settlement`) per Python contract.
+  2. Transforms (`lag`/`diff`/`diff2`/`rolling`/`calendarFeatures`/`spread`/`windChill`/`heatIndex`/`clipOutliers`) match Python `transforms.*` output byte-for-byte on a shared 50-row fixture; column-naming convention `{col}_{op}_{param}` honored.
+  3. `heatIndex(90, 70)` and `windChill(20, 15)` match NWS reference table values within 1°F; out-of-domain inputs return `null` (matching Python's `None`).
+  4. `QCEngine.apply(rows)` adds an `obsQcStatus` Int (32-bit bitfield) column; ≥ 5 alpha rules ported (temp/dewpoint/wind/pressure physics bounds + METAR-corruption); same rule IDs and bit positions as Python `ALPHA_RULES`.
+  5. `crosscheckIemGhcnh(iemRows, ghcnhRows, {tolC?})` returns disagreement rows with `{station, eventTime, tempCIem, tempCGhcnh, deltaC}` columns matching Python `crosscheck_iem_ghcnh` output.
+**Plans**: TBD (run `/gsd-plan-phase ts-w4` to break down — directory: `.planning/phases/ts-w4-mode2-transforms-qc-alpha/`)
+
+### Phase TS-W5: Markets (Polymarket Live + Kalshi Wiring)
+**Goal**: Activate Polymarket discover/settle (Python ships these as `NotImplementedError` stubs in v0.1.0; TS lights them up in v0.1.0). Maintain Python's security defenses verbatim — UUID4 regex, 16 KB description cap, netloc allowlist.
+**Depends on**: Phase TS-W4 (transforms + per-source role tracking) and Phase TS-W6's `internationalDailyExtremes()` if running sequentially; can parallel TS-W6 if internationalDailyExtremes is hoisted from W6 into a shared utility.
+**Requirements**: TS-POLY-01, TS-POLY-02, TS-POLY-03, TS-MARKETS-02
+**Success Criteria** (what must be TRUE):
+  1. `PolymarketClient` over `https://gamma-api.polymarket.com`: User-Agent header required, 0.2s rate limit, 429+5xx retries, pagination by `offset += 100` up to 10000 events, dedup by slug.
+  2. `polymarketDiscover()` against live Gamma API returns ≥ 50 active weather events end-to-end; Tier 0 deferred-station check raises `DeferredMarketError` for Taipei/HK-lowest; Tier 1/2/3 resolver chain matches Python.
+  3. `polymarketSettle(eventId, {description?})` enforces UUID4 regex on `eventId` (rejects non-UUID), enforces 16 KB description cap (`PayloadTooLargeError`), enforces netloc allowlist (`wunderground.com`/`weather.gov` + `www.` variants); `TooEarlyToSettleError` raised when source-specific finalization delay hasn't elapsed.
+  4. Settlement value rounding uses half-up to whole-degree-native (matches Python `round(value + 0.5)` semantics on positive numbers and the half-up rule on negatives); ±1°F / 0.6°C diff vs published Polymarket value emits `dataQualityAlert` (does not raise).
+  5. Kalshi resolver wired into a `kalshiSettlementFor(contractId, date)` higher-level helper that returns `{settlementSource, settlementStation, cityTicker, contractDate}` — same shape both NHIGH and NLOW (city-suffix dispatch).
+**Plans**: TBD (run `/gsd-plan-phase ts-w5` to break down — directory: `.planning/phases/ts-w5-markets-polymarket-kalshi/`)
+
+### Phase TS-W6: Discovery + Snapshot + DataVersion
+**Goal**: Ergonomic surface — "what do I have for KNYC?" answers + `DataSnapshot` with TOON encoding + `DataVersion` reproducibility token via Web Crypto.
+**Depends on**: Phase TS-W3 (CacheStore + temporal primitives must exist before `availability()` can read coverage and `DataSnapshot` can stamp `knowledge_time`)
+**Requirements**: TS-DISCOVERY-01, TS-DISCOVERY-02, TS-SNAPSHOT-01, TS-VERSION-01
+**Success Criteria** (what must be TRUE):
+  1. `availability(station)` returns `{station, monthsCached, firstMonth, lastMonth}` sourced from `CacheStore` (counts both observation cache + climate cache).
+  2. `internationalDailyExtremes(rows, {stationTz})` rolls up to per-local-calendar-day `{tempMaxC, tempMinC, tempMaxF, tempMinF}` at whole-°C precision; UTC-wrap edge cases tested for RJTT (UTC+9), SAEZ (UTC-3), NZWN (UTC+12/13 DST).
+  3. `buildSnapshot(...)` returns a frozen `DataSnapshot` (interface + `Object.freeze`) with `.toDict()` (JSON-safe) + `.toToon()` (TOON v3.0 encoded string) methods matching Python output byte-for-byte on a 3-case fixture.
+  4. `DataVersion.fromComponents(...)` SHA-256 hash via `crypto.subtle.digest('SHA-256', ...)` produces the same `token` as the Python `discovery.DataVersion` for identical inputs; round-trip property test (same args → same `token`).
+  5. `describe(schemaId)` returns multi-line string sourced from JSON-Schema `description` fields; `featureCatalog()` returns the transforms surface list in stable order.
+**Plans**: TBD (run `/gsd-plan-phase ts-w6` to break down — directory: `.planning/phases/ts-w6-discovery-snapshot-dataversion/`)
+
+### Phase TS-W7: Docs + npm Publish
+**Goal**: Ship `@tradewinds/core` + `@tradewinds/weather` + `@tradewinds/markets` + `tradewinds` meta to npm at v0.1.0. Mirror Python Phase 4 discipline: external-timer quickstart, drift fixtures rotated, trusted publishing (npm OIDC) configured.
+**Depends on**: Phase TS-W6
+**Requirements**: TS-DOCS-01, TS-DOCS-02, TS-DOCS-03, TS-CI-02, TS-RELEASE-01
+**Success Criteria** (what must be TRUE):
+  1. README quickstart (Node sample + browser sample) timed by an external person at < 5 minutes; typedoc-generated API reference committed under `docs/ts-api/`; `docs/chrome-extension-integration.md` documents Rob's integration path end-to-end.
+  2. Changesets configured (`@changesets/cli` + `.changeset/config.json`); `release-ts.yml` workflow fires on `vts-*` tag, builds + tests + publishes the 4 packages to npm via OIDC trusted publishing.
+  3. `vts-0.1.0rc1` tag → npm `--tag next` publish; soak for a week with internal use; then `vts-0.1.0` tag → npm `--tag latest`.
+  4. `npm install @tradewinds/core @tradewinds/weather @tradewinds/markets` in a clean directory works; `npm install tradewinds` (meta) works.
+  5. Chrome-extension end-to-end smoke test (separate repo or `examples/` subdir) green against `latest` published packages; bundle-size gate green for all 4 packages.
+**Plans**: TBD (run `/gsd-plan-phase ts-w7` to break down — directory: `.planning/phases/ts-w7-docs-npm-publish/`)
+
 ### Phase 5: MCP Data Platform
 **Goal**: Transform tradewinds from a single-vertical SDK into an MCP-native data platform for prediction market ML. Ship the MCP server layer at `packages/mcp/`, a 5-layer context-engineered data catalog, an agent-generated connector pipeline for sources not yet pre-indexed, server-enforced temporal safety (no agent bypass), and the first multi-vertical expansion beyond weather.
 **Depends on**: Phase 2 (TimePoint/KnowledgeView/LeakageDetector + catalog adapters + canonical schemas), Phase 4 (CI/CD trusted publishing carries forward)
@@ -273,29 +395,49 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ## Progress
 
-**Execution Order:**
-Phases execute in numeric order: 1 → **1.5** → 2 → **2.1** → 3 → **3.1** → **3.2** → **3.3** → **3.4** → **3.5** → **3.6** → 4 → **(v0.1.0 ship)** → 5 (decimal phases sequence between their surrounding integers per the numbering convention above; Phase 5 is post-v0.1 and starts the v0.2+ milestone).
+**Execution Order (Python v0.1.0 — COMPLETE):**
+Phases executed in numeric order: 1 → **1.5** → 2 → **2.1** → 3 → **3.1** → **3.2** → **3.3** → **3.4** → **3.5** → **3.6** → 4 → **(v0.1.0rc1 ready to publish)** → 5 (decimal phases sequence between their surrounding integers per the numbering convention above; Phase 5 is post-v0.1 Python and starts the v0.2+ Python milestone).
 
-**Timeline:** v0.1.0 ship moves from Day 14 to **~Day 45** (estimated 2026-07-05) due to the seven inserted phases (2.1, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6). Per-phase day estimates appear in each phase's `### Phase X.Y` block.
+**Execution Order (TypeScript v0.1.0 — PLANNING):**
+TS phases execute strictly serial after Python v0.1.0 final: **TS-W0** → **TS-W1** → **TS-W2** (parity gate; HARD) → **TS-W3** → **TS-W4** → **TS-W5** ↔ **TS-W6** (parallel after W3/W4) → **TS-W7** (v0.1.0 ship). TS-W1 unblocks Rob's Chrome extension overlay; TS-W2's parity gate is the load-bearing trust gate (without it, the TS port is unverified).
 
-**Parallelism note:** After Phase 2.1 lands, multiple lanes can run in parallel:
-- Phase 3.1 (international stations) and Phase 3.2 (multi-forecast) are independent — different files.
-- Phase 3.4 (QC engine), Phase 3.5 (transforms DSL), and Phase 3.6 (discovery + settlement + DataVersion) are also independent of each other and of 3.1/3.2 — additive layers on top of canonical data.
-- Phase 3.3 strictly depends on 3.1 (Polymarket settlement consumes `daily_extremes()` output).
-- With 2 lanes (Rob + Vu) the post-2.1 wall-clock collapses from ~30 days serial → ~16 days parallel (Lane A: 3.1 → 3.3 → 3.5; Lane B: 3.2 → 3.4 → 3.6). PR cadence stays per-wave.
+**Python timeline (historical):** v0.1.0rc1 ready on 2026-05-23 (12/12 phases complete on `main`, 1453 tests passing, operator-gated PyPI trusted publish).
+
+**TS timeline (estimate):** TS-W0..TS-W7 ≈ 18-25 days single-lane wall-clock; ≈ 12-15 days with parallelism (W5 ↔ W6 after W4). Rob owns the TS lane; Vu reviews. Cross-language schema drift CI gate makes pairing additive features (Python v0.2 + TS v0.1.x) safe.
+
+**Parallelism note (carried over from Python v0.1):** Multiple lanes still run in parallel:
+- Phase 3.1 (international stations) and Phase 3.2 (multi-forecast) were independent — different files.
+- Phase 3.4 (QC engine), Phase 3.5 (transforms DSL), and Phase 3.6 (discovery + settlement + DataVersion) were also independent of each other and of 3.1/3.2 — additive layers on top of canonical data.
+- Phase 3.3 strictly depended on 3.1 (Polymarket settlement consumes `daily_extremes()` output).
+- With 2 lanes (Rob + Vu) the post-2.1 wall-clock collapsed from ~30 days serial → ~16 days parallel (Lane A: 3.1 → 3.3 → 3.5; Lane B: 3.2 → 3.4 → 3.6). PR cadence stays per-wave.
+
+### Python v0.1.0
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. v0.14.1 Parity Lift | 0/TBD | Wave 1 of 4 done (cache + merge + snapshot/_stations on `merged-vision`) | - |
-| 1.5. Fetcher Optimization + Cross-Source Parallelism | 0/3 | Not started — strictly serial after Phase 1, strictly before Phase 2 | - |
-| 2. Core Primitives + Catalog Adapters | 0/TBD | Not started (PLAN.md committed) | - |
-| 2.1. Sprint 2o Lineage Refactor (Per-Source Provenance) | 0/TBD | Not started — inserted 2026-05-22; depends on Phase 2; parity-fixture pre-flight gate mandatory | - |
-| 3. Mode 2 Integration + Migration Gate | 0/TBD | Not started | - |
-| 3.1. International Station Expansion + Observations + Daily Extremes | 0/TBD | Not started — inserted 2026-05-22; lifts Sprint 2t s1+s2+s3 from mostlyright | - |
-| 3.2. Multi-Forecast Live Path (HRRR + GFS + NBM) | 0/TBD | Not started — inserted 2026-05-22; lifts live-fetch subset of Sprint 2r from mostlyright; ECMWF Tier-2 + historical backfill deferred to v0.2 | - |
-| 3.3. Polymarket Integration (Discovery + Settlement) | 0/TBD | Not started — inserted 2026-05-22; lifts Sprint 2t s1+s4 from mostlyright; depends on Phase 3.1 daily_extremes | - |
-| 3.4. QC Engine Alpha + Sidecar + Crosscheck | 0/TBD | Not started — inserted 2026-05-22; lifts `mostlyright/src/mostlyright/qc/` package; flag-and-keep semantics; depends on Phase 2.1 sidecar schema | - |
-| 3.5. Transforms DSL + Preprocessing Primitives | 0/TBD | Not started — inserted 2026-05-22; lifts `mostlyright/src/mostlyright/transforms.py` + `preprocessing.py`; baseline quant ergonomics | - |
-| 3.6. Discovery API + Public Settlement + DataVersion | 0/TBD | Not started — inserted 2026-05-22; bundle of small additive surfaces; `availability()`, `settlement_date_for()`, `DataVersion` token | - |
-| 4. Coverage, Docs, CI/CD, Release | 0/TBD | Not started | - |
-| 5. MCP Data Platform [v0.2+] | 0/6 | Plans committed (PLAN-00..PLAN-05); execution gated on v0.1.0 ship | - |
+| 1. v0.14.1 Parity Lift | done/done | ✅ Merged to `main` | 2026-05-22 |
+| 1.5. Fetcher Optimization + Cross-Source Parallelism | 3/3 | ✅ Merged at 738232e | 2026-05-23 |
+| 2. Core Primitives + Catalog Adapters | done/done | ✅ Merged | 2026-05-23 |
+| 2.1. Sprint 2o Lineage Refactor (Per-Source Provenance) | done/done | ✅ Merged | 2026-05-23 |
+| 3. Mode 2 Integration + Migration Gate | done/done | ✅ Merged (dispatch seam; fetch wiring deferred to 3.1/3.2 alphas) | 2026-05-23 |
+| 3.1. International Station Expansion + Observations + Daily Extremes | done/done | ✅ Merged | 2026-05-23 |
+| 3.2. Multi-Forecast Live Path (HRRR + GFS + NBM) | done/done | ✅ Merged (dispatch + `[nwp]` extra check; live HTTP wiring deferred to v0.2) | 2026-05-23 |
+| 3.3. Polymarket Integration (Discovery + Settlement) | done/done | ✅ Merged (boundary + stub; live wiring deferred to v0.2) | 2026-05-23 |
+| 3.4. QC Engine Alpha + Sidecar + Crosscheck | done/done | ✅ Merged | 2026-05-23 |
+| 3.5. Transforms DSL + Preprocessing Primitives | done/done | ✅ Merged | 2026-05-23 |
+| 3.6. Discovery API + Public Settlement + DataVersion | done/done | ✅ Merged | 2026-05-23 |
+| 4. Coverage, Docs, CI/CD, Release | done/done | ✅ Merged at 7655b0e (1453 tests; 94.20% coverage; rc1 ready) | 2026-05-23 |
+| 5. MCP Data Platform [Python v0.2+] | 0/6 | Plans committed (PLAN-00..PLAN-05); execution gated on TS v0.1.0 ship + Python v0.2 milestone open | - |
+
+### TypeScript v0.1.0 (`@tradewinds/*` on npm)
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| TS-W0. Foundations + Schema Codegen + CORS Matrix | 0/TBD | Planning — depends on Python v0.1.0 final | - |
+| TS-W1. Chrome-extension MVP (AWC + CLI subset of `research()`) | 0/TBD | Planning — unblocks Rob's overlay | - |
+| TS-W2. Parity Gate | 0/TBD | Planning — HARD GATE against 5 Python parity fixtures | - |
+| TS-W3. Cache + Temporal Primitives + Validator | 0/TBD | Planning | - |
+| TS-W4. Mode 2 + Transforms + QC Alpha | 0/TBD | Planning | - |
+| TS-W5. Markets (Polymarket Live + Kalshi Wiring) | 0/TBD | Planning — activates Python's `NotImplementedError` Polymarket stubs | - |
+| TS-W6. Discovery + Snapshot + DataVersion | 0/TBD | Planning — can parallel TS-W5 after TS-W4 lands | - |
+| TS-W7. Docs + npm Publish | 0/TBD | Planning — 4 npm OIDC pending publishers + Changesets | - |

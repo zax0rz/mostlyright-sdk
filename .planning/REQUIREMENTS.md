@@ -331,6 +331,102 @@ Post-v0.1.0 requirements for the MCP-native data platform vision. See [`phase-05
 
 **Phase 5 coverage:** 10 requirements, all mapped. Depends on Phase 2 (temporal primitives, catalog adapters, canonical schemas) and Phase 4 (CI/CD trusted publishing).
 
+## TS Requirements (TypeScript SDK v0.1.0)
+
+> Mirror of Python public surface for `@tradewinds/core` + `@tradewinds/weather` + `@tradewinds/markets` + `tradewinds` (meta) on npm. See [`research/TS-SDK-DESIGN.md`](research/TS-SDK-DESIGN.md) for the design contract and [`research/PYTHON-SURFACE-INVENTORY.md`](research/PYTHON-SURFACE-INVENTORY.md) for the surface map.
+
+### Foundations (Phase TS-W0)
+
+- [ ] **TS-PKG-01**: pnpm workspace under `packages-ts/` with 5 packages (`core`, `weather`, `markets`, `meta`, `codegen`); `pnpm install && pnpm -r build && pnpm -r test` exits 0 from clean clone (no network).
+- [ ] **TS-PKG-02**: Each package builds ESM (`.mjs`) + CJS (`.cjs`) + IIFE (`.global.js`) + types (`.d.ts`) via `tsup`. TypeScript `strict: true, noUncheckedIndexedAccess: true, exactOptionalPropertyTypes: true`.
+- [ ] **TS-CODEGEN-01**: `scripts/export_schemas.py` is deterministic — two consecutive runs produce identical `schemas/json/*.json` + `schemas/stations.json` + `schemas/kalshi-settlement-stations.json` + `schemas/source-priority.json`. CI workflow `schema-drift.yml` fails on uncommitted diff.
+- [ ] **TS-CODEGEN-02**: `@tradewinds/codegen` reads `schemas/` and emits typed station registry + Kalshi map + ajv-standalone validators into `packages-ts/*/src/**/generated/`. Generated files committed; CI checks `git diff --exit-code packages-ts/*/src/**/generated/`.
+- [ ] **TS-CORS-01**: `.planning/research/TS-CORS-MATRIX.md` documents empirical CORS posture per upstream endpoint (AWC, IEM ASOS, IEM CLI, GHCNh, Polymarket Gamma) captured from a real browser fetch + per-endpoint workaround notes (CORS proxy template, Chrome extension `host_permissions` snippet).
+- [ ] **TS-CI-01**: GitHub Actions workflows `test-ts.yml` (push/PR) + `schema-drift.yml` (push/PR) green. `test-ts.yml`: pnpm install → codegen drift → biome → typecheck → vitest with coverage → `size-limit` bundle gate.
+
+### Core / Exceptions / Conversions (Phase TS-W1)
+
+- [ ] **TS-CORE-01**: TS exception hierarchy mirrors Python: `TradewindsError` base + `SourceUnavailableError`, `SchemaValidationError`, `SourceMismatchError`, `LeakageError`, `TemporalDriftError`, `PayloadTooLargeError`, `DeferredMarketError`, `PolymarketEventError`. Each carries `errorCode`, `source`, `requestId`, plus subclass-specific fields. `toDict()` JSON-safe per Python `to_json_safe`: `null` for `NaN`/`Infinity`/`null`, ISO strings for dates, cycles → `{_cycle: true, value: String(obj)}`, dict keys must be strings.
+- [ ] **TS-CORE-02**: Unit conversions in `@tradewinds/core/internal/convert`: `ktToMs`, `ktToMph`, `miToKm`, `miToM`, `ftToM`, `inchesToMm`, `celsiusToFahrenheit`, `fahrenheitToCelsius`, `hpaToInhg`, `computeRelativeHumidity` (Magnus), `computeFeelsLike` (NWS wind chill + heat index). Same constants as Python (`_KT_TO_MPH = 1.15078`, `_KT_TO_MS = 1852.0/3600.0`, `_IN_TO_MM = 25.4`, `_HPA_TO_INHG = 0.0295299875`, `_MAGNUS_A = 17.625`, `_MAGNUS_B = 243.04`).
+
+### Weather Fetchers (Phases TS-W1 + TS-W2)
+
+- [ ] **TS-WEATHER-01**: AWC live-METAR fetcher (`fetchAwcMetars(stationIcaos, hours=168)`) hits `https://aviationweather.gov/api/data/metar` with same query shape as Python; retry/backoff on 429+5xx via `fetch()` + `AbortController` + exponential delay; returns `[]` (never throws) on 4xx / exhausted retries / non-array body.
+- [ ] **TS-WEATHER-02**: IEM CLI fetcher (`downloadCli(stationIcao, year)` + `downloadCliRange`) hits `https://mesonet.agron.iastate.edu/json/cli.py?station=<ICAO>&year=<YYYY>`; 404 → no data for year (skipped by range fetcher); 1s politeness delay; cache path key matches Python `dest_dir/<icao>/cli_<year>.json` layout (under TS cache root).
+- [ ] **TS-WEATHER-03**: IEM ASOS fetcher (`downloadIemAsos(station, start, end)`) uses yearly chunks (calendar-aligned, leap-year safe — lifted from Python Phase 1.5 `yearlyChunksInclusive`); 1s politeness; 60s timeout; CSV staging cache filename `iem_{startIso}_{endIso}_{suffix}.csv`; `skipCache: true && chunkEnd > todayUtc` routes to `_partial` namespace.
+- [ ] **TS-WEATHER-04**: GHCNh fetcher (`downloadGhcnh(stationId, year)` + range) hits `https://www.ncei.noaa.gov/oa/global-historical-climatology-network/hourly/access/by-year/<YEAR>/psv/GHCNh_<station_id>_<YEAR>.psv`; 404 → no data (skipped by range fetcher); 1s politeness AFTER successful download (cache hits + 404s skip delay); PSV parser filters `Quality_Code ∈ {"0","1","4","5",""}`.
+
+### Parsers + Merge (Phase TS-W2)
+
+- [ ] **TS-PARSER-01**: AWC JSON parser (`awcToObservation`) handles same fields as Python `_awc.awc_to_observation`: `icaoId`, `obsTime`, `metarType`, `wdir`/`wspd`/`wgst`/`altim`/`slp`/`temp`/`dewp`, `visib` (with `10+` / `1/2` / `2 1/4` forms), `clouds`, `rawOb`, `wxString`, `precip` (`"T"` = trace), `qcField`. Bounds checks per `_bounds` constants.
+- [ ] **TS-PARSER-02**: IEM CSV parser (`iemToObservation`, `parseIemFile`) handles `#`-prefix comment lines, header, rows with `valid`, `tmpf`, `dwpf`, `drct`, `sknt`, `gust`, `alti`, `mslp`, `vsby`, `skyc1..4`, `skyl1..4`, `wxcodes`, `p01i`, `snowdepth`, `peak_wind_*`, `metar`. `M`/`T` sentinels → null/trace.
+- [ ] **TS-PARSER-03**: NWS CLI parser (`parseCliRecord`, `parseCliResponse`) handles `valid` (YYYY-MM-DD), `high`/`low` (int|"M"|""), `product` (first 12 chars = UTC YYYYMMDDHHmm). `inferReportType(product, observationDate)` matches Python; `REPORT_TYPE_PRIORITY` constant from codegen.
+- [ ] **TS-PARSER-04**: GHCNh PSV parser (`parseGhcnhRow`, `parseGhcnhFile`) handles `DATE`, `temperature*`/`dew_point_temperature*`/`wind_direction*`/`wind_speed*`/`wind_gust*`/`sea_level_pressure*`/`altimeter*`/`visibility*`/`precipitation*`/`snow_depth*`/`sky_cover_summation_*`/`pres_wx_AW*`/`REM` columns. Quality_Code filtering. `ghcnhStationToCode` translates NCEI id → 3-letter station code.
+- [ ] **TS-MERGE-01**: `mergeObservations(rows)` dedups by `(stationCode, observedAt, observationType)`, strict-`>` priority `{awc: 3, iem: 2, ghcnh: 1}`, unknown source = 0, first-seen wins at tie. Property test via fast-check: same input across row-shuffle permutations produces identical output. `mergeClimate(rows)` dedups by `(stationCode, observationDate)`, strict-`>` on `reportTypePriority`. Source priorities loaded from codegen `schemas/source-priority.json`.
+
+### Research / Snapshot / Mode 2 (Phases TS-W1 + TS-W2 + TS-W4)
+
+- [ ] **TS-RESEARCH-01**: `research(station, fromDate, toDate, opts?): Promise<ResearchRow[]>` — Mode 1, async, returns the 19-column shape Python returns. AWC + CLI live in TS-W1; full source set (+ IEM ASOS + GHCNh) in TS-W2. `tzOverride` / `casing` / `signal` (AbortSignal) / `cache` (CacheStore) options.
+- [ ] **TS-RESEARCH-02**: `researchBySource(station, source, fromDate, toDate)` — Mode 2 dispatch; rejects unknown source; `assertSourceIdentity(rows, expectedSource)` throws `SourceMismatchError` with `role` (`observations` / `forecasts` / `settlement`) per Python contract.
+- [ ] **TS-SNAPSHOT-01**: `settlementDateFor(asOf, station, tzOverride?)`, `settlementWindowUtc(date, station, tzOverride?)`, `cliAvailableAt(date, station, delayHours=10, tzOverride?)`, `marketCloseUtc(date, station, tzOverride?)`, `buildSnapshot(...)`. LST = January UTC offset of station's IANA tz (DST ignored). `buildSnapshot` returns frozen `DataSnapshot` with `.toDict()` (JSON-safe) and `.toToon()` (TOON v3.0 encoded) methods matching Python output on 3-case fixture.
+- [ ] **TS-PARITY-01**: All 5 Python parity fixtures pass against TS `research()` with exact numeric equality on every column. HTTP replay via `msw` against recordings captured from Python; no tolerance loosening.
+
+### Markets (Phases TS-W1 + TS-W5)
+
+- [ ] **TS-MARKETS-01**: Kalshi `KALSHI_SETTLEMENT_STATIONS` + `KNOWN_WRONG_STATIONS` from codegen. `kalshiNhighResolve(contractId, date)` and `kalshiNlowResolve(contractId, date)` return frozen `{settlementSource: 'cli.archive', settlementStation, cityTicker, contractDate}`. Type check: `date` must be `Date | string` (YYYY-MM-DD), not arbitrary timestamp. Contract test: no `KNOWN_WRONG_STATIONS` value appears in the resolver map.
+- [ ] **TS-POLY-01**: `PolymarketClient` over `https://gamma-api.polymarket.com` (no auth). User-Agent header required. 0.2s rate limit, 429+5xx retries, pagination `offset += 100` up to 10000 events, dedup by slug. Ports Python Sprint 2t s1+s4 client.
+- [ ] **TS-POLY-02**: `polymarketDiscover()` returns active weather events; Tier 0/1/2/3 resolver (Tier 0 → `DeferredMarketError` for Taipei/HK-lowest; Tier 1 `resolutionSource` URL match on Wunderground/NOAA WRH; Tier 2 description URL match; Tier 3 catalog fallback via `resolveStationForEvent`).
+- [ ] **TS-POLY-03**: `polymarketSettle(eventId, opts?)` enforces UUID4 regex on `eventId`, 16 KB description cap (→ `PayloadTooLargeError`), netloc allowlist (`wunderground.com`, `weather.gov`, + `www.` variants). Reads `internationalDailyExtremes()` for resolution; half-up rounding to whole-degree-native; ≤1°F / 0.6°C diff vs published Polymarket value emits `dataQualityAlert` (not throw); `TooEarlyToSettleError` for unfinalized.
+
+### Cache + Temporal + Validator (Phase TS-W3)
+
+- [ ] **TS-CACHE-01**: `CacheStore` interface with `get<T>(key)`, `set<T>(key, value, opts?)`, `delete(key)`, `withLock<T>(key, fn)`. Concrete impls: `IndexedDBStore` (browser, via `idb`, lock via Web Locks API), `FsStore` (Node, via `node:fs/promises` + `proper-lockfile`), `MemoryStore` (Workers). `defaultCacheStore()` auto-detects runtime.
+- [ ] **TS-CACHE-02**: Cache-skip rules match Python: current LST month/year skipped; any `.live` source skipped; archive endpoints within 30-day volatile window skipped. Cache root `process.env.TRADEWINDS_CACHE_DIR ?? path.join(os.homedir(), '.tradewinds', 'cache-ts')` (Node); IndexedDB DB `tradewinds-cache-v1` (browser). Distinct from Python cache root.
+- [ ] **TS-TEMPORAL-01**: `TimePoint(value: Date | string)` rejects naive datetimes, date-only ISO, `NaN`/`Infinity`. Methods: `toUTCDate()`, `toISOString()`, `asZone(tz)` (via `Intl.DateTimeFormat`), `equals/before/after`. Class-level `TimePoint.now()`.
+- [ ] **TS-TEMPORAL-02**: `KnowledgeView<Row extends {knowledge_time: string}>(rows, asOf)` provides `.rows()` filtered to `knowledge_time <= asOf` and `.asOf` getter. `LeakageDetector(asOf).check(rows)` and `assertNoLeakage(rows, asOf)` throw `LeakageError` with `toDict()` matching Python `as_of/violating_count/sample_violations` shape.
+- [ ] **TS-VALIDATOR-01**: `validateRows(rows, schemaId, opts?)` uses ajv-standalone compiled validators (no runtime ajv dep). Throws `SchemaValidationError` with Python-vocabulary violations: `source_attr_required` / `source_column_required` / `retrieved_at_required` / `required_column_missing` / `non_nullable_has_nulls` / `mixed_null_sentinels` / `dtype_mismatch` / `enum_value_violation` / `unknown_schema_id`. Honors `allowSourceDrift` opt.
+
+### Transforms + QC (Phase TS-W4)
+
+- [ ] **TS-TRANSFORM-01**: 9 transforms ported with identical column-naming convention `{col}_{op}_{param}`: `lag(rows, col, n)`, `diff(rows, col, n=1)`, `diff2(rows, col)`, `rolling(rows, col, window, fn='mean')`, `calendarFeatures(rows, dateCol, tz?)` (adds `month_sin/cos`, `dow_sin/cos`, `hour_sin/cos`), `spread(rows, colA, colB)`, `windChill(tempF, windMph)`, `heatIndex(tempF, rhPct)`, `clipOutliers(rows, col, opts={std: 3.0})`. NWS wind chill / heat index formulas match Python reference-table fixtures within 1°F.
+- [ ] **TS-QC-01**: `QCEngine.apply(rows)` adds an `obsQcStatus` Int (32-bit bitfield) column; ≥ 5 alpha rules ported with same rule IDs and bit positions as Python `ALPHA_RULES`: temp out-of-physics, dewpoint > temp, wind speed neg/huge, pressure out-of-physics, METAR-corruption. `QCRule` Protocol equivalent (TS interface).
+- [ ] **TS-QC-02**: `crosscheckIemGhcnh(iemRows, ghcnhRows, opts={tolC: 2.0})` returns disagreement rows with `{station, eventTime, tempCIem, tempCGhcnh, deltaC}` columns matching Python output. `clipOutliers` is preprocessing twin.
+
+### Discovery + International + Versioning (Phase TS-W6)
+
+- [ ] **TS-DISCOVERY-01**: `availability(station)` returns `{station, monthsCached, firstMonth, lastMonth}` sourced from `CacheStore` (observation cache + climate cache combined).
+- [ ] **TS-DISCOVERY-02**: `describe(schemaId)` returns multi-line description from JSON-Schema `description` fields. `featureCatalog()` returns transforms surface in stable order. `climateGaps(station, from, to)` throws `NotImplementedError` matching Python.
+- [ ] **TS-INTL-01**: `internationalDailyExtremes(rows, {stationTz})` rolls per-local-calendar-day `{tempMaxC, tempMinC, tempMaxF, tempMinF}` at whole-°C precision; UTC-wrap edge cases tested for RJTT (UTC+9), SAEZ (UTC-3), NZWN (UTC+12/13 DST). Uses `Intl.DateTimeFormat` for tz-aware day extraction.
+- [ ] **TS-VERSION-01**: `DataVersion.fromComponents(...)` via Web Crypto `crypto.subtle.digest('SHA-256')` produces same token as Python `discovery.DataVersion` for identical inputs. Round-trip property test: same inputs → same token across two calls.
+
+### Format Serializers (Phase TS-W3 / TS-W4 partial)
+
+- [ ] **TS-FORMAT-01**: `jsonDumps/jsonLoads`, `csvDumps/csvLoads`, `toonDumps/toonLoads` ported. `parquet` and `dataframe` skipped in v0.1.0 (no DataFrames; parquet deferred to v0.2 via `parquet-wasm`). JSON empty-frame envelope `{columns: [...], data: []}` matches Python.
+
+### Packaging + Release (Phase TS-W7)
+
+- [ ] **TS-BUNDLE-01**: `size-limit` per-package gates enforced in CI: `@tradewinds/core` ≤ 25 KB, `@tradewinds/weather` ≤ 35 KB, `@tradewinds/markets` ≤ 10 KB, `tradewinds` meta ≤ 70 KB (all min+gzip).
+- [ ] **TS-RELEASE-01**: Changesets + npm OIDC trusted publishing. 4 pending publishers registered on npmjs.com pointing at `helloiamvu/tradewinds` + workflow `release-ts.yml` + environment `npm`. `vts-0.1.0rc1` tag → npm `--tag next` for soak; `vts-0.1.0` tag → npm `--tag latest`.
+- [ ] **TS-DOCS-01**: NumPy-style equivalent JSDoc on all public surface; typedoc generation under `docs/ts-api/`.
+- [ ] **TS-DOCS-02**: README quickstart (Node + browser samples) timed at <5 minutes by an external person (not the author).
+- [ ] **TS-DOCS-03**: `docs/chrome-extension-integration.md` end-to-end guide for Rob's overlay: manifest.json `host_permissions`, service worker import pattern, content-script ↔ service-worker `chrome.runtime.sendMessage` pattern, IIFE bundle alternative for content-script use.
+- [ ] **TS-CI-02**: `release-ts.yml` + `drift-rotate-ts.yml` (weekly Mon 07:30 UTC, soft-fail watchdog mirroring Python `drift-rotate.yml`).
+
+### TS Phase Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| TS-PKG-01, TS-PKG-02, TS-CODEGEN-01, TS-CODEGEN-02, TS-CORS-01, TS-CI-01 | TS-W0 | Pending |
+| TS-CORE-01, TS-CORE-02, TS-WEATHER-01, TS-WEATHER-02, TS-MARKETS-01, TS-RESEARCH-01, TS-SNAPSHOT-01 | TS-W1 | Pending |
+| TS-WEATHER-03, TS-WEATHER-04, TS-PARSER-01..04, TS-MERGE-01, TS-PARITY-01 | TS-W2 | Pending |
+| TS-CACHE-01, TS-CACHE-02, TS-TEMPORAL-01, TS-TEMPORAL-02, TS-VALIDATOR-01, TS-FORMAT-01 | TS-W3 | Pending |
+| TS-RESEARCH-02, TS-TRANSFORM-01, TS-QC-01, TS-QC-02 | TS-W4 | Pending |
+| TS-POLY-01, TS-POLY-02, TS-POLY-03 | TS-W5 | Pending |
+| TS-DISCOVERY-01, TS-DISCOVERY-02, TS-INTL-01, TS-VERSION-01 | TS-W6 | Pending |
+| TS-BUNDLE-01, TS-RELEASE-01, TS-DOCS-01, TS-DOCS-02, TS-DOCS-03, TS-CI-02 | TS-W7 | Pending |
+
+**TS coverage:** 36 requirements, all mapped to TS-W0..TS-W7.
+
 ---
 *Requirements defined: 2026-05-21*
-*Last updated: 2026-05-22 — resolved MCP-01..06 ID collision; Phase 5 entries are canonical*
+*Last updated: 2026-05-23 — TS Requirements added; 36 TS-* IDs mapped to TS-W0..TS-W7 phases; Python v0.1.0 requirements all validated*
