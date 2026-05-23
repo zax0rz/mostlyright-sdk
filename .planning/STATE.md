@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v0.1.0
 milestone_name: Local-first SDK ship (RC1 ready)
 status: ready_to_publish
-stopped_at: "12/12 phases of v0.1.0 complete on main (Phase 4 at 7655b0e; Phase 3.1 REAL at 19d7416; Phase 3.2 REAL at de9b3af; Phase 3.3 REAL at 3b63870). 1603 tests passing (was 1568; +35 for Polymarket Gamma client + discovery + settlement engine + city derivation + numeric event_id support). Phase 3.3 ships: _polymarket_client.py (Gamma /events pagination + /events/id), polymarket_discover() returns DataFrame with per-row source overlay column + provenance attrs, polymarket_settle() with UUID/16KB/netloc-allowlist boundary guards before any HTTP fetch, _derive_city() heuristic for real Gamma payloads without explicit city field, _station_local_end_of_day for tz-correct finalization-window delays, defense-in-depth via DEFERRED_STATION_MEASURES, [polymarket] optional extra (pandas + tradewinds-weather), PolymarketSettlementError + TooEarlyToSettleError. CI workflows shipped: test.yml + wheel-metadata-check.yml + release.yml + release-testpypi.yml + drift-rotate.yml. PyPI publish workflows EXIST but are operator-gated."
-last_updated: "2026-05-23T20:00:00.000Z"
-last_activity: 2026-05-23 -- Phase 3.3 REAL impl merged to main at 3b63870; 1603 tests passing; review iter-1 closed 5 HIGH (architect: UTC/local TZ, defense-in-depth, ambiguous title, slug date rightmost, per-row source) + 4 P2 (codex: silent drop logging, pandas dep, weather dep, station-local TZ); iter-2 closed 2 P1 (codex: city derivation from slug for real Gamma, numeric event_id support for discover->settle round-trip); architect iter-2 PASS. Phase 3.2 + 3.3 seams both replaced with real implementations.
+stopped_at: "12/12 phases of v0.1.0 complete on main with ALL SEAMS REPLACED. Phase progression: 4 at 7655b0e; 3.1 REAL at 19d7416; 3.2 REAL at de9b3af; 3.3 REAL at 3b63870; 3.4 REAL at 691b228; 3.5 REAL at 11d167a; 3.6 REAL at 922225b; Mode 2 REAL at f4d75d7. 1662 tests passing (was 1603; +59 net new for Phase 3.4 QC wiring + 3.5 preprocessing + 3.6 discovery + Mode 2). Phase 3.4 ships QC engine wired into research(qc=True) with sidecar writer; Phase 3.5 ships tradewinds.preprocessing module + day_of_year cyclical features; Phase 3.6 ships availability/climate_gaps/describe/feature_catalog + DataVersion.for_research() reproducibility token + settlement_date_for / settlement_window_utc wrappers; Mode 2 ships research_by_source() with parser-tag alias bridge and truthful per-row source provenance. CI workflows shipped: test.yml + wheel-metadata-check.yml + release.yml + release-testpypi.yml + drift-rotate.yml. PyPI publish workflows EXIST but are operator-gated."
+last_updated: "2026-05-23T22:00:00.000Z"
+last_activity: 2026-05-23 -- Mode 2 REAL impl merged to main at f4d75d7; 1662 tests passing. ALL seams (Phase 3.2 NWP + Phase 3.3 Polymarket + Phase 3.4 QC wire + Phase 3.5 preprocessing + Phase 3.6 discovery + Mode 2) replaced with real implementations across 7 review iterations. Each phase ran codex high + python-architect; closed 5 CRITICAL/HIGH + 22 P1/P2 cumulatively.
 progress:
   total_phases: 12
   completed_phases: 12
@@ -31,6 +31,55 @@ Status: v0.1.0rc1 ready to publish (operator-gated)
 Last activity: 2026-05-23 — Phase 4 merged to main at 7655b0e (1453 tests passing)
 
 Progress: [██████████] 100% (12/12 phases complete in v0.1.0; ready to tag rc1)
+
+## Phase 3.4 / 3.5 / 3.6 / Mode 2 REAL implementations closeout (2026-05-23)
+
+Four seams replaced in sequence, each through the two-reviewer loop
+(codex high + python-architect). 1603 → 1662 tests (+59 net new).
+
+**Phase 3.4 (QC engine wired into research):**
+- `691b228 Merge phase-3.4: QC engine + IEM/GHCNh crosscheck`.
+- `research(qc=True)` opt-in runs QCEngine + crosscheck against raw
+  observations; sidecar parquet written to
+  `~/.tradewinds/cache/v1/observations_qc/{station}/{YYYY}/{MM}.parquet`.
+- `df.attrs["qc"]` summary (rules_fired, rows_flagged, sidecar_paths,
+  crosscheck_disagreements). Mode 1 parity rows unchanged.
+- New `tradewinds.weather.qc_sidecar` module.
+- Iter 1 closed 2 architect HIGH (production parser column-name
+  mismatch) + 2 codex P2 (same root cause).
+
+**Phase 3.5 (transforms polish + preprocessing):**
+- `11d167a Merge phase-3.5: transforms polish + preprocessing module`.
+- New `tradewinds.preprocessing` module: `PHYSICS_BOUNDS`,
+  `clip_outliers()`, `iem_crosscheck()` standalone.
+- Added `day_of_year_sin/cos` cyclical features to `calendar_features`.
+- Hypothesis property test asserts sin²+cos²≈1 across 50 examples.
+- Iter 1 closed 1 architect HIGH (clip_outliers std<=0 silent collapse).
+
+**Phase 3.6 (discovery + DataVersion + settlement primitives):**
+- `922225b Merge phase-3.6: discovery + DataVersion + settlement primitives`.
+- Real `climate_gaps()` (year-cache scan) + real
+  `settlement_window_utc()` wrapper (was NotImplementedError seams).
+- `availability()` extended with climate years + QC sidecar counts.
+- `DataVersion.for_research()` factory: SHA-256 over
+  `(sdk_version, schema_ids, sources, query, data_cache_fingerprint)`.
+- Architect iter-1 PASS clean.
+
+**Mode 2 (research_by_source):**
+- `f4d75d7 Merge mode-2: real research_by_source`.
+- Routes through `_fetch_observations_range`, filters by source via
+  `_SOURCE_ALIASES` table that bridges parser-emitted bare tags
+  (`iem`/`awc`/`ghcnh`) with tradewinds' canonical dotted vocabulary
+  (`iem.archive`/`awc.live`/`ghcnh.archive`). Both forms accepted at
+  input; per-row source preserves parser-truthful provenance.
+- Iter 1 closed 1 architect CRITICAL (parser-tag mismatch — every
+  production IEM/AWC call silently returned zero rows) + 1 architect
+  HIGH (silent identity column rewrite) + 2 codex P1 (same root cause).
+- v0.2 follow-up documented: `_fetch_observations_range` pre-merges
+  per Mode 1 priority, so Mode 2 sees the post-merge view. True
+  pre-merge isolation ships in v0.2.
+
+**Tests grew 1603 → 1662 (+59 net new across 4 phases).**
 
 ## Phase 3.3 REAL implementation closeout summary (2026-05-23)
 
