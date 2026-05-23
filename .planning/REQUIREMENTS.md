@@ -167,10 +167,9 @@ Requirements for initial release. Each maps to a roadmap phase.
 
 Acknowledged but not in v0.1.0 roadmap.
 
-### Pandas 3.0 Migration (v0.2)
+### Pandas 3 + Polars Backend (Phase 6)
 
-- **PANDAS3-01**: Pandas 3.0 compatibility — re-capture parity fixtures, audit CoW assumptions, migrate offset aliases, validate timestamp resolution handling
-- **PANDAS3-02**: Drop `pandas<3.0` upper bound; pin `pandas>=3.0,<4.0`
+Promoted from deferred to active. See `## Phase 6: Pandas 3 Readiness + Optional Polars Backend (v0.2+)` section near the end of this document for the full PANDAS3-01..06 + POLARS-01..08 spec. Listed here as a forward reference for diff readers who land at the v2 section first.
 
 ### Cross-Source Diff Job (v0.1.1)
 
@@ -191,7 +190,8 @@ Acknowledged but not in v0.1.0 roadmap.
 
 - **HOSTED-01**: Hosted R2 read-through cache (Phase C+, requires 60-day validation gate to pass)
 - **VERTICAL-02**: Second vertical (sports, politics, or finance) — only after 60-day gate confirms productize thesis
-- **POLARS-01**: Polars return type (alongside pandas) — only if user demand emerges
+- **POLARS-LAZY-01**: Polars LazyFrame default (alongside eager) — v0.3 follow-up to Phase 6's eager-only first cut
+- **PYARROW-BACKEND-01**: pyarrow Table backend (third option alongside pandas + polars) — v0.3 if user demand emerges; narwhals supports it natively
 
 ## Out of Scope
 
@@ -433,6 +433,39 @@ Post-v0.1.0 requirements for the MCP-native data platform vision. See [`phase-05
 
 **TS coverage:** 42 requirements, all mapped to TS-W0..TS-W7.
 
+## Phase 6: Pandas 3 Readiness + Optional Polars Backend (v0.2+)
+
+Two paired tracks. **PANDAS3** drops the `pandas<3.0` cap (PKG-05) and re-captures the parity fixtures against 3.x; **POLARS** ships an opt-in backend so quants who prefer Polars don't pay the pandas-only tax. See ROADMAP § "Phase 6" for the full goal statement.
+
+### Pandas 3 Track
+
+- [ ] **PANDAS3-01**: Audit + remediate every datetime/dtype risk site flagged in the Phase 6 recon. At minimum: validator string-vs-object branching (`packages/core/src/tradewinds/core/validator.py:84,100,119-121,150`); `pd.Series([], dtype="datetime64[ns, UTC]")` literal in `packages/weather/src/tradewinds/weather/catalog/cli.py:158,216`; `to_datetime` calls in `_internal/_pairs.py:397`, `cli.py:149-151,225`, `_obs_projection.py:172`, `forecast_nwp.py` (3 sites). Each site lands a remediation comment citing the pandas 3.0 whatsnew section that motivated it.
+- [ ] **PANDAS3-02**: Drop the `pandas<3.0` cap in all 6 affected extras: `tradewinds[parquet]`, `tradewinds[research]`, `tradewinds-weather[parquet]`, `tradewinds-weather[nwp]`, `tradewinds-markets[parquet]`, `tradewinds-markets[polymarket]`. New pin: `pandas>=2.2,<4.0`. CHANGELOG entry documents the move.
+- [ ] **PANDAS3-03**: CI test matrix runs the fast-suite (`pytest -m "not live"`) under BOTH `pandas==2.2.x` (lower-bound lockfile) AND `pandas>=3.0,<4.0` (upper-bound lockfile). Matrix failure on either side blocks merge. uv tox-equivalent uses `--resolution lowest-direct` / `--resolution highest`.
+- [ ] **PANDAS3-04**: Re-capture the 5 parity fixtures at `tests/fixtures/parity/` against pandas 3.x. New fixtures land alongside the 2.x originals at `tests/fixtures/parity/pandas3/`; `tests/fixtures/parity/README.md` documents both-pandas SHAs side-by-side. Parity test selects fixture set by installed pandas major version.
+- [ ] **PANDAS3-05**: CoW (Copy-on-Write) audit on every `.copy()` / `.loc[...] = ` / chained-write site in the SDK. Confirm none of the parity-locked modules (`_internal/_pairs.py`, `core/merge.py`, `core/_climate.py`, validator) silently changed semantics when CoW becomes the default. Document any required `.copy()` insertions per site.
+- [ ] **PANDAS3-06**: Doctest examples in `validator.py:209-217`, `knowledge_view.py:46-58`, `leakage.py:54-73` updated to be pandas-3-clean (or `# doctest: +SKIP` if the bytes shift across versions). `pytest --doctest-modules` passes on both pandas lockfiles.
+
+### Polars Backend Track
+
+- [ ] **POLARS-01**: `backend: Literal["pandas","polars"]="pandas"` kwarg on every public DataFrame-returning entry point: `tradewinds.research()`, `tradewinds.mode2.research_by_source()`, `tradewinds.markets.polymarket.polymarket_discover()`, `tradewinds.forecasts.forecast_nwp()`, `tradewinds.international.daily_extremes()` (returns list of dicts today; v0.2 returns `TradewindsResult`). Default stays pandas; `backend="polars"` returns a Polars frame.
+- [ ] **POLARS-02**: New `tradewinds.core.result.TradewindsResult` dataclass. Fields: `frame: pd.DataFrame | pl.DataFrame`, `source: str`, `retrieved_at: datetime`, `schema_id: str | None`, `qc: dict | None`, `data_version: DataVersion | None`. Carries provenance separate from the frame so polars (no `.attrs`) works equivalently to pandas. New backend-aware paths return `TradewindsResult`; legacy DataFrame-direct return kept under a one-release deprecation shim.
+- [ ] **POLARS-03**: Narwhals internal data layer for the 5 cleanly-portable modules: `transforms.py`, `preprocessing.py`, `qc.crosscheck_iem_ghcnh`, `core/temporal/knowledge_view.py`, `core/formats/{json,csv,toon}.py`. Each refactored to `nw.from_native(df) → ops → nw.to_native(...)`. Per-backend test matrix asserts identical output on both pandas + polars inputs.
+- [ ] **POLARS-04**: Parity-locked modules (`_internal/_pairs.py`, `core/merge.py`, `core/_climate.py`, `core/validator.py`, `core/temporal/leakage.py`, `core/temporal/timepoint.py`, `core/_json_safe.py`) stay pandas-only. Their lift-pinned status is unchanged. Any polars-mode caller hitting these paths flows through a pandas-mediated thunk; the conversion is documented in the module docstring + a `polars→pandas conversion at parity-locked boundary` comment.
+- [ ] **POLARS-05**: New `[polars]` optional extra on all three packages: `tradewinds[polars]`, `tradewinds-weather[polars]`, `tradewinds-markets[polars]`. Adds `polars>=1.0,<2.0` + `narwhals>=1.20,<2.0`. Default install never pulls polars. Calling a public surface with `backend="polars"` without the extra raises `SourceUnavailableError` carrying `"Install with: pip install tradewinds[polars]"` install hint (matching the `[nwp]` pattern).
+- [ ] **POLARS-06**: Round-trip parity property test: for every parity fixture, `polars_df.to_pandas().equals(pandas_df)` holds (allowing for the pandas→polars datetime-resolution conversion documented as acceptable in the test). Hypothesis-driven random-fixture variant strengthens the invariant beyond the 5 frozen cases.
+- [ ] **POLARS-07**: Sort-stability invariant — narwhals `sort()` MUST preserve the `kind="mergesort"` ordering the parity gate locked. Test asserts identical row ordering across pandas + polars for the merge layer's per-source dedup. If narwhals can't guarantee this, the polars merge path falls back to pandas (the merge module is on the POLARS-04 exclusion list anyway).
+- [ ] **POLARS-08**: CI matrix gates: cross-backend test job installs `[polars]` extra and runs the polars-only path of every public surface. Job is required on every PR touching `tradewinds.research`, `tradewinds.mode2`, `tradewinds.discovery`, `tradewinds.transforms`, `tradewinds.preprocessing`, or the new `tradewinds.core.result` module. Marker `@pytest.mark.polars` gates the suite; ungated runs skip cleanly without the extra.
+
+### Phase 6 Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| PANDAS3-01..PANDAS3-06 | 6 (PANDAS3 track) | Pending |
+| POLARS-01..POLARS-08 | 6 (POLARS track) | Pending |
+
+**Phase 6 coverage:** 14 requirements (6 pandas-3 + 8 polars), all mapped to Phase 6.
+
 ---
 *Requirements defined: 2026-05-21*
-*Last updated: 2026-05-23 — TS Requirements added; 36 TS-* IDs mapped to TS-W0..TS-W7 phases; Python v0.1.0 requirements all validated*
+*Last updated: 2026-05-23 — Phase 6 (pandas 3 readiness + optional polars backend) added; PANDAS3-01..06 and POLARS-01..08 promoted from deferred; 14 new IDs mapped to Phase 6*
