@@ -335,6 +335,7 @@ Open decisions to resolve during execution (per research SUMMARY.md):
 | 260522-n7n | Fix iter-9 P1/P2 (lock parent dir + dry-run no lock touch) | 2026-05-22 | 2238b2c | [260522-n7n-fix-iter-9-p1-p2-lock-parent-dir-dry-run](./quick/260522-n7n-fix-iter-9-p1-p2-lock-parent-dir-dry-run/) |
 | 260522-nbw | Apply iter-9 P1 mkdir pattern to all 3 FileLock sites (iter-10 architect) | 2026-05-22 | 1c1681d | [260522-nbw-fix-iter-10-architect-high-p1-bug-in-wri](./quick/260522-nbw-fix-iter-10-architect-high-p1-bug-in-wri/) |
 | 260522-ng9 | Fix Task 1 mkdir variable name + ordering (iter-11) | 2026-05-22 | b166e2b | [260522-ng9-fix-iter-11-task-1-mkdir-uses-wrong-var-](./quick/260522-ng9-fix-iter-11-task-1-mkdir-uses-wrong-var-/) |
+| 260523-thb | Retroactively register TS SDK milestone + cross-SDK sync planning work | 2026-05-23 | 17bfb01 | [260523-thb-retroactively-register-ts-sdk-milestone-](./quick/260523-thb-retroactively-register-ts-sdk-milestone-/) |
 
 ## Session Continuity
 
