@@ -925,11 +925,12 @@ provides-extras = ["parquet", "research"]
 
 [[package]]
 name = "tradewinds-markets"
-version = "0.0.1"
+version = "0.1.0a1"
 source = { editable = "packages/markets" }
 dependencies = [
     { name = "httpx" },
     { name = "jsonschema" },
+    { name = "tradewinds" },
 ]
 
 [package.optional-dependencies]
@@ -944,6 +945,7 @@ requires-dist = [
     { name = "jsonschema", specifier = ">=4.21" },
     { name = "pandas", marker = "extra == 'parquet'", specifier = ">=2.2,<3.0" },
     { name = "pyarrow", marker = "extra == 'parquet'", specifier = ">=17.0,<24.0" },
+    { name = "tradewinds", editable = "packages/core" },
 ]
 provides-extras = ["parquet"]
 

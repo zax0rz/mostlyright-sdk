@@ -1,20 +1,26 @@
 [project]
 name = "tradewinds-markets"
-version = "0.0.1"
-description = "Prediction market data for tradewinds: Kalshi, Polymarket. v0.1.0 ships in Sprint 0.5 with Kalshi market metadata."
+version = "0.1.0a1"
+description = "Prediction market data for tradewinds: Kalshi (NHIGH/NLOW contract specs in v0.1.0a1, market metadata in Sprint 0.5), Polymarket (Phase 3.3)."
 readme = "README.md"
 license = "MIT"
 authors = [{ name = "Robert Tarabcak", email = "tarabcakr@gmail.com" }]
 requires-python = ">=3.11"
 keywords = ["kalshi", "polymarket", "prediction-markets"]
 classifiers = [
-    "Development Status :: 1 - Planning",
+    "Development Status :: 2 - Pre-Alpha",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
+    # PKG-03: pin tradewinds (core) so users cannot mix markets/core releases
+    # across the canonical-schema boundary. The Kalshi resolvers use
+    # tradewinds.markets.catalog (this package) but the wider settlement
+    # pipeline reads tradewinds.core.* schemas; a stale core would silently
+    # serve the wrong column set.
+    "tradewinds>=0.1.0a1,<0.2",
     "httpx>=0.27",
     "jsonschema>=4.21",
 ]
