@@ -27,4 +27,5 @@ pre-push:
     typecheck:
       run: pnpm -r typecheck
     test:
-      run: pnpm -r test --run -- --exclude '**/*.live.test.ts'
+      # vitest CLI args go through `--` so pnpm doesn't intercept them.
+      run: pnpm -r test -- --run --exclude '**/*.live.test.ts'
