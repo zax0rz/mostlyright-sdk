@@ -143,12 +143,21 @@ def _has_mixed_null_sentinels(s: pd.Series) -> bool:
     coerce ``pd.NA`` to ``np.nan`` (or vice versa) in subsets of rows,
     producing a column with both sentinels. Downstream dtype-aware code
     (e.g. IEM ``M``-vs-zero discrimination per Pitfall 8) is then unsafe.
+
+    codex iter-4 HIGH fix: scans the FULL column, not just head(1000) —
+    a mixed sentinel introduced past row 1000 must still be caught.
     """
-    if s.dtype == "object":
-        sample = s.head(1000)
-        has_na = any(v is pd.NA for v in sample)
-        has_nan = any(isinstance(v, float) and v != v for v in sample)  # NaN
-        return has_na and has_nan
+    if s.dtype != "object":
+        return False
+    has_na = False
+    has_nan = False
+    for v in s:
+        if v is pd.NA:
+            has_na = True
+        elif isinstance(v, float) and v != v:  # NaN
+            has_nan = True
+        if has_na and has_nan:
+            return True
     return False
 
 

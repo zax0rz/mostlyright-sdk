@@ -158,3 +158,43 @@ def test_none_preserved_through_conversion():
     df = IEMAdapter.from_rows([_row(wind_speed_kt=None, visibility_miles=None)])
     assert pd.isna(df["wind_speed_ms"].iloc[0])
     assert pd.isna(df["visibility_m"].iloc[0])
+
+
+# ----------------------------------------------------------------------
+# Adapter -> Validator integration (codex iter-4 HIGH fix)
+# ----------------------------------------------------------------------
+def test_adapter_output_passes_validator():
+    """The full adapter -> validator chain must validate cleanly."""
+    from tradewinds.core import validate_dataframe
+
+    df = IEMAdapter.from_rows([_row(), _row(observed_at="2025-01-01T13:00:00Z")])
+    reg = validate_dataframe(df, "schema.observation.v1")
+    assert reg.source == "iem.archive"
+    assert reg.rows == 2
+
+
+def test_adapter_single_row_all_nulls_validator_dtype():
+    """A single METAR row with no gust / no cloud-base must still produce a
+    schema-conformant DataFrame (float64 dtype enforced via coerce_canonical_dtypes).
+    """
+    from tradewinds.core import validate_dataframe
+
+    df = IEMAdapter.from_rows(
+        [
+            _row(
+                wind_gust_kt=None,
+                sky_base_1_ft=None,
+                sky_base_2_ft=None,
+                sky_base_3_ft=None,
+                sky_base_4_ft=None,
+                sky_cover_2=None,
+                sky_cover_3=None,
+                sky_cover_4=None,
+            )
+        ]
+    )
+    assert df["wind_gust_ms"].dtype == "float64"
+    assert df["sky_base_1_m"].dtype == "float64"
+    # Validator must accept.
+    reg = validate_dataframe(df, "schema.observation.v1")
+    assert reg.rows == 1

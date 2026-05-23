@@ -90,6 +90,63 @@ def empty_observation_df() -> pd.DataFrame:
     return pd.DataFrame({c: [] for c in cols})
 
 
+#: Canonical dtypes per ``schema.observation.v1`` column. Used by
+#: :func:`coerce_canonical_dtypes` to ensure adapter output passes the
+#: Validator dtype check even when an entire column is null (e.g. a
+#: single METAR row with no gust + no cloud-base would otherwise infer
+#: object dtype). codex iter-4 HIGH fix.
+_CANONICAL_FLOAT_COLS: tuple[str, ...] = (
+    "temp_c",
+    "dew_point_c",
+    "wind_speed_ms",
+    "wind_gust_ms",
+    "slp_hpa",
+    "visibility_m",
+    "precip_mm_1h",
+    "sky_base_1_m",
+    "sky_base_2_m",
+    "sky_base_3_m",
+    "sky_base_4_m",
+)
+
+_CANONICAL_INT_COLS: tuple[str, ...] = ("wind_dir_deg",)
+
+_CANONICAL_STRING_COLS: tuple[str, ...] = (
+    "station",
+    "observation_type",
+    "sky_cover_1",
+    "sky_cover_2",
+    "sky_cover_3",
+    "sky_cover_4",
+    "metar_raw",
+)
+
+
+def coerce_canonical_dtypes(df: pd.DataFrame) -> pd.DataFrame:
+    """Coerce per-column dtypes to match ``schema.observation.v1`` declarations.
+
+    Catalog adapters build DataFrames from row-dicts; pandas infers object
+    dtype for any column that is fully null, which fails the Validator's
+    float64/int64 dtype checks. This helper coerces:
+
+    - numeric columns to ``float64`` (with ``pd.NA`` -> ``np.nan``)
+    - ``wind_dir_deg`` to nullable ``Int64``
+    - string columns to ``string`` dtype
+
+    Idempotent — already-correctly-typed columns pass through unchanged.
+    """
+    for col in _CANONICAL_FLOAT_COLS:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
+    for col in _CANONICAL_INT_COLS:
+        if col in df.columns:
+            df[col] = pd.array(df[col].tolist(), dtype="Int64")
+    for col in _CANONICAL_STRING_COLS:
+        if col in df.columns:
+            df[col] = df[col].astype("string")
+    return df
+
+
 def add_overlay_columns(
     df: pd.DataFrame,
     *,
@@ -97,12 +154,14 @@ def add_overlay_columns(
     retrieved_at: datetime,
     lag: pd.Timedelta,
 ) -> pd.DataFrame:
-    """Add ``source`` / ``retrieved_at`` / ``knowledge_time`` overlay columns.
+    """Add ``source`` / ``retrieved_at`` / ``knowledge_time`` overlay columns
+    and coerce per-column dtypes to the canonical schema declarations.
 
     Also sets ``df.attrs["source"]`` and ``df.attrs["retrieved_at"]``.
     ``event_time`` is parsed to tz-aware UTC datetime64.
     """
     df["event_time"] = pd.to_datetime(df["event_time"], utc=True, errors="coerce")
+    df = coerce_canonical_dtypes(df)
     df["source"] = source
     df["retrieved_at"] = pd.Timestamp(retrieved_at).tz_convert("UTC")
     df["knowledge_time"] = df["event_time"] + lag
