@@ -37,6 +37,7 @@ export {
 export {
   parseCliRecord,
   parseCliResponse,
+  mergeClimate,
   inferReportType,
   HIGH_TEMP_MAX_F,
   HIGH_TEMP_MIN_F,

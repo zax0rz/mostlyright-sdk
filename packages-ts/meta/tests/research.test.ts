@@ -268,4 +268,68 @@ describe("research() — TS-W1 Wave 6 (AWC + CLI)", () => {
     const ms = Date.parse(row?.market_close_utc ?? "");
     expect(Number.isFinite(ms)).toBe(true);
   });
+
+  it("CLI duplicate-date merge: later final replaces earlier preliminary", async () => {
+    // Two CLI rows for the same date. The first (preliminary, issued same
+    // day) carries high=45; the second (final, issued next morning at
+    // 06:00 UTC — the overnight CLI window) carries high=50. Per
+    // mergeClimate (strict `>` on report_type_priority), the `final` row
+    // wins and high_temp_f for that date is 50.
+    const cli: CliMockRecord[] = [
+      // Preliminary: product timestamp = 2025-01-01T12:00 = same day as
+      // observation 2025-01-01 → inferReportType returns "preliminary".
+      { valid: "2025-01-01", high: 45, low: 30, product: "202501011200-KOKX-CDUS41-CLINYC" },
+      // Final: product timestamp = 2025-01-02T06:00 = next day, hour 6
+      // → inferReportType returns "final".
+      { valid: "2025-01-01", high: 50, low: 35, product: "202501020600-KOKX-CDUS41-CLINYC" },
+    ];
+    installFetchMock({ cli, awc: [] });
+    const rows = await research("NYC", "2025-01-01", "2025-01-01");
+    expect(rows).toHaveLength(1);
+    const row = rows[0];
+    // Final (priority 3.0) beats preliminary (priority 1.0), strict >.
+    expect(row?.cli_high_f).toBe(50);
+    expect(row?.cli_low_f).toBe(35);
+    expect(row?.cli_report_type).toBe("final");
+  });
+
+  it("CLI dedup: equal priority keeps first-seen (two finals)", async () => {
+    // Two `final` rows for the same date — first wins. Order in input
+    // matters; `mergeClimate` does NOT take strict-> against equal-priority
+    // siblings (strict `>` only, first-seen wins on equality).
+    const cli: CliMockRecord[] = [
+      { valid: "2025-01-01", high: 50, low: 30, product: "202501020600-KOKX-CDUS41-CLINYC" },
+      { valid: "2025-01-01", high: 99, low: 99, product: "202501020700-KOKX-CDUS41-CLINYC" },
+    ];
+    installFetchMock({ cli, awc: [] });
+    const rows = await research("NYC", "2025-01-01", "2025-01-01");
+    expect(rows[0]?.cli_high_f).toBe(50);
+    expect(rows[0]?.cli_low_f).toBe(30);
+  });
+
+  it("AWC obs grouped by LST date (DST-ignored, not wall-clock local)", async () => {
+    // 2024-03-10 was spring-forward in the US (02:00 EST → 03:00 EDT).
+    // The observation at 05:30 UTC corresponds to:
+    //   - Wall-clock NYC EDT: 01:30 (2024-03-10) — DST already shifted.
+    //   - Standard time (LST, UTC-5 year-round): 00:30 (2024-03-10).
+    // Either grouping puts it on 2024-03-10 actually; pick a clearer
+    // edge: 04:30 UTC where wall-clock EDT = 00:30 (2024-03-10 still)
+    // but EST = 23:30 of the *previous* day (2024-03-09). The Python
+    // settlement model groups by LST → date is 2024-03-09.
+    const dateStr = "2024-03-09";
+    const awc: AwcMockMetar[] = [
+      {
+        icaoId: "KNYC",
+        obsTime: epochOfUtc("2024-03-10T04:30:00Z"),
+        temp: 10,
+        dewp: 3,
+        wspd: 4,
+      },
+    ];
+    installFetchMock({ cli: [], awc });
+    const rows = await research("NYC", dateStr, dateStr);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.obs_count).toBe(1);
+    expect(rows[0]?.obs_high_f).not.toBeNull();
+  });
 });

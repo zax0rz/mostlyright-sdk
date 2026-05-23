@@ -11,13 +11,19 @@
 // W1 scope: AWC + CLI only. NO IEM ASOS, GHCNh, forecast, or cache —
 // those land in later waves. All `fcst_*` columns are unconditionally null.
 
-import { STATION_BY_CODE, STATION_BY_ICAO, marketCloseUtc } from "@tradewinds/core";
+import {
+  STATION_BY_CODE,
+  STATION_BY_ICAO,
+  marketCloseUtc,
+  settlementDateFor,
+} from "@tradewinds/core";
 import {
   type ClimateObservation,
   type Observation,
   awcToObservation,
   downloadCliRange,
   fetchAwcMetars,
+  mergeClimate,
   parseCliResponse,
 } from "@tradewinds/weather";
 
@@ -143,21 +149,27 @@ function buildDateList(fromDate: string, toDate: string): ReadonlyArray<string> 
 
 /**
  * Given an ISO-UTC observed_at string ("YYYY-MM-DDTHH:MM:SSZ") and the
- * station's IANA timezone, return the local calendar date (YYYY-MM-DD)
- * that the observation falls on. Uses Intl.DateTimeFormat so DST is
- * handled correctly — observations group by wall-clock local date.
+ * station code, return the LOCAL STANDARD TIME calendar date (YYYY-MM-DD)
+ * that the observation belongs to.
+ *
+ * Uses `settlementDateFor()` from @tradewinds/core — which applies the
+ * station's STANDARD UTC offset (DST-ignored). Kalshi NHIGH/NLOW
+ * settlement windows are midnight–midnight LST year-round; observations
+ * MUST group by LST date, not by wall-clock local date, otherwise the
+ * spring/fall DST edges produce wrong daily aggregates.
  */
-function observedDateInTz(observedAt: string, tz: string): string | null {
+function observedSettlementDate(observedAt: string, station: string): string | null {
   const ms = Date.parse(observedAt);
   if (!Number.isFinite(ms)) return null;
-  const fmt = new Intl.DateTimeFormat("en-CA", {
-    timeZone: tz,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-  // en-CA produces "YYYY-MM-DD" directly.
-  return fmt.format(new Date(ms));
+  try {
+    return settlementDateFor(new Date(ms), station);
+  } catch {
+    // settlementDateFor throws on unknown station tz; the caller has
+    // already validated the station code, so this shouldn't fire in
+    // practice. Defensive fallthrough to null preserves the bucket
+    // skip the original implementation used on parse failure.
+    return null;
+  }
 }
 
 function average(values: ReadonlyArray<number>): number | null {
@@ -255,13 +267,15 @@ export async function research(
   try {
     const cliRaw = await downloadCliRange(resolved.icao, fromYear, toYear, baseOpts);
     const cliParsed = parseCliResponse(cliRaw, resolved.code);
+    // Use mergeClimate() (byte-faithful port of Python merge_climate /
+    // _dedup_climate_rows): keep the row with highest
+    // `report_type_priority` per `(station_code, observation_date)` with
+    // strict `>`. This ensures a later `final` replaces an earlier
+    // `preliminary`, but a second `final` never overwrites the first.
+    const cliDeduped = mergeClimate(cliParsed);
     cliMap = new Map<string, ClimateObservation>();
-    for (const row of cliParsed) {
-      // First-seen-wins on duplicates within a year (priority-based dedup
-      // belongs in a dedicated merge module — W1 keeps this minimal).
-      if (!cliMap.has(row.observation_date)) {
-        cliMap.set(row.observation_date, row);
-      }
+    for (const row of cliDeduped) {
+      cliMap.set(row.observation_date, row);
     }
   } catch (err) {
     // Surface aborts to the caller; on other errors degrade to no CLI data.
@@ -281,7 +295,7 @@ export async function research(
   for (const m of awcRaw) {
     const obs = awcToObservation(m);
     if (obs === null) continue;
-    const localDate = observedDateInTz(obs.observed_at, resolved.tz);
+    const localDate = observedSettlementDate(obs.observed_at, resolved.code);
     if (localDate === null) continue;
     let bucket = obsByDate.get(localDate);
     if (bucket === undefined) {

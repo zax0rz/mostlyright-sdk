@@ -6,8 +6,13 @@ bypass CORS for hosts declared in `host_permissions`, so AWC + IEM CLI both
 work without a proxy.
 
 1. From repo root: `pnpm --filter tradewinds build`
-2. Copy the built ESM bundle to `lib/`:
-   `mkdir -p packages-ts/examples/chrome-extension-mvp/lib && cp packages-ts/meta/dist/index.mjs packages-ts/examples/chrome-extension-mvp/lib/`
+2. Copy the BUNDLED ESM (single-file, workspace deps inlined) to `lib/`:
+   `mkdir -p packages-ts/examples/chrome-extension-mvp/lib && cp packages-ts/meta/dist/index.bundle.mjs packages-ts/examples/chrome-extension-mvp/lib/`
+
+   > Note: copy `index.bundle.mjs`, **not** `index.mjs`. The non-bundled
+   > variant uses bare specifiers (`@tradewinds/core`, etc.) which
+   > Chrome MV3 service workers cannot resolve (no node_modules, no
+   > import map). The bundled variant inlines all workspace siblings.
 3. Open `chrome://extensions/` → enable Developer Mode → "Load unpacked" →
    select `packages-ts/examples/chrome-extension-mvp/`.
 4. Click the extension icon → confirm station "NYC" + date range → "Lookup".

@@ -243,3 +243,36 @@ export function parseCliResponse(
   }
   return out;
 }
+
+/**
+ * Deduplicate climate rows by `(station_code, observation_date)`.
+ *
+ * Keeps the row with the highest `report_type_priority` using STRICT `>`
+ * (not `>=`). First-seen wins at equal priority — this preserves the
+ * overnight `final` (which IS the Kalshi settlement value) when a
+ * `preliminary` arrives first in the input order.
+ *
+ * Byte-faithful port of `tradewinds._internal.merge.climate.merge_climate`,
+ * itself a lift of `_dedup_climate_rows` from
+ * `monorepo-v0.14.1/ingest/storage/parquet.py:477-494`.
+ *
+ * Empty input returns an empty array.
+ */
+export function mergeClimate(
+  rows: ReadonlyArray<ClimateObservation>,
+): ReadonlyArray<ClimateObservation> {
+  const best = new Map<string, ClimateObservation>();
+  for (const row of rows) {
+    const key = `${row.station_code} ${row.observation_date}`;
+    const existing = best.get(key);
+    if (existing === undefined) {
+      best.set(key, row);
+      continue;
+    }
+    // Strict > per Python merge_climate; first-seen wins on equal priority.
+    if (row.report_type_priority > existing.report_type_priority) {
+      best.set(key, row);
+    }
+  }
+  return Array.from(best.values());
+}

@@ -3,86 +3,39 @@
 // Ported byte-faithfully from
 // `packages/weather/src/tradewinds/weather/_awc.py::awc_to_observation`.
 //
-// Output `source` is `"awc.live"` — the canonical source-id used by
-// downstream merge / cache layers (the Python parser emits `"awc"` and
-// gets normalized to `"awc.live"` later; we emit the normalized form
-// directly to match the TS-SDK source-id contract).
+// Output `source` is `"awc"` — matching the row-level enum
+// (`source: "awc" | "iem" | "ghcnh"` per
+// `packages-ts/core/src/schemas/generated/observation_qc.v1.ts`) and the
+// Python parser (`packages/weather/src/tradewinds/weather/_awc.py:320`).
+// The `.live` / `.archive` suffix is a CATALOG / orchestrator source-id
+// (a higher layer concern), NOT a row-level field.
 //
-// =============================================================================
-// Inlined bounds + conversion helpers
-// =============================================================================
-// `@tradewinds/core` exposes these via `internal/bounds.ts` and `internal/convert.ts`
-// but the package only re-exports `fetchWithRetry` at its public surface
-// (other helpers are documented as "deep imports for fetchers + parsers in
-// later waves" but the `exports` field gates subpath access). Per the
-// TS-W1 Wave 3 task scope ("All code in `packages-ts/weather/src/_fetchers/`
-// + `_parsers/` ONLY. Do NOT modify any other package"), the needed
-// constants and pure-function helpers are inlined verbatim here. Drift is
-// caught by the parity-fixture gate in TS-W2.
-// =============================================================================
+// Bounds + conversion constants are imported from `@tradewinds/core/internal/{bounds,convert}`
+// (subpath exports added in TS-W1 iter-1 HIGH 4). Any change to the
+// constants in core propagates here automatically — no drift.
+
+import {
+  MAX_RAW_METAR_LEN,
+  MAX_VISIBILITY_MILES,
+  MAX_WX_CODES_LEN,
+  SKY_BASE_MAX_FT,
+  SLP_MAX_MB,
+  SLP_MIN_MB,
+  STATION_CODE_RE,
+  TEMP_MAX_C,
+  TEMP_MIN_C,
+  WIND_DIR_BOUNDS,
+  WIND_GUST_MAX,
+  WIND_SPEED_MAX,
+  boundedFloat,
+  boundedFloatMin,
+  boundedInt,
+} from "@tradewinds/core/internal/bounds";
+import { celsiusToFahrenheit, hpaToInhg } from "@tradewinds/core/internal/convert";
 
 import type { AwcMetarRaw } from "../_fetchers/awc.js";
 
-// ---------------------------------------------------------------------------
-// Bounds (mirror packages-ts/core/src/internal/bounds.ts)
-// ---------------------------------------------------------------------------
-
-const SLP_MIN_MB = 870.0;
-const SLP_MAX_MB = 1084.0;
-const TEMP_MIN_C = -90.0;
-const TEMP_MAX_C = 60.0;
-const MAX_RAW_METAR_LEN = 2048;
-const MAX_WX_CODES_LEN = 256;
-const MAX_VISIBILITY_MILES = 99.99;
-const WIND_DIR_LO = 0;
-const WIND_DIR_HI = 360;
-const WIND_SPEED_MAX = 200;
-const WIND_GUST_MAX = 250;
-const SKY_BASE_MAX_FT = 60000;
-const STATION_CODE_RE = /^[A-Z]{3,4}$/;
-
-// ---------------------------------------------------------------------------
-// Conversions (mirror packages-ts/core/src/internal/convert.ts)
-// ---------------------------------------------------------------------------
-
-const HPA_TO_INHG = 0.0295299875;
-
-function finiteOrNull(v: number | null | undefined): number | null {
-  if (v === null || v === undefined) return null;
-  return Number.isFinite(v) ? v : null;
-}
-
-function celsiusToFahrenheit(c: number | null): number | null {
-  const v = finiteOrNull(c);
-  return v === null ? null : (v * 9) / 5 + 32;
-}
-
-function hpaToInhg(hpa: number | null): number | null {
-  const v = finiteOrNull(hpa);
-  return v === null ? null : v * HPA_TO_INHG;
-}
-
-// ---------------------------------------------------------------------------
-// Bounded numerics (mirror bounds.ts helpers)
-// ---------------------------------------------------------------------------
-
-function boundedInt(val: number | null, lo: number, hi: number): number | null {
-  if (val === null || val === undefined) return null;
-  if (!Number.isFinite(val)) return null;
-  return val >= lo && val <= hi ? val : null;
-}
-
-function boundedFloat(val: number | null, lo: number, hi: number): number | null {
-  if (val === null || val === undefined) return null;
-  if (!Number.isFinite(val)) return null;
-  return val >= lo && val <= hi ? val : null;
-}
-
-function boundedFloatMin(val: number | null, lo: number): number | null {
-  if (val === null || val === undefined) return null;
-  if (!Number.isFinite(val)) return null;
-  return val >= lo ? val : null;
-}
+const [WIND_DIR_LO, WIND_DIR_HI] = WIND_DIR_BOUNDS;
 
 // ---------------------------------------------------------------------------
 // Observation row schema (matches specs/observation.json field set)
@@ -95,14 +48,16 @@ function boundedFloatMin(val: number | null, lo: number): number | null {
  *  - Every field defaults to `null` if the upstream record omits it,
  *    fails bounds, or fails type parsing. This mirrors the Python
  *    parser (no exceptions on bad input — only on missing required keys).
- *  - `source` is always the string literal `"awc.live"` for AWC-sourced rows.
+ *  - `source` is always the string literal `"awc"` for AWC-sourced rows
+ *    (the row-level enum is `"awc" | "iem" | "ghcnh"`; the `.live`/`.archive`
+ *    suffix is a CATALOG-layer source-id, not a row field).
  *  - `observed_at` is ISO 8601 UTC with `Z` suffix.
  */
 export interface Observation {
   readonly station_code: string;
   readonly observed_at: string;
   readonly observation_type: "METAR" | "SPECI";
-  readonly source: "awc.live";
+  readonly source: "awc";
   readonly temp_c: number | null;
   readonly dewpoint_c: number | null;
   readonly temp_f: number | null;
@@ -433,7 +388,7 @@ export function awcToObservation(m: AwcMetarRaw): Observation | null {
     station_code: stationCode,
     observed_at: observedAt,
     observation_type: observationType,
-    source: "awc.live",
+    source: "awc",
     temp_c: tempC,
     dewpoint_c: dewpC,
     temp_f: tempF,

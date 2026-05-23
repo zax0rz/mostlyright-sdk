@@ -12,6 +12,16 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
+    },
+    "./internal/bounds": {
+      "types": "./dist/internal/bounds.d.ts",
+      "import": "./dist/internal/bounds.mjs",
+      "require": "./dist/internal/bounds.cjs"
+    },
+    "./internal/convert": {
+      "types": "./dist/internal/convert.d.ts",
+      "import": "./dist/internal/convert.mjs",
+      "require": "./dist/internal/convert.cjs"
     }
   },
   "files": ["dist"],

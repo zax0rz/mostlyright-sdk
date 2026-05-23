@@ -307,7 +307,9 @@ describe("awcToObservation — happy path", () => {
     expect(row.station_code).toBe("NYC");
     expect(row.observed_at).toBe("2024-01-01T00:00:00Z");
     expect(row.observation_type).toBe("METAR");
-    expect(row.source).toBe("awc.live");
+    // Row-level `source` is the short-form enum value ("awc"); the
+    // `.live`/`.archive` suffix is a catalog source-id, not a row field.
+    expect(row.source).toBe("awc");
     expect(row.temp_c).toBe(5.0);
     expect(row.dewpoint_c).toBe(-2.0);
     // temp_f = 5 * 9/5 + 32 = 41
