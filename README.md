@@ -60,20 +60,25 @@ assert_no_leakage(df, TimePoint("2025-02-15T00:00:00+00:00"))
 ### Source-identity validator
 
 ```python
+from tradewinds.weather.catalog.iem import IEMAdapter
 from tradewinds.core import validate_dataframe
 
-# Catalog adapters stamp df.attrs["source"] when producing rows; the schema
-# class carries the pinned source-of-record. Validator compares the two.
-df.attrs["source"] = "iem.archive"
-reg = validate_dataframe(df, schema_id="schema.observation.v1")
-print(reg.audit_log())  # [{"event": "registered", "ts": "...", ...}]
+# Catalog adapters produce canonical-schema DataFrames with df.attrs["source"]
+# already stamped. Validator compares against the schema's pinned source
+# (set when tradewinds.core.schemas eager-registers at import).
+obs_df = IEMAdapter.from_rows([])  # also works with parsed rows
+reg = validate_dataframe(obs_df, schema_id="schema.observation.v1")
+print(reg.audit_log())
+# [{"event": "registered", "ts": "...", "source": "iem.archive", "rows": 0}]
 
-# Source drift raises SourceMismatchError unless you opt out with a reason:
+# Mismatched source raises SourceMismatchError unless you opt out:
+obs_df.attrs["source"] = "ghcnh.archive"  # simulating drift
 reg = validate_dataframe(
-    df,
+    obs_df,
     schema_id="schema.observation.v1",
-    allow_source_drift="manual backfill from ghcnh.archive",
+    allow_source_drift="manual backfill from GHCNh into the IEM schema",
 )
+# audit_log now carries both "registered" + "source_drift_allowed" entries.
 ```
 
 ### Kalshi NHIGH/NLOW resolvers

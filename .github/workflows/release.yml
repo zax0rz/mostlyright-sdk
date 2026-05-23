@@ -45,28 +45,46 @@ jobs:
           # tomllib ships in 3.11+; avoid the uv-install round trip for a
           # ~10-line python script.
           python3 --version
-      - name: Assert tag matches each package version
+      - name: Install packaging (for PEP 440 version normalization)
+        # codex iter-2 HIGH fix: hatchling/uv normalize PEP 440 versions
+        # (``0.1.0.a1`` -> ``0.1.0a1``) when generating wheel filenames +
+        # METADATA. A plain string compare would reject the canonical tag
+        # form or accept a non-canonical form that doesn't match what PyPI
+        # actually receives. Use packaging.version.Version which normalizes
+        # to the canonical form on both sides of the comparison.
+        run: pip install --user "packaging>=23"
+      - name: Assert tag matches each package version (PEP 440 normalized)
         env:
           REF_NAME: ${{ github.ref_name }}
         run: |
           python3 - <<'PY'
           import os, sys, tomllib
+          from packaging.version import InvalidVersion, Version
+
           ref = os.environ["REF_NAME"]
           if not ref.startswith("v"):
               sys.exit(f"ERROR: tag {ref!r} does not start with 'v'")
-          tag_version = ref[1:]
+          try:
+              tag_version = Version(ref[1:])
+          except InvalidVersion as exc:
+              sys.exit(f"ERROR: tag {ref!r} is not a valid PEP 440 version: {exc}")
           for pkg in ("packages/core/pyproject.toml",
                       "packages/weather/pyproject.toml",
                       "packages/markets/pyproject.toml"):
               with open(pkg, "rb") as f:
                   pyproj = tomllib.load(f)
-              pkg_version = pyproj["project"]["version"]
+              raw_version = pyproj["project"]["version"]
+              try:
+                  pkg_version = Version(raw_version)
+              except InvalidVersion as exc:
+                  sys.exit(f"ERROR: {pkg} version {raw_version!r} is not valid PEP 440: {exc}")
               if pkg_version != tag_version:
                   sys.exit(
-                      f"ERROR: tag {ref!r} (version {tag_version!r}) does not "
-                      f"match {pkg} version {pkg_version!r}. Bump or re-tag."
+                      f"ERROR: tag {ref!r} normalizes to {tag_version!s}, but "
+                      f"{pkg} version {raw_version!r} normalizes to {pkg_version!s}. "
+                      "Bump the package version or re-tag."
                   )
-              print(f"OK: {pkg} version {pkg_version} matches tag")
+              print(f"OK: {pkg} version {pkg_version!s} matches tag")
           PY
 
   publish-core:
