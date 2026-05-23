@@ -160,6 +160,15 @@ def add_overlay_columns(
     Also sets ``df.attrs["source"]`` and ``df.attrs["retrieved_at"]``.
     ``event_time`` is parsed to tz-aware UTC datetime64.
     """
+    # Defensive: reject naive retrieved_at up front. Without this,
+    # pd.Timestamp(naive_dt).tz_convert("UTC") raises a cryptic
+    # "Cannot convert tz-naive Timestamp" deep inside pandas.
+    if retrieved_at.tzinfo is None:
+        raise ValueError(
+            "retrieved_at must be a tz-aware datetime (e.g. datetime.now(UTC)); "
+            f"got naive {retrieved_at!r}. Attach a tzinfo before calling "
+            "the catalog adapter."
+        )
     df["event_time"] = pd.to_datetime(df["event_time"], utc=True, errors="coerce")
     df = coerce_canonical_dtypes(df)
     df["source"] = source

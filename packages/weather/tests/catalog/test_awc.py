@@ -76,3 +76,28 @@ def test_retrieved_at_propagates():
     when = datetime(2025, 1, 1, 13, tzinfo=UTC)
     df = AWCAdapter.from_rows([_row()], retrieved_at=when)
     assert df.attrs["retrieved_at"] == when
+
+
+def test_retrieved_at_naive_rejected():
+    """Naive retrieved_at must raise — not produce a cryptic pandas error."""
+    with pytest.raises(ValueError, match="tz-aware"):
+        AWCAdapter.from_rows([_row()], retrieved_at=datetime(2025, 1, 1, 13))
+
+
+def test_adapter_output_passes_validator_with_drift():
+    """AWC output must pass validator when caller supplies allow_source_drift.
+
+    The canonical schema is registered to iem.archive; AWC counts as drift
+    and requires an explicit reason string.
+    """
+    from tradewinds.core import validate_dataframe
+
+    df = AWCAdapter.from_rows([_row()])
+    reg = validate_dataframe(
+        df,
+        "schema.observation.v1",
+        allow_source_drift="AWC live observations (different canonical source)",
+    )
+    assert reg.source == "awc.live"
+    events = [e["event"] for e in reg.audit_log()]
+    assert "source_drift_allowed" in events

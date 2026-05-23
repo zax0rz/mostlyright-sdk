@@ -95,6 +95,12 @@ class CLIAdapter:
         """
         if retrieved_at is None:
             retrieved_at = datetime.now(UTC)
+        # Defensive: reject naive retrieved_at (cryptic pandas error otherwise).
+        if retrieved_at.tzinfo is None:
+            raise ValueError(
+                "retrieved_at must be a tz-aware datetime; "
+                f"got naive {retrieved_at!r}. Attach a tzinfo before calling."
+            )
         if source not in CLIAdapter.SUPPORTED_SOURCES:
             raise ValueError(
                 f"CLIAdapter does not support source={source!r}; "

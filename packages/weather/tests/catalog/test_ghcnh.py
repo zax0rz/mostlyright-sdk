@@ -73,3 +73,23 @@ def test_retrieved_at_propagates():
     when = datetime(2025, 1, 1, 13, tzinfo=UTC)
     df = GHCNhAdapter.from_rows([_row()], retrieved_at=when)
     assert df.attrs["retrieved_at"] == when
+
+
+def test_retrieved_at_naive_rejected():
+    with pytest.raises(ValueError, match="tz-aware"):
+        GHCNhAdapter.from_rows([_row()], retrieved_at=datetime(2025, 1, 1, 13))
+
+
+def test_adapter_output_passes_validator_with_drift():
+    """GHCNh output must pass validator when caller supplies allow_source_drift."""
+    from tradewinds.core import validate_dataframe
+
+    df = GHCNhAdapter.from_rows([_row()])
+    reg = validate_dataframe(
+        df,
+        "schema.observation.v1",
+        allow_source_drift="GHCNh historical fill (different canonical source)",
+    )
+    assert reg.source == "ghcnh.archive"
+    events = [e["event"] for e in reg.audit_log()]
+    assert "source_drift_allowed" in events
