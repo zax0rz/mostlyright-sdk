@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.14.1
-milestone_name: Parity Lift
-status: executing
-stopped_at: "Phases 1 + 1.5 + 2 + 2.1 + 3 + 3.1-3.6 architectural seams merged to main. 1451 tests passing. Mode 2 dispatch + International stations + NWP forecast + Polymarket + QC engine + Transforms DSL + Discovery+DataVersion all ship their v0.1.0 surfaces. Live fetch wiring for catalog adapters' fetch_observations methods + Polymarket Gamma API + NWP byte-range remains for subsequent alphas. Next: Phase 4 — Coverage, Docs, CI/CD, Release."
-last_updated: "2026-05-23T22:00:00.000Z"
-last_activity: 2026-05-23 -- Phase 3.1-3.6 architectural seams consolidated + merged to main
+milestone: v0.1.0
+milestone_name: Local-first SDK ship (RC1 ready)
+status: ready_to_publish
+stopped_at: "12/12 phases of v0.1.0 complete on main (Phase 4 merged at 7655b0e). 1453 tests passing. CI workflows shipped: test.yml + wheel-metadata-check.yml + release.yml (v* → prod PyPI, with !v*rc* negation) + release-testpypi.yml (v*rc* → TestPyPI) + drift-rotate.yml (weekly Mon 07:00 UTC soft-fail watchdog). Versions bumped 0.1.0a1 → 0.1.0rc1 across 3 pyprojects. Coverage gate enforced at 85% (empirical 94.20%; 90% aspirational). Doctests on 4 public-surface modules. 4 adapter docs. PyPI publish workflows EXIST but are operator-gated — user will configure 3 prod + 3 TestPyPI trusted publishers + GH environments separately, then tag v0.1.0rc1 → TestPyPI dry-run → external README quickstart timer (<5 min target) → bump rc1 → 0.1.0 → tag v0.1.0 → prod PyPI."
+last_updated: "2026-05-23T23:55:00.000Z"
+last_activity: 2026-05-23 -- Phase 4 merged to main; v0.1.0rc1 ready to publish (operator-gated)
 progress:
   total_phases: 12
-  completed_phases: 11
-  total_plans: 35
-  completed_plans: 32
-  percent: 92
+  completed_phases: 12
+  total_plans: 36
+  completed_plans: 36
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,50 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-21; STATE.md refreshed 2026-05-23)
 
 **Core value:** `research(contract, station, from_date, to_date)` returns clean, leakage-free, source-identified training pairs that backtest the same way they trade — and any train/infer source mismatch errors loudly instead of silently corrupting a model.
-**Current focus:** Phase 4 — Coverage, Docs, CI/CD, Release (post v0.1.0a1 work)
+**Current focus:** v0.1.0rc1 publish (operator-gated PyPI trusted-publisher setup)
 
 ## Current Position
 
-Phase: 4 of 12 (Coverage / Docs / CI/CD / v0.1.0 ship — ready to start)
-Plan: 0 of N in Phase 4 (Phases 1-3.6 complete on `main`)
-Status: Ready to plan Phase 4
-Last activity: 2026-05-23 — Phase 3.1-3.6 seams merged (1451 tests passing)
+Phase: ALL 12 of 12 v0.1.0 phases complete on `main`
+Plan: Phase 4 PLAN.md committed; all 5 waves shipped via parallel execution
+Status: v0.1.0rc1 ready to publish (operator-gated)
+Last activity: 2026-05-23 — Phase 4 merged to main at 7655b0e (1453 tests passing)
 
-Progress: [█████████░] ~92% (11/12 phases complete in v0.1.0; Phase 4 release work remains)
+Progress: [██████████] 100% (12/12 phases complete in v0.1.0; ready to tag rc1)
+
+## Phase 4 closeout summary (2026-05-23)
+
+- **CI workflows** (CI-01, CI-02, CI-03, CI-04):
+  - `test.yml` — push/PR matrix (3.11/3.12/3.13 + macOS 3.12); pytest -m "not live"; ruff check + ruff format --check; mypy --strict on `tradewinds.core/` as soft gate (continue-on-error); doctests on 4 public-surface modules; coverage-gate job with `--cov-fail-under=85` (enforced floor; 90% aspirational).
+  - `wheel-metadata-check.yml` — runs on `pyproject.toml` + `scripts/check_wheel_metadata.py` changes; `uv build --all` → grep METADATA for `Requires-Dist: tradewinds >=0.1.0rc1,<0.2` semantic sentinel.
+  - `release.yml` — fires on `v*` tag with `!v*rc*` negation to skip rc; 3 parallel jobs (one per distro) using `pypa/gh-action-pypi-publish@release/v1` with `environment: pypi`.
+  - `release-testpypi.yml` — fires on `v*rc*` tag; identical pipeline against `https://test.pypi.org/legacy/` with `environment: testpypi`.
+  - `drift-rotate.yml` — weekly Mon 07:00 UTC cron; captures `research()` for 5 parity cases into `tests/fixtures/drift/`; soft-fails (writes `drift-report.md`, opens GH issue on mismatch; NEVER blocks CI).
+- **Coverage** (CI-01 SC-1): empirical 94.20% branch on `tradewinds.core` semantic surface (Validator + temporal primitives + exception hierarchy + merge + public format wrappers). `core/schemas/*` and `core/formats/_toon*` excluded per [tool.coverage.run].omit (pure-data ColumnSpec lists and lifted TOON encoder; documented as scope honesty per codex iter-4).
+- **Docs** (DOCS-01, DOCS-02, DOCS-03):
+  - `pytest --doctest-modules` runs on `research.py`, `knowledge_view.py`, `leakage.py`, `validator.py`. Network-bound `research()` example uses `# doctest: +SKIP`.
+  - `docs/adapters/{iem,awc,cli,ghcnh}.md` — 4 adapter knowledge-resource pages (schema + gotchas + timezone notes + source-pairing rules).
+  - README expanded with quickstart preamble + Mode 1 parity example + temporal primitives section + Kalshi resolver + "why local-first" rationale (DOCS-02 external timer pending operator).
+- **PKG-01 rc1 prep**: versions bumped `0.1.0a1` → `0.1.0rc1` across 3 pyprojects + `__version__` strings; PEP 440 inter-package pins normalized to `>=0.1.0rc1,<0.2`; `scripts/check_wheel_metadata.py` validates with semantic lower-bound sentinel.
+- **CI-05 two-tier fixtures**: `tests/fixtures/parity/` frozen + `tests/fixtures/README.md` documents the never-re-record discipline; `tests/fixtures/drift/` scaffold + capture + compare scripts + soft-fail pytest skeleton.
+
+Review discipline:
+- 6 codex review iterations against the initial 08311ef commit (PEP 440 normalize, setup-python for PEP 668, CI branch filter including integration branches, coverage scope honesty, uv.lock path inclusion, semantic METADATA lower-bound sentinel).
+- Python Architect against the consolidated Wave 1 diff: PASS clean. Codex final review: only 1 P2 finding (non-blocking) re: NaN-only numeric drift edge case in `compare.py:103` — noted for follow-up.
+
+User decisions:
+- Coverage gate softened from 90% hard → 85% enforced floor, 90% aspirational. Empirical 94.20% leaves headroom.
+- PyPI publish: workflows shipped but NOT gated. Operator will configure trusted publishers separately.
+
+Outstanding follow-ups (post-merge, operator-gated):
+1. Register 3 PyPI pending publishers (prod) + 3 TestPyPI pending publishers on pypi.org/manage/account/publishing/ — project names `tradewinds`, `tradewinds-weather`, `tradewinds-markets`; repo `helloiamvu/tradewinds`; workflow filename `release.yml` (prod) / `release-testpypi.yml` (test); environment `pypi` / `testpypi`.
+2. Create GH repo environments `pypi` and `testpypi` with appropriate required reviewers.
+3. Tag `v0.1.0rc1` → fires `release-testpypi.yml` → 3 wheels on TestPyPI.
+4. External-person README quickstart timer (<5 min target per DOCS-02 SC).
+5. After timer green: bump 0.1.0rc1 → 0.1.0 lockstep + tag `v0.1.0` → fires `release.yml` → 3 wheels on prod PyPI.
+6. Fix codex P2: `tests/fixtures/drift/compare.py:103` — handle all-NaN `abs_diff` case (use `np.where(np.isnan(abs_diff)) | np.argwhere` fallback) so the soft-fail watchdog writes a drift report instead of `ValueError`-ing out.
+
+Tests grew 1451 → 1453 (+2 doctest collections + drift skeleton).
 
 ## Phase 2 / 2.1 / 3 / 3.x closeout summary (2026-05-23)
 
