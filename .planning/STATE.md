@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v0.1.0
 milestone_name: Local-first SDK ship (RC1 ready)
 status: ready_to_publish
-stopped_at: "12/12 phases of v0.1.0 complete on main (Phase 4 merged at 7655b0e). 1453 tests passing. CI workflows shipped: test.yml + wheel-metadata-check.yml + release.yml (v* → prod PyPI, with !v*rc* negation) + release-testpypi.yml (v*rc* → TestPyPI) + drift-rotate.yml (weekly Mon 07:00 UTC soft-fail watchdog). Versions bumped 0.1.0a1 → 0.1.0rc1 across 3 pyprojects. Coverage gate enforced at 85% (empirical 94.20%; 90% aspirational). Doctests on 4 public-surface modules. 4 adapter docs. PyPI publish workflows EXIST but are operator-gated — user will configure 3 prod + 3 TestPyPI trusted publishers + GH environments separately, then tag v0.1.0rc1 → TestPyPI dry-run → external README quickstart timer (<5 min target) → bump rc1 → 0.1.0 → tag v0.1.0 → prod PyPI."
-last_updated: "2026-05-23T23:55:00.000Z"
-last_activity: 2026-05-23 -- Phase 4 merged to main; v0.1.0rc1 ready to publish (operator-gated)
+stopped_at: "12/12 phases of v0.1.0 complete on main (Phase 4 merged at 7655b0e; Phase 3.1 REAL implementation merged at 19d7416 replacing earlier seam). 1501 tests passing (was 1453; +48 tests for international stations + daily_extremes + city resolver). CI workflows shipped: test.yml + wheel-metadata-check.yml + release.yml (v* → prod PyPI, with !v*rc* negation) + release-testpypi.yml (v*rc* → TestPyPI) + drift-rotate.yml (weekly Mon 07:00 UTC soft-fail watchdog). Versions bumped 0.1.0a1 → 0.1.0rc1 across 3 pyprojects. Coverage gate enforced at 85% (empirical 94.20%; 90% aspirational). Doctests on 4 public-surface modules. 4 adapter docs. PyPI publish workflows EXIST but are operator-gated — user will configure 3 prod + 3 TestPyPI trusted publishers + GH environments separately, then tag v0.1.0rc1 → TestPyPI dry-run → external README quickstart timer (<5 min target) → bump rc1 → 0.1.0 → tag v0.1.0 → prod PyPI."
+last_updated: "2026-05-23T16:00:00.000Z"
+last_activity: 2026-05-23 -- Phase 3.1 REAL implementation (replacing seam) merged to main at 19d7416; 1501 tests passing, parity gate green; review iter-1 closed 1 CRITICAL + 4 HIGH; iter-2 PASS. Next: Phase 3.2 NWP forecasts.
 progress:
   total_phases: 12
   completed_phases: 12
@@ -81,9 +81,26 @@ Tests grew 1451 → 1453 (+2 doctest collections + drift skeleton).
 - Phase 3: tradewinds.mode2.research_by_source() Mode 2 dispatch seam +
   assert_source_identity() per-row check. Catalog adapter dispatch wired;
   fetch wiring deferred to Phase 3.1/3.2 alphas.
-- Phase 3.1 (International): 41 ICAO → IANA tz map; Paris LFPG/LFPB/LFPO
-  split; daily_extremes() rollup with whole-°C precision; DeferredMarketError
-  for VHHH/RCTP.
+- Phase 3.1 (International) — REAL IMPLEMENTATION (merged 19d7416, replacing earlier seam):
+  - SC1: STATIONS registry grew 20→60 (20 US + 40 international ICAOs);
+    country field added (default 'US'); intl ghcnh_id='' since NCEI is US-only;
+    is_us_station() helper for adapter-coverage gating.
+  - SC2: resolve_station_for_event(event, city_map) + bundled
+    polymarket_city_stations.json catalog. Paris LFPG (high) / LFPB (low)
+    split lifted; ambiguous-title (both keywords) falls back to 'default';
+    DeferredMarketError for Taipei + HK-low.
+  - SC3: daily_extremes(station, from_date, to_date, merge='live_v1') reads
+    from cached observations (read_cache), buckets by station-local IANA
+    calendar day with correct UTC-month envelope across non-UTC stations,
+    low_coverage gate (n_obs<12 → nulls + WARN), whole-°C precision intl /
+    0.1-°C precision US.
+  - SC4: schema.daily_extreme.v1 registered as 'daily_extreme' entity in
+    _capabilities._SCHEMA_FILES.
+  - SC5: research() rejects non-US stations with pointer to daily_extremes;
+    GHCNh fetch+parse short-circuit for non-US; adapter coverage documented
+    via is_us_station().
+  - Review discipline: iter-1 closed 1 CRITICAL + 4 HIGH from codex + architect;
+    iter-2 PASS clean.
 - Phase 3.2 (NWP): SUPPORTED_NWP_MODELS = {hrrr, gfs, nbm}; forecast_nwp()
   dispatch seam with [nwp] optional-extra check.
 - Phase 3.3 (Polymarket): polymarket_discover/settle with strict UUID4 +
@@ -95,7 +112,7 @@ Tests grew 1451 → 1453 (+2 doctest collections + drift skeleton).
 - Phase 3.6 (Discovery): DataVersion reproducibility token + availability /
   describe / feature_catalog / settlement_date_for top-level wrappers.
 
-Tests grew 1342 → 1451 (+109 across the 6 phases).
+Tests grew 1342 → 1451 (+109 across the 6 phases). Phase 3.1 REAL impl bumped 1453 → 1501 (+48).
 
 ## Phase 1.5 closeout summary (2026-05-23)
 
