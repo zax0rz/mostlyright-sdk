@@ -438,6 +438,6 @@ TS phases execute strictly serial after Python v0.1.0 final: **TS-W0** → **TS-
 | TS-W2. Parity Gate | 0/TBD | Planning — HARD GATE against 5 Python parity fixtures | - |
 | TS-W3. Cache + Temporal Primitives + Validator | 0/TBD | Planning | - |
 | TS-W4. Mode 2 + Transforms + QC Alpha | 0/TBD | Planning | - |
-| TS-W5. Markets (Polymarket Live + Kalshi Wiring) | 0/TBD | Planning — activates Python's `NotImplementedError` Polymarket stubs | - |
-| TS-W6. Discovery + Snapshot + DataVersion | 0/TBD | Planning — can parallel TS-W5 after TS-W4 lands | - |
+| TS-W6. Discovery + Snapshot + DataVersion | 0/TBD | Planning — runs after TS-W4; blocks TS-W5 (`internationalDailyExtremes` consumed by `polymarketSettle`) | - |
+| TS-W5. Markets (Polymarket Live + Kalshi Wiring) | 0/TBD | Planning — activates Python's `NotImplementedError` Polymarket stubs; strictly serial after TS-W6 | - |
 | TS-W7. Docs + npm Publish | 0/TBD | Planning — 4 npm OIDC pending publishers + Changesets | - |
