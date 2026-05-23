@@ -25,12 +25,57 @@ See: .planning/PROJECT.md (updated 2026-05-21; STATE.md refreshed 2026-05-23)
 
 ## Current Position
 
-Phase: Python v0.1.0 (12/12 phases, 1674 tests, all REAL impls) COMPLETE + TS v0.1.0 milestone planning COMPLETE + **TS-W0 Foundations COMPLETE**
-Plan: TS-W1 (Chrome-extension MVP — AWC + CLI subset of research) next
-Status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W0 merged; TS scaffolding + codegen pipeline + sync-process CI all green.
-Last activity: 2026-05-23 — TS-W0 merged to main at c3489b0 (review-iter-3 PASS; 3-iteration codex high + python-architect loop)
+Phase: Python v0.1.0 (12/12 phases, 1674 tests, all REAL impls) COMPLETE + TS v0.1.0 milestone planning COMPLETE + **TS-W0 + TS-W1 COMPLETE**
+Plan: TS-W2 (parity gate; HARD) next — adds IEM ASOS + GHCNh fetchers, merge_observations port, 5-fixture byte-equivalent parity test
+Status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W1 merged; 271 TS tests green; Chrome-extension MVP shipped.
+Last activity: 2026-05-24 — TS-W1 merged to main (review-iter-2 PASS; 2-iteration codex high + python-architect loop)
 
-Progress: Python [██████████] 100% (12/12 phases, 1686 total tests) | TS [1/8 phases shipped — TS-W0 done]
+Progress: Python [██████████] 100% (12/12 phases, 1674 tests) | TS [2/8 phases shipped — TS-W0 + TS-W1 done; 271 TS tests]
+
+## TS-W1 Chrome-extension MVP closeout (2026-05-24)
+
+Merged at the commit just landed on main. TS-W1 ships the smallest useful TS surface to unblock the Chrome extension overlay on kalshi.com: `@tradewinds/core` foundations (exceptions + convert + bounds + http + snapshot math), `@tradewinds/markets` Kalshi NHIGH/NLOW resolvers, `@tradewinds/weather` AWC + IEM CLI fetchers + parsers + `mergeClimate`, and a minimal `research()` orchestrator in `packages-ts/meta/src/research.ts` covering the AWC + CLI subset.
+
+**Branch lineage (10 commits on top of 42e2772 TS-W0 closeout):**
+- `985c930` — Wave 1+5: core exceptions (15-class hierarchy) + internal/convert + internal/bounds + internal/http (fetchWithRetry) + snapshot LST math
+- `c126be4` — Wave 2: Kalshi NHIGH/NLOW resolvers + KNOWN_WRONG_STATIONS contract test
+- `0a90ebc` — octopus merge Round 1
+- `54016c2` — Wave 3: AWC fetcher + parser (CORS=NONE noted in header; graceful-degrade contract — never throws)
+- `1d33b88` — Wave 4: IEM CLI fetcher + range + parser; consumes CLIMATE_REPORT_TYPE_PRIORITY from codegen
+- `c06e46a` + `96f3f87` — Round 2 merge (with weather/src/index.ts conflict resolution)
+- `dc7362d` — Wave 6+7: research() orchestrator + Chrome extension MVP smoke + size-limit config
+- `c243418` — Round 3 merge
+- `750411c` — vitest alias for weather (mirrors TS-W0 meta fix)
+- `08eb906` — review iter-1 fixes (1 CRITICAL + 4 HIGH)
+
+**Key technical decisions:**
+- `@tradewinds/core` exports `./internal/bounds` and `./internal/convert` as subpath exports so `@tradewinds/weather` can consume without inlining (closed an iter-1 HIGH).
+- `research()` lives in the meta package (`tradewinds`), NOT in `@tradewinds/core`, to avoid a core→weather circular dep.
+- AWC obs are grouped by LST settlement date (via `settlementDateFor()` from snapshot), NOT DST-aware local date — matches Python `_lst_offset()`.
+- CLI rows go through `mergeClimate()` (Python `merge_climate` byte-faithful port) with strict-`>` `report_type_priority` and first-seen tiebreak. Without this, preliminary→final updates would silently keep the preliminary value.
+- AWC parser emits `source: "awc"` (Python schema enum short form), NOT `"awc.live"` (the catalog/orchestrator source-id is a separate concept).
+- Chrome extension uses a NEW `dist/index.bundle.mjs` target with `noExternal: ['@tradewinds/core', '@tradewinds/weather', '@tradewinds/markets']` so MV3 service workers can load it without bare-specifier resolution.
+- `mergeClimate()` lives in `packages-ts/weather/src/_parsers/cli.ts` (NOT a separate `merge/` module yet — that lifts in TS-W2 alongside `mergeObservations`).
+
+**Test coverage:** 271 TS tests across 5 packages — core 124, markets 41, weather 83, meta 20, codegen 3. All green via `pnpm -r test -- --run`. Typecheck clean, biome clean.
+
+**Size-limit results (TS-W1 SC#5: ≤ 30 KB):** core=6.02KB, weather=7.32KB, markets=1.59KB, meta=12.03KB. All well under gate. Bundle target (`index.bundle.mjs`) is 71.84KB — intentionally outside the gate; it's a single-file artifact for MV3 service workers, not the npm-published surface.
+
+**Review discipline:** 2-iteration loop per `.planning/REVIEW-DISCIPLINE.md` (codex `high` reasoning + python-architect, parallel dispatch):
+- Iter 1 (against `750411c`): REVISE — 1 CRITICAL + 4 HIGH
+  - [CRITICAL codex] CLI duplicate merge ignored report priority
+  - [HIGH codex] AWC obs grouped by DST-aware local date instead of LST
+  - [HIGH PA] AWC parser emitted `source: "awc.live"` but schema enum is `["awc","iem","ghcnh"]`
+  - [HIGH PA] Inlined bounds/convert constants in AWC parser (drift-prone)
+  - [HIGH codex] Chrome extension imported ESM with bare workspace specifiers (would fail MV3)
+- Iter 2 (against `08eb906`): **PASS PASS clean** (both reviewers, zero findings)
+
+**Outstanding follow-ups (for TS-W2):**
+- Lift `mergeObservations` (Python `_internal.merge.observations.merge_observations`) for AWC + IEM ASOS + GHCNh source dedup — currently TS only merges CLI.
+- Add `_pairs.buildPairs` proper join (not just per-date aggregation). Python's `_pairs` is the parity-gate target.
+- Wire the 5 Python parity fixtures into TS via msw recordings.
+- IEM ASOS fetcher + GHCNh fetcher.
+- Drift cron `drift-rotate-ts.yml`.
 
 ## TS-W0 Foundations closeout (2026-05-23)
 
