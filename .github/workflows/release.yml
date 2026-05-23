@@ -30,8 +30,75 @@ permissions:
   contents: read
 
 jobs:
+  # codex iter-1 HIGH fix: tag/version-match preflight.
+  # release.yml fires on every v* tag, but the 3 sibling pyproject.toml files
+  # each carry their own version. Tagging v0.1.0 while one of the packages is
+  # still at 0.1.0a1 would publish stale alpha artifacts OR fail mid-job (a
+  # PyPI publish step that finds the version already exists fails the build,
+  # but the OTHER two jobs have already published their wheels — leaving PyPI
+  # in a half-released state). This preflight extracts the version from each
+  # pyproject and refuses to proceed unless GITHUB_REF_NAME == "v{version}"
+  # for ALL three.
+  version-guard:
+    name: Verify tag matches all 3 package versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # codex iter-3 HIGH fix: use actions/setup-python instead of system
+      # python3 + pip install --user. ubuntu-latest now maps to 24.04 where
+      # PEP 668 marks the system Python's site-packages as externally
+      # managed; `pip install` (even with --user) fails. setup-python
+      # provisions a dedicated venv-like Python with a writable pip env,
+      # which is GitHub's recommended pattern.
+      # Source: https://docs.github.com/en/actions/tutorials/build-and-test-code/python
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install packaging (for PEP 440 version normalization)
+        # hatchling/uv normalize PEP 440 versions (``0.1.0.a1`` ->
+        # ``0.1.0a1``) when generating wheel filenames + METADATA. A plain
+        # string compare would reject the canonical tag form or accept a
+        # non-canonical form that doesn't match what PyPI actually receives.
+        # Use packaging.version.Version which normalizes to the canonical
+        # form on both sides of the comparison.
+        run: python -m pip install "packaging>=23"
+      - name: Assert tag matches each package version (PEP 440 normalized)
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          python - <<'PY'
+          import os, sys, tomllib
+          from packaging.version import InvalidVersion, Version
+
+          ref = os.environ["REF_NAME"]
+          if not ref.startswith("v"):
+              sys.exit(f"ERROR: tag {ref!r} does not start with 'v'")
+          try:
+              tag_version = Version(ref[1:])
+          except InvalidVersion as exc:
+              sys.exit(f"ERROR: tag {ref!r} is not a valid PEP 440 version: {exc}")
+          for pkg in ("packages/core/pyproject.toml",
+                      "packages/weather/pyproject.toml",
+                      "packages/markets/pyproject.toml"):
+              with open(pkg, "rb") as f:
+                  pyproj = tomllib.load(f)
+              raw_version = pyproj["project"]["version"]
+              try:
+                  pkg_version = Version(raw_version)
+              except InvalidVersion as exc:
+                  sys.exit(f"ERROR: {pkg} version {raw_version!r} is not valid PEP 440: {exc}")
+              if pkg_version != tag_version:
+                  sys.exit(
+                      f"ERROR: tag {ref!r} normalizes to {tag_version!s}, but "
+                      f"{pkg} version {raw_version!r} normalizes to {pkg_version!s}. "
+                      "Bump the package version or re-tag."
+                  )
+              print(f"OK: {pkg} version {pkg_version!s} matches tag")
+          PY
+
   publish-core:
     name: Publish tradewinds (core)
+    needs: version-guard
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -49,6 +116,7 @@ jobs:
 
   publish-weather:
     name: Publish tradewinds-weather
+    needs: version-guard
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -68,6 +136,7 @@ jobs:
 
   publish-markets:
     name: Publish tradewinds-markets
+    needs: version-guard
     runs-on: ubuntu-latest
     environment:
       name: pypi

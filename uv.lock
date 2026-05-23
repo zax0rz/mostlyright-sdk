@@ -992,6 +992,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "hypothesis" },
+    { name = "packaging" },
     { name = "pandas" },
     { name = "pre-commit" },
     { name = "pyarrow" },
@@ -1011,6 +1012,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "hypothesis", specifier = ">=6.100" },
+    { name = "packaging", specifier = ">=23" },
     { name = "pandas", specifier = ">=2.2" },
     { name = "pre-commit", specifier = ">=3.7" },
     { name = "pyarrow", specifier = ">=17.0" },

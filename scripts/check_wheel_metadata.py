@@ -16,7 +16,6 @@ message per offending wheel otherwise.
 
 from __future__ import annotations
 
-import re
 import sys
 import zipfile
 from pathlib import Path
@@ -28,23 +27,46 @@ from pathlib import Path
 #: revisions (``>=0.1.0a1``, ``>=0.1.0b0``, etc.). The hard requirement is
 #: that the upper bound is ``<0.2`` so a future major bump (0.2.0) does not
 #: silently get pulled.
-#: hatchling normalizes ``"tradewinds>=0.1.0a1,<0.2"`` into the canonical
-#: METADATA line ``Requires-Dist: tradewinds<0.2,>=0.1.0a1`` (upper bound
-#: first). We accept either order — the requirement is that BOTH the
-#: ``<0.2`` upper bound AND a ``>=0.1.0`` lower bound are present.
-_UPPER_PATTERN = r"<\s*0\.2"
-_LOWER_PATTERN = r">=\s*0\.1\.0[a-z0-9]*"
-_REQUIRES_LINE = r"Requires-Dist:\s+tradewinds"
+# codex iter-5 HIGH fix: parse Requires-Dist with packaging.requirements
+# instead of regex-substring matching. The old regex `<\s*0\.2` matched
+# `<0.20` too — letting an incompatible 0.20.x upper bound silently slip
+# through. Semantic comparison via SpecifierSet handles PEP 440
+# normalization + bound semantics correctly.
+from packaging.requirements import InvalidRequirement, Requirement
+from packaging.specifiers import SpecifierSet
 
-REQUIRED_PINS: dict[str, list[str]] = {
-    "tradewinds_weather": [
-        # Single line containing the Requires-Dist + BOTH bounds (any order).
-        rf"{_REQUIRES_LINE}.*({_UPPER_PATTERN}.*{_LOWER_PATTERN}|{_LOWER_PATTERN}.*{_UPPER_PATTERN})",
-    ],
-    "tradewinds_markets": [
-        rf"{_REQUIRES_LINE}.*({_UPPER_PATTERN}.*{_LOWER_PATTERN}|{_LOWER_PATTERN}.*{_UPPER_PATTERN})",
-    ],
+#: Distributions we gate on (wheel filename prefix). Map -> the SpecifierSet
+#: that the wheel's `Requires-Dist: tradewinds <specifier>` line MUST
+#: SATISFY. ``"<0.2"`` is the load-bearing upper bound — the gate exists
+#: precisely to keep a future 0.2.x core from being pulled by an
+#: under-specified weather/markets wheel.
+REQUIRED_TRADEWINDS_SPECIFIER: dict[str, SpecifierSet] = {
+    "tradewinds_weather": SpecifierSet(">=0.1.0a1,<0.2"),
+    "tradewinds_markets": SpecifierSet(">=0.1.0a1,<0.2"),
 }
+
+
+def _find_tradewinds_requirement(metadata: str) -> Requirement | None:
+    """Return the parsed `Requires-Dist: tradewinds <specifier>` from the
+    wheel's METADATA, or None if absent.
+
+    Iterates Requires-Dist lines, parses each with packaging.Requirement,
+    and returns the first one whose ``name == "tradewinds"``. Skips
+    Requires-Dist lines we can't parse (e.g. ones with environment
+    markers we don't care about; the parser handles markers but a
+    malformed one would otherwise blow up).
+    """
+    for line in metadata.splitlines():
+        if not line.startswith("Requires-Dist:"):
+            continue
+        spec_text = line[len("Requires-Dist:") :].strip()
+        try:
+            req = Requirement(spec_text)
+        except InvalidRequirement:
+            continue
+        if req.name.replace("_", "-") == "tradewinds":
+            return req
+    return None
 
 
 def check_wheel(wheel_path: Path) -> list[str]:
@@ -53,8 +75,8 @@ def check_wheel(wheel_path: Path) -> list[str]:
     # Wheel filenames: ``<pkg>-<version>-<python>-<abi>-<platform>.whl``.
     # Splitting on "-" gives ["<pkg>", "<version>", ...].
     pkg_name = wheel_path.name.split("-")[0]
-    pins = REQUIRED_PINS.get(pkg_name)
-    if pins is None:
+    required = REQUIRED_TRADEWINDS_SPECIFIER.get(pkg_name)
+    if required is None:
         # Not a sibling-package wheel we gate on.
         return errors
     with zipfile.ZipFile(wheel_path) as z:
@@ -63,9 +85,41 @@ def check_wheel(wheel_path: Path) -> list[str]:
             errors.append(f"{wheel_path.name}: no METADATA file in wheel")
             return errors
         content = z.read(metadata_path).decode()
-    for pattern in pins:
-        if not re.search(pattern, content):
-            errors.append(f"{wheel_path.name}: missing pin matching /{pattern}/")
+    req = _find_tradewinds_requirement(content)
+    if req is None:
+        errors.append(f"{wheel_path.name}: missing Requires-Dist: tradewinds line")
+        return errors
+    # The wheel's specifier MUST be at least as strict as the required range
+    # ``>=0.1.0a1,<0.2``. Two checks via SpecifierSet.contains() on sentinel
+    # versions chosen to fail loose specifiers that look superficially correct:
+    #
+    # - Upper bound: 0.2.0 (and 0.2.0a1 via prereleases=True) MUST NOT satisfy.
+    #   Catches the iter-5 case (<0.20) and the more subtle (<0.3, or no upper).
+    # - Lower bound: 0.1.0a0 MUST NOT satisfy. Catches the iter-6 case
+    #   (>=0.1.0a0 — alpha-0 is older than alpha-1 per PEP 440 ordering;
+    #   our floor is alpha-1) AND the looser case (>0.0.9 — anything that
+    #   accepts 0.0.9.post1 or 0.1.0a0 is below the parity floor). 0.0.9
+    #   itself is also checked because >0.0.9 specifically excludes 0.0.9
+    #   but accepts 0.1.0a0, which still fails this stricter check.
+    wheel_spec = str(req.specifier)
+    if req.specifier.contains("0.2.0", prereleases=True):
+        errors.append(
+            f"{wheel_path.name}: Requires-Dist: tradewinds {wheel_spec!s} "
+            f"allows 0.2.0 (upper bound missing or too loose; required "
+            f"<0.2). Fix the pyproject.toml dep to '>=0.1.0a1,<0.2'."
+        )
+    # codex iter-6 HIGH fix: tighten lower-bound sentinel from 0.0.9 to
+    # 0.1.0a0. PEP 440 orders 0.1.0a0 < 0.1.0a1, so a wheel pinning
+    # ``>=0.1.0a0`` previously slipped through (passed the 0.0.9 check).
+    # Our parity floor is alpha-1; any spec that lets alpha-0 (or any 0.0.x)
+    # in is a HIGH gate failure.
+    if req.specifier.contains("0.1.0a0", prereleases=True):
+        errors.append(
+            f"{wheel_path.name}: Requires-Dist: tradewinds {wheel_spec!s} "
+            f"allows tradewinds 0.1.0a0 or older (lower bound missing or "
+            f"too loose; required >=0.1.0a1). Fix the pyproject.toml dep "
+            f"to '>=0.1.0a1,<0.2'."
+        )
     return errors
 
 
@@ -85,7 +139,7 @@ def main() -> int:
     checked = 0
     for wheel in wheels:
         wheel_errors = check_wheel(wheel)
-        if wheel.name.split("-")[0] in REQUIRED_PINS:
+        if wheel.name.split("-")[0] in REQUIRED_TRADEWINDS_SPECIFIER:
             checked += 1
         all_errors.extend(wheel_errors)
     if all_errors:
