@@ -14,11 +14,22 @@ from tradewinds.core.validator import register_schema
 
 from .forecast import ForecastSchema
 from .observation import ObservationSchema
+from .observation_ledger import ObservationLedgerSchema
+from .observation_qc import ObservationQCSchema
 from .settlement import SettlementSchema
 
 # Eager registration — Validator can look up each schema by ID immediately.
 register_schema(ObservationSchema)
 register_schema(ForecastSchema)
 register_schema(SettlementSchema)
+# Phase 2.1 additions.
+register_schema(ObservationLedgerSchema)
+register_schema(ObservationQCSchema)
 
-__all__ = ["ForecastSchema", "ObservationSchema", "SettlementSchema"]
+__all__ = [
+    "ForecastSchema",
+    "ObservationLedgerSchema",
+    "ObservationQCSchema",
+    "ObservationSchema",
+    "SettlementSchema",
+]

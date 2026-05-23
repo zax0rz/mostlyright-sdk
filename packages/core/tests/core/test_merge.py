@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 from tradewinds.core.merge import (
     LIVE_V1,
+    ObservationMergePolicy,
     query_time_merge,
 )
 
@@ -185,3 +186,48 @@ def test_attrs_preserved():
     silver.attrs["pull_id"] = "test-123"
     gold = query_time_merge(silver)
     assert gold.attrs.get("pull_id") == "test-123"
+
+
+# ----------------------------------------------------------------------
+# Policy immutability (codex Phase 2.1 review HIGH fix)
+# ----------------------------------------------------------------------
+def test_live_v1_source_priority_immutable():
+    """LIVE_V1.source_priority must reject mutation — otherwise a stray
+    runtime mutation would globally change merge results.
+    """
+    with pytest.raises(TypeError):
+        LIVE_V1.source_priority["awc"] = 99  # type: ignore[index]
+
+
+def test_policy_dataclass_frozen():
+    """Re-assigning a top-level field on ObservationMergePolicy raises."""
+    import dataclasses
+
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        LIVE_V1.name = "other"  # type: ignore[misc]
+
+
+def test_custom_policy_input_dict_wrapped():
+    """A caller-supplied dict is wrapped in MappingProxyType too."""
+    custom = ObservationMergePolicy(name="test", source_priority={"a": 1})
+    with pytest.raises(TypeError):
+        custom.source_priority["a"] = 99  # type: ignore[index]
+
+
+# ----------------------------------------------------------------------
+# Schema registration (codex Phase 2.1 review HIGH fix)
+# ----------------------------------------------------------------------
+def test_observation_ledger_schema_registered():
+    """schema.observation_ledger.v1 is in the Validator registry."""
+    import tradewinds.core.schemas  # noqa: F401 — triggers registration
+    from tradewinds.core.validator import _SCHEMA_REGISTRY
+
+    assert "schema.observation_ledger.v1" in _SCHEMA_REGISTRY
+
+
+def test_observation_qc_schema_registered():
+    """schema.observation_qc.v1 is in the Validator registry."""
+    import tradewinds.core.schemas  # noqa: F401
+    from tradewinds.core.validator import _SCHEMA_REGISTRY
+
+    assert "schema.observation_qc.v1" in _SCHEMA_REGISTRY

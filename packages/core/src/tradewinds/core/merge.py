@@ -17,7 +17,9 @@ See ``.planning/phases/02.1-sprint-2o-lineage-refactor-per-source-provenance/02.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
@@ -33,15 +35,31 @@ __all__ = [
 
 @dataclass(frozen=True)
 class ObservationMergePolicy:
-    """Read-time merge policy for silver-tier observation ledger."""
+    """Read-time merge policy for silver-tier observation ledger.
+
+    Frozen at the dataclass level AND at the source_priority value level
+    (codex Phase 2.1 review HIGH: a frozen dataclass with a mutable dict
+    attribute is not actually immutable — callers could mutate
+    LIVE_V1.source_priority at runtime and globally change merge results).
+    Construction wraps any input dict in MappingProxyType for read-only
+    enforcement.
+    """
 
     name: str
-    source_priority: dict[str, int]
+    source_priority: Mapping[str, int]
     secondary_key: tuple[str, ...] = field(default=("source_received_at", "ingestion_id"))
 
     #: Strict ">" priority comparison — first-row-seen wins at equal priority,
     #: secondary key breaks ties deterministically.
     STRICT_PRIORITY: ClassVar[bool] = True
+
+    def __post_init__(self) -> None:
+        # Wrap source_priority in MappingProxyType so the policy is truly
+        # immutable. Use object.__setattr__ because the dataclass is frozen.
+        if not isinstance(self.source_priority, MappingProxyType):
+            object.__setattr__(
+                self, "source_priority", MappingProxyType(dict(self.source_priority))
+            )
 
     def apply(self, silver_df: pd.DataFrame) -> pd.DataFrame:
         """Materialize gold (single-row-per-(station, observed_at)) from silver."""

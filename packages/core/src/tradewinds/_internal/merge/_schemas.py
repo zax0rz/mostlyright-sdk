@@ -86,19 +86,29 @@ OBSERVATION_LEDGER_SCHEMA = pa.schema(
 )
 
 
-# QC sidecar — one row per QC rule firing per (station_code, observed_at).
-# Writer hooks land in Phase 3.4; this schema declaration is forward-compat.
+# QC sidecar — one row per QC rule firing per (station_code, observed_at,
+# source) ledger key. Writer hooks land in Phase 3.4; this declaration is
+# forward-compat. 13 fields per the Phase 2.1 spec
+# (packages/core/src/tradewinds/_internal/specs/observation_qc.json):
+# ledger lineage keys + QC system identifiers + detector metadata payload.
 QC_SIDECAR_SCHEMA = pa.schema(
     [
+        # Ledger lineage keys.
         pa.field("station_code", pa.string()),
         pa.field("observed_at", pa.string()),
+        pa.field("observation_kind", pa.string()),
         pa.field("source", pa.string()),
+        pa.field("parser_name", pa.string()),
+        pa.field("as_of_time", pa.string()),
+        pa.field("ingestion_id", pa.string()),
+        # QC system identifiers.
         pa.field("qc_system", pa.string()),
+        pa.field("qc_version", pa.string()),
         pa.field("rule_id", pa.string()),
-        pa.field("rule_version", pa.string()),
-        pa.field("severity", pa.string()),
-        pa.field("payload_json", pa.string()),
-        pa.field("evaluated_at", pa.string()),
+        pa.field("field", pa.string()),
+        pa.field("flag", pa.string()),
+        # Detector payload (JSON-serialized; concrete shape per qc_system).
+        pa.field("detector_metadata", pa.string()),
     ]
 )
 
