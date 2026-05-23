@@ -141,55 +141,59 @@ def test_pyarrow_cap_in_specific_known_locations() -> None:
         ), f"{pkg}[{extra}] must include `{EXPECTED_BOUNDS['pyarrow']}`; got {deps}"
 
 
-def test_core_version_is_alpha1() -> None:
-    assert _project("core")["version"] == "0.1.0a1"
+def test_core_version_is_rc1() -> None:
+    # Phase 4 PKG-01: TestPyPI release candidate before v0.1.0 final.
+    # The release-testpypi.yml workflow tags v*rc* → publishes to
+    # test.pypi.org; after the external-person quickstart timer comes
+    # back green we bump to "0.1.0" and tag v0.1.0 for prod PyPI.
+    assert _project("core")["version"] == "0.1.0rc1"
 
 
-def test_weather_version_is_alpha1() -> None:
-    assert _project("weather")["version"] == "0.1.0a1"
+def test_weather_version_is_rc1() -> None:
+    assert _project("weather")["version"] == "0.1.0rc1"
 
 
-def test_markets_version_is_alpha1() -> None:
-    # Phase 2 Wave 5: markets bumps to 0.1.0a1 — Kalshi NHIGH/NLOW
-    # resolvers + 20-station whitelist (MARKETS-01..03). Sprint 0.5
-    # will add live market-metadata fetchers; Phase 3.3 adds Polymarket.
-    assert _project("markets")["version"] == "0.1.0a1"
+def test_markets_version_is_rc1() -> None:
+    # Phase 2 Wave 5 shipped markets at 0.1.0a1 — Kalshi NHIGH/NLOW
+    # resolvers + 20-station whitelist (MARKETS-01..03). Phase 4
+    # PKG-01 bumps all three packages to 0.1.0rc1 in lockstep.
+    assert _project("markets")["version"] == "0.1.0rc1"
 
 
-def test_markets_pins_core_to_matching_alpha() -> None:
+def test_markets_pins_core_to_matching_rc() -> None:
     # PKG-03: prevent a user from mixing tradewinds 0.0.x with
-    # tradewinds-markets 0.1.0a1 (or vice versa). The Kalshi resolvers
+    # tradewinds-markets 0.1.0rc1 (or vice versa). The Kalshi resolvers
     # use tradewinds.markets.catalog (this package) but the wider
     # settlement pipeline reads tradewinds.core.* schemas; a stale core
     # would silently serve the wrong column set.
     runtime_deps = _runtime_deps("markets")
     assert any(
-        d.startswith("tradewinds") and ">=0.1.0a1" in d and "<0.2" in d for d in runtime_deps
+        d.startswith("tradewinds") and ">=0.1.0rc1" in d and "<0.2" in d for d in runtime_deps
     ), (
         "tradewinds-markets runtime deps must constrain tradewinds to "
-        "matching alpha (>=0.1.0a1,<0.2) — see PKG-03 in PLAN.md Wave 5"
+        "matching rc (>=0.1.0rc1,<0.2) — see PKG-03 in PLAN.md Wave 5"
     )
 
 
-def test_weather_pins_core_to_matching_alpha() -> None:
+def test_weather_pins_core_to_matching_rc() -> None:
     # PKG-03: prevent a user from mixing tradewinds 0.0.x with
-    # tradewinds-weather 0.1.0a1 (or vice versa) across the parity gate.
+    # tradewinds-weather 0.1.0rc1 (or vice versa) across the parity gate.
     runtime_deps = _runtime_deps("weather")
     assert any(
-        d.startswith("tradewinds") and ">=0.1.0a1" in d and "<0.2" in d for d in runtime_deps
+        d.startswith("tradewinds") and ">=0.1.0rc1" in d and "<0.2" in d for d in runtime_deps
     ), (
         "tradewinds-weather runtime deps must constrain tradewinds to "
-        "matching alpha (>=0.1.0a1,<0.2) — see PKG-03 in PLAN.md Wave 4"
+        "matching rc (>=0.1.0rc1,<0.2) — see PKG-03 in PLAN.md Wave 4"
     )
 
 
-def test_core_research_extra_pins_weather_to_matching_alpha() -> None:
+def test_core_research_extra_pins_weather_to_matching_rc() -> None:
     # Mirror of PKG-03 on the other side: `tradewinds[research]` must pull
-    # a matching-alpha tradewinds-weather, not any 0.x.
+    # a matching-rc tradewinds-weather, not any 0.x.
     research = _extras("core").get("research", [])
     assert any(
-        d.startswith("tradewinds-weather") and ">=0.1.0a1" in d and "<0.2" in d for d in research
+        d.startswith("tradewinds-weather") and ">=0.1.0rc1" in d and "<0.2" in d for d in research
     ), (
         "tradewinds[research] extra must constrain tradewinds-weather to "
-        "matching alpha (>=0.1.0a1,<0.2)"
+        "matching rc (>=0.1.0rc1,<0.2)"
     )

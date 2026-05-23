@@ -1,6 +1,6 @@
 [project]
 name = "tradewinds"
-version = "0.1.0a1"
+version = "0.1.0rc1"
 description = "Local-first SDK for quants researching prediction-market weather settlements. Meta package: research() join + shared utilities."
 readme = "README.md"
 license = "MIT"
@@ -46,7 +46,7 @@ parquet = [
 # upper cap mirrors the `parquet` extra so a fresh install cannot resolve
 # pandas 3.x and silently shift the parity-critical DataFrame dtypes.
 research = [
-    "tradewinds-weather>=0.1.0a1,<0.2",
+    "tradewinds-weather>=0.1.0rc1,<0.2",
     "pyarrow>=17.0,<24.0",
     "pandas>=2.2,<3.0",
 ]

@@ -30,5 +30,5 @@ workflow: ``raw_metar`` is preserved on observation rows so MetPy re-parse
 keeps working without preprocessing in v0.1.0.
 """
 
-__version__ = "0.1.0a1"
+__version__ = "0.1.0rc1"
 __all__ = ["__version__"]

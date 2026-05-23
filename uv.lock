@@ -891,7 +891,7 @@ wheels = [
 
 [[package]]
 name = "tradewinds"
-version = "0.1.0a1"
+version = "0.1.0rc1"
 source = { editable = "packages/core" }
 dependencies = [
     { name = "httpx" },
@@ -925,7 +925,7 @@ provides-extras = ["parquet", "research"]
 
 [[package]]
 name = "tradewinds-markets"
-version = "0.1.0a1"
+version = "0.1.0rc1"
 source = { editable = "packages/markets" }
 dependencies = [
     { name = "httpx" },
@@ -951,7 +951,7 @@ provides-extras = ["parquet"]
 
 [[package]]
 name = "tradewinds-weather"
-version = "0.1.0a1"
+version = "0.1.0rc1"
 source = { editable = "packages/weather" }
 dependencies = [
     { name = "filelock" },

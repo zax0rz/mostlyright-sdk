@@ -104,12 +104,12 @@ def test_exactly_three_published_wheels(built_wheels: dict[str, Path]) -> None:
     )
 
 
-def test_alpha_versions_in_wheel_filenames(built_wheels: dict[str, Path]) -> None:
-    # Phase 2 Wave 5: markets bumps to 0.1.0a1 — Kalshi NHIGH/NLOW
-    # resolvers + 20-station whitelist (MARKETS-01..03).
-    assert "0.1.0a1" in built_wheels["core"].name, built_wheels["core"].name
-    assert "0.1.0a1" in built_wheels["weather"].name, built_wheels["weather"].name
-    assert "0.1.0a1" in built_wheels["markets"].name, built_wheels["markets"].name
+def test_rc_versions_in_wheel_filenames(built_wheels: dict[str, Path]) -> None:
+    # Phase 4 PKG-01: all three packages bump to 0.1.0rc1 in lockstep
+    # for the TestPyPI dry-run before the v0.1.0 final tag.
+    assert "0.1.0rc1" in built_wheels["core"].name, built_wheels["core"].name
+    assert "0.1.0rc1" in built_wheels["weather"].name, built_wheels["weather"].name
+    assert "0.1.0rc1" in built_wheels["markets"].name, built_wheels["markets"].name
 
 
 def test_only_core_ships_namespace_root(built_wheels: dict[str, Path]) -> None:
