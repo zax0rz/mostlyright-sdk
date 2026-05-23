@@ -131,11 +131,7 @@ class TestComputeRelativeHumidity:
         assert result is not None
         # Raw Magnus formula result — should have many decimal places
         a, b = 17.625, 243.04
-        expected = (
-            100.0
-            * math.exp((a * 15.0) / (b + 15.0))
-            / math.exp((a * 25.0) / (b + 25.0))
-        )
+        expected = 100.0 * math.exp((a * 15.0) / (b + 15.0)) / math.exp((a * 25.0) / (b + 25.0))
         assert result == expected
 
     def test_none_temp_returns_none(self) -> None:
@@ -183,12 +179,7 @@ class TestComputeFeelsLike:
         assert result is not None
         # Manually compute expected
         w_mph = 15 * 1.15078
-        expected = (
-            35.74
-            + 0.6215 * 30.0
-            - 35.75 * (w_mph**0.16)
-            + 0.4275 * 30.0 * (w_mph**0.16)
-        )
+        expected = 35.74 + 0.6215 * 30.0 - 35.75 * (w_mph**0.16) + 0.4275 * 30.0 * (w_mph**0.16)
         assert result == expected
 
     def test_heat_index_above_80f(self) -> None:

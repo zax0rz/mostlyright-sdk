@@ -103,8 +103,7 @@ def query_time_merge(
     missing = required - set(silver_df.columns)
     if missing:
         raise ValueError(
-            f"silver_df missing required columns {missing}; "
-            f"got columns {list(silver_df.columns)}"
+            f"silver_df missing required columns {missing}; got columns {list(silver_df.columns)}"
         )
 
     # Assign per-row priority from policy.

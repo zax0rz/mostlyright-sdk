@@ -90,7 +90,7 @@ def _iem_cache_filename(
     backfill never reads partials. PERF-02 / Pitfall 3 (OR-not-AND) gates this.
     """
     partial_infix = "_partial" if partial else ""
-    return f"iem_{chunk_start.isoformat()}_{chunk_end.isoformat()}" f"{partial_infix}_{suffix}.csv"
+    return f"iem_{chunk_start.isoformat()}_{chunk_end.isoformat()}{partial_infix}_{suffix}.csv"
 
 
 def _build_iem_url(

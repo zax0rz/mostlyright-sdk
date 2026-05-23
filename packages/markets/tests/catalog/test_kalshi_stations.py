@@ -22,10 +22,9 @@ def test_no_wrong_stations():
     """The known-wrong stations must NEVER appear in any whitelist value."""
     used_stations = {c.station for c in KALSHI_SETTLEMENT_STATIONS.values()}
     overlap = used_stations & KNOWN_WRONG_STATIONS
-    assert overlap == set(), (
-        f"Whitelist contains known-wrong stations: {overlap}. "
-        f"Parity-critical — fix the whitelist."
-    )
+    assert (
+        overlap == set()
+    ), f"Whitelist contains known-wrong stations: {overlap}. Parity-critical — fix the whitelist."
 
 
 def test_each_station_is_icao_format():

@@ -78,7 +78,7 @@ def research_by_source(
     """
     if source not in _VALID_OBSERVATION_SOURCES:
         raise ValueError(
-            f"Mode 2 source must be one of {sorted(_VALID_OBSERVATION_SOURCES)}; " f"got {source!r}"
+            f"Mode 2 source must be one of {sorted(_VALID_OBSERVATION_SOURCES)}; got {source!r}"
         )
 
     # Resolve the catalog adapter — fail loud if the source is unregistered.

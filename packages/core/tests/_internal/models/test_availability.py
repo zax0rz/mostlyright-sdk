@@ -55,9 +55,7 @@ def test_range_info_freshness_hours_computed():
     # freshness_hours = (as_of - latest).total_seconds() / 3600
     # This is computed by the REST route, not the model itself.
     # Test that the model accepts it:
-    r = RangeInfo(
-        earliest="2024-01-01", latest="2024-01-15", count=100, freshness_hours=2.5
-    )
+    r = RangeInfo(earliest="2024-01-01", latest="2024-01-15", count=100, freshness_hours=2.5)
     assert r.freshness_hours == 2.5
 
 

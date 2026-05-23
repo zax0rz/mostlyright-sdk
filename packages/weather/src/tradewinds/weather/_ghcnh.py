@@ -225,11 +225,7 @@ def parse_ghcnh_row(row: dict[str, str]) -> dict[str, Any] | None:
     dewp_f = celsius_to_fahrenheit(dewp_c)
 
     # Wind (m/s -> kt, rounded to integer, bounded by schema)
-    wind_dir = (
-        bounded_int(_safe_int(row.get("wind_direction", "")), 0, 360)
-        if wdir_ok
-        else None
-    )
+    wind_dir = bounded_int(_safe_int(row.get("wind_direction", "")), 0, 360) if wdir_ok else None
     wind_speed_ms = _safe_float(row.get("wind_speed", "")) if wspd_ok else None
     wind_gust_ms = _safe_float(row.get("wind_gust", "")) if wgust_ok else None
     wind_speed_kt = bounded_int(
@@ -273,18 +269,12 @@ def parse_ghcnh_row(row: dict[str, str]) -> dict[str, Any] | None:
     sky_bases: list[int | None] = []
     for i in range(1, 5):
         cov_qc = _is_qc_accepted(row.get(f"sky_cover_summation_{i}_Quality_Code", ""))
-        base_qc = _is_qc_accepted(
-            row.get(f"sky_cover_summation_baseht_{i}_Quality_Code", "")
-        )
+        base_qc = _is_qc_accepted(row.get(f"sky_cover_summation_baseht_{i}_Quality_Code", ""))
         sky_covers.append(
-            _parse_sky_cover(row.get(f"sky_cover_summation_{i}", ""))
-            if cov_qc
-            else None
+            _parse_sky_cover(row.get(f"sky_cover_summation_{i}", "")) if cov_qc else None
         )
         sky_bases.append(
-            _parse_sky_baseht(row.get(f"sky_cover_summation_baseht_{i}", ""))
-            if base_qc
-            else None
+            _parse_sky_baseht(row.get(f"sky_cover_summation_baseht_{i}", "")) if base_qc else None
         )
 
     # Weather codes

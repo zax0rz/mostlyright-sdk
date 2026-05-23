@@ -58,7 +58,7 @@ class KnowledgeView:
     2
     """
 
-    __slots__ = ("_df", "_as_of")
+    __slots__ = ("_as_of", "_df")
 
     def __init__(self, df: pd.DataFrame, as_of: TimePoint) -> None:
         import pandas as pd
@@ -99,4 +99,4 @@ class KnowledgeView:
         return self._as_of
 
     def __repr__(self) -> str:
-        return f"KnowledgeView(rows={len(self._df)}, " f"as_of={self._as_of.to_utc().isoformat()})"
+        return f"KnowledgeView(rows={len(self._df)}, as_of={self._as_of.to_utc().isoformat()})"

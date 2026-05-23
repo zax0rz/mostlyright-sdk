@@ -21,9 +21,7 @@ _REQUIRED_FIELDS = ("station_code", "observed_at", "observation_type", "source")
 
 @dataclass(frozen=True)
 class Observation(DictLikeMixin):
-    _COMPUTED_FIELDS: ClassVar[frozenset[str]] = frozenset(
-        {"relative_humidity", "feels_like_f"}
-    )
+    _COMPUTED_FIELDS: ClassVar[frozenset[str]] = frozenset({"relative_humidity", "feels_like_f"})
 
     # === Required identity fields ===
     station_code: str
@@ -96,9 +94,7 @@ class Observation(DictLikeMixin):
         """Create from a dict (e.g. parsed from parquet or API response)."""
         missing = [f for f in _REQUIRED_FIELDS if not d.get(f)]
         if missing:
-            raise ValueError(
-                f"Observation.from_dict: missing required fields: {missing}"
-            )
+            raise ValueError(f"Observation.from_dict: missing required fields: {missing}")
         return cls(
             station_code=d["station_code"],
             observed_at=d["observed_at"],

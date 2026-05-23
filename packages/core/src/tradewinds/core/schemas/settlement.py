@@ -80,23 +80,21 @@ class SettlementSchema(Schema):
             dtype="date",
             units=None,
             nullable=False,
-            notes=(
-                "local climate day per NWS convention (no timezone applied " "to the date itself)"
-            ),
+            notes=("local climate day per NWS convention (no timezone applied to the date itself)"),
         ),
         ColumnSpec(
             name="event_time",
             dtype="timestamp_utc",
             units=None,
             nullable=False,
-            notes=("00:00 local time on observation_date converted to UTC; " "for sort/join only"),
+            notes=("00:00 local time on observation_date converted to UTC; for sort/join only"),
         ),
         ColumnSpec(
             name="product_release_time",
             dtype="timestamp_utc",
             units=None,
             nullable=False,
-            notes=("parsed from CLI product header " "(_climate.py::_parse_product_timestamp)"),
+            notes=("parsed from CLI product header (_climate.py::_parse_product_timestamp)"),
         ),
         ColumnSpec(
             name="report_type",
@@ -105,8 +103,7 @@ class SettlementSchema(Schema):
             nullable=False,
             enum_values=_REPORT_TYPE_VALUES,
             notes=(
-                "preliminary | final | correction; dedup priority "
-                "preliminary < final < correction"
+                "preliminary | final | correction; dedup priority preliminary < final < correction"
             ),
         ),
         ColumnSpec(
