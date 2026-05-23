@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v0.1.0
 milestone_name: Local-first SDK ship (RC1 ready)
 status: ready_to_publish
-stopped_at: "12/12 phases of v0.1.0 complete on main (Phase 4 merged at 7655b0e; Phase 3.1 REAL implementation merged at 19d7416 replacing earlier seam). 1501 tests passing (was 1453; +48 tests for international stations + daily_extremes + city resolver). CI workflows shipped: test.yml + wheel-metadata-check.yml + release.yml (v* → prod PyPI, with !v*rc* negation) + release-testpypi.yml (v*rc* → TestPyPI) + drift-rotate.yml (weekly Mon 07:00 UTC soft-fail watchdog). Versions bumped 0.1.0a1 → 0.1.0rc1 across 3 pyprojects. Coverage gate enforced at 85% (empirical 94.20%; 90% aspirational). Doctests on 4 public-surface modules. 4 adapter docs. PyPI publish workflows EXIST but are operator-gated — user will configure 3 prod + 3 TestPyPI trusted publishers + GH environments separately, then tag v0.1.0rc1 → TestPyPI dry-run → external README quickstart timer (<5 min target) → bump rc1 → 0.1.0 → tag v0.1.0 → prod PyPI."
-last_updated: "2026-05-23T16:00:00.000Z"
-last_activity: 2026-05-23 -- Phase 3.1 REAL implementation (replacing seam) merged to main at 19d7416; 1501 tests passing, parity gate green; review iter-1 closed 1 CRITICAL + 4 HIGH; iter-2 PASS. Next: Phase 3.2 NWP forecasts.
+stopped_at: "12/12 phases of v0.1.0 complete on main (Phase 4 merged at 7655b0e; Phase 3.1 REAL impl merged at 19d7416; Phase 3.2 REAL impl merged at de9b3af replacing the [nwp] seam). 1568 tests passing (was 1501; +67 for forecast_nwp pipeline + .idx parser + NOAA BDP mirror chain + per-row source overlay + UTC normalization). Phase 3.2 ships: 7 new modules under tradewinds.weather._fetchers._nwp_*, public forecast_nwp(station, model, ...), schema.forecast_nwp.v1 (7-model + 8-mirror enums; 4 ECMWF reserved for v0.2), 4 NwpError subclasses, [nwp] optional extra (cfgrib + xarray + sklearn). CI workflows shipped: test.yml + wheel-metadata-check.yml + release.yml + release-testpypi.yml + drift-rotate.yml. PyPI publish workflows EXIST but are operator-gated."
+last_updated: "2026-05-23T18:00:00.000Z"
+last_activity: 2026-05-23 -- Phase 3.2 REAL impl merged to main at de9b3af; 1568 tests passing; review iter-1 closed 4 HIGH (architect) + 4 P2 (codex); iter-2 closed 3 P2 (schema-contract); iter-3 closed 2 P2 (mirror fallback + UTC issued_at); architect iter-3 PASS. Next: Phase 3.3 Polymarket.
 progress:
   total_phases: 12
   completed_phases: 12
@@ -31,6 +31,36 @@ Status: v0.1.0rc1 ready to publish (operator-gated)
 Last activity: 2026-05-23 — Phase 4 merged to main at 7655b0e (1453 tests passing)
 
 Progress: [██████████] 100% (12/12 phases complete in v0.1.0; ready to tag rc1)
+
+## Phase 3.2 REAL implementation closeout summary (2026-05-23)
+
+Merge commits: `f965cab Merge phase-3.2: Multi-Forecast Live Path (HRRR/GFS/NBM)` + `de9b3af Merge phase-3.2/review-iter3` on `main`.
+
+Replaces the v0.1.0a1 NWP dispatch seam (`forecast_nwp` raised NotImplementedError) with a working live-fetch pipeline against NOAA Big Data Program S3 mirrors. Lift source: mostlyright Sprint 2r-impl-bundle (RESEARCH §3.2 documents the architecture).
+
+**What ships:**
+- `tradewinds.weather._fetchers._nwp_idx` — pure-Python `.idx` parser with `compute_byte_end` HEAD-resolution (closes Pitfall 1).
+- `tradewinds.weather._fetchers._nwp_archive` — NOAA BDP mirror URLs (AWS + NOMADS), SSRF-allowlist gated, per-model path builders (HRRR sfcf, GFS pre/post-v16 split per Pitfall 4, NBM core), byte-range fetch with UTC-normalized cycle.
+- `tradewinds.weather._fetchers._nwp_grids/{hrrr,gfs,nbm}.py` — per-model variable maps (9-row subset covering 2m temp/dewpoint/RH, 10m wind, gust, precip, surface + MSLP pressure).
+- `tradewinds.weather._fetchers._nwp_extract` — cached `BallTree(haversine, radians)` station extraction with 0..360 → -180..180 longitude wrap (closes Pitfall 3).
+- `tradewinds.weather.forecast_nwp` — public pipeline: mirror fallback chain, .idx + byte-range fetch (now with HTTP-failure fallback per iter-3), one-message-per-file cfgrib decode via tempdir, inline 9-rule physics-bounds QC tagging rows `clean`/`flagged`/`suspect`.
+- `tradewinds.core.schemas.forecast_nwp` — `schema.forecast_nwp.v1` registered day-one with the full 7-model enum (4 ECMWF reserved for v0.2) + 8-mirror enum.
+- `tradewinds.core.exceptions` — `NwpError` base + `NwpModelNotAvailableError`, `NoLiveForNwpError`, `GribIntegrityError` subclasses with `to_dict()` for v0.2 MCP serialization.
+- `tradewinds-weather[nwp]` optional extra: `cfgrib>=0.9.15,<1.0`, `xarray>=2024.0`, `scikit-learn>=1.3,<2.0`, `pandas`.
+
+**Out of scope (deferred to v0.2 per ROADMAP):**
+- ECMWF Tier-2 (4 models reserved in enum; raises `NwpModelNotAvailableError`).
+- Historical NWP backfill (~35 GB; requires hosted parquet mirror).
+- Bitemporal `snapshot_as_of` queries (persistent ledger).
+- `forecast_nwp_payloads` sidecar (replay via stored sha256+byte_range).
+- Forecast-side QC sidecar (Phase 3.4 ships observation QC engine; forecast QC stays deferred).
+
+**Review discipline (per .planning/REVIEW-DISCIPLINE.md):**
+- Iter 1: Architect (4 HIGH closed) + Codex (4 P2 closed) — alias dedup, test fidelity, cfgrib model context, math clarity, UTC normalization, df.attrs, dtype, ambiguous .idx.
+- Iter 2: Codex (3 P2 closed) — per-row source overlay column, empty retrieved_at attr, empty filter_records as false success.
+- Iter 3: Architect PASS clean. Codex (2 P2 closed) — mirror fallback now extends to byte-range HTTP failures; issued_at/valid_at UTC-normalized.
+
+**Tests grew 1501 → 1568 (+67 net new).**
 
 ## Phase 4 closeout summary (2026-05-23)
 
