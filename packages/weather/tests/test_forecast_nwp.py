@@ -11,10 +11,13 @@ from __future__ import annotations
 
 import importlib.util
 from datetime import UTC, datetime, timedelta
+from typing import ClassVar
 from unittest.mock import patch
 
+import httpx
 import pytest
 from tradewinds.core.exceptions import (
+    GribIntegrityError,
     NoLiveForNwpError,
     NwpModelNotAvailableError,
     SourceUnavailableError,
@@ -271,6 +274,12 @@ class TestDefaultCycleFor:
 # ---------------------------------------------------------------------------
 class TestMirrorFallback:
     def test_all_mirrors_failing_raises_no_live(self) -> None:
+        """Bypass _try_fetch_records_for_mirror entirely.
+
+        Validates only the OUTER loop: every mirror -> None converts to
+        NoLiveForNwpError. The actual httpx-error → None conversion is
+        covered by ``test_all_mirrors_404_via_real_http_path`` below.
+        """
         from tradewinds.weather import forecast_nwp as fnwp_module
 
         def fail_all(**kwargs: object) -> None:
@@ -288,6 +297,160 @@ class TestMirrorFallback:
                 )
             assert exc_info.value.model == "hrrr"
             assert exc_info.value.mirrors_tried == list(("aws_bdp", "nomads"))
+
+    def test_all_mirrors_404_via_real_http_path(self) -> None:
+        """End-to-end coverage of the http-error → mirror-skip path.
+
+        Pumps a real ``httpx.MockTransport`` through the actual fetch
+        helpers (no monkey-patch of the catching code). Verifies the
+        ``except (httpx.HTTPStatusError, httpx.RequestError)`` in
+        ``_try_fetch_records_for_mirror`` correctly converts a 404 from
+        every mirror into ``NoLiveForNwpError`` — not into a leaked
+        httpx exception.
+        """
+        if not _HAS_NWP_EXTRA:
+            pytest.skip("requires [nwp] extra installed")
+        from tradewinds.weather.forecast_nwp import forecast_nwp
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(404, text="not found")
+
+        client = httpx.Client(transport=httpx.MockTransport(handler))
+        try:
+            with pytest.raises(NoLiveForNwpError) as exc_info:
+                forecast_nwp(
+                    "KNYC",
+                    "hrrr",
+                    cycle=datetime(2026, 5, 23, 12, tzinfo=UTC),
+                    fxx=1,
+                    client=client,
+                )
+            assert exc_info.value.model == "hrrr"
+            assert exc_info.value.mirrors_tried == ["aws_bdp", "nomads"]
+        finally:
+            client.close()
+
+
+# ---------------------------------------------------------------------------
+# Station alias dedup (HIGH-2 from architect review)
+# ---------------------------------------------------------------------------
+class TestStationAliasDedup:
+    def test_nws_code_and_icao_alias_collapse_to_one_row(self) -> None:
+        """``["NYC", "KNYC"]`` must NOT produce two rows for the same station."""
+        from tradewinds.weather.forecast_nwp import _resolve_stations
+
+        out = _resolve_stations(["NYC", "KNYC"])
+        # NYC resolves to StationInfo with icao=KNYC, then KNYC alias is dropped.
+        assert len(out) == 1
+        # First occurrence wins — input label preserved.
+        assert out[0][0] == "NYC"
+
+    def test_distinct_stations_kept(self) -> None:
+        from tradewinds.weather.forecast_nwp import _resolve_stations
+
+        out = _resolve_stations(["KNYC", "KLAX"])
+        assert len(out) == 2
+        assert {s for s, _, _ in out} == {"KNYC", "KLAX"}
+
+    def test_unknown_station_skipped(self) -> None:
+        from tradewinds.weather.forecast_nwp import _resolve_stations
+
+        out = _resolve_stations(["KNYC", "BOGUS"])
+        assert len(out) == 1
+        assert out[0][0] == "KNYC"
+
+
+# ---------------------------------------------------------------------------
+# GribIntegrityError carries model context (HIGH-4 from architect review)
+# ---------------------------------------------------------------------------
+class TestCfgribVariableNameError:
+    def test_short_name_miss_carries_model_in_payload(self) -> None:
+        """``_cfgrib_variable_name`` must populate ``model`` in raised errors."""
+        from tradewinds.weather.forecast_nwp import _cfgrib_variable_name
+
+        class _StubDS:
+            # cfgrib decoded record but used a different short-name AND
+            # produced multiple data_vars, so the table-miss fallback fires.
+            data_vars: ClassVar[dict[str, object]] = {
+                "unexpected_a": object(),
+                "unexpected_b": object(),
+            }
+
+        with pytest.raises(GribIntegrityError) as exc_info:
+            _cfgrib_variable_name(_StubDS(), ("TMP", "2 m above ground"), model="hrrr")
+        assert exc_info.value.model == "hrrr"
+        # The to_dict surface (MCP serialization) carries the same field.
+        assert exc_info.value.to_dict()["model"] == "hrrr"
+
+    def test_unknown_variable_no_table_entry_also_carries_model(self) -> None:
+        from tradewinds.weather.forecast_nwp import _cfgrib_variable_name
+
+        class _StubDS:
+            data_vars: ClassVar[dict[str, object]] = {"a": object(), "b": object()}
+
+        with pytest.raises(GribIntegrityError) as exc_info:
+            _cfgrib_variable_name(_StubDS(), ("UNKNOWN_VAR", "unknown level"), model="gfs")
+        assert exc_info.value.model == "gfs"
+
+
+# ---------------------------------------------------------------------------
+# Codex iter-1 P2 follow-ups: non-UTC cycle, source attr, dtype, ambiguous .idx
+# ---------------------------------------------------------------------------
+class TestCodexP2Followups:
+    def test_non_utc_aware_cycle_normalised_to_utc(self) -> None:
+        """``2026-05-23 14:00+02:00`` is the 12z cycle, not a (nonexistent) t14z."""
+        from datetime import timedelta, timezone
+
+        from tradewinds.weather._fetchers._nwp_archive import build_fetch_plan
+
+        cet = timezone(timedelta(hours=2))
+        plan = build_fetch_plan(
+            model="hrrr",
+            mirror="aws_bdp",
+            cycle=datetime(2026, 5, 23, 14, 0, tzinfo=cet),
+            fxx=1,
+        )
+        # The URL must use t12z (UTC equivalent of 14:00+02:00), not t14z.
+        assert "t12z" in plan.grib2_url
+        assert "t14z" not in plan.grib2_url
+        # The stored cycle on the plan is the UTC-normalised value.
+        assert plan.cycle.tzinfo is UTC
+        assert plan.cycle.hour == 12
+
+    def test_empty_dataframe_carries_source_attr(self) -> None:
+        from tradewinds.weather.forecast_nwp import _empty_dataframe
+
+        df = _empty_dataframe(model="hrrr", grid_kind="lambert_conformal_conus")
+        assert df.attrs.get("source") == "noaa_bdp"
+
+    def test_empty_dataframe_nullable_numeric_columns_are_float64(self) -> None:
+        from tradewinds.weather.forecast_nwp import _empty_dataframe
+
+        df = _empty_dataframe(model="hrrr", grid_kind="lambert_conformal_conus")
+        for col in (
+            "temp_k_2m",
+            "dewpoint_k_2m",
+            "pressure_pa_surface",
+            "pressure_pa_mslp",
+        ):
+            assert (
+                str(df[col].dtype) == "float64"
+            ), f"{col} dtype must be float64, got {df[col].dtype}"
+
+    def test_unknown_station_dataframe_has_source_attr(self) -> None:
+        """The early-return path on unknown stations also stamps attrs."""
+        if not _HAS_NWP_EXTRA:
+            pytest.skip("requires [nwp] extra installed")
+        from tradewinds.weather.forecast_nwp import forecast_nwp
+
+        df = forecast_nwp(
+            "BOGUS",
+            "hrrr",
+            cycle=datetime(2026, 5, 23, 12, tzinfo=UTC),
+            fxx=1,
+        )
+        assert df.empty
+        assert df.attrs.get("source") == "noaa_bdp"
 
 
 # ---------------------------------------------------------------------------

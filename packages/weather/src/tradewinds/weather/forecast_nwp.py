@@ -192,13 +192,20 @@ def _is_nan(v: Any) -> bool:
 def _default_cycle_for(model: str, *, fxx: int, now: datetime | None = None) -> datetime:
     """Pick a cycle hour the user is likely to mean by "the latest one".
 
-    Live NOAA cycles have variable upload lag (~1 hour for HRRR, ~3 hours
-    for GFS, ~1 hour for NBM after run). We pick a cycle whose run + fxx
-    is in the past relative to ``now``, with a 90-minute backoff to clear
-    the typical upload window.
+    The constraint we want: the f``fxx`` file of the returned cycle is
+    already uploaded by ``now``. Concretely we require
 
-    The selection is hourly-aligned for HRRR + NBM (run every hour) and
-    six-hourly-aligned for GFS (00 / 06 / 12 / 18 UTC).
+        cycle + fxx*1h <= now - 90min
+
+    (90 min covers HRRR/GFS/NBM run + upload windows with some safety).
+    Rearranged: ``cycle <= now - 90min - fxx*1h``. We then floor to the
+    model's cycle grid — hourly for HRRR/NBM, 6-hourly for GFS.
+
+    Worked example (HRRR, ``now = 2026-05-23 12:00 UTC``, ``fxx = 1``)::
+
+        upper bound = 12:00 - 1h30m - 1h = 09:30
+        floored hourly = 09:00
+        valid_at = 09:00 + 1h = 10:00  (2h before now — clear of backoff)
 
     Args:
         model: One of ``SUPPORTED_NWP_MODELS``.
@@ -211,28 +218,36 @@ def _default_cycle_for(model: str, *, fxx: int, now: datetime | None = None) -> 
         now = now.replace(tzinfo=UTC)
     cycle_step_h = 6 if model == "gfs" else 1
     backoff = timedelta(minutes=90)
-    target = now - backoff - timedelta(hours=fxx)
-    # Floor to cycle_step_h boundary.
-    floored_hour = (target.hour // cycle_step_h) * cycle_step_h
-    return target.replace(hour=floored_hour, minute=0, second=0, microsecond=0)
+    upper_bound = now - backoff - timedelta(hours=fxx)
+    # Floor to the model's cycle grid (top of the eligible hour).
+    floored_hour = (upper_bound.hour // cycle_step_h) * cycle_step_h
+    return upper_bound.replace(hour=floored_hour, minute=0, second=0, microsecond=0)
 
 
 # ----------------------------------------------------------------------
 # Decode + extract
 # ----------------------------------------------------------------------
 def _resolve_stations(stations: list[str]) -> list[tuple[str, float, float]]:
-    """Map ICAO / NWS codes to ``(canonical_station_id, lat, lon)``.
+    """Map ICAO / NWS codes to ``(input_string, lat, lon)`` triples.
 
     Stations not in the registry are skipped with a warning rather than
     raising — a quant fetching ``["KNYC", "EGLL"]`` from HRRR cares
     about losing EGLL (out-of-domain) but doesn't want KNYC dropped.
 
+    **Alias dedup:** ``["NYC", "KNYC"]`` resolve to the same
+    :class:`StationInfo`. Without dedup the function would emit two
+    rows per fetch with the same lat/lon but different ``station``
+    labels — silent double-count when a downstream user unions runs.
+    First occurrence of each canonical info wins; aliases later in the
+    input are dropped with a logged warning.
+
     Returns:
         Resolved (station_id, lat, lon) triples in input order. The
         ``station_id`` is the original input string (preserved verbatim
-        so downstream joins line up).
+        so downstream joins on the user's chosen label still work).
     """
     out: list[tuple[str, float, float]] = []
+    seen_canonical: set[str] = set()
     for s in stations:
         info = STATIONS.get(s)
         if info is None:
@@ -243,6 +258,18 @@ def _resolve_stations(stations: list[str]) -> list[tuple[str, float, float]]:
         if info is None:
             log.warning("forecast_nwp: skipping unknown station %r", s)
             continue
+        # Use ICAO as the canonical identity — ``code`` may be a
+        # 3-letter NWS abbreviation for US, but every registry entry
+        # carries an ICAO (US or international).
+        canonical = info.icao
+        if canonical in seen_canonical:
+            log.warning(
+                "forecast_nwp: dropping alias %r — already resolved as %r",
+                s,
+                canonical,
+            )
+            continue
+        seen_canonical.add(canonical)
         out.append((s, info.latitude, info.longitude))
     return out
 
@@ -438,12 +465,36 @@ def forecast_nwp(
 
         with tempfile.TemporaryDirectory(prefix="tradewinds_nwp_") as tmpdir:
             tmp = Path(tmpdir)
-            # Index records by (variable, level) for fast lookup.
-            record_lookup: dict[tuple[str, str], IdxRecord] = {
-                (rec.variable, rec.level): rec for rec in filtered_records
-            }
+            # Group records by (variable, level). Codex iter-1 P2:
+            # NCEP .idx files can list MULTIPLE records with the same
+            # (variable, level) but different forecast_period strings —
+            # most commonly for accumulated fields like APCP:surface
+            # which can ship a "0-1 hour acc" and "1-2 hour acc" window
+            # in the same file. The old single-entry dict silently kept
+            # the last one, which could decode the wrong accumulation
+            # window. Now we keep the full list per key and raise
+            # GribIntegrityError when ambiguous so the caller can audit
+            # rather than silently get the wrong precip total.
+            record_groups: dict[tuple[str, str], list[IdxRecord]] = {}
+            for rec in filtered_records:
+                record_groups.setdefault((rec.variable, rec.level), []).append(rec)
             for col, key in variable_map.items():
-                rec = record_lookup.get(key)
+                group = record_groups.get(key)
+                if not group:
+                    rec = None
+                elif len(group) == 1:
+                    rec = group[0]
+                else:
+                    raise GribIntegrityError(
+                        f"ambiguous .idx records for {key}: "
+                        f"{[r.forecast_period for r in group]} — "
+                        "tradewinds v0.1 picks one record per (variable, level); "
+                        "for accumulated fields with multiple windows, "
+                        "extend VARIABLE_MAP to a (variable, level, forecast_period) "
+                        "tuple or pin the desired window via Phase 3.4 QC engine.",
+                        model=model,
+                        variable=key[0],
+                    )
                 if rec is None or rec.byte_end is None:
                     # Variable missing from this cycle's .idx — column
                     # stays null for every station. NOT a fatal error.
@@ -480,7 +531,7 @@ def forecast_nwp(
                         underlying=str(exc),
                     ) from exc
                 try:
-                    cfgrib_name = _cfgrib_variable_name(ds, key)
+                    cfgrib_name = _cfgrib_variable_name(ds, key, model=model)
                     extracted = _nwp_extract.extract_stations(
                         ds, variable=cfgrib_name, station_coords=station_coords
                     )
@@ -494,6 +545,22 @@ def forecast_nwp(
         retrieved_at = datetime.now(UTC)
         rows: list[dict[str, Any]] = []
         valid_at = cycle + timedelta(hours=fxx)
+        # Codex iter-1 P2: pandas infers `object` dtype when a column
+        # is all-None. The schema declares these as `float64`; emit
+        # `float('nan')` explicitly so even an all-missing column
+        # (e.g. NBM has no `pressure_pa_surface`) round-trips through
+        # the schema validator with the right dtype.
+        nullable_numeric_cols = (
+            "temp_k_2m",
+            "dewpoint_k_2m",
+            "relative_humidity_pct_2m",
+            "wind_u_ms_10m",
+            "wind_v_ms_10m",
+            "wind_gust_ms",
+            "precip_mm_1h",
+            "pressure_pa_surface",
+            "pressure_pa_mslp",
+        )
         for i, (station_id, _, _) in enumerate(resolved):
             row: dict[str, Any] = {
                 "station": station_id,
@@ -506,31 +573,35 @@ def forecast_nwp(
                 "grid_dist_km": distances_km[i] if distances_km[i] is not None else float("nan"),
             }
             for col in variable_map:
-                row[col] = column_values[col][i]
+                val = column_values[col][i]
+                row[col] = float("nan") if val is None else val
             # Ensure every schema column is present even if model lacks
             # that variable map entry (e.g. NBM has no pressure_pa_surface).
-            for col in (
-                "temp_k_2m",
-                "dewpoint_k_2m",
-                "relative_humidity_pct_2m",
-                "wind_u_ms_10m",
-                "wind_v_ms_10m",
-                "wind_gust_ms",
-                "precip_mm_1h",
-                "pressure_pa_surface",
-                "pressure_pa_mslp",
-            ):
-                row.setdefault(col, None)
+            for col in nullable_numeric_cols:
+                row.setdefault(col, float("nan"))
             row["qc_status"] = _qc_status_for_row(row)
             row["retrieved_at"] = retrieved_at
             rows.append(row)
-        return pd.DataFrame(rows)
+        df = pd.DataFrame(rows)
+        # Codex iter-1 P2: validator (tradewinds.core.validator) checks
+        # df.attrs["source"] against the schema's registered source on
+        # every canonical DataFrame. Stamp it here so callers that
+        # validate the documented schema.forecast_nwp.v1 result do not
+        # hit `source_attr_required`.
+        df.attrs["source"] = "noaa_bdp"
+        # Coerce nullable numeric columns to float64 even if every row
+        # turned out NaN — pandas otherwise leaves the column as
+        # `object` (silent dtype drift).
+        for col in nullable_numeric_cols:
+            if col in df.columns:
+                df[col] = df[col].astype("float64")
+        return df
     finally:
         if owns_client and client is not None:
             client.close()
 
 
-def _cfgrib_variable_name(ds: Any, key: tuple[str, str]) -> str:
+def _cfgrib_variable_name(ds: Any, key: tuple[str, str], *, model: str) -> str:
     """Look up the cfgrib short-name a record decodes to.
 
     cfgrib normalises GRIB2 variable + level to a short-name (``"t2m"``
@@ -538,6 +609,10 @@ def _cfgrib_variable_name(ds: Any, key: tuple[str, str]) -> str:
     consult :data:`_GRIB_VAR_TO_CFGRIB_NAME` first, then fall back to
     "the single data-var in this single-message dataset" so unknown
     mappings still work for one-record fetches.
+
+    ``model`` is required so any ``GribIntegrityError`` raised here
+    carries the same model context as one raised from the caller —
+    keeps ``to_dict()["model"]`` non-empty for MCP serialization.
     """
     canonical = _GRIB_VAR_TO_CFGRIB_NAME.get(key)
     if canonical is not None and canonical in ds.data_vars:
@@ -552,12 +627,12 @@ def _cfgrib_variable_name(ds: Any, key: tuple[str, str]) -> str:
         raise GribIntegrityError(
             f"cfgrib short-name table miss for {key}: expected {canonical!r}, "
             f"got data_vars={data_vars}",
-            model="",  # caller fills in model context via the wrapping try/except
+            model=model,
             variable=key[0],
         )
     raise GribIntegrityError(
         f"cfgrib decoded multiple data_vars for single-record file {key}: {data_vars}",
-        model="",
+        model=model,
         variable=key[0],
     )
 
@@ -566,7 +641,7 @@ def _empty_dataframe(*, model: str, grid_kind: str) -> pd.DataFrame:
     """Return an empty DataFrame whose columns match ``schema.forecast_nwp.v1``."""
     import pandas as pd
 
-    return pd.DataFrame(
+    df = pd.DataFrame(
         {
             "station": pd.Series(dtype="object"),
             "model": pd.Series(dtype="object"),
@@ -589,6 +664,10 @@ def _empty_dataframe(*, model: str, grid_kind: str) -> pd.DataFrame:
             "retrieved_at": pd.Series(dtype="datetime64[ns, UTC]"),
         }
     )
+    # Codex iter-1 P2: source attr stamped even on empty path so
+    # downstream validators see it.
+    df.attrs["source"] = "noaa_bdp"
+    return df
 
 
 __all__ = ["forecast_nwp"]

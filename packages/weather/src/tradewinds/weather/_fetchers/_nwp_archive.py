@@ -169,13 +169,19 @@ def build_fetch_plan(
         raise ValueError(f"fxx must be non-negative; got {fxx}")
     if cycle.tzinfo is None or cycle.tzinfo.utcoffset(cycle) is None:
         raise ValueError(f"cycle must be timezone-aware (UTC); got naive {cycle!r}")
-    grib2_url = _build_grib2_url(model, mirror, cycle, fxx)
+    # Normalize to UTC. NOAA paths use the UTC cycle hour (t12z etc.);
+    # a caller passing 2026-05-23 14:00+02:00 means the 12z cycle, NOT
+    # a (non-existent) t14z cycle. Without normalization the path
+    # builder would format the local hour into the URL and silently
+    # fetch the wrong cycle (Codex iter-1 P2).
+    cycle_utc = cycle.astimezone(UTC)
+    grib2_url = _build_grib2_url(model, mirror, cycle_utc, fxx)
     if grib2_url is None:  # pragma: no cover — guarded above
         raise ValueError(f"could not build URL for model={model!r} mirror={mirror!r}")
     return NwpFetchPlan(
         model=model,
         mirror=mirror,
-        cycle=cycle,
+        cycle=cycle_utc,
         fxx=fxx,
         grib2_url=grib2_url,
         idx_url=grib2_url + ".idx",
