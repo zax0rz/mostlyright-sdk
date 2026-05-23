@@ -1210,16 +1210,22 @@ parquet = [
     { name = "pandas" },
     { name = "pyarrow" },
 ]
+polymarket = [
+    { name = "pandas" },
+    { name = "tradewinds-weather" },
+]
 
 [package.metadata]
 requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
     { name = "jsonschema", specifier = ">=4.21" },
     { name = "pandas", marker = "extra == 'parquet'", specifier = ">=2.2,<3.0" },
+    { name = "pandas", marker = "extra == 'polymarket'", specifier = ">=2.2,<3.0" },
     { name = "pyarrow", marker = "extra == 'parquet'", specifier = ">=17.0,<24.0" },
     { name = "tradewinds", editable = "packages/core" },
+    { name = "tradewinds-weather", marker = "extra == 'polymarket'", editable = "packages/weather" },
 ]
-provides-extras = ["parquet"]
+provides-extras = ["parquet", "polymarket"]
 
 [[package]]
 name = "tradewinds-weather"

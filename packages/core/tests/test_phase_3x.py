@@ -151,11 +151,14 @@ def test_polymarket_allowed_url_passes_to_settlement():
     # URL but the slug-date parser raises PolymarketSettlementError.
     from tradewinds.markets.polymarket import PolymarketSettlementError, polymarket_settle
 
+    # Title has no high/low keyword, so the architect iter-1 HIGH-3
+    # ambiguity-guard fires before the slug-date parser. Use a "highest"
+    # title to bypass it and hit the slug-date check.
     with pytest.raises(PolymarketSettlementError, match="no resolution date in slug"):
         polymarket_settle(
             "01234567-89ab-4cde-8f01-23456789abcd",
             description="Resolves via https://www.wunderground.com/data",
-            event={"slug": "no-date-here", "city": "london"},
+            event={"slug": "no-date-here", "city": "london", "title": "highest temp in London"},
         )
 
 

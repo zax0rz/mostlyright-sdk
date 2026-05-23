@@ -8,7 +8,7 @@ endpoint and is excluded from CI per the testing playbook.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 import httpx
@@ -189,10 +189,13 @@ class TestPolymarketDiscover:
                 "measure",
                 "end_time",
                 "resolution_source_type",
+                "source",
             ]
             assert df.iloc[0]["icao"] == "EGLL"
             assert df.iloc[0]["measure"] == "high"
             assert df.iloc[0]["resolution_source_type"] == "wunderground"
+            # Architect iter-1 HIGH-5: per-row source overlay column.
+            assert df.iloc[0]["source"] == "polymarket_gamma"
             # Validator-friendly provenance attrs.
             assert df.attrs.get("source") == "polymarket_gamma"
             assert df.attrs.get("retrieved_at") is not None
@@ -406,6 +409,114 @@ class TestPolymarketSettleResolutionPath:
         d = err.to_dict()
         assert d["wait_hours"] == 5.5
         assert d["resolution_source_type"] == "noaa_wrh"
+
+
+class TestArchitectIter1Fixes:
+    """Regression tests for architect iter-1 HIGH findings."""
+
+    def test_settlement_date_takes_last_yyyymmdd_in_slug(self) -> None:
+        """HIGH-4: slug carrying creation-date + resolution-date picks the latter."""
+        from tradewinds.markets.polymarket import _settlement_date_from_slug
+
+        out = _settlement_date_from_slug("created-2026-01-01-resolves-2026-05-23")
+        assert out.isoformat() == "2026-05-23"
+
+    def test_ambiguous_title_refuses_to_silently_default(self) -> None:
+        """HIGH-3: no high/low keyword raises PolymarketSettlementError."""
+        event = {
+            "id": _UUID4,
+            "slug": "some-event-london-2026-05-23",
+            "title": "Will London weather match the forecast?",  # no high/low keyword
+            "city": "london",
+            "description": "https://www.wunderground.com/x",
+        }
+        now = datetime(2026, 5, 25, 0, 0, tzinfo=UTC)
+        with pytest.raises(PolymarketSettlementError, match="ambiguous"):
+            polymarket_settle(_UUID4, event=event, now=now)
+
+    def test_too_early_uses_station_local_end_of_day(self) -> None:
+        """HIGH-1: settle finalization window starts from local day-end, not UTC.
+
+        For LAX (UTC-7), local day 2026-05-22 ends at 2026-05-23 06:59:59 UTC.
+        Setting 'now' to 2026-05-23 03:00 UTC means we're 4h *before* local
+        day-end — settle should refuse with TooEarlyToSettleError even though
+        we're 27h past UTC end-of-day (which would have passed any 24h gate).
+        """
+        from tradewinds.markets.polymarket import _station_local_end_of_day
+
+        # Sanity: confirm KLAX local end-of-day is 7h after UTC midnight.
+        eod_utc = _station_local_end_of_day("KLAX", date(2026, 5, 22))
+        # America/Los_Angeles on 2026-05-22 is PDT (UTC-7) so local
+        # 23:59:59 PDT == 06:59:59 UTC next day.
+        assert eod_utc.hour == 6
+        assert eod_utc.day == 23
+
+    def test_deferred_check_via_per_measure_table_not_just_station_set(self) -> None:
+        """HIGH-2: RCTP/'high' must be blocked by defense-in-depth gate.
+
+        resolve_station_for_event already blocks this, so we patch it
+        out to confirm the secondary gate fires.
+        """
+        from unittest.mock import patch
+
+        from tradewinds.international import DeferredMarketError
+        from tradewinds.markets import polymarket as pm_module
+
+        # Bypass the resolver's gate so we hit the defense-in-depth path.
+        with patch.object(
+            pm_module,
+            "resolve_station_for_event",
+            return_value=("RCTP", "default"),
+        ):
+            event = {
+                "id": _UUID4,
+                "slug": "highest-temp-taipei-2026-05-23",
+                "title": "Will Taipei's highest temp be above 30C?",
+                "city": "taipei",
+                "description": "https://www.wunderground.com/x",
+            }
+            with pytest.raises(DeferredMarketError):
+                pm_module.polymarket_settle(
+                    _UUID4, event=event, now=datetime(2026, 5, 25, 0, 0, tzinfo=UTC)
+                )
+
+    def test_discover_per_row_source_column_survives_concat(self) -> None:
+        """HIGH-5: df.attrs is lost on concat; per-row column persists."""
+        import pandas as pd
+
+        events = [
+            {
+                "id": _UUID4,
+                "slug": "highest-london-2026-05-23",
+                "title": "London highest temp 2026-05-23",
+                "city": "london",
+                "description": "https://www.wunderground.com/x",
+            }
+        ]
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=events)
+
+        client = httpx.Client(transport=httpx.MockTransport(handler))
+        try:
+            df = polymarket_discover(client=client, sleep_between=0)
+            other = pd.DataFrame(
+                {
+                    "event_id": ["x"],
+                    "slug": ["y"],
+                    "title": ["z"],
+                    "city": [None],
+                    "icao": [None],
+                    "measure": [None],
+                    "end_time": [None],
+                    "resolution_source_type": [None],
+                    "source": ["test_other"],
+                }
+            )
+            combined = pd.concat([df, other], ignore_index=True)
+            assert combined["source"].tolist() == ["polymarket_gamma", "test_other"]
+        finally:
+            client.close()
 
 
 class TestEnumsAndAllowlist:

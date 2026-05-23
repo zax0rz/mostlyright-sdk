@@ -249,26 +249,105 @@ def _extract_resolution_source_type(description: str) -> str:
     return "other"
 
 
+def _station_local_end_of_day(icao: str, settlement_date: date) -> datetime:
+    """Return the UTC instant corresponding to station-local 23:59:59.
+
+    Resolves the station's IANA timezone via the registry and computes
+    ``settlement_date 23:59:59 LOCAL`` then converts to UTC. Used by the
+    ``TooEarlyToSettleError`` gate so the finalization window starts
+    from the station-local day-end, not UTC day-end (architect iter-1
+    HIGH-1).
+
+    Falls back to UTC end-of-day if the station isn't in the registry
+    (defensive — should never happen for icao values that resolved
+    via ``resolve_station_for_event``).
+    """
+    from datetime import time as _time
+    from zoneinfo import ZoneInfo
+
+    from tradewinds._internal._stations import STATIONS
+
+    info = STATIONS.get(icao)
+    if info is None:
+        for v in STATIONS.values():
+            if v.icao == icao:
+                info = v
+                break
+    if info is None:
+        return datetime(
+            settlement_date.year,
+            settlement_date.month,
+            settlement_date.day,
+            23,
+            59,
+            59,
+            tzinfo=UTC,
+        )
+    local_eod = datetime.combine(settlement_date, _time(23, 59, 59), tzinfo=ZoneInfo(info.tz))
+    return local_eod.astimezone(UTC)
+
+
 def _settlement_date_from_slug(slug: str) -> date:
     """Parse the resolution date out of an event slug.
 
     Polymarket weather slugs embed the resolution date, e.g.
-    ``will-nyc-be-above-80f-on-2026-05-23``. We pull the first
-    ``YYYY-MM-DD`` match; multiple matches are unexpected for weather
-    markets but the first wins.
+    ``will-nyc-be-above-80f-on-2026-05-23``. Some slugs carry both
+    a creation date AND a resolution date (``created-2026-01-01-resolves-
+    2026-05-23``); we take the LAST ``YYYY-MM-DD`` match because the
+    resolution date is typically rightmost in Polymarket's slug
+    convention. Architect iter-1 HIGH-4: first-match-wins could silently
+    settle on the wrong date.
 
     Raises:
         PolymarketSettlementError: no parseable date in the slug.
     """
-    match = _SLUG_DATE_RE.search(slug or "")
-    if match is None:
+    matches = list(_SLUG_DATE_RE.finditer(slug or ""))
+    if not matches:
         raise PolymarketSettlementError(
             f"no resolution date in slug {slug!r} (expected YYYY-MM-DD)",
         )
+    last = matches[-1]
     try:
-        return date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+        return date(int(last.group(1)), int(last.group(2)), int(last.group(3)))
     except ValueError as exc:
         raise PolymarketSettlementError(f"slug {slug!r} carries malformed date: {exc}") from exc
+
+
+# ----------------------------------------------------------------------
+# Dep guards (codex iter-1 P2)
+# ----------------------------------------------------------------------
+def _require_pandas() -> Any:
+    """Lazy-import pandas with an actionable install hint on miss."""
+    try:
+        import pandas as _pandas
+    except ImportError as exc:
+        from tradewinds.core.exceptions import SourceUnavailableError
+
+        raise SourceUnavailableError(
+            "tradewinds.markets.polymarket requires pandas. Install with: "
+            "pip install tradewinds-markets[polymarket]",
+            source="polymarket_gamma",
+            retryable=False,
+            underlying=str(exc),
+        ) from None
+    return _pandas
+
+
+def _require_weather() -> None:
+    """Lazy-check that tradewinds.weather is importable (daily_extremes uses it)."""
+    try:
+        import tradewinds.weather  # noqa: F401
+    except ImportError as exc:
+        from tradewinds.core.exceptions import SourceUnavailableError
+
+        raise SourceUnavailableError(
+            "tradewinds.markets.polymarket settlement requires the sibling "
+            "tradewinds-weather package (for daily_extremes). Install with: "
+            "pip install tradewinds-markets[polymarket]",
+            source="polymarket_gamma",
+            retryable=False,
+            underlying=str(exc),
+        ) from None
 
 
 # ----------------------------------------------------------------------
@@ -288,7 +367,9 @@ def polymarket_discover(
             client module's built-in 0.2s.
 
     Returns:
-        ``pd.DataFrame`` with one row per active weather event. Columns:
+        ``pd.DataFrame`` with one row per active weather event. Requires the
+        ``[polymarket]`` extra (raises :class:`SourceUnavailableError`
+        otherwise). Columns:
 
         - ``event_id`` (str): Polymarket event id (UUID4).
         - ``slug`` (str): Polymarket slug.
@@ -306,8 +387,9 @@ def polymarket_discover(
 
     Raises:
         httpx.HTTPStatusError: Gamma API returned non-2xx.
+        SourceUnavailableError: ``[polymarket]`` extra not installed.
     """
-    import pandas as pd
+    pd = _require_pandas()
 
     sleep_arg = sleep_between if sleep_between is not None else 0.2
     raw_events = fetch_events(client=client, sleep_between=sleep_arg)
@@ -329,9 +411,16 @@ def polymarket_discover(
             # cities always get station_measure="default" but the market
             # still resolves on tmax XOR tmin.
             measure = _detect_market_measure(ev)
-        except KeyError:
-            # No city, or city not in our map → not a tradewinds-known
-            # weather market. Skip.
+        except KeyError as exc:
+            # No `city` field on the raw Gamma payload, OR the city
+            # isn't in our map → not a tradewinds-known weather market.
+            # Codex iter-1 P1: log at INFO so a quant who can't find
+            # their market knows it was dropped (and which event).
+            log.info(
+                "polymarket_discover: dropping event slug=%r — %s",
+                ev.get("slug"),
+                exc,
+            )
             continue
         except DeferredMarketError:
             # The market routes to a v0.2 source (Taipei / HK-low). Still
@@ -358,6 +447,11 @@ def polymarket_discover(
                 "measure": measure,
                 "end_time": ev.get("endDate"),
                 "resolution_source_type": resolution_source_type,
+                # Architect iter-1 HIGH-5: per-row source overlay column
+                # survives pd.concat (df.attrs does not). Stamping it
+                # here keeps every row attributable even after
+                # cross-frame merges in downstream analysis.
+                "source": "polymarket_gamma",
             }
         )
 
@@ -372,6 +466,7 @@ def polymarket_discover(
             "measure",
             "end_time",
             "resolution_source_type",
+            "source",
         ],
     )
     df.attrs["source"] = "polymarket_gamma"
@@ -459,9 +554,27 @@ def polymarket_settle(
     icao, _station_measure = resolve_station_for_event(event, city_map)
     measure = _detect_market_measure(event)  # surfaced on the settlement record
 
-    # Hard-block known deferred stations even if the resolver missed
-    # (defense-in-depth — resolve_station_for_event already does this).
-    if icao in DEFERRED_STATIONS and measure != "high":
+    # Architect iter-1 HIGH-3: ambiguous title (no high/low keyword OR
+    # both) used to silently pick tmax. Refuse so the caller can either
+    # disambiguate (e.g. via a structured field on the event) or audit.
+    if measure == "default":
+        raise PolymarketSettlementError(
+            f"event title/slug for {event_id} is ambiguous about high vs low "
+            "(neither keyword detected, or both detected together); "
+            "tradewinds refuses to silently default to tmax — caller must "
+            "either supply an unambiguous event payload or disambiguate "
+            "manually before settlement",
+        )
+
+    # Architect iter-1 HIGH-2: defense-in-depth must consult the
+    # per-measure table (the source of truth in _per_event_station.py),
+    # not the coarser DEFERRED_STATIONS set. Otherwise an RCTP/"high"
+    # market could bypass the gate if the resolver ever missed.
+    from ._per_event_station import DEFERRED_STATION_MEASURES
+
+    if (icao, measure) in DEFERRED_STATION_MEASURES or (
+        icao in DEFERRED_STATIONS and icao != "VHHH"
+    ):
         raise DeferredMarketError(
             f"market for ({icao}, {measure}) is deferred to v0.2",
         )
@@ -471,31 +584,30 @@ def polymarket_settle(
     resolution_source_type = _extract_resolution_source_type(raw_description)
 
     # Refuse to settle before the source's finalization delay clears.
+    # Architect iter-1 HIGH-1: must use station-LOCAL end-of-day, not
+    # UTC. For LAX (UTC-7), the LAX day ends 7h after UTC midnight;
+    # using UTC end-of-day would let the 6h Wunderground gate elapse
+    # ~1h BEFORE the local day even closes.
     if now is None:
         now = datetime.now(UTC)
     delay_h = _SETTLE_DELAY_HOURS.get(resolution_source_type, 24)
-    elapsed_h = (
-        now
-        - datetime(
-            settlement_date.year,
-            settlement_date.month,
-            settlement_date.day,
-            23,
-            59,
-            59,
-            tzinfo=UTC,
-        )
-    ).total_seconds() / 3600.0
+    local_eod_utc = _station_local_end_of_day(icao, settlement_date)
+    elapsed_h = (now - local_eod_utc).total_seconds() / 3600.0
     if elapsed_h < delay_h:
         raise TooEarlyToSettleError(
             f"settlement for {event_id} on {settlement_date.isoformat()} "
-            f"refused: {elapsed_h:.1f}h elapsed < {delay_h}h finalization "
-            f"window for resolution_source_type={resolution_source_type!r}",
+            f"refused: {elapsed_h:.1f}h elapsed since station-local end-of-day "
+            f"< {delay_h}h finalization window for "
+            f"resolution_source_type={resolution_source_type!r}",
             wait_hours=delay_h - elapsed_h,
             resolution_source_type=resolution_source_type,
         )
 
     # Pull the daily extreme for the resolution station + date.
+    # Codex iter-1 P2: tradewinds-weather (sibling package) is required
+    # for daily_extremes -> cache I/O. The guard raises a friendly
+    # SourceUnavailableError when the [polymarket] extra isn't installed.
+    _require_weather()
     extremes = daily_extremes(icao, settlement_date, settlement_date)
     if not extremes:
         raise PolymarketSettlementError(
