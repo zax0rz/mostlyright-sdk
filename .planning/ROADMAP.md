@@ -310,7 +310,7 @@ Mirrors the Python v0.1.0 public surface from the same repo (`packages-ts/`). Sa
   1. All 5 Python parity fixtures pass against the TS implementation with exact numeric equality on every column (no tolerance loosening). HTTP replay via `msw` against recordings captured from the Python tests.
   2. IEM ASOS fetcher uses yearly chunks (calendar-aligned, leap-year safe — lifted from Python Phase 1.5 logic) at 1 req/sec politeness; CSV parser handles `#`-prefix comments + `M`/`T` sentinel values + multi-column expansion identical to `_iem.iem_to_observation`.
   3. GHCNh PSV fetcher handles 404-as-no-data per Python `download_ghcnh_range`; CORS workaround documented in `TS-CORS-MATRIX.md` if blocked.
-  4. `mergeObservations` and `mergeClimate` reproduce Python source priority + secondary-key behavior; property test asserts `mergeObservations(shuffleRows(rows)) === mergeObservations(rows)` byte-for-byte over Hypothesis-equivalent fast-check inputs.
+  4. `mergeObservations` and `mergeClimate` reproduce Python source priority + secondary-key behavior. Property test (fast-check) asserts `mergeObservations(shuffleRows(rows))` is row-equivalent to `mergeObservations(rows)` ONLY for the restricted input class where no two rows share the same `(stationCode, observedAt, observationType)` AND same `sourcePriority` — i.e. permutation-stable on inputs WITHOUT same-priority duplicate-key conflicts (preserves Python `merge_observations` first-seen tiebreak; unrestricted shuffle would FALSELY require TS to diverge from Python parity). Separate canonical-fetch-order replay test against the parity-fixture HTTP recordings asserts byte-equivalent merged output across runs.
   5. Weekly drift cron `drift-rotate-ts.yml` lands and writes `drift-report.md` on mismatch (soft-fail, opens GH issue, NEVER blocks CI).
 **Plans**: TBD (run `/gsd-plan-phase ts-w2` to break down — directory: `.planning/phases/ts-w2-parity-gate/`)
 
@@ -399,11 +399,11 @@ Mirrors the Python v0.1.0 public surface from the same repo (`packages-ts/`). Sa
 Phases executed in numeric order: 1 → **1.5** → 2 → **2.1** → 3 → **3.1** → **3.2** → **3.3** → **3.4** → **3.5** → **3.6** → 4 → **(v0.1.0rc1 ready to publish)** → 5 (decimal phases sequence between their surrounding integers per the numbering convention above; Phase 5 is post-v0.1 Python and starts the v0.2+ Python milestone).
 
 **Execution Order (TypeScript v0.1.0 — PLANNING):**
-TS phases execute strictly serial after Python v0.1.0 final: **TS-W0** → **TS-W1** → **TS-W2** (parity gate; HARD) → **TS-W3** → **TS-W4** → **TS-W5** ↔ **TS-W6** (parallel after W3/W4) → **TS-W7** (v0.1.0 ship). TS-W1 unblocks Rob's Chrome extension overlay; TS-W2's parity gate is the load-bearing trust gate (without it, the TS port is unverified).
+TS phases execute strictly serial after Python v0.1.0 final: **TS-W0** → **TS-W1** → **TS-W2** (parity gate; HARD) → **TS-W3** → **TS-W4** → **TS-W6** → **TS-W5** → **TS-W7** (v0.1.0 ship). TS-W5 is strictly serial AFTER TS-W6, NOT parallel — `polymarketSettle` (TS-POLY-03) reads `internationalDailyExtremes` (TS-INTL-01 in TS-W6). TS-W1 unblocks Rob's Chrome extension overlay; TS-W2's parity gate is the load-bearing trust gate (without it, the TS port is unverified).
 
 **Python timeline (historical):** v0.1.0rc1 ready on 2026-05-23 (12/12 phases complete on `main`, 1453 tests passing, operator-gated PyPI trusted publish).
 
-**TS timeline (estimate):** TS-W0..TS-W7 ≈ 18-25 days single-lane wall-clock; ≈ 12-15 days with parallelism (W5 ↔ W6 after W4). Rob owns the TS lane; Vu reviews. Cross-language schema drift CI gate makes pairing additive features (Python v0.2 + TS v0.1.x) safe.
+**TS timeline (estimate):** TS-W0..TS-W7 ≈ 18-25 days single-lane wall-clock. With the W6-before-W5 dependency there is no in-milestone parallelism for the TS lane; the schedule is mostly single-lane. Rob owns the TS lane; Vu reviews. Cross-language schema drift CI gate makes pairing additive features (Python v0.2 + TS v0.1.x) safe.
 
 **Parallelism note (carried over from Python v0.1):** Multiple lanes still run in parallel:
 - Phase 3.1 (international stations) and Phase 3.2 (multi-forecast) were independent — different files.
