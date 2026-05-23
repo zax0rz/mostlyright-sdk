@@ -1,0 +1,82 @@
+{
+  "$id": "https://tradewinds.dev/schemas/schema.observation_qc.v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "as_of_time": {
+      "format": "date-time",
+      "nullable": true,
+      "type": "string"
+    },
+    "detector_metadata": {
+      "description": "JSON-serialized detector payload; shape per qc_system.",
+      "nullable": true,
+      "type": "string"
+    },
+    "field": {
+      "description": "Observation column the rule evaluated (e.g. temp_c).",
+      "type": "string"
+    },
+    "flag": {
+      "enum": [
+        "clean",
+        "flagged",
+        "suspect"
+      ],
+      "type": "string"
+    },
+    "ingestion_id": {
+      "nullable": true,
+      "type": "string"
+    },
+    "observation_kind": {
+      "enum": [
+        "METAR",
+        "SPECI"
+      ],
+      "nullable": true,
+      "type": "string"
+    },
+    "observed_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "parser_name": {
+      "nullable": true,
+      "type": "string"
+    },
+    "qc_system": {
+      "type": "string"
+    },
+    "qc_version": {
+      "type": "string"
+    },
+    "rule_id": {
+      "type": "string"
+    },
+    "source": {
+      "enum": [
+        "awc",
+        "ghcnh",
+        "iem",
+        "ncei"
+      ],
+      "type": "string"
+    },
+    "station_code": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "field",
+    "flag",
+    "observed_at",
+    "qc_system",
+    "qc_version",
+    "rule_id",
+    "source",
+    "station_code"
+  ],
+  "title": "schema.observation_qc.v1",
+  "type": "object",
+  "version": "v1"
+}

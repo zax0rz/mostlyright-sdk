@@ -1,0 +1,614 @@
+{
+  "stations": [
+    {
+      "code": "EDDB",
+      "country": "DE",
+      "ghcnh_id": null,
+      "icao": "EDDB",
+      "latitude": 52.3667,
+      "longitude": 13.5033,
+      "name": "Berlin Brandenburg",
+      "tz": "Europe/Berlin"
+    },
+    {
+      "code": "EDDF",
+      "country": "DE",
+      "ghcnh_id": null,
+      "icao": "EDDF",
+      "latitude": 50.0379,
+      "longitude": 8.5622,
+      "name": "Frankfurt am Main",
+      "tz": "Europe/Berlin"
+    },
+    {
+      "code": "EDDM",
+      "country": "DE",
+      "ghcnh_id": null,
+      "icao": "EDDM",
+      "latitude": 48.3538,
+      "longitude": 11.7861,
+      "name": "Munich Franz Josef Strauss",
+      "tz": "Europe/Berlin"
+    },
+    {
+      "code": "EFHK",
+      "country": "FI",
+      "ghcnh_id": null,
+      "icao": "EFHK",
+      "latitude": 60.3172,
+      "longitude": 24.9633,
+      "name": "Helsinki-Vantaa",
+      "tz": "Europe/Helsinki"
+    },
+    {
+      "code": "EGKK",
+      "country": "GB",
+      "ghcnh_id": null,
+      "icao": "EGKK",
+      "latitude": 51.1481,
+      "longitude": -0.1903,
+      "name": "London Gatwick",
+      "tz": "Europe/London"
+    },
+    {
+      "code": "EGLL",
+      "country": "GB",
+      "ghcnh_id": null,
+      "icao": "EGLL",
+      "latitude": 51.4706,
+      "longitude": -0.4619,
+      "name": "London Heathrow",
+      "tz": "Europe/London"
+    },
+    {
+      "code": "EHAM",
+      "country": "NL",
+      "ghcnh_id": null,
+      "icao": "EHAM",
+      "latitude": 52.3086,
+      "longitude": 4.7639,
+      "name": "Amsterdam Schiphol",
+      "tz": "Europe/Amsterdam"
+    },
+    {
+      "code": "EKCH",
+      "country": "DK",
+      "ghcnh_id": null,
+      "icao": "EKCH",
+      "latitude": 55.6181,
+      "longitude": 12.6561,
+      "name": "Copenhagen Kastrup",
+      "tz": "Europe/Copenhagen"
+    },
+    {
+      "code": "EPWA",
+      "country": "PL",
+      "ghcnh_id": null,
+      "icao": "EPWA",
+      "latitude": 52.1657,
+      "longitude": 20.9671,
+      "name": "Warsaw Chopin",
+      "tz": "Europe/Warsaw"
+    },
+    {
+      "code": "ESSA",
+      "country": "SE",
+      "ghcnh_id": null,
+      "icao": "ESSA",
+      "latitude": 59.6519,
+      "longitude": 17.9186,
+      "name": "Stockholm Arlanda",
+      "tz": "Europe/Stockholm"
+    },
+    {
+      "code": "ATL",
+      "country": "US",
+      "ghcnh_id": "USW00013874",
+      "icao": "KATL",
+      "latitude": 33.6407,
+      "longitude": -84.4277,
+      "name": "Hartsfield-Jackson Atlanta International",
+      "tz": "America/New_York"
+    },
+    {
+      "code": "AUS",
+      "country": "US",
+      "ghcnh_id": "USW00013904",
+      "icao": "KAUS",
+      "latitude": 30.1975,
+      "longitude": -97.6664,
+      "name": "Austin-Bergstrom International",
+      "tz": "America/Chicago"
+    },
+    {
+      "code": "BOS",
+      "country": "US",
+      "ghcnh_id": "USW00014739",
+      "icao": "KBOS",
+      "latitude": 42.3656,
+      "longitude": -71.0096,
+      "name": "Boston Logan International",
+      "tz": "America/New_York"
+    },
+    {
+      "code": "DCA",
+      "country": "US",
+      "ghcnh_id": "USW00013743",
+      "icao": "KDCA",
+      "latitude": 38.8512,
+      "longitude": -77.0402,
+      "name": "Washington Reagan National",
+      "tz": "America/New_York"
+    },
+    {
+      "code": "DEN",
+      "country": "US",
+      "ghcnh_id": "USW00003017",
+      "icao": "KDEN",
+      "latitude": 39.8561,
+      "longitude": -104.6737,
+      "name": "Denver International",
+      "tz": "America/Denver"
+    },
+    {
+      "code": "DFW",
+      "country": "US",
+      "ghcnh_id": "USW00003927",
+      "icao": "KDFW",
+      "latitude": 32.8998,
+      "longitude": -97.0403,
+      "name": "Dallas-Fort Worth International",
+      "tz": "America/Chicago"
+    },
+    {
+      "code": "HOU",
+      "country": "US",
+      "ghcnh_id": "USW00012918",
+      "icao": "KHOU",
+      "latitude": 29.6454,
+      "longitude": -95.2789,
+      "name": "Houston Hobby",
+      "tz": "America/Chicago"
+    },
+    {
+      "code": "LAS",
+      "country": "US",
+      "ghcnh_id": "USW00023169",
+      "icao": "KLAS",
+      "latitude": 36.084,
+      "longitude": -115.1537,
+      "name": "Harry Reid (McCarran) International",
+      "tz": "America/Los_Angeles"
+    },
+    {
+      "code": "LAX",
+      "country": "US",
+      "ghcnh_id": "USW00023174",
+      "icao": "KLAX",
+      "latitude": 33.9425,
+      "longitude": -118.4081,
+      "name": "Los Angeles International",
+      "tz": "America/Los_Angeles"
+    },
+    {
+      "code": "MDW",
+      "country": "US",
+      "ghcnh_id": "USW00014819",
+      "icao": "KMDW",
+      "latitude": 41.7868,
+      "longitude": -87.7522,
+      "name": "Chicago Midway International",
+      "tz": "America/Chicago"
+    },
+    {
+      "code": "MIA",
+      "country": "US",
+      "ghcnh_id": "USW00012839",
+      "icao": "KMIA",
+      "latitude": 25.7959,
+      "longitude": -80.287,
+      "name": "Miami International",
+      "tz": "America/New_York"
+    },
+    {
+      "code": "MSP",
+      "country": "US",
+      "ghcnh_id": "USW00014922",
+      "icao": "KMSP",
+      "latitude": 44.8848,
+      "longitude": -93.2223,
+      "name": "Minneapolis-St Paul International",
+      "tz": "America/Chicago"
+    },
+    {
+      "code": "MSY",
+      "country": "US",
+      "ghcnh_id": "USW00012916",
+      "icao": "KMSY",
+      "latitude": 29.9934,
+      "longitude": -90.258,
+      "name": "New Orleans Louis Armstrong International",
+      "tz": "America/Chicago"
+    },
+    {
+      "code": "NYC",
+      "country": "US",
+      "ghcnh_id": "USW00094728",
+      "icao": "KNYC",
+      "latitude": 40.7789,
+      "longitude": -73.9692,
+      "name": "Central Park, New York",
+      "tz": "America/New_York"
+    },
+    {
+      "code": "OKC",
+      "country": "US",
+      "ghcnh_id": "USW00013967",
+      "icao": "KOKC",
+      "latitude": 35.3931,
+      "longitude": -97.6007,
+      "name": "Oklahoma City Will Rogers World",
+      "tz": "America/Chicago"
+    },
+    {
+      "code": "PHL",
+      "country": "US",
+      "ghcnh_id": "USW00013739",
+      "icao": "KPHL",
+      "latitude": 39.8721,
+      "longitude": -75.2411,
+      "name": "Philadelphia International",
+      "tz": "America/New_York"
+    },
+    {
+      "code": "PHX",
+      "country": "US",
+      "ghcnh_id": "USW00023183",
+      "icao": "KPHX",
+      "latitude": 33.4373,
+      "longitude": -112.0078,
+      "name": "Phoenix Sky Harbor International",
+      "tz": "America/Phoenix"
+    },
+    {
+      "code": "SAT",
+      "country": "US",
+      "ghcnh_id": "USW00012921",
+      "icao": "KSAT",
+      "latitude": 29.5337,
+      "longitude": -98.4698,
+      "name": "San Antonio International",
+      "tz": "America/Chicago"
+    },
+    {
+      "code": "SEA",
+      "country": "US",
+      "ghcnh_id": "USW00024233",
+      "icao": "KSEA",
+      "latitude": 47.4502,
+      "longitude": -122.3088,
+      "name": "Seattle-Tacoma International",
+      "tz": "America/Los_Angeles"
+    },
+    {
+      "code": "SFO",
+      "country": "US",
+      "ghcnh_id": "USW00023234",
+      "icao": "KSFO",
+      "latitude": 37.6213,
+      "longitude": -122.379,
+      "name": "San Francisco International",
+      "tz": "America/Los_Angeles"
+    },
+    {
+      "code": "LEBL",
+      "country": "ES",
+      "ghcnh_id": null,
+      "icao": "LEBL",
+      "latitude": 41.2974,
+      "longitude": 2.0833,
+      "name": "Barcelona El Prat",
+      "tz": "Europe/Madrid"
+    },
+    {
+      "code": "LEMD",
+      "country": "ES",
+      "ghcnh_id": null,
+      "icao": "LEMD",
+      "latitude": 40.4719,
+      "longitude": -3.5626,
+      "name": "Madrid Barajas",
+      "tz": "Europe/Madrid"
+    },
+    {
+      "code": "LFPB",
+      "country": "FR",
+      "ghcnh_id": null,
+      "icao": "LFPB",
+      "latitude": 48.9694,
+      "longitude": 2.4414,
+      "name": "Paris Le Bourget",
+      "tz": "Europe/Paris"
+    },
+    {
+      "code": "LFPG",
+      "country": "FR",
+      "ghcnh_id": null,
+      "icao": "LFPG",
+      "latitude": 49.0097,
+      "longitude": 2.5479,
+      "name": "Paris Charles de Gaulle",
+      "tz": "Europe/Paris"
+    },
+    {
+      "code": "LFPO",
+      "country": "FR",
+      "ghcnh_id": null,
+      "icao": "LFPO",
+      "latitude": 48.7233,
+      "longitude": 2.3794,
+      "name": "Paris Orly",
+      "tz": "Europe/Paris"
+    },
+    {
+      "code": "LIMC",
+      "country": "IT",
+      "ghcnh_id": null,
+      "icao": "LIMC",
+      "latitude": 45.6306,
+      "longitude": 8.7281,
+      "name": "Milan Malpensa",
+      "tz": "Europe/Rome"
+    },
+    {
+      "code": "LIRF",
+      "country": "IT",
+      "ghcnh_id": null,
+      "icao": "LIRF",
+      "latitude": 41.8003,
+      "longitude": 12.2389,
+      "name": "Rome Fiumicino",
+      "tz": "Europe/Rome"
+    },
+    {
+      "code": "LOWW",
+      "country": "AT",
+      "ghcnh_id": null,
+      "icao": "LOWW",
+      "latitude": 48.1103,
+      "longitude": 16.5697,
+      "name": "Vienna International",
+      "tz": "Europe/Vienna"
+    },
+    {
+      "code": "LSZH",
+      "country": "CH",
+      "ghcnh_id": null,
+      "icao": "LSZH",
+      "latitude": 47.4647,
+      "longitude": 8.5492,
+      "name": "Zurich",
+      "tz": "Europe/Zurich"
+    },
+    {
+      "code": "NZAA",
+      "country": "NZ",
+      "ghcnh_id": null,
+      "icao": "NZAA",
+      "latitude": -37.0081,
+      "longitude": 174.7917,
+      "name": "Auckland",
+      "tz": "Pacific/Auckland"
+    },
+    {
+      "code": "NZWN",
+      "country": "NZ",
+      "ghcnh_id": null,
+      "icao": "NZWN",
+      "latitude": -41.3272,
+      "longitude": 174.8053,
+      "name": "Wellington",
+      "tz": "Pacific/Auckland"
+    },
+    {
+      "code": "OERK",
+      "country": "SA",
+      "ghcnh_id": null,
+      "icao": "OERK",
+      "latitude": 24.9576,
+      "longitude": 46.6988,
+      "name": "Riyadh King Khalid International",
+      "tz": "Asia/Riyadh"
+    },
+    {
+      "code": "OMDB",
+      "country": "AE",
+      "ghcnh_id": null,
+      "icao": "OMDB",
+      "latitude": 25.2532,
+      "longitude": 55.3657,
+      "name": "Dubai International",
+      "tz": "Asia/Dubai"
+    },
+    {
+      "code": "OTHH",
+      "country": "QA",
+      "ghcnh_id": null,
+      "icao": "OTHH",
+      "latitude": 25.2731,
+      "longitude": 51.608,
+      "name": "Doha Hamad International",
+      "tz": "Asia/Qatar"
+    },
+    {
+      "code": "RCTP",
+      "country": "TW",
+      "ghcnh_id": null,
+      "icao": "RCTP",
+      "latitude": 25.0777,
+      "longitude": 121.2328,
+      "name": "Taipei Taoyuan",
+      "tz": "Asia/Taipei"
+    },
+    {
+      "code": "RJAA",
+      "country": "JP",
+      "ghcnh_id": null,
+      "icao": "RJAA",
+      "latitude": 35.7647,
+      "longitude": 140.3864,
+      "name": "Tokyo Narita",
+      "tz": "Asia/Tokyo"
+    },
+    {
+      "code": "RJTT",
+      "country": "JP",
+      "ghcnh_id": null,
+      "icao": "RJTT",
+      "latitude": 35.5522,
+      "longitude": 139.78,
+      "name": "Tokyo Haneda",
+      "tz": "Asia/Tokyo"
+    },
+    {
+      "code": "RKSI",
+      "country": "KR",
+      "ghcnh_id": null,
+      "icao": "RKSI",
+      "latitude": 37.4691,
+      "longitude": 126.4505,
+      "name": "Seoul Incheon",
+      "tz": "Asia/Seoul"
+    },
+    {
+      "code": "SAEZ",
+      "country": "AR",
+      "ghcnh_id": null,
+      "icao": "SAEZ",
+      "latitude": -34.8222,
+      "longitude": -58.5358,
+      "name": "Buenos Aires Ezeiza",
+      "tz": "America/Argentina/Buenos_Aires"
+    },
+    {
+      "code": "SBGR",
+      "country": "BR",
+      "ghcnh_id": null,
+      "icao": "SBGR",
+      "latitude": -23.4356,
+      "longitude": -46.4731,
+      "name": "S\u00e3o Paulo Guarulhos",
+      "tz": "America/Sao_Paulo"
+    },
+    {
+      "code": "UUEE",
+      "country": "RU",
+      "ghcnh_id": null,
+      "icao": "UUEE",
+      "latitude": 55.9728,
+      "longitude": 37.4147,
+      "name": "Moscow Sheremetyevo",
+      "tz": "Europe/Moscow"
+    },
+    {
+      "code": "VABB",
+      "country": "IN",
+      "ghcnh_id": null,
+      "icao": "VABB",
+      "latitude": 19.0887,
+      "longitude": 72.8679,
+      "name": "Mumbai Chhatrapati Shivaji",
+      "tz": "Asia/Kolkata"
+    },
+    {
+      "code": "VHHH",
+      "country": "HK",
+      "ghcnh_id": null,
+      "icao": "VHHH",
+      "latitude": 22.308,
+      "longitude": 113.9185,
+      "name": "Hong Kong International",
+      "tz": "Asia/Hong_Kong"
+    },
+    {
+      "code": "VIDP",
+      "country": "IN",
+      "ghcnh_id": null,
+      "icao": "VIDP",
+      "latitude": 28.5562,
+      "longitude": 77.1,
+      "name": "Delhi Indira Gandhi",
+      "tz": "Asia/Kolkata"
+    },
+    {
+      "code": "VTBS",
+      "country": "TH",
+      "ghcnh_id": null,
+      "icao": "VTBS",
+      "latitude": 13.69,
+      "longitude": 100.7501,
+      "name": "Bangkok Suvarnabhumi",
+      "tz": "Asia/Bangkok"
+    },
+    {
+      "code": "WSSS",
+      "country": "SG",
+      "ghcnh_id": null,
+      "icao": "WSSS",
+      "latitude": 1.3644,
+      "longitude": 103.9915,
+      "name": "Singapore Changi",
+      "tz": "Asia/Singapore"
+    },
+    {
+      "code": "YBBN",
+      "country": "AU",
+      "ghcnh_id": null,
+      "icao": "YBBN",
+      "latitude": -27.3842,
+      "longitude": 153.1175,
+      "name": "Brisbane",
+      "tz": "Australia/Brisbane"
+    },
+    {
+      "code": "YMML",
+      "country": "AU",
+      "ghcnh_id": null,
+      "icao": "YMML",
+      "latitude": -37.6733,
+      "longitude": 144.8433,
+      "name": "Melbourne Tullamarine",
+      "tz": "Australia/Melbourne"
+    },
+    {
+      "code": "YSSY",
+      "country": "AU",
+      "ghcnh_id": null,
+      "icao": "YSSY",
+      "latitude": -33.9461,
+      "longitude": 151.1772,
+      "name": "Sydney Kingsford Smith",
+      "tz": "Australia/Sydney"
+    },
+    {
+      "code": "ZBAA",
+      "country": "CN",
+      "ghcnh_id": null,
+      "icao": "ZBAA",
+      "latitude": 40.0801,
+      "longitude": 116.5846,
+      "name": "Beijing Capital",
+      "tz": "Asia/Shanghai"
+    },
+    {
+      "code": "ZSPD",
+      "country": "CN",
+      "ghcnh_id": null,
+      "icao": "ZSPD",
+      "latitude": 31.1443,
+      "longitude": 121.8083,
+      "name": "Shanghai Pudong",
+      "tz": "Asia/Shanghai"
+    }
+  ]
+}

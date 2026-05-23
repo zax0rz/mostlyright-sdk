@@ -1,0 +1,35 @@
+{
+  "rules": [
+    {
+      "bit_position": 0,
+      "description": "Temperature outside [-89C, 57C] (world-record bounds).",
+      "field": "temp_c",
+      "rule_id": "temp_c.out_of_range"
+    },
+    {
+      "bit_position": 1,
+      "description": "Dewpoint greater than temperature (physically impossible).",
+      "field": "dew_point_c",
+      "rule_id": "dew_point_c.exceeds_temp"
+    },
+    {
+      "bit_position": 2,
+      "description": "Wind speed negative.",
+      "field": "wind_speed_ms",
+      "rule_id": "wind_speed_ms.negative"
+    },
+    {
+      "bit_position": 3,
+      "description": "Wind direction outside [0, 360].",
+      "field": "wind_dir_deg",
+      "rule_id": "wind_dir_deg.out_of_range"
+    },
+    {
+      "bit_position": 4,
+      "description": "Sea-level pressure outside [870, 1085] mb.",
+      "field": "slp_hpa",
+      "rule_id": "slp_hpa.out_of_range"
+    }
+  ],
+  "schema_version": "v1"
+}

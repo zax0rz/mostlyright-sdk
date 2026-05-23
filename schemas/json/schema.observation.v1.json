@@ -1,0 +1,161 @@
+{
+  "$id": "https://tradewinds.dev/schemas/schema.observation.v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "imperialRenames": {
+    "dew_point_c": "dew_point_F",
+    "event_time": "utc_datetime",
+    "precip_mm_1h": "precip_in_1h",
+    "sky_base_1_m": "sky_base_1_ft",
+    "sky_base_2_m": "sky_base_2_ft",
+    "sky_base_3_m": "sky_base_3_ft",
+    "sky_base_4_m": "sky_base_4_ft",
+    "temp_c": "temp_F",
+    "visibility_m": "vsby",
+    "wind_gust_ms": "gust_kt",
+    "wind_speed_ms": "wind_speed_kt"
+  },
+  "properties": {
+    "dew_point_c": {
+      "description": "units: celsius \u2014 bounded",
+      "nullable": true,
+      "type": "number"
+    },
+    "event_time": {
+      "description": "observation valid time",
+      "format": "date-time",
+      "type": "string"
+    },
+    "metar_raw": {
+      "description": "raw METAR text if source has it; null for AWC JSON (structured-only)",
+      "nullable": true,
+      "type": "string"
+    },
+    "observation_type": {
+      "description": "METAR | SPECI; defaults METAR when source can't distinguish (e.g. AWC JSON)",
+      "enum": [
+        "METAR",
+        "SPECI"
+      ],
+      "type": "string"
+    },
+    "precip_mm_1h": {
+      "description": "units: mm \u2014 hourly precip (METAR p01i, converted from inches)",
+      "nullable": true,
+      "type": "number"
+    },
+    "sky_base_1_m": {
+      "description": "units: meters \u2014 first cloud layer base height (converted from feet)",
+      "nullable": true,
+      "type": "number"
+    },
+    "sky_base_2_m": {
+      "description": "units: meters",
+      "nullable": true,
+      "type": "number"
+    },
+    "sky_base_3_m": {
+      "description": "units: meters",
+      "nullable": true,
+      "type": "number"
+    },
+    "sky_base_4_m": {
+      "description": "units: meters",
+      "nullable": true,
+      "type": "number"
+    },
+    "sky_cover_1": {
+      "description": "first cloud layer cover code",
+      "enum": [
+        "BKN",
+        "CLR",
+        "FEW",
+        "OVC",
+        "SCT",
+        "VV"
+      ],
+      "nullable": true,
+      "type": "string"
+    },
+    "sky_cover_2": {
+      "description": "second layer; null if not present",
+      "enum": [
+        "BKN",
+        "CLR",
+        "FEW",
+        "OVC",
+        "SCT",
+        "VV"
+      ],
+      "nullable": true,
+      "type": "string"
+    },
+    "sky_cover_3": {
+      "description": "third layer; null if not present",
+      "enum": [
+        "BKN",
+        "CLR",
+        "FEW",
+        "OVC",
+        "SCT",
+        "VV"
+      ],
+      "nullable": true,
+      "type": "string"
+    },
+    "sky_cover_4": {
+      "description": "fourth layer; null if not present",
+      "enum": [
+        "BKN",
+        "CLR",
+        "FEW",
+        "OVC",
+        "SCT",
+        "VV"
+      ],
+      "nullable": true,
+      "type": "string"
+    },
+    "slp_hpa": {
+      "description": "units: hPa \u2014 sea-level pressure (canonical aviation unit, not converted across modes)",
+      "nullable": true,
+      "type": "number"
+    },
+    "station": {
+      "description": "ICAO/ASOS station ID (e.g. KORD)",
+      "type": "string"
+    },
+    "temp_c": {
+      "description": "units: celsius \u2014 bounded TEMP_MIN_C..TEMP_MAX_C",
+      "nullable": true,
+      "type": "number"
+    },
+    "visibility_m": {
+      "description": "units: meters \u2014 converted from statute miles",
+      "nullable": true,
+      "type": "number"
+    },
+    "wind_dir_deg": {
+      "description": "units: degrees \u2014 0-360, bounded",
+      "nullable": true,
+      "type": "integer"
+    },
+    "wind_gust_ms": {
+      "description": "units: m/s \u2014 converted from kt",
+      "nullable": true,
+      "type": "number"
+    },
+    "wind_speed_ms": {
+      "description": "units: m/s \u2014 converted from kt",
+      "nullable": true,
+      "type": "number"
+    }
+  },
+  "required": [
+    "event_time",
+    "observation_type",
+    "station"
+  ],
+  "title": "schema.observation.v1",
+  "type": "object",
+  "version": "v1"
+}
