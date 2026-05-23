@@ -11,15 +11,20 @@ from tradewinds.weather.catalog.cli import CLIAdapter
 
 
 def _rec(**overrides):
+    """A synthetic CLI parser-output dict matching parse_cli_record() shape.
+
+    Uses parser-native keys (high_temp_f, low_temp_f, issued_at) — the
+    CLIAdapter projection maps them to canonical schema columns.
+    """
     base = {
         "station_code": "KNYC",
         "observation_date": date(2025, 1, 1),
         "report_type": "final",
-        "max_temp_f": 35.0,
-        "min_temp_f": 22.0,
+        "high_temp_f": 35.0,
+        "low_temp_f": 22.0,
         "precipitation_in": 0.0,
         "snowfall_in": 0.0,
-        "product_release_time": "2025-01-02T13:00:00Z",
+        "issued_at": "2025-01-02T13:00:00Z",
     }
     base.update(overrides)
     return base
@@ -66,8 +71,8 @@ def test_dedup_keeps_highest_priority():
 def test_dedup_first_seen_wins_at_equal_priority():
     """Two ``final`` rows for same date → first one wins."""
     recs = [
-        _rec(report_type="final", max_temp_f=35.0),
-        _rec(report_type="final", max_temp_f=99.0),
+        _rec(report_type="final", high_temp_f=35.0),
+        _rec(report_type="final", high_temp_f=99.0),
     ]
     df = CLIAdapter.from_records(recs, station_tz="America/New_York")
     assert len(df) == 1
@@ -127,3 +132,36 @@ def test_retrieved_at_propagates():
     when = datetime(2025, 1, 2, 13, tzinfo=UTC)
     df = CLIAdapter.from_records([_rec()], retrieved_at=when, station_tz="UTC")
     assert df.attrs["retrieved_at"] == when
+
+
+# ----------------------------------------------------------------------
+# Codex iter-2 HIGH fix: parser keys flow end-to-end (parse_cli_record
+# output → CLIAdapter.from_records()) without dropping values.
+# ----------------------------------------------------------------------
+def test_parser_keys_flow_into_canonical_columns():
+    """Real parse_cli_record() output must populate canonical settlement columns.
+
+    Prior to the iter-2 fix, the projection used max_temp_f/min_temp_f/
+    product_release_time but the parser emits high_temp_f/low_temp_f/
+    issued_at — adapter silently dropped settlement values.
+    """
+    parser_output = {
+        "station_code": "KNYC",
+        "observation_date": date(2025, 1, 1),
+        "report_type": "final",
+        "high_temp_f": 35.0,
+        "low_temp_f": 22.0,
+        "precipitation_in": 0.0,
+        "snowfall_in": 0.0,
+        "issued_at": "2025-01-02T13:00:00Z",
+        # parse_cli_record also emits these — adapter ignores them harmlessly.
+        "report_type_priority": 3.0,
+        "source": "iem",
+        "product_id": "CLINYC",
+    }
+    df = CLIAdapter.from_records([parser_output], station_tz="America/New_York")
+    # Settlement values must flow through, not be null.
+    assert df["temp_max_F"].iloc[0] == 35.0
+    assert df["temp_min_F"].iloc[0] == 22.0
+    assert pd.notna(df["product_release_time"].iloc[0])
+    assert df["product_release_time"].iloc[0] == pd.Timestamp("2025-01-02T13:00:00Z")

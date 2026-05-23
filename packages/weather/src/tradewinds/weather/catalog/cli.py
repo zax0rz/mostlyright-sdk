@@ -30,15 +30,20 @@ from tradewinds.weather._climate import (
 #: table; this is a sentinel that fails Validator if used unexpectedly.
 _UTC_FALLBACK_TZ = "UTC"
 
+#: Parser output (parse_cli_record / parse_cli_response) -> canonical
+#: settlement schema field name. Parser keys differ from the canonical
+#: column names; this mapping is the single source of truth.
 _PROJECTION: dict[str, str] = {
     "station_code": "station",
     "observation_date": "observation_date",
     "report_type": "report_type",
-    "max_temp_f": "temp_max_F",
-    "min_temp_f": "temp_min_F",
+    "high_temp_f": "temp_max_F",
+    "low_temp_f": "temp_min_F",
     "precipitation_in": "precipitation_in",
     "snowfall_in": "snowfall_in",
-    "product_release_time": "product_release_time",
+    # parse_cli_record emits issued_at (ISO string). Canonical column is
+    # product_release_time per docs/design.md §BB.3.
+    "issued_at": "product_release_time",
 }
 
 

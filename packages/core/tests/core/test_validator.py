@@ -300,13 +300,47 @@ def test_source_drift_audit_log_includes_reason():
 
 
 # ----------------------------------------------------------------------
-# Retrieved_at fallback
+# Retrieved_at provenance (codex iter-2 HIGH fix)
 # ----------------------------------------------------------------------
-def test_missing_retrieved_at_fallback_to_now():
+def test_missing_retrieved_at_falls_back_to_column():
+    """When attrs lack retrieved_at, the per-row 'retrieved_at' column wins."""
     df = _good_observation_df()
     df.attrs.pop("retrieved_at", None)
+    # Add a per-row retrieved_at column (catalog adapters always populate this).
+    df["retrieved_at"] = pd.to_datetime(["2025-01-01T13:00:00Z", "2025-01-01T13:00:00Z"], utc=True)
     reg = validate_dataframe(df, "schema.observation.v1")
-    # No raise; retrieved_at populated with a recent UTC timestamp.
-    assert reg.retrieved_at_min.tzinfo is not None
-    delta = abs((datetime.now(UTC) - reg.retrieved_at_min).total_seconds())
-    assert delta < 60  # within a minute of now
+    # Validator uses max() of the column as the registration timestamp.
+    assert reg.retrieved_at_min == datetime(2025, 1, 1, 13, tzinfo=UTC)
+
+
+def test_missing_retrieved_at_attrs_AND_column_raises():
+    """Validator MUST NOT fabricate retrieved_at if neither source is present."""
+    df = _good_observation_df()
+    df.attrs.pop("retrieved_at", None)
+    # No per-row retrieved_at column either.
+    with pytest.raises(SchemaValidationError, match="provenance"):
+        validate_dataframe(df, "schema.observation.v1")
+
+
+# ----------------------------------------------------------------------
+# Per-row source-column check (codex iter-2 HIGH fix)
+# ----------------------------------------------------------------------
+def test_per_row_source_mismatch_raises():
+    """If df has a 'source' column with rows not matching df.attrs['source'],
+    the validator raises SourceMismatchError listing the distinct bad values.
+    """
+    from tradewinds.core.exceptions import SourceMismatchError
+
+    df = _good_observation_df(source="iem.archive")
+    df["source"] = ["iem.archive", "awc.live"]  # second row mismatches.
+    with pytest.raises(SourceMismatchError) as exc:
+        validate_dataframe(df, "schema.observation.v1")
+    assert "awc.live" in str(exc.value)
+
+
+def test_per_row_source_all_match_passes():
+    """All rows matching df.attrs['source'] is the happy path."""
+    df = _good_observation_df(source="iem.archive")
+    df["source"] = ["iem.archive", "iem.archive"]
+    reg = validate_dataframe(df, "schema.observation.v1")
+    assert reg.source == "iem.archive"

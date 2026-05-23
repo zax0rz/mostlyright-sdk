@@ -218,6 +218,30 @@ def validate_dataframe(
             catalog_warning=None,
         )
 
+    # --- 1b. Per-row source-column check (codex iter-2 HIGH fix) ---
+    # If the DataFrame carries an overlay ``source`` column (catalog adapters
+    # always do), every non-null value must equal ``df.attrs["source"]``.
+    # Without this check, an attacker / buggy adapter could mix rows from
+    # multiple sources while leaving df.attrs labelled as one of them.
+    if "source" in df.columns:
+        non_null_sources = df["source"].dropna()
+        if len(non_null_sources) > 0:
+            mismatched = non_null_sources[non_null_sources != data_source]
+            if len(mismatched) > 0:
+                distinct_bad = sorted(set(mismatched.astype(str).tolist()))[:_SAMPLE_CAP]
+                raise SourceMismatchError(
+                    f"Per-row 'source' column has {len(mismatched)} row(s) "
+                    f"not matching df.attrs['source']={data_source!r}; "
+                    f"distinct mismatched values: {distinct_bad}",
+                    schema_source=data_source,
+                    data_source=str(distinct_bad[0]) if distinct_bad else "<unknown>",
+                    role=None,
+                    catalog_warning=(
+                        "row-level source column drift; the validator requires "
+                        "all per-row sources to match df.attrs['source']"
+                    ),
+                )
+
     # --- 2-4. Column / dtype / enum / null checks ---
     violations: list[dict[str, Any]] = []
 
@@ -291,15 +315,30 @@ def validate_dataframe(
         )
 
     # --- Build SchemaRegistration ---
+    # codex iter-2 HIGH fix: never fabricate retrieved_at. Validator must
+    # use the provenance the producer captured — silent "now()" fallback
+    # would let a cache/load path that dropped attrs validate with a false
+    # retrieval timestamp, breaking amendment-window audits.
     retrieved_at = df.attrs.get("retrieved_at")
+    if retrieved_at is None and "retrieved_at" in df.columns:
+        # Fall back to row-level retrieved_at column (catalog adapters
+        # always populate this). Use the maximum non-null value as the
+        # registration's retrieved_at; row-level range is preserved on
+        # the column itself.
+        col = df["retrieved_at"].dropna()
+        if len(col) > 0:
+            retrieved_at = pd.Timestamp(col.max()).to_pydatetime()
     if retrieved_at is None:
-        # Fall back to "now" — Validator is a runtime gate; we don't insist
-        # the adapter populated retrieved_at in attrs since fall-through to
-        # cache write paths uses the row-level ``retrieved_at`` column.
-        from datetime import UTC, datetime
-
-        retrieved_at = datetime.now(UTC)
-    elif isinstance(retrieved_at, pd.Timestamp):
+        raise SchemaValidationError(
+            "DataFrame missing provenance: neither df.attrs['retrieved_at'] "
+            "nor a 'retrieved_at' column is present. Validator will not "
+            "fabricate a timestamp — catalog adapters must supply it.",
+            schema_id=schema_id,
+            violations=[{"rule": "retrieved_at_required"}],
+            quarantine_count=len(df),
+            sample_violations=[],
+        )
+    if isinstance(retrieved_at, pd.Timestamp):
         retrieved_at = retrieved_at.to_pydatetime()
 
     reg = schema_cls.register(
