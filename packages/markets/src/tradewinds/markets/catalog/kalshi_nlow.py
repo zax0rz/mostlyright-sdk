@@ -39,6 +39,17 @@ def resolve(contract_id: str, settlement_date: _date) -> NLowResolution:
         ValueError: ``contract_id`` doesn't follow ``KLOW<CITY>`` or the
             city ticker is unknown.
     """
+    # codex iter-8 HIGH fix: validate settlement_date + contract_id types.
+    if not isinstance(settlement_date, _date):
+        raise TypeError(
+            "settlement_date must be a datetime.date instance "
+            f"(got {type(settlement_date).__name__}={settlement_date!r})"
+        )
+    if not isinstance(contract_id, str):
+        raise TypeError(
+            "contract_id must be a string " f"(got {type(contract_id).__name__}={contract_id!r})"
+        )
+
     cid = contract_id.upper()
     if not cid.startswith("KLOW") or len(cid) <= 4:
         raise ValueError(f"NLOW contract_id must follow 'KLOW<CITY>' format; got {contract_id!r}")

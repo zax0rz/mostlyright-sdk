@@ -50,6 +50,8 @@ def _good_observation_df(source: str = "iem.archive") -> pd.DataFrame:
             "sky_cover_4": pd.Series([None, None], dtype="string"),
             "sky_base_4_m": pd.array([np.nan, np.nan], dtype="float64"),
             "metar_raw": ["METAR ...", "METAR ..."],
+            # Overlay column required by Validator per codex iter-8 HIGH fix.
+            "source": [source, source],
         }
     )
     df.attrs["source"] = source
@@ -237,6 +239,8 @@ def _good_settlement_df(source: str = "cli.archive") -> pd.DataFrame:
             "snowfall_in": [0.0],
             "cli_data_quality": ["clean"],
             "settlement_finality": ["final"],
+            # Overlay column required by Validator per codex iter-8 HIGH fix.
+            "source": [source],
         }
     )
     df.attrs["source"] = source
@@ -336,6 +340,19 @@ def test_per_row_source_mismatch_raises():
     with pytest.raises(SourceMismatchError) as exc:
         validate_dataframe(df, "schema.observation.v1")
     assert "awc.live" in str(exc.value)
+
+
+def test_missing_source_column_raises():
+    """codex iter-8 HIGH: dropping the per-row source column must fail.
+
+    An adversarial frame keeping df.attrs['source'] but stripping the
+    per-row column would otherwise mask lost row-level provenance.
+    """
+    df = _good_observation_df(source="iem.archive")
+    df = df.drop(columns=["source"])
+    df.attrs["source"] = "iem.archive"  # restore attrs after drop
+    with pytest.raises(SchemaValidationError, match="per-row 'source'"):
+        validate_dataframe(df, "schema.observation.v1")
 
 
 def test_per_row_source_null_raises():

@@ -120,3 +120,40 @@ class TestNLowResolve:
         for city in KALSHI_SETTLEMENT_STATIONS:
             r = kalshi_nlow.resolve(f"KLOW{city}", date(2025, 1, 1))
             assert r.settlement_station == KALSHI_SETTLEMENT_STATIONS[city].station
+
+
+# ----------------------------------------------------------------------
+# Type validation (codex iter-8 HIGH)
+# ----------------------------------------------------------------------
+class TestResolverTypeValidation:
+    def test_nhigh_settlement_date_not_date_raises(self):
+        with pytest.raises(TypeError, match="settlement_date"):
+            kalshi_nhigh.resolve("KHIGHNYC", "2025-01-01")  # type: ignore[arg-type]
+
+    def test_nlow_settlement_date_not_date_raises(self):
+        with pytest.raises(TypeError, match="settlement_date"):
+            kalshi_nlow.resolve("KLOWNYC", "2025-01-01")  # type: ignore[arg-type]
+
+    def test_nhigh_settlement_date_int_raises(self):
+        with pytest.raises(TypeError, match="settlement_date"):
+            kalshi_nhigh.resolve("KHIGHNYC", 20250101)  # type: ignore[arg-type]
+
+    def test_nlow_settlement_date_int_raises(self):
+        with pytest.raises(TypeError, match="settlement_date"):
+            kalshi_nlow.resolve("KLOWNYC", 20250101)  # type: ignore[arg-type]
+
+    def test_nhigh_contract_id_not_str_raises(self):
+        with pytest.raises(TypeError, match="contract_id"):
+            kalshi_nhigh.resolve(123, date(2025, 1, 1))  # type: ignore[arg-type]
+
+    def test_nlow_contract_id_not_str_raises(self):
+        with pytest.raises(TypeError, match="contract_id"):
+            kalshi_nlow.resolve(None, date(2025, 1, 1))  # type: ignore[arg-type]
+
+    def test_datetime_subclass_of_date_accepted(self):
+        """datetime is a subclass of date — should be accepted."""
+        from datetime import datetime
+
+        # datetime → date subclass: passes the isinstance check.
+        r = kalshi_nhigh.resolve("KHIGHNYC", datetime(2025, 1, 1))
+        assert r.settlement_station == "KNYC"

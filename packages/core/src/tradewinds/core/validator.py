@@ -243,12 +243,25 @@ def validate_dataframe(
             catalog_warning=None,
         )
 
-    # --- 1b. Per-row source-column check (codex iter-2 HIGH + iter-3 HIGH) ---
-    # If the DataFrame carries an overlay ``source`` column (catalog adapters
-    # always do), EVERY row's value must equal ``df.attrs["source"]``. Nulls
-    # in the source column are treated as mismatches (iter-3 fix): a
-    # buggy/adversarial cache path that nulled the per-row source for
-    # selected rows must not pass.
+    # --- 1b. Per-row source-column REQUIRED + check (iter-2/3/8 HIGH) ---
+    # The 'source' overlay column is row provenance — every canonical
+    # DataFrame produced by a catalog adapter carries it. The Validator
+    # rejects DataFrames that drop the column (codex iter-8: otherwise an
+    # adversarial frame could keep df.attrs source but strip the per-row
+    # column, masking lost provenance). The only exception is empty
+    # DataFrames where the column legitimately may be absent if no
+    # rows have been added.
+    if "source" not in df.columns and len(df) > 0:
+        raise SchemaValidationError(
+            "DataFrame is missing the per-row 'source' overlay column "
+            "required by canonical-schema producers. Catalog adapters "
+            "populate this column on every fetch; its absence indicates "
+            "lost row-level provenance.",
+            schema_id=schema_id,
+            violations=[{"column": "source", "rule": "source_column_required"}],
+            quarantine_count=len(df),
+            sample_violations=[],
+        )
     if "source" in df.columns:
         col = df["source"]
         # Null rows: every null in the source column counts as a mismatch.
