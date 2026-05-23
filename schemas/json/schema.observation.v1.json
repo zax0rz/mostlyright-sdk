@@ -55,22 +55,22 @@
     },
     "sky_cover_1": {
       "description": "first cloud layer cover code",
-      "enum": ["BKN", "CLR", "FEW", "OVC", "SCT", "VV"],
+      "enum": ["BKN", "CLR", "FEW", "OVC", "SCT", "VV", null],
       "type": ["null", "string"]
     },
     "sky_cover_2": {
       "description": "second layer; null if not present",
-      "enum": ["BKN", "CLR", "FEW", "OVC", "SCT", "VV"],
+      "enum": ["BKN", "CLR", "FEW", "OVC", "SCT", "VV", null],
       "type": ["null", "string"]
     },
     "sky_cover_3": {
       "description": "third layer; null if not present",
-      "enum": ["BKN", "CLR", "FEW", "OVC", "SCT", "VV"],
+      "enum": ["BKN", "CLR", "FEW", "OVC", "SCT", "VV", null],
       "type": ["null", "string"]
     },
     "sky_cover_4": {
       "description": "fourth layer; null if not present",
-      "enum": ["BKN", "CLR", "FEW", "OVC", "SCT", "VV"],
+      "enum": ["BKN", "CLR", "FEW", "OVC", "SCT", "VV", null],
       "type": ["null", "string"]
     },
     "slp_hpa": {

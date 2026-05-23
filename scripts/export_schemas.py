@@ -141,6 +141,13 @@ def _column_to_property(column: Any) -> dict[str, Any]:
     recognise it (ajv standalone in TS-W3 would reject ``null`` values, and
     json-schema-to-typescript would not add ``| null`` to the generated TS
     type). See TS-W0 iter-1 HIGH 1.
+
+    For nullable enum columns, ``null`` is also appended to the ``enum``
+    array (after the sorted string values). Under draft-2020-12 ``enum`` is
+    enforced independently of ``type`` — without this, a ``null`` value
+    would pass the type-check but fail the enum-check (e.g.
+    ``"None is not one of ['BKN', 'CLR', ...]"``). ``null`` is placed last
+    for deterministic, human-readable output. See TS-W0 iter-2 HIGH.
     """
     dtype = column.dtype
     if dtype == "enum":
@@ -172,6 +179,12 @@ def _column_to_property(column: Any) -> dict[str, Any]:
         scalar = prop.get("type")
         if isinstance(scalar, str):
             prop["type"] = sorted([scalar, "null"])
+        # For enum columns, ``null`` must also be a member of ``enum`` —
+        # draft-2020-12 enforces ``enum`` independently of ``type``. Append
+        # ``None`` after the (already sorted) string values for a
+        # deterministic, human-readable ordering.
+        if dtype == "enum":
+            prop["enum"] = list(prop["enum"]) + [None]
 
     return prop
 

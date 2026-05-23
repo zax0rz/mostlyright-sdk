@@ -14,7 +14,7 @@ export interface ObservationQcV1 {
   field: string;
   flag: "clean" | "flagged" | "suspect";
   ingestion_id?: null | string;
-  observation_kind?: null | ("METAR" | "SPECI");
+  observation_kind?: "METAR" | "SPECI" | null;
   observed_at: string;
   parser_name?: null | string;
   qc_system: string;

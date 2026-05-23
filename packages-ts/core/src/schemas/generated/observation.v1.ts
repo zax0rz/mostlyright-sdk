@@ -42,19 +42,19 @@ export interface ObservationV1 {
   /**
    * first cloud layer cover code
    */
-  sky_cover_1?: null | ("BKN" | "CLR" | "FEW" | "OVC" | "SCT" | "VV");
+  sky_cover_1?: "BKN" | "CLR" | "FEW" | "OVC" | "SCT" | "VV" | null;
   /**
    * second layer; null if not present
    */
-  sky_cover_2?: null | ("BKN" | "CLR" | "FEW" | "OVC" | "SCT" | "VV");
+  sky_cover_2?: "BKN" | "CLR" | "FEW" | "OVC" | "SCT" | "VV" | null;
   /**
    * third layer; null if not present
    */
-  sky_cover_3?: null | ("BKN" | "CLR" | "FEW" | "OVC" | "SCT" | "VV");
+  sky_cover_3?: "BKN" | "CLR" | "FEW" | "OVC" | "SCT" | "VV" | null;
   /**
    * fourth layer; null if not present
    */
-  sky_cover_4?: null | ("BKN" | "CLR" | "FEW" | "OVC" | "SCT" | "VV");
+  sky_cover_4?: "BKN" | "CLR" | "FEW" | "OVC" | "SCT" | "VV" | null;
   /**
    * units: hPa — sea-level pressure (canonical aviation unit, not converted across modes)
    */

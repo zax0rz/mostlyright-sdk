@@ -22,7 +22,7 @@
       "type": ["null", "string"]
     },
     "observation_kind": {
-      "enum": ["METAR", "SPECI"],
+      "enum": ["METAR", "SPECI", null],
       "type": ["null", "string"]
     },
     "observed_at": {

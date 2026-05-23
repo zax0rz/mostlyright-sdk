@@ -9,17 +9,17 @@ export interface ObservationLedgerV1 {
    */
   dewpoint_c?: null | number;
   ingestion_id?: null | string;
-  observation_kind?: null | ("METAR" | "SPECI");
+  observation_kind?: "METAR" | "SPECI" | null;
   /**
    * Lineage row-quality flag per LINEAGE-01; distinct from qc_status enum slot AND distinct from the obs_qc_status bitmask column per QC-05.
    */
-  observation_quality?: null | ("clean" | "flagged" | "suspect");
+  observation_quality?: "clean" | "flagged" | "suspect" | null;
   observation_type: "METAR" | "SPECI";
   observed_at: string;
-  parser_name?: null | ("ghcnh" | "iem" | "mostlyright_v1" | "ncei");
+  parser_name?: "ghcnh" | "iem" | "mostlyright_v1" | "ncei" | null;
   parser_version?: null | string;
-  provenance?: null | ("legacy" | "reingested");
-  qc_status?: null | ("clean" | "flagged" | "suspect");
+  provenance?: "legacy" | "reingested" | null;
+  qc_status?: "clean" | "flagged" | "suspect" | null;
   /**
    * ncei reserved per D-2.1-09; never written in v0.1.0.
    */
