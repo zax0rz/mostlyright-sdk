@@ -25,12 +25,62 @@ See: .planning/PROJECT.md (updated 2026-05-21; STATE.md refreshed 2026-05-23)
 
 ## Current Position
 
-Phase: Python v0.1.0 (12/12 phases, 1662 tests, all REAL impls) COMPLETE + TS v0.1.0 milestone PLANNING COMPLETE
-Plan: TS v0.1.0 — 8 phase stubs (TS-W0..TS-W7) committed; cross-SDK sync contract live at `.planning/CROSS-SDK-SYNC.md`
-Status: Python v0.1.0rc1 ready to publish (operator-gated). TS v0.1.0 ready to enter TS-W0 execution.
-Last activity: 2026-05-23 — TS SDK milestone planning merged to main at 9d6b738 (review-iter-4 PASS; 4-iteration codex high + python-architect loop)
+Phase: Python v0.1.0 (12/12 phases, 1674 tests, all REAL impls) COMPLETE + TS v0.1.0 milestone planning COMPLETE + **TS-W0 Foundations COMPLETE**
+Plan: TS-W1 (Chrome-extension MVP — AWC + CLI subset of research) next
+Status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W0 merged; TS scaffolding + codegen pipeline + sync-process CI all green.
+Last activity: 2026-05-23 — TS-W0 merged to main at c3489b0 (review-iter-3 PASS; 3-iteration codex high + python-architect loop)
 
-Progress: Python [██████████] 100% (12/12 phases, 1662 tests, ready to tag rc1) | TS [planning complete, 0/8 phases executed]
+Progress: Python [██████████] 100% (12/12 phases, 1686 total tests) | TS [1/8 phases shipped — TS-W0 done]
+
+## TS-W0 Foundations closeout (2026-05-23)
+
+Merge commit: `c3489b0 Merge claude/lucid-grothendieck-47fe70 (TS-W0 Foundations)` (`--no-ff` into main).
+
+**Branch lineage (11 commits on top of `6191ff3` — TS planning closeout):**
+- `d766b88` — Wave 1: pnpm workspace + 5 package scaffolds + build/test/lint
+- `5a1f65c` — Wave 2: scripts/export_schemas.py + canonical schemas/ (11 files)
+- `221c82e` — Wave 4: CI workflows + PR/issue templates + parity scripts
+- `b6f63da` — Wave 5: TS-CORS-MATRIX.md (empirical capture)
+- `207dbc1` — octopus merge of Waves 1+2+4+5
+- `4c04f5a` — Wave 3: @tradewinds/codegen + 14 generated TS files
+- `9379db2` — merge Wave 3
+- `eda0056` — review iter-1 fixes (2 CRITICAL + 5 HIGH)
+- `96c564e` — review iter-2 fix: nullable enum includes null
+- `959f9af` — review iter-2 fix: biome-ignore schemas/ so exporter owns format
+- `6999136` — lefthook pre-push test arg-passthrough fix
+
+**What ships:**
+- pnpm workspace at `packages-ts/` with 5 packages: `@tradewinds/core`, `@tradewinds/weather`, `@tradewinds/markets`, `tradewinds` (meta), `@tradewinds/codegen`
+- TypeScript build/test/lint tooling: tsup 8.3, vitest 2.1, biome 1.9, lefthook 1.7, size-limit, TypeScript 5.6 strict mode (4 mandated flags: strict, noUncheckedIndexedAccess, exactOptionalPropertyTypes, verbatimModuleSyntax)
+- `scripts/export_schemas.py` — deterministic Python→JSON Schema exporter emitting 11 canonical artifacts to `schemas/`:
+  - Group A (always-emitted, 9 files): 5 JSON Schemas (observation/forecast.iem_mos/settlement.cli/observation_ledger/observation_qc) + stations.json (61 stations: 20 US + 41 intl) + kalshi-settlement-stations.json (20 cities + known-wrong) + source-priority.json + EXPORT_MANIFEST.json
+  - Group B (gated, 2 files — both materialized REAL at TS-W0 time): polymarket-city-stations.json (40 cities incl. paris LFPG-high/LFPB-low) + qc-alpha-rules.json (5 rules at bit positions 0..4)
+  - `--check` mode + deterministic-output unit test
+- `@tradewinds/codegen` — TS-side consumer emitting 14 generated files: 5 TS schema interfaces + barrel + 3 core data modules (stations/source-priority/qc-alpha-rules) + 2 markets data modules (kalshi-stations/polymarket-city-stations) + barrels + validators placeholder (ajv-standalone deferred to TS-W3)
+- CI workflows: `test-ts.yml` (pnpm + codegen + typecheck + biome + vitest + size-limit), `schema-drift.yml` (exporter+codegen → `git diff --exit-code`), `parity-ticket-check.yml` (PR-body parsing with HTML-comment + code-fence stripping)
+- Sync-process artifacts: `.github/PULL_REQUEST_TEMPLATE.md`, `.github/ISSUE_TEMPLATE/parity_ticket.md`, `.github/parity-trigger-paths.json` (14 Python + 4 TS globs), `scripts/parity_status.py` (release-readiness gate), `scripts/parity_ticket_check.py` (workflow helper)
+- `.planning/research/TS-CORS-MATRIX.md` — empirical capture: AWC=NONE (needs extension host_permissions or proxy); IEM-ASOS/IEM-CLI/GHCNh/Polymarket-Gamma=OPEN (`ACAO: *`)
+
+**Test coverage:** 27 TS tests (5 packages, all green) + 12 new Python tests (export_schemas + parity_ticket_check) on top of the existing 1662 = 1686 Python tests + 27 TS tests total.
+
+**Review discipline:** 3-iteration loop per `.planning/REVIEW-DISCIPLINE.md` (codex `high` reasoning + python-architect, parallel dispatch):
+- Iter 1 (against `9379db2`): REVISE — 2 CRITICAL + 5 unique HIGH
+  - [CRITICAL] Polymarket measure-specific mappings dropped (paris would silently route to LFPG instead of LFPB)
+  - [CRITICAL] Parity gate bypassed by default PR template example (HTML-comment example matched the regex)
+  - [HIGH ×5] Nullable columns used OpenAPI `nullable: true` vs draft-2020-12 `type: [...,"null"]`; StationInfo dropped `country` field; schema-drift workflow path filter missed `core/merge.py`; tsconfig `rootDir` + tests include → TS6059; meta package vitest couldn't resolve `@tradewinds/core` without pre-build
+- Iter 2 (against `eda0056`): PA PASS clean; codex REVISE — 1 NEW HIGH
+  - [HIGH] Nullable enum schemas still rejected `null` because enum array lacked it
+  - [HIGH pre-existing surfaced during fixing] biome reformatted JSON; exporter wrote raw → schema-drift CI would fail
+- Iter 3 (against `959f9af`): **PASS PASS clean** (both reviewers, zero findings)
+
+Plus one post-review lefthook bug fix (`6999136`): pre-push test command — `pnpm test --run` was being intercepted by pnpm; needed `pnpm test -- --run`.
+
+**Outstanding follow-ups (none operator-gated; tracked for TS-W1+):**
+1. ajv-standalone validators deferred to TS-W3 (TS-VALIDATOR-01) — placeholder file `packages-ts/core/src/schemas/validators/index.ts` cites the work-item.
+2. Bundle size-limit gate is currently `continue-on-error` (soft-gate); upgrade to hard-gate when first stable bundle ships in TS-W2.
+3. Polymarket `/events` endpoint returns deprecation header pointing at `/events/keyset` (sunset 2026-05-01 already passed). Re-capture CORS against keyset endpoint in TS-W5 if the deprecation actually takes effect.
+
+Next: `/gsd-plan-phase ts-w1` then TS-W1 execution (Chrome-extension MVP — AWC + CLI subset of research()).
 
 ## TS SDK milestone planning closeout (2026-05-23)
 
