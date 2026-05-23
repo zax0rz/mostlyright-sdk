@@ -913,6 +913,164 @@ def _prefetch_sources(
     }
 
 
+# ----------------------------------------------------------------------
+# Phase 3.4: opt-in QC engine wiring
+# ----------------------------------------------------------------------
+def _run_qc_and_write_sidecar(
+    *,
+    info: StationInfo,
+    raw_obs: list[dict[str, Any]],
+    from_date: str,
+    to_date: str,
+) -> dict[str, Any]:
+    """Run the QCEngine + IEM-vs-GHCNh crosscheck against raw observations.
+
+    Returns a summary dict suitable for ``df.attrs["qc"]``::
+
+        {
+            "rules_fired": {"temp_out_of_range": 3, "dewpoint_gt_temp": 1, ...},
+            "rows_flagged": 4,
+            "rows_total": 1200,
+            "crosscheck_disagreements": 0,
+            "sidecar_paths": [...],   # list of parquet paths written
+        }
+
+    Never raises — QC is best-effort and must not break the wrapping
+    ``research()`` call. Errors are caught and surfaced in the summary
+    via an ``error`` key.
+
+    The QC engine reads observation rows but DOES NOT mutate them — the
+    parity gate's "Mode 1 row contents are byte-identical to v0.14.1
+    pairs() output" invariant is preserved.
+    """
+    summary: dict[str, Any] = {
+        "rules_fired": {},
+        "rows_flagged": 0,
+        "rows_total": len(raw_obs),
+        "crosscheck_disagreements": 0,
+        "sidecar_paths": [],
+    }
+    if not raw_obs:
+        return summary
+    try:
+        import pandas as pd
+
+        from tradewinds.qc import QCEngine, crosscheck_iem_ghcnh
+    except ImportError as exc:
+        summary["error"] = f"QC dependency unavailable: {exc}"
+        return summary
+
+    try:
+        obs_df = pd.DataFrame(raw_obs)
+    except Exception as exc:
+        summary["error"] = f"QC DataFrame construction failed: {exc}"
+        return summary
+
+    # Architect iter-1 HIGH-1: production parsers (_iem.py, _ghcnh.py,
+    # _awc.py) emit `station_code` + `observed_at`, but the QC engine
+    # and crosscheck functions read `station` + `event_time`. Normalize
+    # column names here so the engine sees what it expects. This is
+    # NON-DESTRUCTIVE to raw_obs (we work on the DataFrame copy).
+    if obs_df.empty:
+        # Nothing to QC; return the skeleton summary unchanged.
+        return summary
+    obs_df = obs_df.copy()
+    if "station" not in obs_df.columns and "station_code" in obs_df.columns:
+        obs_df["station"] = obs_df["station_code"]
+    if "event_time" not in obs_df.columns and "observed_at" in obs_df.columns:
+        obs_df["event_time"] = obs_df["observed_at"]
+
+    engine = QCEngine()
+    try:
+        # Codex iter-1 P2 + architect iter-1 HIGH-1: map production
+        # parser column names → QC engine column names. Production
+        # observation rows (from _iem.py / _ghcnh.py / _awc.py) use
+        # `dewpoint_c`, `wind_speed_kt`, `wind_dir_degrees`,
+        # `sea_level_pressure_mb`, `temp_c`. The QC engine reads
+        # `dew_point_c`, `wind_speed_ms`, `wind_dir_deg`, `slp_hpa`,
+        # `temp_c`. Map non-destructively (add derived columns only
+        # when missing) so the alpha rules can fire on real data.
+        #
+        # Where the unit also differs (kt → m/s), apply the conversion.
+        if "temp_c" not in obs_df.columns and "tmpf" in obs_df.columns:
+            obs_df["temp_c"] = pd.to_numeric(obs_df["tmpf"], errors="coerce").apply(
+                lambda f: (f - 32.0) * 5.0 / 9.0 if pd.notna(f) else None
+            )
+        if "dew_point_c" not in obs_df.columns:
+            if "dewpoint_c" in obs_df.columns:
+                obs_df["dew_point_c"] = obs_df["dewpoint_c"]
+            elif "dwpf" in obs_df.columns:
+                obs_df["dew_point_c"] = pd.to_numeric(obs_df["dwpf"], errors="coerce").apply(
+                    lambda f: (f - 32.0) * 5.0 / 9.0 if pd.notna(f) else None
+                )
+        if "wind_speed_ms" not in obs_df.columns and "wind_speed_kt" in obs_df.columns:
+            obs_df["wind_speed_ms"] = pd.to_numeric(obs_df["wind_speed_kt"], errors="coerce").apply(
+                lambda kt: kt * 0.514444 if pd.notna(kt) else None
+            )
+        if "wind_dir_deg" not in obs_df.columns and "wind_dir_degrees" in obs_df.columns:
+            obs_df["wind_dir_deg"] = obs_df["wind_dir_degrees"]
+        if "slp_hpa" not in obs_df.columns and "sea_level_pressure_mb" in obs_df.columns:
+            # 1 mb == 1 hPa; rename only.
+            obs_df["slp_hpa"] = obs_df["sea_level_pressure_mb"]
+        flagged = engine.apply(obs_df)
+        # Tally per-rule firings + total flagged rows.
+        if "obs_qc_status" in flagged.columns:
+            mask = flagged["obs_qc_status"] != 0
+            summary["rows_flagged"] = int(mask.sum())
+            for rule in engine.rules:
+                bit = 1 << rule.bit_position
+                fired = (flagged["obs_qc_status"] & bit) != 0
+                count = int(fired.sum())
+                if count > 0:
+                    summary["rules_fired"][rule.rule_id] = count
+
+        sidecar_rows = engine.build_sidecar_rows(flagged)
+    except Exception as exc:
+        summary["error"] = f"QC engine apply failed: {exc}"
+        return summary
+
+    # Optional: IEM-vs-GHCNh crosscheck. Only runs if both sources are
+    # present in the raw observations (downstream Mode 1 path doesn't
+    # actually carry the source column in every row, so we only flag
+    # when partitionable).
+    try:
+        if "source" in obs_df.columns and "event_time" in obs_df.columns:
+            iem_df = obs_df.loc[obs_df["source"].astype(str).str.startswith("iem")]
+            ghcnh_df = obs_df.loc[obs_df["source"].astype(str).str.startswith("ghcnh")]
+            if not iem_df.empty and not ghcnh_df.empty and "temp_c" in obs_df.columns:
+                disagreements = crosscheck_iem_ghcnh(iem_df, ghcnh_df, tol_c=2.0)
+                summary["crosscheck_disagreements"] = len(disagreements)
+    except Exception as exc:
+        summary["crosscheck_error"] = str(exc)
+
+    # Write per-month sidecars. Group sidecar_rows by the (year, month)
+    # of observed_at so each parquet file corresponds to one calendar
+    # month — matches the cache layout. Best-effort writes; ignore
+    # failures (write_qc_sidecar logs + returns None).
+    try:
+        from tradewinds.weather.qc_sidecar import write_qc_sidecar
+
+        per_month: dict[tuple[int, int], list[dict[str, Any]]] = {}
+        for row in sidecar_rows:
+            observed_at = str(row.get("observed_at") or "")
+            if len(observed_at) < 7:
+                continue
+            try:
+                year = int(observed_at[:4])
+                month = int(observed_at[5:7])
+            except ValueError:
+                continue
+            per_month.setdefault((year, month), []).append(row)
+        for (year, month), batch in per_month.items():
+            path = write_qc_sidecar(batch, station=info.icao, year=year, month=month)
+            if path is not None:
+                summary["sidecar_paths"].append(str(path))
+    except ImportError as exc:
+        summary["sidecar_error"] = f"qc_sidecar unavailable: {exc}"
+
+    return summary
+
+
 def research(
     station: str,
     from_date: str,
@@ -922,6 +1080,7 @@ def research(
     forecast_model: str | None = None,
     as_dataframe: bool = True,
     tz_override: str | None = None,
+    qc: bool = False,
 ) -> Any:
     """Return joined observation + climate + (optional) forecast rows for a date range.
 
@@ -1033,6 +1192,21 @@ def research(
     )
     raw_climate = _fetch_climate_range(info, from_date, to_date)
 
+    # Phase 3.4: opt-in QC. Runs the QCEngine + IEM-vs-GHCNh crosscheck
+    # against raw_obs WITHOUT mutating the rows themselves (parity gate
+    # invariant: Mode 1 must NEVER alter observation row contents). The
+    # QC summary is stashed on the returned DataFrame's df.attrs and the
+    # sidecar parquet is written to ~/.tradewinds/cache/v1/observations_qc/
+    # for later join.
+    qc_summary: dict[str, Any] | None = None
+    if qc:
+        qc_summary = _run_qc_and_write_sidecar(
+            info=info,
+            raw_obs=raw_obs,
+            from_date=from_date,
+            to_date=to_date,
+        )
+
     # PLAN.md Pitfall-1 fix: group observations by ``settlement_date_for``,
     # NOT by ``observed_at[:10]`` - the latter would drop the pre-midnight
     # UTC tail into the wrong LST settlement day.
@@ -1061,7 +1235,15 @@ def research(
         forecast_model=forecast_model,
         tz_override=tz_override,
     )
-    return pairs_to_dataframe(rows) if as_dataframe else rows
+    result = pairs_to_dataframe(rows) if as_dataframe else rows
+    # Phase 3.4: surface qc summary on df.attrs when the qc=True opt-in
+    # ran. Mode 1 parity rows themselves are unchanged (only attrs).
+    if qc_summary is not None and as_dataframe:
+        import contextlib
+
+        with contextlib.suppress(AttributeError):
+            result.attrs["qc"] = qc_summary
+    return result
 
 
 __all__ = ["research"]
