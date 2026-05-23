@@ -3,34 +3,65 @@ gsd_state_version: 1.0
 milestone: v0.14.1
 milestone_name: Parity Lift
 status: executing
-stopped_at: "Phase 2 complete (CORE-01..05/07/08 + CATALOG-01..05 + MARKETS-01..03 + PKG-03): _v02/ → tradewinds.core/ rebrand (266 tests preserved); TradewindsError hierarchy with MostlyRightMCPError deprecation alias; KnowledgeView + LeakageDetector temporal primitives; jsonschema-backed Validator with source-identity invariant + per-row source column required; 4 weather catalog adapters (IEM/AWC/CLI/GHCNh) with canonical-units projection (kt→m/s, mi→m, ft→m, in→mm); WeatherAdapter Protocol + registry; Kalshi NHIGH/NLOW resolvers + 20-city station whitelist; markets pkg bumped 0.0.1→0.1.0a1 with PKG-03 pin. Review discipline: 10 iterations of codex high + 1 Python Architect; iter-10 codex PASS, architect no BLOCKERS. 1393 tests passing. Next: Phase 2.1 — Sprint 2o Lineage Refactor."
-last_updated: "2026-05-23T18:00:00.000Z"
-last_activity: 2026-05-23 -- Phase 2 review discipline complete (codex iter-10 PASS + architect no BLOCKERS); ready to merge to main
+stopped_at: "Phases 1 + 1.5 + 2 + 2.1 + 3 + 3.1-3.6 architectural seams merged to main. 1451 tests passing. Mode 2 dispatch + International stations + NWP forecast + Polymarket + QC engine + Transforms DSL + Discovery+DataVersion all ship their v0.1.0 surfaces. Live fetch wiring for catalog adapters' fetch_observations methods + Polymarket Gamma API + NWP byte-range remains for subsequent alphas. Next: Phase 4 — Coverage, Docs, CI/CD, Release."
+last_updated: "2026-05-23T22:00:00.000Z"
+last_activity: 2026-05-23 -- Phase 3.1-3.6 architectural seams consolidated + merged to main
 progress:
   total_phases: 12
-  completed_phases: 3
-  total_plans: 20
-  completed_plans: 12
-  percent: 25
+  completed_phases: 11
+  total_plans: 35
+  completed_plans: 32
+  percent: 92
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-21; STATE.md refreshed 2026-05-22)
+See: .planning/PROJECT.md (updated 2026-05-21; STATE.md refreshed 2026-05-23)
 
 **Core value:** `research(contract, station, from_date, to_date)` returns clean, leakage-free, source-identified training pairs that backtest the same way they trade — and any train/infer source mismatch errors loudly instead of silently corrupting a model.
-**Current focus:** Phase 2: Core Primitives + Catalog Adapters (Phase 1.5 complete 2026-05-23)
+**Current focus:** Phase 4 — Coverage, Docs, CI/CD, Release (post v0.1.0a1 work)
 
 ## Current Position
 
-Phase: 2 of 12 (Core Primitives + Catalog Adapters — ready to start)
-Plan: 0 of N in Phase 2 (Phases 1 + 1.5 complete on `main`)
-Status: Ready to plan Phase 2
-Last activity: 2026-05-23 -- Phase 1.5 merged to main (commit 738232e) after iter-2 review PASS
+Phase: 4 of 12 (Coverage / Docs / CI/CD / v0.1.0 ship — ready to start)
+Plan: 0 of N in Phase 4 (Phases 1-3.6 complete on `main`)
+Status: Ready to plan Phase 4
+Last activity: 2026-05-23 — Phase 3.1-3.6 seams merged (1451 tests passing)
 
-Progress: [██░░░░░░░░] ~17% (Phases 1 + 1.5 complete; 2/12 phases done in v0.1.0)
+Progress: [█████████░] ~92% (11/12 phases complete in v0.1.0; Phase 4 release work remains)
+
+## Phase 2 / 2.1 / 3 / 3.x closeout summary (2026-05-23)
+
+- Phase 2 (CORE/CATALOG/MARKETS/PKG): `_v02/ → tradewinds.core/` rebrand
+  preserving 266 tests; TradewindsError hierarchy with deprecation alias;
+  KnowledgeView + LeakageDetector temporal primitives; jsonschema-backed
+  Validator with source-identity invariant; 4 weather catalog adapters with
+  canonical-units projection; Kalshi NHIGH/NLOW resolvers + 20-station whitelist;
+  markets pkg PKG-03 pin. 10 codex review iterations + 1 architect pass.
+- Phase 2.1 (LINEAGE-01..05): silver-tier observation_ledger.v1 schema +
+  observation_qc.v1 sidecar; query_time_merge(silver_df, policy=LIVE_V1)
+  materializes single-row-per-key gold from rows-per-source silver;
+  ObservationMergePolicy properly immutable via MappingProxyType.
+- Phase 3: tradewinds.mode2.research_by_source() Mode 2 dispatch seam +
+  assert_source_identity() per-row check. Catalog adapter dispatch wired;
+  fetch wiring deferred to Phase 3.1/3.2 alphas.
+- Phase 3.1 (International): 41 ICAO → IANA tz map; Paris LFPG/LFPB/LFPO
+  split; daily_extremes() rollup with whole-°C precision; DeferredMarketError
+  for VHHH/RCTP.
+- Phase 3.2 (NWP): SUPPORTED_NWP_MODELS = {hrrr, gfs, nbm}; forecast_nwp()
+  dispatch seam with [nwp] optional-extra check.
+- Phase 3.3 (Polymarket): polymarket_discover/settle with strict UUID4 +
+  16KB description cap + netloc allowlist (wunderground.com, weather.gov).
+- Phase 3.4 (QC): 5 ALPHA_RULES (temp/dewpoint/wind/pressure bounds) +
+  QCEngine.apply() bitfield + build_sidecar_rows() + crosscheck_iem_ghcnh().
+- Phase 3.5 (Transforms): lag/diff/rolling/calendar_features/spread +
+  wind_chill + heat_index (NWS algorithms) + clip_outliers.
+- Phase 3.6 (Discovery): DataVersion reproducibility token + availability /
+  describe / feature_catalog / settlement_date_for top-level wrappers.
+
+Tests grew 1342 → 1451 (+109 across the 6 phases).
 
 ## Phase 1.5 closeout summary (2026-05-23)
 
