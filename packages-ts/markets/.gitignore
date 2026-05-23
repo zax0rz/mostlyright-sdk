@@ -1,0 +1,5 @@
+dist/
+coverage/
+.tsbuildinfo
+# Generated files (src/**/generated/) ARE committed — they are the @tradewinds/codegen output
+# consumed by downstream tooling. See packages-ts/codegen/README.md.

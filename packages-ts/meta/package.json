@@ -1,0 +1,39 @@
+{
+  "name": "tradewinds",
+  "version": "0.0.0",
+  "description": "Convenience meta-package re-exporting @tradewinds/core + @tradewinds/weather + @tradewinds/markets. Use this when you want the full SDK from a single import. The unscoped 'tradewinds' npm name is reserved pending an npm availability check (see TS-SDK-DESIGN.md §13.1).",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "prebuild": "pnpm --filter @tradewinds/codegen run codegen",
+    "build": "tsup",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist coverage .tsbuildinfo",
+    "codegen": "echo \"tradewinds (meta) — no codegen step at this layer\""
+  },
+  "dependencies": {
+    "@tradewinds/core": "workspace:*",
+    "@tradewinds/markets": "workspace:*",
+    "@tradewinds/weather": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "8.3.5",
+    "typescript": "5.6.3",
+    "vitest": "2.1.9"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

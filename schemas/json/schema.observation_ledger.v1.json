@@ -1,0 +1,138 @@
+{
+  "$id": "https://tradewinds.dev/schemas/schema.observation_ledger.v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "as_of_time": {
+      "format": "date-time",
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "dewpoint_c": {
+      "description": "units: celsius",
+      "type": [
+        "null",
+        "number"
+      ]
+    },
+    "ingestion_id": {
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "observation_kind": {
+      "enum": [
+        "METAR",
+        "SPECI",
+        null
+      ],
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "observation_quality": {
+      "description": "Lineage row-quality flag per LINEAGE-01; distinct from qc_status enum slot AND distinct from the obs_qc_status bitmask column per QC-05.",
+      "enum": [
+        "clean",
+        "flagged",
+        "suspect",
+        null
+      ],
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "observation_type": {
+      "enum": [
+        "METAR",
+        "SPECI"
+      ],
+      "type": "string"
+    },
+    "observed_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "parser_name": {
+      "enum": [
+        "ghcnh",
+        "iem",
+        "mostlyright_v1",
+        "ncei",
+        null
+      ],
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "parser_version": {
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "provenance": {
+      "enum": [
+        "legacy",
+        "reingested",
+        null
+      ],
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "qc_status": {
+      "enum": [
+        "clean",
+        "flagged",
+        "suspect",
+        null
+      ],
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "source": {
+      "description": "ncei reserved per D-2.1-09; never written in v0.1.0.",
+      "enum": [
+        "awc",
+        "ghcnh",
+        "iem",
+        "ncei"
+      ],
+      "type": "string"
+    },
+    "source_received_at": {
+      "type": [
+        "null",
+        "string"
+      ]
+    },
+    "station_code": {
+      "type": "string"
+    },
+    "temp_c": {
+      "description": "units: celsius",
+      "type": [
+        "null",
+        "number"
+      ]
+    }
+  },
+  "required": [
+    "observation_type",
+    "observed_at",
+    "source",
+    "station_code"
+  ],
+  "title": "schema.observation_ledger.v1",
+  "type": "object",
+  "version": "v1"
+}

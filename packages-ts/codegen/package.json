@@ -1,0 +1,35 @@
+{
+  "name": "@tradewinds/codegen",
+  "version": "0.0.0",
+  "description": "Build-only codegen for the tradewinds TypeScript SDK. Reads schemas/*.json + schemas/json/*.json (emitted by Python scripts/export_schemas.py) and produces .d.ts types, ajv-standalone validators, and typed data modules into packages-ts/*/src/**/generated/. Private — not published to npm.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist coverage .tsbuildinfo",
+    "codegen": "tsx src/codegen.ts",
+    "codegen:check": "tsx src/codegen.ts --check"
+  },
+  "devDependencies": {
+    "@types/node": "20.16.10",
+    "json-schema-to-typescript": "15.0.4",
+    "tsup": "8.3.5",
+    "tsx": "4.19.2",
+    "typescript": "5.6.3",
+    "vitest": "2.1.9"
+  }
+}

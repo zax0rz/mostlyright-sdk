@@ -1,0 +1,31 @@
+# Lefthook config for tradewinds TypeScript SDK.
+#
+# Python pre-commit hooks live separately in .pre-commit-config.yaml — lefthook
+# coexists by scoping itself to TS/JSON files only.
+#
+# Bootstrap note: lefthook runs only after `pnpm install` (which installs
+# the lefthook binary) and `pnpm lefthook install` (which writes git hooks).
+# Until both have run, this config has no effect — that is intentional.
+
+pre-commit:
+  parallel: true
+  commands:
+    biome-check:
+      glob: "*.{ts,tsx,js,jsx,json}"
+      # Exclude exporter-owned + generated artifacts. biome.json also ignores
+      # these (see files.ignore), but lefthook's `exclude` short-circuits before
+      # invoking biome at all — keeps the staged-file list deterministic.
+      exclude:
+        - "schemas/**"
+        - "**/src/**/generated/**"
+        - "packages-ts/*/src/**/generated/**"
+      run: pnpm biome check --apply-unsafe {staged_files}
+      stage_fixed: true
+
+pre-push:
+  commands:
+    typecheck:
+      run: pnpm -r typecheck
+    test:
+      # vitest CLI args go through `--` so pnpm doesn't intercept them.
+      run: pnpm -r test -- --run --exclude '**/*.live.test.ts'

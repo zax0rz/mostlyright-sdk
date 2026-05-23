@@ -1,0 +1,27 @@
+{
+  "climate": {
+    "correction": 2.0,
+    "estimated": 0.0,
+    "final": 3.0,
+    "ncei_final": 2.5,
+    "preliminary": 1.0
+  },
+  "live_v1": {
+    "name": "LIVE_V1",
+    "secondary_key": [
+      "source_received_at",
+      "ingestion_id"
+    ],
+    "source_priority": {
+      "awc": 3,
+      "ghcnh": 1,
+      "iem": 2,
+      "ncei": 0
+    }
+  },
+  "observation": {
+    "awc": 3,
+    "ghcnh": 1,
+    "iem": 2
+  }
+}
