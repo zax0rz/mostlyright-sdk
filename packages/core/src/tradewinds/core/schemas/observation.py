@@ -33,6 +33,11 @@ class ObservationSchema(Schema):
 
     schema_id = "schema.observation.v1"
 
+    #: Canonical source for parity-mode validation (the v0.14.1 lift baseline).
+    #: AWC, GHCNh, and other sources must pass ``allow_source_drift`` to
+    #: validate against this schema; the audit log records the reason.
+    _registered_source: ClassVar[str] = "iem.archive"
+
     COLUMNS: ClassVar[list[ColumnSpec]] = [
         ColumnSpec(
             name="station",

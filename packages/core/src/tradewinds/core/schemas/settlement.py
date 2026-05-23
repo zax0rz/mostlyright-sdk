@@ -54,6 +54,9 @@ class SettlementSchema(Schema):
 
     schema_id = "schema.settlement.cli.v1"
 
+    #: Canonical source — NWS CLI archive (the only settlement source).
+    _registered_source: ClassVar[str] = "cli.archive"
+
     COLUMNS: ClassVar[list[ColumnSpec]] = [
         ColumnSpec(
             name="station",

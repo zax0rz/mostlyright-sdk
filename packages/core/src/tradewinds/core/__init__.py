@@ -20,6 +20,9 @@ Sub-modules:
   (``dataframe`` / ``json`` / ``parquet`` / ``toon`` / ``csv``).
 """
 
+# Importing tradewinds.core.schemas triggers eager registration of the
+# three canonical schemas with the Validator (see schemas/__init__.py).
+import tradewinds.core.schemas  # noqa: F401
 from tradewinds.core.exceptions import (
     LeakageError,
     PayloadTooLargeError,
@@ -36,6 +39,7 @@ from tradewinds.core.temporal import (
     TimePoint,
     assert_no_leakage,
 )
+from tradewinds.core.validator import validate_dataframe
 
 __all__ = [
     "ColumnSpec",
@@ -52,4 +56,5 @@ __all__ = [
     "TimePoint",
     "TradewindsError",
     "assert_no_leakage",
+    "validate_dataframe",
 ]
