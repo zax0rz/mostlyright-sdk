@@ -149,10 +149,7 @@ def iem_to_observation(
         return None
 
     # Observation type: caller override or detect from raw text
-    if (
-        observation_type_override is not None
-        and observation_type_override not in _VALID_OBS_TYPES
-    ):
+    if observation_type_override is not None and observation_type_override not in _VALID_OBS_TYPES:
         raise ValueError(
             f"Invalid observation_type_override: {observation_type_override!r}. "
             f"Must be one of {_VALID_OBS_TYPES}"
@@ -187,10 +184,7 @@ def iem_to_observation(
     # Visibility (already in statute miles)
     vis = _safe_float(row.get("vsby", ""))
     if vis is not None:
-        if vis < 0:
-            vis = None
-        else:
-            vis = min(vis, MAX_VISIBILITY_MILES)
+        vis = None if vis < 0 else min(vis, MAX_VISIBILITY_MILES)
 
     # Sky cover and base heights (IEM gives feet, direct passthrough)
     sky_covers: list[str | None] = []
@@ -278,9 +272,7 @@ def parse_iem_file(
         filtered = (line for line in f if not line.startswith("#"))
         reader = csv.DictReader(filtered)
         for row in reader:
-            obs = iem_to_observation(
-                row, observation_type_override=observation_type_override
-            )
+            obs = iem_to_observation(row, observation_type_override=observation_type_override)
             if obs is not None:
                 observations.append(obs)
     return observations

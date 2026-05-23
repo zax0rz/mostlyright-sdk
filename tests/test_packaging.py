@@ -149,9 +149,26 @@ def test_weather_version_is_alpha1() -> None:
     assert _project("weather")["version"] == "0.1.0a1"
 
 
-def test_markets_version_is_zero() -> None:
-    # Markets is a namespace placeholder until Sprint 0.5; do NOT bump.
-    assert _project("markets")["version"] == "0.0.1"
+def test_markets_version_is_alpha1() -> None:
+    # Phase 2 Wave 5: markets bumps to 0.1.0a1 — Kalshi NHIGH/NLOW
+    # resolvers + 20-station whitelist (MARKETS-01..03). Sprint 0.5
+    # will add live market-metadata fetchers; Phase 3.3 adds Polymarket.
+    assert _project("markets")["version"] == "0.1.0a1"
+
+
+def test_markets_pins_core_to_matching_alpha() -> None:
+    # PKG-03: prevent a user from mixing tradewinds 0.0.x with
+    # tradewinds-markets 0.1.0a1 (or vice versa). The Kalshi resolvers
+    # use tradewinds.markets.catalog (this package) but the wider
+    # settlement pipeline reads tradewinds.core.* schemas; a stale core
+    # would silently serve the wrong column set.
+    runtime_deps = _runtime_deps("markets")
+    assert any(
+        d.startswith("tradewinds") and ">=0.1.0a1" in d and "<0.2" in d for d in runtime_deps
+    ), (
+        "tradewinds-markets runtime deps must constrain tradewinds to "
+        "matching alpha (>=0.1.0a1,<0.2) — see PKG-03 in PLAN.md Wave 5"
+    )
 
 
 def test_weather_pins_core_to_matching_alpha() -> None:

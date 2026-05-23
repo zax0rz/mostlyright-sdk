@@ -1,15 +1,29 @@
-"""MostlyRight SDK exceptions.
+"""HTTP-layer exception hierarchy (drop-in equivalent to therminal-py).
 
-Identical hierarchy to therminal-py for drop-in migration.
+These exceptions mirror the surface ``therminal-py`` exposed for HTTP
+transport errors. ``TherminalError`` remains as the HTTP-layer marker so
+existing call sites (Phase 1 fetchers) continue to catch it, but it is now
+a subclass of :class:`tradewinds.core.exceptions.TradewindsError` so that
+user code which catches ``TradewindsError`` also catches transport errors.
+Deprecation target: v0.2+ may collapse these into ``SourceUnavailableError``.
 """
 
+from tradewinds.core.exceptions import TradewindsError
 
-class TherminalError(Exception):
-    """Base exception for all MostlyRight SDK errors."""
+
+class TherminalError(TradewindsError):
+    """Base exception for tradewinds HTTP-layer errors.
+
+    Subclass of :class:`TradewindsError` since Phase 2 — catching
+    ``TradewindsError`` now catches transport errors too. The HTTP-layer
+    ``status_code`` attribute is the only attribute on the original
+    ``therminal-py`` surface; structured ``error_code`` / ``source`` /
+    ``request_id`` flow through ``TradewindsError.__init__``.
+    """
 
     def __init__(self, message: str, status_code: int | None = None):
-        self.status_code = status_code
         super().__init__(message)
+        self.status_code = status_code
 
 
 class NotFoundError(TherminalError):
@@ -24,9 +38,7 @@ class RateLimitError(TherminalError):
 
     def __init__(self, retry_after: int = 1):
         self.retry_after = retry_after
-        super().__init__(
-            f"Rate limit exceeded. Retry after {retry_after}s", status_code=429
-        )
+        super().__init__(f"Rate limit exceeded. Retry after {retry_after}s", status_code=429)
 
 
 class ValidationError(TherminalError):
