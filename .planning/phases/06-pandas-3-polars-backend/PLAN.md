@@ -119,7 +119,12 @@ W5: POLARS track D — CI matrix gates + @pytest.mark.polars marker discipline
   - `pytest -m "not live"` runs on both. Failure on either side blocks merge.
   - Run on a single Python version (3.13) initially to cap CI cost; expand to full Python matrix when 3.x bytes stabilize.
 
-- **W1-T5**: PANDAS3-04 — re-capture parity fixtures against pandas 3.x. Path: `tests/fixtures/parity/pandas3/case_*.parquet`. Capture script: `tests/fixtures/parity/capture.py` extended with a `--pandas-version` flag. `tests/fixtures/parity/README.md` documents both-version SHAs side-by-side. Parity test (`tests/test_parity.py`) selects fixture set based on `pd.__version__.startswith("3.")`.
+- **W1-T5**: PANDAS3-04 — pandas-3 parity strategy. **Architect iter-1 CRITICAL fix:** The v0.1.0 parity contract is byte-equivalent to `mostlyright==0.14.1` (a single, immutable set of bytes per CLAUDE.md). Capturing a *second* set of fixtures from tradewinds' own pandas-3 output is circular — it proves tradewinds-2.x == tradewinds-3.x, NOT that pandas-3-tradewinds matches mostlyright-0.14.1. **Correct strategy:**
+  - The canonical fixtures at `tests/fixtures/parity/case_*.parquet` stay 2.x-derived (immutable; the v0.1.0 contract).
+  - New `tests/fixtures/parity/coerce_pd3.py` defines a documented, reversible transform from the 2.x parquet bytes to the pandas-3 representation: explicit `ns→us` datetime-resolution coercion + `object→string` dtype promotion. Function: `coerce_2x_to_3x(parquet_path: Path) → pd.DataFrame`. Inverse: `coerce_3x_to_2x(df: pd.DataFrame) → pd.DataFrame`.
+  - Parity test under pandas 3.x: read the 2.x fixture, apply `coerce_2x_to_3x`, compare against the live `research()` output. NO new fixture files land on disk; the transform is the contract.
+  - Round-trip test: `coerce_3x_to_2x(coerce_2x_to_3x(case)) == case` (the transform is invertible byte-for-byte). Documents the exact resolution shift + dtype promotion the parity gate accepts as pandas-3-equivalent.
+  - `tests/fixtures/parity/README.md` documents `coerce_pd3.py` as the bridge + cites the pandas 3.0 whatsnew sections that motivate each coercion.
 
 - **W1-T6**: PANDAS3-06 — doctest updates. Audit doctest examples in:
   - `validator.py:209-217` — output may differ between pandas 2.x/3.x for string dtype display. Either update expected output to be pandas-3-clean OR add `# doctest: +SKIP` with a note pointing to the dual-pandas test that covers the same case.
@@ -195,7 +200,7 @@ W5: POLARS track D — CI matrix gates + @pytest.mark.polars marker discipline
 
   For each entry point: validate `backend` kwarg, call the underlying pandas path, then if `backend=="polars"` convert the final DataFrame to polars via `pl.from_pandas(df)`. The conversion is at the public surface boundary, not deep in the pipeline (parity-locked modules stay pandas-only per W4).
 
-- **W3-T3**: POLARS-02 — all 5 entry points return `TradewindsResult` (from W0). The frame is the requested backend; provenance is on the wrapper. Legacy DataFrame-direct return preserved under a `return_type: Literal["wrapper","dataframe"]="wrapper"` kwarg (default `"wrapper"` — v0.2 breaking-ish; documented in CHANGELOG with migration recipe). `return_type="dataframe"` returns `result.legacy_df_with_attrs()` for v0.1.0-shape callers.
+- **W3-T3**: POLARS-02 — `return_type: Literal["wrapper","dataframe"]="dataframe"` kwarg added to the 5 entry points. **Architect iter-1 HIGH-1 + Codex iter-1 P2 fix:** default stays `"dataframe"` for v0.2 so the v0.1.0 zero-behaviour-change constraint holds — every existing `df = research(...)["temp"]` notebook keeps working. `return_type="wrapper"` is opt-in for v0.2 and returns a `TradewindsResult`. Strict deprecation of the legacy default lands in v0.3 (separate REQUIREMENTS entry tracks the flip). The `backend="polars"` path requires `return_type="wrapper"` because polars frames don't have `df.attrs` to carry provenance — calling `backend="polars"` with the default `return_type="dataframe"` raises `ValueError("backend='polars' requires return_type='wrapper'")` with the migration recipe inline.
 
 - **W3-T4**: Install-hint tests. For each entry point, a `@pytest.mark.skipif(_HAS_POLARS, ...)` test asserts that `backend="polars"` without the extra raises `SourceUnavailableError` with the install hint in the message (matches the existing `[nwp]` extra-missing test pattern).
 
@@ -205,7 +210,7 @@ W5: POLARS track D — CI matrix gates + @pytest.mark.polars marker discipline
 
 - All 5 public entry points accept `backend="polars"` kwarg. Default stays `"pandas"` so existing callers see zero behaviour change.
 - Without `[polars]` extra, `backend="polars"` raises `SourceUnavailableError` with install hint.
-- `TradewindsResult` is the default return for all 5; `return_type="dataframe"` shim preserves v0.1.0 shape for one release cycle.
+- `return_type="dataframe"` is the v0.2 default (legacy v0.1.0 shape preserved); `return_type="wrapper"` is opt-in. `backend="polars"` + default `return_type` raises `ValueError` directing the caller to `return_type="wrapper"`. Strict deprecation of the legacy default lands in v0.3.
 - Per-entry-point smoke tests confirm both backends return equivalent rows.
 
 **Wave 3 Verification:**
@@ -220,11 +225,15 @@ W5: POLARS track D — CI matrix gates + @pytest.mark.polars marker discipline
 
 **Tasks:**
 
-- **W4-T1**: POLARS-04 — document the parity-locked-thunk pattern. For each of the 7 parity-locked modules (`_internal/_pairs.py`, `core/merge.py`, `core/_climate.py`, `core/validator.py`, `core/temporal/leakage.py`, `core/temporal/timepoint.py`, `core/_json_safe.py`), the module docstring gets a paragraph: "POLARS-MODE THUNK: this module is parity-locked per CLAUDE.md and stays pandas-only. Polars-mode callers flow through `TradewindsResult.frame_as_pandas()` at the entry boundary; the conversion is documented here." Tests verify polars-mode → pandas-mode conversion at every parity-locked boundary.
+- **W4-T1**: POLARS-04 — parity-locked-thunk pattern. **Architect iter-1 HIGH-5 fix:** `frame_as_pandas()` is NOT lossless across the parity contract (`pl.DataFrame.to_pandas()` drops `df.attrs`, may coerce datetime resolution `us↔ns`, changes nullable-int representation; float aggregates already drift ~2.8e-14 per `test_parity.py:27`). **Load-bearing invariant:** polars-mode `research()` runs the ENTIRE parity-locked pipeline in pandas — the conversion to polars happens ONLY at the final return boundary in W3-T2's outer dispatch, NEVER inside `_internal/_pairs.py` / `core/merge.py` / `core/_climate.py` / validator / leakage / timepoint / `_json_safe`. For each of the 7 parity-locked modules, the module docstring gets a paragraph: "POLARS-MODE INVARIANT: this module is parity-locked per CLAUDE.md and stays pandas-end-to-end. Polars-mode callers do NOT hit this module with a polars frame at any point in the pipeline; the backend conversion is the OUTERMOST step of `research()`, applied to the already-pandas pairs DataFrame after this module finishes." Tests assert that any direct call into these modules with a polars frame raises `TypeError("parity-locked module: pass pandas frame")` — defense-in-depth so a future refactor can't silently re-introduce the lossy conversion.
 
 - **W4-T2**: POLARS-06 — round-trip parity property test. For each of the 5 frozen parity fixtures: run `research(station, from, to, backend="pandas")` and `research(station, from, to, backend="polars")`. Assert `polars_result.frame.to_pandas().equals(pandas_result.frame)`. Acceptable resolution differences: pandas → polars datetime-resolution conversion (the `ns → us` shift documented in the test). Hypothesis-driven random-fixture variant strengthens the invariant beyond the 5 frozen cases.
 
-- **W4-T3**: POLARS-07 — sort-stability invariant test. Construct a 1000-row DataFrame with duplicate keys; run the same `merge_observations` pipeline through both backends; assert row ordering is identical. If narwhals can't guarantee this, the polars-mode merge path falls back to pandas via the thunk pattern (the merge module is on the W4-T1 exclusion list anyway, so this is belt-and-suspenders).
+- **W4-T3**: POLARS-07 — sort-stability invariant test. **Architect iter-1 HIGH-3 fix:** Polars' default `sort()` is NOT stable; stability requires `maintain_order=True`, and narwhals' translation of pandas `kind="mergesort"` is not documented as stable in the source narwhals docs cited in RESEARCH §6. The test as previously written ("assert row ordering is identical") would pass on small inputs and fail nondeterministically at scale. **Correct test:**
+  - Construct an **adversarial** 10,000-row DataFrame with deliberately-pathological duplicate keys (every key appears 10+ times; insertion order randomized via a seeded RNG).
+  - Run the W2 narwhals-migrated modules' sort paths through both pandas + polars. Assert byte-identical row ordering.
+  - Assert (via AST inspection or by patching narwhals) that the polars backend translation explicitly sets `maintain_order=True` on every `sort()` call in the W2 modules. Failing this assertion fails the test loudly.
+  - Belt-and-suspenders fallback: any W2 module whose narwhals translation cannot guarantee `maintain_order=True` gets promoted to the W4-T1 parity-locked thunk exclusion list (pandas-only end-to-end). Candidates: `transforms.rolling`, `preprocessing.iem_crosscheck` (its `.merge` invokes sort), `qc.crosscheck_iem_ghcnh`. W2-T2 through W2-T4 are revisited if any of these fail the invariant.
 
 - **W4-T4**: Cross-backend QC parity. Run `research(qc=True, backend="pandas")` and `research(qc=True, backend="polars")`. Assert the `qc` summary on both `TradewindsResult` instances is identical (rules_fired counts, sidecar_paths). The QC engine is on the W4 exclusion list (pandas-only) but the wrapping summary should be backend-neutral.
 
@@ -251,7 +260,7 @@ W5: POLARS track D — CI matrix gates + @pytest.mark.polars marker discipline
 
 - **W5-T1**: POLARS-08 — CI matrix extension. `.github/workflows/test.yml` adds a `with-polars` job dimension:
   - `with-polars: [false, true]`
-  - When `true`: `uv sync --extra polars` for all three packages; `pytest -m "not live"` runs the full suite INCLUDING `@pytest.mark.polars`-marked tests.
+  - When `true`: install the `[polars]` extra on each member package (the workspace root has no `[polars]` extra — **Codex iter-1 P2 fix**: `uv sync --extra polars` at the root would fail). Correct invocation: `uv sync --package tradewinds --extra polars && uv sync --package tradewinds-weather --extra polars && uv sync --package tradewinds-markets --extra polars` (or equivalent matrix-step that iterates over the three member packages). Then `pytest -m "not live"` runs the full suite INCLUDING `@pytest.mark.polars`-marked tests.
   - When `false`: default install; `pytest -m "not live and not polars"` skips polars-only tests cleanly.
   - Both jobs are required status checks. Required on every PR touching `tradewinds.research`, `tradewinds.mode2`, `tradewinds.discovery`, `tradewinds.transforms`, `tradewinds.preprocessing`, or `tradewinds.core.result`.
 
@@ -292,6 +301,28 @@ W1 can run in parallel with W2 → W5 after W0 ships. The two-lane parallelizati
 
 Both lanes merge into the same v0.2.0 release.
 
+### Explicit merge serialization (architect iter-1 HIGH-4 fix)
+
+Both Lane A (W1-T1 — `validator.py:84,100,119-121,150` string-dtype branch refactor) and Lane B (W0-T4 — `validator.py` dispatch update for `TradewindsResult`; W2-T5 — `knowledge_view.py` changes the type flowing INTO validator) edit `tradewinds.core.validator.py`. Independent merges WILL conflict. Required serialization order:
+
+1. **W0 merges first** (foundation). Validator gains `TradewindsResult`-accepting dispatch.
+2. **W1 rebases on W0** before merging. W1's `validator.py:84,100,119-121,150` edits land on top of W0's dispatch shim; the union diff is reviewed once.
+3. **W2 rebases on `W0 + W1`** before merging. W2-T5 KV migration goes through the already-extended validator dispatch.
+4. W3 → W4 → W5 then proceed serially on Lane B.
+
+If Lane A and Lane B both author validator edits in parallel branches, the second-to-merge MUST `git rebase merged-vision` and re-run the validator's test suite before merging. PR template gets a checkbox: "If this PR touches validator.py, confirm it was rebased on the latest `merged-vision`."
+
+## Phase 5 (MCP) Interaction — architect iter-1 HIGH-2
+
+Phase 5 PLAN-02 (weather catalog entries) consumes adapter outputs via `tradewinds.core.validator.validate_dataframe(df, ...)` at PLAN-02 call sites. Phase 6 W0-T4 changes the validator's first-arg contract to also accept `TradewindsResult`. Coordination required:
+
+1. **Phase 5 PLAN-02 is currently written against a raw `pd.DataFrame`**. Phase 6 W0-T4 must preserve `validate_dataframe(pd.DataFrame, ...)` calls byte-identical — the dispatch is `isinstance(first_arg, TradewindsResult)` to unwrap, else pass straight through. Phase 5 callers see zero behaviour change.
+2. **If Phase 6 W0 lands BEFORE Phase 5 PLAN-02 starts execution**, Phase 5 PLAN-02 should be revised to consume `TradewindsResult` directly (clean break — no shim needed for new code).
+3. **If Phase 5 PLAN-02 lands BEFORE Phase 6 W0**, Phase 6 W0-T4 ships with explicit Phase 5 regression tests: every PLAN-02 catalog-roundtrip test that calls `validate_dataframe` is re-run through W0's dispatch shim to confirm byte-identical behaviour.
+4. **MCP server JSON-RPC serialization** uses the existing `tradewinds.core.formats.*` writers. W2-T6 narwhals-ifies `json.py` and `csv.py` (NOT `_toon` — that's byte-pinned). Phase 5 MCP tools that serialize via these writers MUST work identically regardless of whether the source DataFrame came from a pandas-mode or polars-mode `research()` call (the writers see the wrapped frame after `frame_as_pandas()` conversion at the writer boundary).
+
+Net: Phase 6 is designed to be additive vs Phase 5. The two phases can ship in either order. The coordination contract is "validator first-arg union + format-writer-boundary pandas conversion." A coordination ticket lands in W0-T4 + W2-T6 PR descriptions cross-referencing Phase 5 PLAN-02.
+
 ## Review Discipline
 
 Per `.planning/REVIEW-DISCIPLINE.md`:
@@ -314,7 +345,7 @@ Per ROADMAP § Phase 6 "Out of scope":
 ## Open Questions (to resolve early in W0)
 
 1. **`TradewindsResult` import location**: under `tradewinds.core.result` (recommended) or top-level `tradewinds.TradewindsResult` re-export? Pick before W0-T1 lands. Recommendation: both — module path is the canonical, top-level re-export is the ergonomic shortcut.
-2. **`return_type` default**: `"wrapper"` (this plan's assumption — breaks v0.1.0 callers but is the long-term right shape) vs `"dataframe"` (v0.1.0-compat default — pushes the migration to v0.3). Recommendation: `"wrapper"` with a clear CHANGELOG migration recipe.
+2. ~~**`return_type` default**~~ — **RESOLVED (architect iter-1 HIGH-1 + codex iter-1 P2):** default stays `"dataframe"` for v0.2 to preserve the v0.1.0 zero-behaviour-change constraint. `"wrapper"` is opt-in. `backend="polars"` requires `"wrapper"`. Strict deprecation of the legacy default tracked separately as a v0.3 follow-up. See W3-T3 for the locked spec.
 3. **Narwhals version floor**: `>=1.20` is the recon's suggestion (stable cross-backend API). Confirm against narwhals release notes before W2-T1.
 
 ## Estimate
