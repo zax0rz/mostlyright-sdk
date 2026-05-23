@@ -34,9 +34,33 @@ __all__ = ["assert_source_identity", "research_by_source"]
 
 
 #: Mode 2 supported observation sources for v0.1.0.
+#:
+#: Production parsers emit BARE source tags (`iem`, `awc`, `ghcnh`) per
+#: ``_iem.py:230``, ``_awc.py:320``, ``_ghcnh.py:306``. The dotted
+#: forms (`iem.archive`, `iem.live`, `awc.live`, `ghcnh.archive`) are
+#: tradewinds' canonical source-identity vocabulary documented in
+#: ``docs/design.md`` §R and used by every schema's ``_registered_source``.
+#: Mode 2 accepts BOTH at the input boundary and uses
+#: :data:`_SOURCE_ALIASES` to map each request to the parser tags that
+#: satisfy it — without this, a Mode 2 request for "iem.archive" would
+#: find zero rows in production (parser emits bare "iem"). The
+#: per-row source overlay column is the parser-emitted tag, NOT a
+#: rewrite to the requested form, so downstream Validator schemas see
+#: the truthful provenance.
 _VALID_OBSERVATION_SOURCES = frozenset(
-    {"iem.archive", "iem.live", "awc.live", "ghcnh", "ghcnh.archive"}
+    {"iem", "iem.archive", "iem.live", "awc", "awc.live", "ghcnh", "ghcnh.archive"}
 )
+
+
+_SOURCE_ALIASES: dict[str, frozenset[str]] = {
+    "iem": frozenset({"iem", "iem.archive", "iem.live"}),
+    "iem.archive": frozenset({"iem", "iem.archive"}),
+    "iem.live": frozenset({"iem", "iem.live"}),
+    "awc": frozenset({"awc", "awc.live"}),
+    "awc.live": frozenset({"awc", "awc.live"}),
+    "ghcnh": frozenset({"ghcnh", "ghcnh.archive"}),
+    "ghcnh.archive": frozenset({"ghcnh", "ghcnh.archive"}),
+}
 
 
 def research_by_source(
@@ -55,6 +79,16 @@ def research_by_source(
     ``df.attrs["retrieved_at"]`` + a per-row ``source`` overlay column —
     the canonical validator contract used by all of tradewinds' Mode 2
     surfaces.
+
+    **v0.1.0 limitation (codex iter-1 P1):** ``_fetch_observations_range``
+    applies the Mode 1 merge policy (AWC > IEM > GHCNh on key collision)
+    BEFORE returning rows. A Mode 2 caller asking for ``iem.archive``
+    over a window where AWC also has data therefore sees only the IEM
+    rows AWC did NOT supersede — not the full IEM coverage of the
+    upstream feed. v0.2 will add a pre-merge source-isolated path; v0.1
+    callers who need that today should call the per-source fetchers
+    in ``tradewinds.weather._fetchers`` directly and skip the catalog
+    layer.
 
     Args:
         station: 3- or 4-letter station code (e.g. ``"NYC"``, ``"KNYC"``).
@@ -104,13 +138,12 @@ def research_by_source(
         prefetched_awc_rows=awc_rows,
     )
 
-    # Filter to the requested source. Parsers emit rows tagged
-    # `source` (e.g. `iem.archive`, `awc.live`, `ghcnh`). Treat
-    # `ghcnh` and `ghcnh.archive` as aliases since the underlying
-    # parser only emits the bare `ghcnh` form.
-    accepted_sources = {source}
-    if source in ("ghcnh", "ghcnh.archive"):
-        accepted_sources = {"ghcnh", "ghcnh.archive"}
+    # Filter to the parser tags that satisfy the requested source
+    # (architect-CRITICAL fix: parsers emit bare `iem`/`awc`/`ghcnh`,
+    # tradewinds' canonical vocab is dotted; the alias table bridges
+    # both at the boundary without rewriting the per-row source —
+    # downstream Validator sees the truthful parser-emitted tag).
+    accepted_sources = _SOURCE_ALIASES.get(source, {source})
     filtered = [r for r in raw_obs if r.get("source") in accepted_sources]
 
     if not as_dataframe:
@@ -119,25 +152,21 @@ def research_by_source(
     import pandas as pd
 
     if not filtered:
-        # Empty DataFrame still carries provenance attrs so callers
-        # validating the result don't hit attrs-required errors.
         df = pd.DataFrame()
         df.attrs["source"] = source
         df.attrs["retrieved_at"] = datetime.now(UTC)
         return df
 
     df = pd.DataFrame(filtered)
-    # Per-row source overlay column (validator contract — see
-    # tradewinds.core.validator). Defensive: parsers emit `source` on
-    # every row, so this is usually a no-op, but explicit assignment
-    # ensures a Mode 2 caller always sees the column normalized.
-    df["source"] = source
-
-    # Defense-in-depth: confirm per-row source matches the request.
-    assert_source_identity(df, source)
-
+    # Architect HIGH (silent rewrite): DO NOT overwrite per-row source —
+    # the parser-emitted tag IS the truthful provenance. Downstream
+    # Validator schemas reference the bare form; rewriting to a dotted
+    # alias here would silently break source-identity invariants.
+    # The aliasing table is INPUT-ONLY: it accepts both forms at the
+    # boundary, but the returned DataFrame carries what the parser said.
     df.attrs["source"] = source
     df.attrs["retrieved_at"] = datetime.now(UTC)
+    df.attrs["accepted_sources"] = sorted(accepted_sources)
     return df
 
 
