@@ -13,6 +13,7 @@ without any explicit register-call boilerplate.
 from tradewinds.core.validator import register_schema
 
 from .forecast import ForecastSchema
+from .forecast_nwp import NwpForecastSchema
 from .observation import ObservationSchema
 from .observation_ledger import ObservationLedgerSchema
 from .observation_qc import ObservationQCSchema
@@ -25,9 +26,12 @@ register_schema(SettlementSchema)
 # Phase 2.1 additions.
 register_schema(ObservationLedgerSchema)
 register_schema(ObservationQCSchema)
+# Phase 3.2 addition.
+register_schema(NwpForecastSchema)
 
 __all__ = [
     "ForecastSchema",
+    "NwpForecastSchema",
     "ObservationLedgerSchema",
     "ObservationQCSchema",
     "ObservationSchema",

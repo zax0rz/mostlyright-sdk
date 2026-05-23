@@ -42,6 +42,20 @@ dependencies = [
 parquet = [
     "pandas>=2.2,<3.0",
 ]
+# Phase 3.2: NWP live-fetch (HRRR/GFS/NBM) via NOAA Big Data Program.
+# `cfgrib` brings in `eccodes` + `eccodeslib` transitively, which ship
+# the binary GRIB2 codec as Python wheels (no system `apt install
+# eccodes-bin` / `brew install eccodes` required on Linux/macOS/Windows).
+# `xarray` is cfgrib's API surface; `scikit-learn` provides
+# BallTree(haversine) for nearest-grid-cell extraction.
+# Pandas is a transitive dep of the parquet extra above; included here
+# so a user who installs only `[nwp]` gets a usable DataFrame return.
+nwp = [
+    "cfgrib>=0.9.15,<1.0",
+    "xarray>=2024.0",
+    "scikit-learn>=1.3,<2.0",
+    "pandas>=2.2,<3.0",
+]
 
 [build-system]
 requires = ["hatchling"]
