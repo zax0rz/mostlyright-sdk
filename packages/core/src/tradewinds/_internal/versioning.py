@@ -129,6 +129,4 @@ class DataVersion:
             return compared_to.observation_count > 0
         if compared_to.latest_observation > self.latest_observation:
             return True
-        if compared_to.observation_count > self.observation_count:
-            return True
-        return False
+        return compared_to.observation_count > self.observation_count
