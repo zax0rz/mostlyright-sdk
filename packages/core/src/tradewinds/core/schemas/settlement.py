@@ -27,6 +27,22 @@ from ..schema import ColumnSpec, Schema
 
 _REPORT_TYPE_VALUES: tuple[str, ...] = ("preliminary", "final", "correction")
 
+#: NWS CLI "data quality" enum (added Phase 2 — Pitfall 6 + 16). Distinguishes
+#: clean releases from those flagged for instrumentation faults / late reports.
+_CLI_DATA_QUALITY_VALUES: tuple[str, ...] = (
+    "clean",
+    "flagged_instrument",
+    "flagged_late",
+    "flagged_other",
+    "missing",
+)
+
+#: Settlement finality (Pitfall 16). ``provisional`` releases can be re-amended
+#: by the issuer; ``final`` is contractually binding for Kalshi NHIGH/NLOW
+#: settlement. ``superseded`` covers the case where a later report invalidated
+#: an earlier one (the older row stays in cache for audit, with finality flipped).
+_SETTLEMENT_FINALITY_VALUES: tuple[str, ...] = ("provisional", "final", "superseded")
+
 
 class SettlementSchema(Schema):
     """``schema.settlement.cli.v1`` — NWS CLI daily settlement rows.
@@ -115,6 +131,30 @@ class SettlementSchema(Schema):
             dtype="float64",
             units="inches",
             nullable=True,
+        ),
+        ColumnSpec(
+            name="cli_data_quality",
+            dtype="enum",
+            units=None,
+            nullable=False,
+            enum_values=_CLI_DATA_QUALITY_VALUES,
+            notes=(
+                "NWS CLI data-quality marker (Pitfall 6/16). Allows downstream "
+                "code to filter or weight settlement rows by issuer quality "
+                "without re-parsing the product header."
+            ),
+        ),
+        ColumnSpec(
+            name="settlement_finality",
+            dtype="enum",
+            units=None,
+            nullable=False,
+            enum_values=_SETTLEMENT_FINALITY_VALUES,
+            notes=(
+                "provisional | final | superseded. Kalshi NHIGH/NLOW "
+                "settlement contractually requires 'final'; 'provisional' "
+                "values are kept for early-look research only."
+            ),
         ),
     ]
 

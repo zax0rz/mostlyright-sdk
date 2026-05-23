@@ -8,7 +8,7 @@ table). Verifies ``station_tz`` is present and required.
 from __future__ import annotations
 
 import pytest
-from tradewinds._v02.schemas import SettlementSchema
+from tradewinds.core.schemas import SettlementSchema
 
 # (name, dtype, units, nullable, enum_values) per docs/design.md §BB.3.
 _EXPECTED: list[tuple[str, str, str | None, bool, tuple[str, ...] | None]] = [
@@ -28,6 +28,21 @@ _EXPECTED: list[tuple[str, str, str | None, bool, tuple[str, ...] | None]] = [
     ("temp_min_F", "float64", "fahrenheit", True, None),
     ("precipitation_in", "float64", "inches", True, None),
     ("snowfall_in", "float64", "inches", True, None),
+    # Phase 2 additions (Pitfall 6 + 16 — see PLAN.md Task 1.4):
+    (
+        "cli_data_quality",
+        "enum",
+        None,
+        False,
+        ("clean", "flagged_instrument", "flagged_late", "flagged_other", "missing"),
+    ),
+    (
+        "settlement_finality",
+        "enum",
+        None,
+        False,
+        ("provisional", "final", "superseded"),
+    ),
 ]
 
 
@@ -36,7 +51,8 @@ class TestSettlementSchemaContract:
         assert SettlementSchema.schema_id == "schema.settlement.cli.v1"
 
     def test_column_count_matches_design_doc(self) -> None:
-        assert len(SettlementSchema.COLUMNS) == len(_EXPECTED) == 10
+        # Phase 2 added cli_data_quality + settlement_finality → 12 columns.
+        assert len(SettlementSchema.COLUMNS) == len(_EXPECTED) == 12
 
     def test_column_names_in_order(self) -> None:
         assert SettlementSchema.column_names("metric") == [row[0] for row in _EXPECTED]
@@ -80,6 +96,8 @@ class TestSettlementSchemaContract:
             "event_time",
             "product_release_time",
             "report_type",
+            "cli_data_quality",
+            "settlement_finality",
         ]
         for name in required:
             assert SettlementSchema.column(name).nullable is False, name

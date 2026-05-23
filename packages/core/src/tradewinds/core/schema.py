@@ -1,4 +1,4 @@
-"""Declarative schema framework for mostlyright-mcp.
+"""Declarative schema framework for tradewinds.
 
 Defines the ``Schema`` base class, ``ColumnSpec`` description records, and
 ``SchemaRegistration`` audit-trail container. These are the shape contracts

@@ -1,4 +1,4 @@
-"""Canonical schemas shipped with mostlyright-mcp v0.1.
+"""Canonical schemas shipped with tradewinds v0.1.
 
 The three schemas — observation, forecast, settlement — are the shape
 contracts every weather-vertical adapter (IEM, AWC, NWS CLI) normalises

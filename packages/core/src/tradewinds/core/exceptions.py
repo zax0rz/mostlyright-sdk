@@ -1,36 +1,44 @@
 """Structured exception hierarchy for the tradewinds SDK and MCP server.
 
-Every exception subclasses :class:`MostlyRightMCPError` and exposes a
-:meth:`MostlyRightMCPError.to_dict` method that returns a JSON-safe dict
+Every exception subclasses :class:`TradewindsError` and exposes a
+:meth:`TradewindsError.to_dict` method that returns a JSON-safe dict
 suitable for placement in the MCP ``error.data`` field of a JSON-RPC error
 response. Attributes mirror the design doc §D + §R contract; payload values
-are coerced via :func:`tradewinds._v02._json_safe.to_json_safe` so the
+are coerced via :func:`tradewinds.core._json_safe.to_json_safe` so the
 returned dict survives ``json.dumps`` without further customization.
 
 Role names for ``SourceMismatchError`` are standardized at ``"observations"``,
 ``"forecasts"``, ``"settlement"`` (per design.md §R). The column-prefix
 abbreviations ``obs_`` / ``fcst_`` / ``settle_`` are NOT valid role names.
+
+``MostlyRightMCPError`` remains importable as a deprecation alias for one
+release cycle (removal scheduled for v0.3). Importing it emits a single
+``DeprecationWarning`` per session.
 """
 
 from __future__ import annotations
 
+import warnings
 from typing import Any
 
 from ._json_safe import to_json_safe
 
 __all__ = [
     "LeakageError",
-    "MostlyRightMCPError",
     "PayloadTooLargeError",
     "SchemaValidationError",
     "SourceMismatchError",
     "SourceUnavailableError",
     "TemporalDriftError",
+    "TradewindsError",
+    # ``MostlyRightMCPError`` is intentionally NOT in ``__all__``. It is
+    # available via module ``__getattr__`` for one release cycle with a
+    # DeprecationWarning; removal target v0.3.
 ]
 
 
-class MostlyRightMCPError(Exception):
-    """Base class for all mostlyright-mcp structured errors.
+class TradewindsError(Exception):
+    """Base class for all tradewinds structured errors.
 
     ``error_code`` is a stable enum (e.g. ``"SOURCE_UNAVAILABLE"``) used by
     callers / agents to branch on without parsing message text. ``source`` is
@@ -39,7 +47,7 @@ class MostlyRightMCPError(Exception):
     """
 
     #: Subclass override — the stable string enum surfaced via ``error_code``.
-    default_error_code: str = "MOSTLYRIGHT_MCP_ERROR"
+    default_error_code: str = "TRADEWINDS_ERROR"
 
     def __init__(
         self,
@@ -77,7 +85,7 @@ class MostlyRightMCPError(Exception):
         return to_json_safe(self._payload())
 
 
-class SourceUnavailableError(MostlyRightMCPError):
+class SourceUnavailableError(TradewindsError):
     """A source (HTTP endpoint, vendored parser, etc.) returned an error or
     was otherwise unreachable. Carries enough metadata for callers to decide
     whether to retry and after how long.
@@ -122,7 +130,7 @@ class SourceUnavailableError(MostlyRightMCPError):
         return payload
 
 
-class SchemaValidationError(MostlyRightMCPError):
+class SchemaValidationError(TradewindsError):
     """A DataFrame failed schema validation. Carries the full violation list
     (capped at 10,000 — surplus written to file via §Q file-path mode by the
     SDK) and a small inline sample for MCP wire serialization (≤10 entries).
@@ -164,7 +172,7 @@ class SchemaValidationError(MostlyRightMCPError):
         return payload
 
 
-class SourceMismatchError(MostlyRightMCPError):
+class SourceMismatchError(TradewindsError):
     """The data's source does not match the schema's registered source, and
     the caller did not opt out via ``allow_source_drift``. ``role`` (if set)
     identifies which leg of a ``pull_pairs`` request mismatched and uses the
@@ -210,7 +218,7 @@ class SourceMismatchError(MostlyRightMCPError):
         return payload
 
 
-class LeakageError(MostlyRightMCPError):
+class LeakageError(TradewindsError):
     """Temporal leakage detected — at least one row has ``knowledge_time``
     greater than the asserted ``as_of`` cutoff. Carries the count and a small
     sample of violating rows for actionable surfacing.
@@ -249,7 +257,7 @@ class LeakageError(MostlyRightMCPError):
         return payload
 
 
-class TemporalDriftError(MostlyRightMCPError):
+class TemporalDriftError(TradewindsError):
     """Raised by the reproducibility audit (design.md §P) when one or more
     rows have ``retrieved_at`` outside the asserted range AND fall within the
     volatile window of ``now``. Indicates the source materially re-amended
@@ -292,7 +300,7 @@ class TemporalDriftError(MostlyRightMCPError):
         return payload
 
 
-class PayloadTooLargeError(MostlyRightMCPError):
+class PayloadTooLargeError(TradewindsError):
     """The MCP server rejected an inline payload whose declared size exceeded
     the cap. ``accepted_modes`` advertises the alternatives (e.g. file-path
     mode per design.md §Q).
@@ -329,3 +337,25 @@ class PayloadTooLargeError(MostlyRightMCPError):
             accepted_modes=self.accepted_modes,
         )
         return payload
+
+
+# ----------------------------------------------------------------------
+# Deprecation alias: MostlyRightMCPError → TradewindsError
+# ----------------------------------------------------------------------
+_DEPRECATION_WARNINGS_EMITTED: set[str] = set()
+
+
+def __getattr__(name: str) -> Any:
+    """Lazy attribute access — emit DeprecationWarning once per session
+    for the legacy ``MostlyRightMCPError`` name. Removal target: v0.3.
+    """
+    if name == "MostlyRightMCPError":
+        if name not in _DEPRECATION_WARNINGS_EMITTED:
+            warnings.warn(
+                "MostlyRightMCPError is deprecated; use TradewindsError. " "Removal in v0.3.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            _DEPRECATION_WARNINGS_EMITTED.add(name)
+        return TradewindsError
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

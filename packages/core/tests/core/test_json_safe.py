@@ -1,4 +1,4 @@
-"""Unit + property tests for :func:`tradewinds._v02._json_safe.to_json_safe`."""
+"""Unit + property tests for :func:`tradewinds.core._json_safe.to_json_safe`."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import pandas as pd
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
-from tradewinds._v02._json_safe import to_json_safe
+from tradewinds.core._json_safe import to_json_safe
 
 
 # ---------------------------------------------------------------------------
@@ -142,7 +142,7 @@ def test_naive_timestamp_in_violation_payload_serializes():
     # The motivating case: SchemaValidationError reports a violation that
     # includes the offending naive timestamp. The error's to_dict() must not
     # raise — the whole point of the encoder is to round-trip such payloads.
-    from tradewinds._v02.exceptions import SchemaValidationError
+    from tradewinds.core.exceptions import SchemaValidationError
 
     err = SchemaValidationError(
         "naive event_time on row 0",

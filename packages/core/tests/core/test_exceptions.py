@@ -3,18 +3,19 @@
 from __future__ import annotations
 
 import json
+import warnings
 
 import numpy as np
 import pandas as pd
 import pytest
-from tradewinds._v02.exceptions import (
+from tradewinds.core.exceptions import (
     LeakageError,
-    MostlyRightMCPError,
     PayloadTooLargeError,
     SchemaValidationError,
     SourceMismatchError,
     SourceUnavailableError,
     TemporalDriftError,
+    TradewindsError,
 )
 
 
@@ -27,17 +28,41 @@ def _roundtrip(payload: dict) -> dict:
 # ---------------------------------------------------------------------------
 # Base
 # ---------------------------------------------------------------------------
-class TestMostlyRightMCPError:
+class TestTradewindsError:
     def test_defaults(self):
-        err = MostlyRightMCPError("boom")
+        err = TradewindsError("boom")
         assert str(err) == "boom"
         assert err.message == "boom"
-        assert err.error_code == "MOSTLYRIGHT_MCP_ERROR"
+        assert err.error_code == "TRADEWINDS_ERROR"
         assert err.source is None
         assert err.request_id is None
 
+    def test_mostlyright_mcperror_deprecation_alias(self):
+        """The legacy ``MostlyRightMCPError`` name resolves to ``TradewindsError``
+        and emits a ``DeprecationWarning`` once per session. The session-scoped
+        cache lives at ``exceptions._DEPRECATION_WARNINGS_EMITTED``; clear it
+        per-test so this assertion is deterministic.
+        """
+        from tradewinds.core import exceptions as _exc
+
+        _exc._DEPRECATION_WARNINGS_EMITTED.clear()
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            cls = _exc.MostlyRightMCPError
+        assert cls is TradewindsError
+        assert any(issubclass(w.category, DeprecationWarning) for w in caught)
+
+    def test_mostlyright_mcperror_unknown_attribute_raises(self):
+        """Module ``__getattr__`` only handles the documented alias; anything
+        else must surface as ``AttributeError``.
+        """
+        from tradewinds.core import exceptions as _exc
+
+        with pytest.raises(AttributeError):
+            _ = _exc.SomeUndefinedName  # type: ignore[attr-defined]
+
     def test_all_kwargs(self):
-        err = MostlyRightMCPError(
+        err = TradewindsError(
             "boom",
             error_code="CUSTOM_CODE",
             source="iem.archive",
@@ -48,17 +73,17 @@ class TestMostlyRightMCPError:
         assert err.request_id == "req-123"
 
     def test_to_dict_roundtrip(self):
-        err = MostlyRightMCPError("boom", source="iem.archive", request_id="r1")
+        err = TradewindsError("boom", source="iem.archive", request_id="r1")
         payload = err.to_dict()
         rt = _roundtrip(payload)
-        assert rt["error_code"] == "MOSTLYRIGHT_MCP_ERROR"
+        assert rt["error_code"] == "TRADEWINDS_ERROR"
         assert rt["message"] == "boom"
         assert rt["source"] == "iem.archive"
         assert rt["request_id"] == "r1"
 
     def test_is_exception(self):
-        with pytest.raises(MostlyRightMCPError):
-            raise MostlyRightMCPError("boom")
+        with pytest.raises(TradewindsError):
+            raise TradewindsError("boom")
 
 
 # ---------------------------------------------------------------------------
@@ -353,7 +378,7 @@ class TestPayloadTooLargeError:
 )
 def test_all_subclass_base(cls, kwargs):
     err = cls("msg", **kwargs)
-    assert isinstance(err, MostlyRightMCPError)
+    assert isinstance(err, TradewindsError)
     assert isinstance(err, Exception)
     # And every to_dict survives a json round-trip.
     _roundtrip(err.to_dict())

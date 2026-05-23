@@ -1,11 +1,55 @@
-"""tradewinds._v02 — foundations from the wave-1-core port (mostlyright-mcp design doc).
+"""tradewinds.core — temporal safety + schema + format primitives.
 
-Self-contained primitives ported from mostlyright-mcp's feat/wave-1-core branch:
-- exceptions: MCP-shaped exception hierarchy with JSON-safe encoder
-- timepoint: UTC-aware timestamp wrapper with DST + ns truncation handling
-- schema: declarative schema framework with audit_log + 3 canonical schemas
-- formats: TOON / parquet / json / csv / dataframe serializers
+The architectural spine of the tradewinds SDK. Originally ported from
+the ``mostlyright-mcp`` wave-1-core branch (lift provenance preserved in
+per-module docstrings); promoted from the ``_v02`` reference into the
+canonical namespace in Phase 2 of the v0.1.0 plan.
 
-NOT used by Sprint 0 (which lifts v0.14.1 internals into _internal/). Available
-here as a v0.2+ reference for the MCP-native vision; safe to ignore until then.
+Sub-modules:
+
+- :mod:`tradewinds.core.exceptions` — structured exception hierarchy
+  (``TradewindsError`` base + 6 subclasses + JSON-safe ``to_dict``).
+  ``MostlyRightMCPError`` remains importable as a deprecation alias.
+- :mod:`tradewinds.core.temporal` — UTC-aware ``TimePoint`` wrapper;
+  ``KnowledgeView`` + ``LeakageDetector`` (Phase 2 Wave 2).
+- :mod:`tradewinds.core.schema` — declarative ``Schema`` framework with
+  audit-log seam used by the source-identity ``Validator``.
+- :mod:`tradewinds.core.schemas` — three canonical schema instances
+  (observation, forecast, settlement).
+- :mod:`tradewinds.core.formats` — five lossless format serializers
+  (``dataframe`` / ``json`` / ``parquet`` / ``toon`` / ``csv``).
 """
+
+from tradewinds.core.exceptions import (
+    LeakageError,
+    PayloadTooLargeError,
+    SchemaValidationError,
+    SourceMismatchError,
+    SourceUnavailableError,
+    TemporalDriftError,
+    TradewindsError,
+)
+from tradewinds.core.schema import ColumnSpec, Schema, SchemaRegistration
+from tradewinds.core.temporal import (
+    KnowledgeView,
+    LeakageDetector,
+    TimePoint,
+    assert_no_leakage,
+)
+
+__all__ = [
+    "ColumnSpec",
+    "KnowledgeView",
+    "LeakageDetector",
+    "LeakageError",
+    "PayloadTooLargeError",
+    "Schema",
+    "SchemaRegistration",
+    "SchemaValidationError",
+    "SourceMismatchError",
+    "SourceUnavailableError",
+    "TemporalDriftError",
+    "TimePoint",
+    "TradewindsError",
+    "assert_no_leakage",
+]
