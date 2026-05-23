@@ -138,6 +138,40 @@ def test_retrieved_at_propagates():
 # Codex iter-2 HIGH fix: parser keys flow end-to-end (parse_cli_record
 # output → CLIAdapter.from_records()) without dropping values.
 # ----------------------------------------------------------------------
+def test_cli_adapter_output_passes_validator():
+    """codex iter-5 HIGH fix: full CLIAdapter -> validate_dataframe chain.
+
+    parse_cli_record() emits int temperatures but the settlement schema
+    declares float64. The adapter must coerce so adapter -> Validator
+    integration succeeds.
+    """
+    from tradewinds.core import validate_dataframe
+
+    parser_output_int = {
+        "station_code": "KNYC",
+        "observation_date": date(2025, 1, 1),
+        "report_type": "final",
+        "high_temp_f": 35,  # int from parser
+        "low_temp_f": 22,  # int from parser
+        "precipitation_in": 0,  # int
+        "snowfall_in": 0,
+        "issued_at": "2025-01-02T13:00:00Z",
+    }
+    df = CLIAdapter.from_records(
+        [parser_output_int],
+        source="cli.archive",
+        station_tz="America/New_York",
+        retrieved_at=datetime(2025, 1, 2, 13, tzinfo=UTC),
+    )
+    # Coerced to float64.
+    assert df["temp_max_F"].dtype == "float64"
+    assert df["temp_min_F"].dtype == "float64"
+    # Validator must accept.
+    reg = validate_dataframe(df, "schema.settlement.cli.v1")
+    assert reg.source == "cli.archive"
+    assert reg.rows == 1
+
+
 def test_parser_keys_flow_into_canonical_columns():
     """Real parse_cli_record() output must populate canonical settlement columns.
 

@@ -141,6 +141,17 @@ class CLIAdapter:
                 df["product_release_time"], utc=True, errors="coerce"
             )
 
+        # codex iter-5 HIGH fix: parse_cli_record emits int temps; the
+        # canonical settlement schema declares float64. Coerce here so
+        # adapter -> Validator integration succeeds.
+        for col in ("temp_max_F", "temp_min_F", "precipitation_in", "snowfall_in"):
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
+        # string columns
+        for col in ("station", "report_type", "cli_data_quality", "settlement_finality"):
+            if col in df.columns:
+                df[col] = df[col].astype("string")
+
         df["station_tz"] = station_tz
         # event_time = 00:00 station-local on observation_date → UTC.
         df["event_time"] = _event_time_from_date(df["observation_date"], station_tz)
