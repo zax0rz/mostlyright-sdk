@@ -32,9 +32,16 @@ This is PLANNING ONLY — no implementation lands in this round.
    provides a unified API over pandas/polars/pyarrow. Use it for the 5 cleanly-portable
    modules (`transforms.py`, `preprocessing.py`, `qc.crosscheck_iem_ghcnh`,
    `core/temporal/knowledge_view.py`, `core/formats/{json,csv,toon}.py`).
-5. **Dual-pandas CI matrix.** Tests run under BOTH pandas 2.2.x AND pandas 3.x.
-   Parity fixtures re-captured against 3.x land at `tests/fixtures/parity/pandas3/`
-   alongside the 2.x originals.
+5. **Dual-pandas CI matrix + coerce_pd3 bridge (NOT a second fixture set).** Tests
+   run under BOTH pandas 2.2.x AND pandas 3.x via a `coerce_pd3.py` invertible-
+   transform bridge: the canonical 2.x fixtures at `tests/fixtures/parity/case_*.parquet`
+   stay immutable (v0.1.0 contract); pandas-3 test reads them, applies a documented
+   `ns→us` + `object→string` coercion, and compares against live `research()` output.
+   See PLAN W1-T5 for the rationale (capturing a second set against tradewinds'
+   own pandas-3 output would be circular — proving tradewinds-2.x == tradewinds-3.x,
+   NOT pandas-3-tradewinds == mostlyright-0.14.1). Carries `atol=1e-12` forward;
+   ULP drift re-measured and committed as `tests/fixtures/parity/ulp_drift_pd3.json`
+   pre-merge.
 6. **Eager Polars only in v0.2.** LazyFrame default deferred to v0.3 (POLARS-LAZY-01).
    pyarrow Table backend deferred to v0.3 (PYARROW-BACKEND-01).
 7. **`df.attrs` compatibility shim for v0.2.** Adapters return `TradewindsResult` from
