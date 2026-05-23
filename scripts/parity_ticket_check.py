@@ -48,6 +48,28 @@ _TYPESCRIPT_ONLY_RE: Final[re.Pattern[str]] = re.compile(
     r"^\s*typescript_only:\s*true\b", re.IGNORECASE | re.MULTILINE
 )
 
+# HTML comment (`<!-- ... -->`) — non-greedy, multi-line. Stripped from the PR
+# body before opt-out regexes run so the unchanged PR template (which carries
+# example markers inside an HTML comment) cannot bypass the parity gate.
+# See TS-W0 iter-1 CRITICAL 2.
+_HTML_COMMENT_RE: Final[re.Pattern[str]] = re.compile(r"<!--.*?-->", re.DOTALL)
+# Fenced code block (``` ... ```) — also stripped before regex parsing. Lets
+# us document example markers in the template inside a fenced block without
+# the parser mistaking them for real markers.
+_FENCED_CODE_BLOCK_RE: Final[re.Pattern[str]] = re.compile(r"```.*?```", re.DOTALL)
+
+
+def _strip_inert_regions(body: str) -> str:
+    """Strip HTML comments + fenced code blocks before parsing opt-out markers.
+
+    The PR template carries example markers inside an HTML comment AND/OR
+    inside a fenced code block — both are inert to readers, and neither
+    should satisfy the parity gate.
+    """
+    body = _HTML_COMMENT_RE.sub("", body)
+    body = _FENCED_CODE_BLOCK_RE.sub("", body)
+    return body
+
 # Labels that satisfy the gate.
 _LABEL_PYTHON_ONLY: Final[str] = "python_only"
 _LABEL_TYPESCRIPT_ONLY: Final[str] = "typescript_only"
@@ -180,6 +202,25 @@ def _parse_labels(label_csv: str) -> set[str]:
     return {label.strip() for label in label_csv.split(",") if label.strip()}
 
 
+def parse_pr_body(body: str) -> tuple[str | None, bool, bool]:
+    """Parse opt-out markers from a PR body.
+
+    Returns ``(parity_ticket, python_only, typescript_only)`` where
+    ``parity_ticket`` is the matched ticket id string (e.g. ``"123"``) or
+    ``None`` if no marker is found.
+
+    HTML comments + fenced code blocks are stripped before regex parsing so
+    the PR template's example markers cannot bypass the parity gate (TS-W0
+    iter-1 CRITICAL 2).
+    """
+    cleaned = _strip_inert_regions(body)
+    ticket_match = _PARITY_TICKET_RE.search(cleaned)
+    ticket = ticket_match.group(1) if ticket_match else None
+    python_only = bool(_PYTHON_ONLY_RE.search(cleaned))
+    typescript_only = bool(_TYPESCRIPT_ONLY_RE.search(cleaned))
+    return ticket, python_only, typescript_only
+
+
 def _render_failure_comment(py_hits: list[str], ts_hits: list[str], direction: str) -> str:
     """Format the structured failure message printed to stdout + CI logs."""
     if direction == "python":
@@ -244,11 +285,10 @@ def main(argv: list[str] | None = None) -> int:
     py_hits, ts_hits = _classify(files, py_globs, ts_globs)
     labels = _parse_labels(args.label_list)
 
-    has_parity_ticket = bool(_PARITY_TICKET_RE.search(args.pr_body))
-    has_python_only = bool(_PYTHON_ONLY_RE.search(args.pr_body)) or (_LABEL_PYTHON_ONLY in labels)
-    has_typescript_only = bool(_TYPESCRIPT_ONLY_RE.search(args.pr_body)) or (
-        _LABEL_TYPESCRIPT_ONLY in labels
-    )
+    parsed_ticket, parsed_py_only, parsed_ts_only = parse_pr_body(args.pr_body)
+    has_parity_ticket = parsed_ticket is not None
+    has_python_only = parsed_py_only or (_LABEL_PYTHON_ONLY in labels)
+    has_typescript_only = parsed_ts_only or (_LABEL_TYPESCRIPT_ONLY in labels)
     has_parity_label = _LABEL_PARITY_TICKETED in labels
 
     # No trigger-surface touched → gate does not apply.

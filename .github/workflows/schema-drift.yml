@@ -13,6 +13,7 @@ on:
   push:
     paths:
       - "packages/core/src/tradewinds/core/schemas/**"
+      - "packages/core/src/tradewinds/core/merge.py"
       - "packages/core/src/tradewinds/_internal/_stations.py"
       - "packages/core/src/tradewinds/_internal/merge/**"
       - "packages/core/src/tradewinds/international.py"
@@ -28,6 +29,7 @@ on:
   pull_request:
     paths:
       - "packages/core/src/tradewinds/core/schemas/**"
+      - "packages/core/src/tradewinds/core/merge.py"
       - "packages/core/src/tradewinds/_internal/_stations.py"
       - "packages/core/src/tradewinds/_internal/merge/**"
       - "packages/core/src/tradewinds/international.py"

@@ -6,7 +6,7 @@ export interface ObservationV1 {
   /**
    * units: celsius — bounded
    */
-  dew_point_c?: number;
+  dew_point_c?: null | number;
   /**
    * observation valid time
    */
@@ -14,7 +14,7 @@ export interface ObservationV1 {
   /**
    * raw METAR text if source has it; null for AWC JSON (structured-only)
    */
-  metar_raw?: string;
+  metar_raw?: null | string;
   /**
    * METAR | SPECI; defaults METAR when source can't distinguish (e.g. AWC JSON)
    */
@@ -22,43 +22,43 @@ export interface ObservationV1 {
   /**
    * units: mm — hourly precip (METAR p01i, converted from inches)
    */
-  precip_mm_1h?: number;
+  precip_mm_1h?: null | number;
   /**
    * units: meters — first cloud layer base height (converted from feet)
    */
-  sky_base_1_m?: number;
+  sky_base_1_m?: null | number;
   /**
    * units: meters
    */
-  sky_base_2_m?: number;
+  sky_base_2_m?: null | number;
   /**
    * units: meters
    */
-  sky_base_3_m?: number;
+  sky_base_3_m?: null | number;
   /**
    * units: meters
    */
-  sky_base_4_m?: number;
+  sky_base_4_m?: null | number;
   /**
    * first cloud layer cover code
    */
-  sky_cover_1?: "BKN" | "CLR" | "FEW" | "OVC" | "SCT" | "VV";
+  sky_cover_1?: null | ("BKN" | "CLR" | "FEW" | "OVC" | "SCT" | "VV");
   /**
    * second layer; null if not present
    */
-  sky_cover_2?: "BKN" | "CLR" | "FEW" | "OVC" | "SCT" | "VV";
+  sky_cover_2?: null | ("BKN" | "CLR" | "FEW" | "OVC" | "SCT" | "VV");
   /**
    * third layer; null if not present
    */
-  sky_cover_3?: "BKN" | "CLR" | "FEW" | "OVC" | "SCT" | "VV";
+  sky_cover_3?: null | ("BKN" | "CLR" | "FEW" | "OVC" | "SCT" | "VV");
   /**
    * fourth layer; null if not present
    */
-  sky_cover_4?: "BKN" | "CLR" | "FEW" | "OVC" | "SCT" | "VV";
+  sky_cover_4?: null | ("BKN" | "CLR" | "FEW" | "OVC" | "SCT" | "VV");
   /**
    * units: hPa — sea-level pressure (canonical aviation unit, not converted across modes)
    */
-  slp_hpa?: number;
+  slp_hpa?: null | number;
   /**
    * ICAO/ASOS station ID (e.g. KORD)
    */
@@ -66,21 +66,21 @@ export interface ObservationV1 {
   /**
    * units: celsius — bounded TEMP_MIN_C..TEMP_MAX_C
    */
-  temp_c?: number;
+  temp_c?: null | number;
   /**
    * units: meters — converted from statute miles
    */
-  visibility_m?: number;
+  visibility_m?: null | number;
   /**
    * units: degrees — 0-360, bounded
    */
-  wind_dir_deg?: number;
+  wind_dir_deg?: number | null;
   /**
    * units: m/s — converted from kt
    */
-  wind_gust_ms?: number;
+  wind_gust_ms?: null | number;
   /**
    * units: m/s — converted from kt
    */
-  wind_speed_ms?: number;
+  wind_speed_ms?: null | number;
 }

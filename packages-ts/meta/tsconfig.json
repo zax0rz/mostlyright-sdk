@@ -2,7 +2,12 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src"
+    "baseUrl": ".",
+    "paths": {
+      "@tradewinds/core": ["../core/src/index.ts"],
+      "@tradewinds/weather": ["../weather/src/index.ts"],
+      "@tradewinds/markets": ["../markets/src/index.ts"]
+    }
   },
   "include": ["src/**/*", "tests/**/*"],
   "exclude": ["node_modules", "dist", "coverage"]

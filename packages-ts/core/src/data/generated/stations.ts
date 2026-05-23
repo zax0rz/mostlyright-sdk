@@ -10,11 +10,13 @@ export interface StationInfo {
   tz: string;
   latitude: number | null;
   longitude: number | null;
+  country: string | null;
 }
 
 export const STATIONS: ReadonlyArray<StationInfo> = [
   {
     code: "EDDB",
+    country: "DE",
     ghcnh_id: null,
     icao: "EDDB",
     latitude: 52.3667,
@@ -24,6 +26,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "EDDF",
+    country: "DE",
     ghcnh_id: null,
     icao: "EDDF",
     latitude: 50.0379,
@@ -33,6 +36,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "EDDM",
+    country: "DE",
     ghcnh_id: null,
     icao: "EDDM",
     latitude: 48.3538,
@@ -42,6 +46,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "EFHK",
+    country: "FI",
     ghcnh_id: null,
     icao: "EFHK",
     latitude: 60.3172,
@@ -51,6 +56,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "EGKK",
+    country: "GB",
     ghcnh_id: null,
     icao: "EGKK",
     latitude: 51.1481,
@@ -60,6 +66,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "EGLL",
+    country: "GB",
     ghcnh_id: null,
     icao: "EGLL",
     latitude: 51.4706,
@@ -69,6 +76,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "EHAM",
+    country: "NL",
     ghcnh_id: null,
     icao: "EHAM",
     latitude: 52.3086,
@@ -78,6 +86,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "EKCH",
+    country: "DK",
     ghcnh_id: null,
     icao: "EKCH",
     latitude: 55.6181,
@@ -87,6 +96,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "EPWA",
+    country: "PL",
     ghcnh_id: null,
     icao: "EPWA",
     latitude: 52.1657,
@@ -96,6 +106,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "ESSA",
+    country: "SE",
     ghcnh_id: null,
     icao: "ESSA",
     latitude: 59.6519,
@@ -105,6 +116,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "ATL",
+    country: "US",
     ghcnh_id: "USW00013874",
     icao: "KATL",
     latitude: 33.6407,
@@ -114,6 +126,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "AUS",
+    country: "US",
     ghcnh_id: "USW00013904",
     icao: "KAUS",
     latitude: 30.1975,
@@ -123,6 +136,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "BOS",
+    country: "US",
     ghcnh_id: "USW00014739",
     icao: "KBOS",
     latitude: 42.3656,
@@ -132,6 +146,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "DCA",
+    country: "US",
     ghcnh_id: "USW00013743",
     icao: "KDCA",
     latitude: 38.8512,
@@ -141,6 +156,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "DEN",
+    country: "US",
     ghcnh_id: "USW00003017",
     icao: "KDEN",
     latitude: 39.8561,
@@ -150,6 +166,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "DFW",
+    country: "US",
     ghcnh_id: "USW00003927",
     icao: "KDFW",
     latitude: 32.8998,
@@ -159,6 +176,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "HOU",
+    country: "US",
     ghcnh_id: "USW00012918",
     icao: "KHOU",
     latitude: 29.6454,
@@ -168,6 +186,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "LAS",
+    country: "US",
     ghcnh_id: "USW00023169",
     icao: "KLAS",
     latitude: 36.084,
@@ -177,6 +196,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "LAX",
+    country: "US",
     ghcnh_id: "USW00023174",
     icao: "KLAX",
     latitude: 33.9425,
@@ -186,6 +206,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "MDW",
+    country: "US",
     ghcnh_id: "USW00014819",
     icao: "KMDW",
     latitude: 41.7868,
@@ -195,6 +216,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "MIA",
+    country: "US",
     ghcnh_id: "USW00012839",
     icao: "KMIA",
     latitude: 25.7959,
@@ -204,6 +226,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "MSP",
+    country: "US",
     ghcnh_id: "USW00014922",
     icao: "KMSP",
     latitude: 44.8848,
@@ -213,6 +236,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "MSY",
+    country: "US",
     ghcnh_id: "USW00012916",
     icao: "KMSY",
     latitude: 29.9934,
@@ -222,6 +246,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "NYC",
+    country: "US",
     ghcnh_id: "USW00094728",
     icao: "KNYC",
     latitude: 40.7789,
@@ -231,6 +256,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "OKC",
+    country: "US",
     ghcnh_id: "USW00013967",
     icao: "KOKC",
     latitude: 35.3931,
@@ -240,6 +266,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "PHL",
+    country: "US",
     ghcnh_id: "USW00013739",
     icao: "KPHL",
     latitude: 39.8721,
@@ -249,6 +276,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "PHX",
+    country: "US",
     ghcnh_id: "USW00023183",
     icao: "KPHX",
     latitude: 33.4373,
@@ -258,6 +286,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "SAT",
+    country: "US",
     ghcnh_id: "USW00012921",
     icao: "KSAT",
     latitude: 29.5337,
@@ -267,6 +296,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "SEA",
+    country: "US",
     ghcnh_id: "USW00024233",
     icao: "KSEA",
     latitude: 47.4502,
@@ -276,6 +306,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "SFO",
+    country: "US",
     ghcnh_id: "USW00023234",
     icao: "KSFO",
     latitude: 37.6213,
@@ -285,6 +316,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "LEBL",
+    country: "ES",
     ghcnh_id: null,
     icao: "LEBL",
     latitude: 41.2974,
@@ -294,6 +326,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "LEMD",
+    country: "ES",
     ghcnh_id: null,
     icao: "LEMD",
     latitude: 40.4719,
@@ -303,6 +336,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "LFPB",
+    country: "FR",
     ghcnh_id: null,
     icao: "LFPB",
     latitude: 48.9694,
@@ -312,6 +346,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "LFPG",
+    country: "FR",
     ghcnh_id: null,
     icao: "LFPG",
     latitude: 49.0097,
@@ -321,6 +356,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "LFPO",
+    country: "FR",
     ghcnh_id: null,
     icao: "LFPO",
     latitude: 48.7233,
@@ -330,6 +366,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "LIMC",
+    country: "IT",
     ghcnh_id: null,
     icao: "LIMC",
     latitude: 45.6306,
@@ -339,6 +376,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "LIRF",
+    country: "IT",
     ghcnh_id: null,
     icao: "LIRF",
     latitude: 41.8003,
@@ -348,6 +386,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "LOWW",
+    country: "AT",
     ghcnh_id: null,
     icao: "LOWW",
     latitude: 48.1103,
@@ -357,6 +396,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "LSZH",
+    country: "CH",
     ghcnh_id: null,
     icao: "LSZH",
     latitude: 47.4647,
@@ -366,6 +406,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "NZAA",
+    country: "NZ",
     ghcnh_id: null,
     icao: "NZAA",
     latitude: -37.0081,
@@ -375,6 +416,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "NZWN",
+    country: "NZ",
     ghcnh_id: null,
     icao: "NZWN",
     latitude: -41.3272,
@@ -384,6 +426,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "OERK",
+    country: "SA",
     ghcnh_id: null,
     icao: "OERK",
     latitude: 24.9576,
@@ -393,6 +436,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "OMDB",
+    country: "AE",
     ghcnh_id: null,
     icao: "OMDB",
     latitude: 25.2532,
@@ -402,6 +446,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "OTHH",
+    country: "QA",
     ghcnh_id: null,
     icao: "OTHH",
     latitude: 25.2731,
@@ -411,6 +456,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "RCTP",
+    country: "TW",
     ghcnh_id: null,
     icao: "RCTP",
     latitude: 25.0777,
@@ -420,6 +466,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "RJAA",
+    country: "JP",
     ghcnh_id: null,
     icao: "RJAA",
     latitude: 35.7647,
@@ -429,6 +476,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "RJTT",
+    country: "JP",
     ghcnh_id: null,
     icao: "RJTT",
     latitude: 35.5522,
@@ -438,6 +486,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "RKSI",
+    country: "KR",
     ghcnh_id: null,
     icao: "RKSI",
     latitude: 37.4691,
@@ -447,6 +496,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "SAEZ",
+    country: "AR",
     ghcnh_id: null,
     icao: "SAEZ",
     latitude: -34.8222,
@@ -456,6 +506,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "SBGR",
+    country: "BR",
     ghcnh_id: null,
     icao: "SBGR",
     latitude: -23.4356,
@@ -465,6 +516,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "UUEE",
+    country: "RU",
     ghcnh_id: null,
     icao: "UUEE",
     latitude: 55.9728,
@@ -474,6 +526,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "VABB",
+    country: "IN",
     ghcnh_id: null,
     icao: "VABB",
     latitude: 19.0887,
@@ -483,6 +536,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "VHHH",
+    country: "HK",
     ghcnh_id: null,
     icao: "VHHH",
     latitude: 22.308,
@@ -492,6 +546,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "VIDP",
+    country: "IN",
     ghcnh_id: null,
     icao: "VIDP",
     latitude: 28.5562,
@@ -501,6 +556,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "VTBS",
+    country: "TH",
     ghcnh_id: null,
     icao: "VTBS",
     latitude: 13.69,
@@ -510,6 +566,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "WSSS",
+    country: "SG",
     ghcnh_id: null,
     icao: "WSSS",
     latitude: 1.3644,
@@ -519,6 +576,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "YBBN",
+    country: "AU",
     ghcnh_id: null,
     icao: "YBBN",
     latitude: -27.3842,
@@ -528,6 +586,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "YMML",
+    country: "AU",
     ghcnh_id: null,
     icao: "YMML",
     latitude: -37.6733,
@@ -537,6 +596,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "YSSY",
+    country: "AU",
     ghcnh_id: null,
     icao: "YSSY",
     latitude: -33.9461,
@@ -546,6 +606,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "ZBAA",
+    country: "CN",
     ghcnh_id: null,
     icao: "ZBAA",
     latitude: 40.0801,
@@ -555,6 +616,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
   },
   {
     code: "ZSPD",
+    country: "CN",
     ghcnh_id: null,
     icao: "ZSPD",
     latitude: 31.1443,

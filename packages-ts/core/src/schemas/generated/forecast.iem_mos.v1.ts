@@ -6,7 +6,7 @@ export interface ForecastIemMosV1 {
   /**
    * units: celsius
    */
-  dew_point_c?: number;
+  dew_point_c?: null | number;
   /**
    * units: hours — (valid_at - issued_at).total_seconds() / 3600
    */
@@ -22,16 +22,16 @@ export interface ForecastIemMosV1 {
   /**
    * units: probability — bounded [0, 1]
    */
-  precip_probability?: number;
+  precip_probability?: null | number;
   /**
    * units: percent — bounded [0, 100]
    */
-  sky_cover_pct?: number;
+  sky_cover_pct?: number | null;
   station: string;
   /**
    * units: celsius
    */
-  temp_c?: number;
+  temp_c?: null | number;
   /**
    * forecast target time (from source `ftime`)
    */
@@ -39,9 +39,9 @@ export interface ForecastIemMosV1 {
   /**
    * units: degrees
    */
-  wind_dir_deg?: number;
+  wind_dir_deg?: number | null;
   /**
    * units: m/s
    */
-  wind_speed_ms?: number;
+  wind_speed_ms?: null | number;
 }

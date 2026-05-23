@@ -209,8 +209,7 @@ interface RawStation {
   tz: string;
   latitude: number | null;
   longitude: number | null;
-  // The JSON also has "country" — we drop it to match the spec's StationInfo shape.
-  country?: string;
+  country: string | null;
 }
 
 function emitStations(out: FileMap): void {
@@ -220,7 +219,8 @@ function emitStations(out: FileMap): void {
   // Stable order: sort by icao (the only always-present unique key) for determinism.
   const sorted = [...raw.stations].sort((a, b) => a.icao.localeCompare(b.icao));
 
-  // Strip to StationInfo shape (drop country).
+  // Strip to StationInfo shape — preserve `country` so TS consumers can distinguish
+  // US vs intl stations (HIGH 2 from TS-W0 iter-1 review).
   const stripped = sorted.map((s) => ({
     code: s.code ?? null,
     ghcnh_id: s.ghcnh_id ?? null,
@@ -229,6 +229,7 @@ function emitStations(out: FileMap): void {
     tz: s.tz,
     latitude: s.latitude ?? null,
     longitude: s.longitude ?? null,
+    country: s.country ?? null,
   }));
 
   // Build STATIONS array literal.
@@ -251,7 +252,7 @@ function emitStations(out: FileMap): void {
     .map(([k, i]) => `  [${JSON.stringify(k)}, STATIONS[${i}]!],`)
     .join("\n");
 
-  const body = `${header("stations.json")}\nexport interface StationInfo {\n  code: string | null;\n  ghcnh_id: string | null;\n  icao: string;\n  name: string | null;\n  tz: string;\n  latitude: number | null;\n  longitude: number | null;\n}\n\nexport const STATIONS: ReadonlyArray<StationInfo> = ${stationsLit} as const;\n\nexport const STATION_BY_CODE: ReadonlyMap<string, StationInfo> = new Map<string, StationInfo>([\n${codeMapEntries}\n]);\n\nexport const STATION_BY_ICAO: ReadonlyMap<string, StationInfo> = new Map<string, StationInfo>([\n${icaoMapEntries}\n]);\n`;
+  const body = `${header("stations.json")}\nexport interface StationInfo {\n  code: string | null;\n  ghcnh_id: string | null;\n  icao: string;\n  name: string | null;\n  tz: string;\n  latitude: number | null;\n  longitude: number | null;\n  country: string | null;\n}\n\nexport const STATIONS: ReadonlyArray<StationInfo> = ${stationsLit} as const;\n\nexport const STATION_BY_CODE: ReadonlyMap<string, StationInfo> = new Map<string, StationInfo>([\n${codeMapEntries}\n]);\n\nexport const STATION_BY_ICAO: ReadonlyMap<string, StationInfo> = new Map<string, StationInfo>([\n${icaoMapEntries}\n]);\n`;
 
   emit(out, join(PACKAGES_TS, "core", "src", "data", "generated", "stations.ts"), body);
 }
@@ -374,17 +375,26 @@ function emitPolymarket(out: FileMap): void {
     return;
   }
 
-  // Real shape: { cities: { <city>: { default: <ICAO> } } }
-  const cities = raw.cities as Record<string, { default: string }>;
-  const sorted: Record<string, { default: string }> = {};
-  for (const k of Object.keys(cities).sort()) {
-    const v = cities[k];
-    if (!v) continue;
-    sorted[k] = { default: v.default };
+  // Real shape: { cities: { <city>: { default: <ICAO>, high?: <ICAO>, low?: <ICAO>, ... } } }
+  // Measure-specific mappings (e.g. paris-low → LFPB, not the default LFPG) MUST
+  // be preserved end-to-end — collapsing to `default` only would silently route
+  // settlement to the wrong station. See TS-W0 iter-1 CRITICAL 1.
+  const cities = raw.cities as Record<string, Readonly<Record<string, string>>>;
+  const sorted: Record<string, Record<string, string>> = {};
+  for (const cityKey of Object.keys(cities).sort()) {
+    const inner = cities[cityKey];
+    if (!inner) continue;
+    const innerSorted: Record<string, string> = {};
+    for (const measureKey of Object.keys(inner).sort()) {
+      const station = inner[measureKey];
+      if (typeof station !== "string") continue;
+      innerSorted[measureKey] = station;
+    }
+    sorted[cityKey] = innerSorted;
   }
   const lit = tsLiteral(sorted);
 
-  const body = `${header("polymarket-city-stations.json")}\nexport interface PolymarketCityStation {\n  default: string;\n}\n\nexport const POLYMARKET_CITY_STATIONS: Readonly<Record<string, PolymarketCityStation>> = ${lit} as const;\n`;
+  const body = `${header("polymarket-city-stations.json")}\nexport interface PolymarketCityStation {\n  default: string;\n  high?: string;\n  low?: string;\n  [measure: string]: string | undefined;\n}\n\nexport const POLYMARKET_CITY_STATIONS: Readonly<Record<string, PolymarketCityStation>> = ${lit} as const;\n`;
 
   emit(
     out,

@@ -3,20 +3,20 @@
 // Last manifest SHA recorded in schemas/EXPORT_MANIFEST.json
 
 export interface ObservationQcV1 {
-  as_of_time?: string;
+  as_of_time?: null | string;
   /**
    * JSON-serialized detector payload; shape per qc_system.
    */
-  detector_metadata?: string;
+  detector_metadata?: null | string;
   /**
    * Observation column the rule evaluated (e.g. temp_c).
    */
   field: string;
   flag: "clean" | "flagged" | "suspect";
-  ingestion_id?: string;
-  observation_kind?: "METAR" | "SPECI";
+  ingestion_id?: null | string;
+  observation_kind?: null | ("METAR" | "SPECI");
   observed_at: string;
-  parser_name?: string;
+  parser_name?: null | string;
   qc_system: string;
   qc_version: string;
   rule_id: string;

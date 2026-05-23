@@ -29,10 +29,16 @@ of the following MUST be true:
       `python_only: true` or `typescript_only: true` with a one-sentence
       justification
 
-<!-- Examples (uncomment and fill in the one that applies):
+<!-- Examples (copy ONE outside this comment block and fill in real values):
 
-Parity-Ticket: #123
-python_only: true — interim shim for mostly-light migration; no TS-side analog needed
-typescript_only: true — UI helper specific to Chrome extension overlay
+```
+Parity-Ticket: #<NUM>
+python_only: <true_or_false> — <one-sentence reason if true>
+typescript_only: <true_or_false> — <one-sentence reason if true>
+```
 
+The parity-gate parser strips HTML comments AND fenced code blocks before
+matching, so these examples are inert in either form. The numeric/boolean
+placeholders above (`<NUM>`, `<true_or_false>`) ALSO fail the regex on their
+own — defense in depth against accidental copy-paste bypass.
 -->

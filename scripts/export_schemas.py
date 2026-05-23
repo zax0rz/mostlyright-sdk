@@ -133,7 +133,15 @@ def _version_from_schema_id(schema_id: str) -> str:
 
 
 def _column_to_property(column: Any) -> dict[str, Any]:
-    """Translate a ColumnSpec into a JSON-Schema property dict."""
+    """Translate a ColumnSpec into a JSON-Schema property dict.
+
+    Nullable columns are emitted as ``"type": ["null", <scalar>]`` (sorted
+    lexicographically) — the draft-2020-12 idiom. The OpenAPI-style
+    ``"nullable": true`` sibling is NOT emitted because draft-2020-12 doesn't
+    recognise it (ajv standalone in TS-W3 would reject ``null`` values, and
+    json-schema-to-typescript would not add ``| null`` to the generated TS
+    type). See TS-W0 iter-1 HIGH 1.
+    """
     dtype = column.dtype
     if dtype == "enum":
         prop: dict[str, Any] = {
@@ -158,7 +166,12 @@ def _column_to_property(column: Any) -> dict[str, Any]:
         prop["description"] = " — ".join(desc_parts)
 
     if column.nullable:
-        prop["nullable"] = True
+        # Promote scalar ``type`` to a sorted [null, scalar] union. ``type``
+        # is always a string here (set above from _DTYPE_TO_JSON_SCHEMA or
+        # the enum branch); we never need to handle a pre-existing list.
+        scalar = prop.get("type")
+        if isinstance(scalar, str):
+            prop["type"] = sorted([scalar, "null"])
 
     return prop
 

@@ -18,7 +18,7 @@ export interface SettlementCliV1 {
   /**
    * units: inches
    */
-  precipitation_in?: number;
+  precipitation_in?: null | number;
   /**
    * parsed from CLI product header (_climate.py::_parse_product_timestamp)
    */
@@ -34,7 +34,7 @@ export interface SettlementCliV1 {
   /**
    * units: inches
    */
-  snowfall_in?: number;
+  snowfall_in?: null | number;
   /**
    * ICAO/ASOS station ID
    */
@@ -46,9 +46,9 @@ export interface SettlementCliV1 {
   /**
    * units: fahrenheit — daily high (uppercase F for consistency with obs imperial mode)
    */
-  temp_max_F?: number;
+  temp_max_F?: null | number;
   /**
    * units: fahrenheit — daily low
    */
-  temp_min_F?: number;
+  temp_min_F?: null | number;
 }

@@ -9,8 +9,7 @@
   "properties": {
     "dew_point_c": {
       "description": "units: celsius",
-      "nullable": true,
-      "type": "number"
+      "type": ["null", "number"]
     },
     "forecast_hour": {
       "description": "units: hours \u2014 (valid_at - issued_at).total_seconds() / 3600",
@@ -27,21 +26,18 @@
     },
     "precip_probability": {
       "description": "units: probability \u2014 bounded [0, 1]",
-      "nullable": true,
-      "type": "number"
+      "type": ["null", "number"]
     },
     "sky_cover_pct": {
       "description": "units: percent \u2014 bounded [0, 100]",
-      "nullable": true,
-      "type": "integer"
+      "type": ["integer", "null"]
     },
     "station": {
       "type": "string"
     },
     "temp_c": {
       "description": "units: celsius",
-      "nullable": true,
-      "type": "number"
+      "type": ["null", "number"]
     },
     "valid_at": {
       "description": "forecast target time (from source `ftime`)",
@@ -50,22 +46,14 @@
     },
     "wind_dir_deg": {
       "description": "units: degrees",
-      "nullable": true,
-      "type": "integer"
+      "type": ["integer", "null"]
     },
     "wind_speed_ms": {
       "description": "units: m/s",
-      "nullable": true,
-      "type": "number"
+      "type": ["null", "number"]
     }
   },
-  "required": [
-    "forecast_hour",
-    "issued_at",
-    "model",
-    "station",
-    "valid_at"
-  ],
+  "required": ["forecast_hour", "issued_at", "model", "station", "valid_at"],
   "title": "schema.forecast.iem_mos.v1",
   "type": "object",
   "version": "v1"

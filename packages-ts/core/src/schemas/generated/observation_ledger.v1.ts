@@ -3,31 +3,31 @@
 // Last manifest SHA recorded in schemas/EXPORT_MANIFEST.json
 
 export interface ObservationLedgerV1 {
-  as_of_time?: string;
+  as_of_time?: null | string;
   /**
    * units: celsius
    */
-  dewpoint_c?: number;
-  ingestion_id?: string;
-  observation_kind?: "METAR" | "SPECI";
+  dewpoint_c?: null | number;
+  ingestion_id?: null | string;
+  observation_kind?: null | ("METAR" | "SPECI");
   /**
    * Lineage row-quality flag per LINEAGE-01; distinct from qc_status enum slot AND distinct from the obs_qc_status bitmask column per QC-05.
    */
-  observation_quality?: "clean" | "flagged" | "suspect";
+  observation_quality?: null | ("clean" | "flagged" | "suspect");
   observation_type: "METAR" | "SPECI";
   observed_at: string;
-  parser_name?: "ghcnh" | "iem" | "mostlyright_v1" | "ncei";
-  parser_version?: string;
-  provenance?: "legacy" | "reingested";
-  qc_status?: "clean" | "flagged" | "suspect";
+  parser_name?: null | ("ghcnh" | "iem" | "mostlyright_v1" | "ncei");
+  parser_version?: null | string;
+  provenance?: null | ("legacy" | "reingested");
+  qc_status?: null | ("clean" | "flagged" | "suspect");
   /**
    * ncei reserved per D-2.1-09; never written in v0.1.0.
    */
   source: "awc" | "ghcnh" | "iem" | "ncei";
-  source_received_at?: string;
+  source_received_at?: null | string;
   station_code: string;
   /**
    * units: celsius
    */
-  temp_c?: number;
+  temp_c?: null | number;
 }

@@ -4,6 +4,9 @@
 
 export interface PolymarketCityStation {
   default: string;
+  high?: string;
+  low?: string;
+  [measure: string]: string | undefined;
 }
 
 export const POLYMARKET_CITY_STATIONS: Readonly<Record<string, PolymarketCityStation>> = {
@@ -51,6 +54,8 @@ export const POLYMARKET_CITY_STATIONS: Readonly<Record<string, PolymarketCitySta
   },
   hong_kong: {
     default: "VHHH",
+    high: "VHHH",
+    low: "VHHH",
   },
   london: {
     default: "EGLL",
@@ -78,6 +83,8 @@ export const POLYMARKET_CITY_STATIONS: Readonly<Record<string, PolymarketCitySta
   },
   paris: {
     default: "LFPG",
+    high: "LFPG",
+    low: "LFPB",
   },
   paris_orly: {
     default: "LFPO",
@@ -111,6 +118,8 @@ export const POLYMARKET_CITY_STATIONS: Readonly<Record<string, PolymarketCitySta
   },
   tokyo: {
     default: "RJTT",
+    high: "RJTT",
+    low: "RJTT",
   },
   tokyo_narita: {
     default: "RJAA",

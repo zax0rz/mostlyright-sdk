@@ -18,4 +18,12 @@ describe("codegen: stations", () => {
     expect(byCode).toBeDefined();
     expect(byCode).toBe(byIcao);
   });
+
+  it("preserves the `country` field for US stations (TS-W0 iter-1 HIGH 2)", () => {
+    expect(STATION_BY_ICAO.get("KNYC")?.country).toBe("US");
+  });
+
+  it("preserves the `country` field for intl stations", () => {
+    expect(STATION_BY_ICAO.get("EDDB")?.country).toBe("DE");
+  });
 });
