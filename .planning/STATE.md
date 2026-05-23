@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v0.1.0
 milestone_name: Local-first SDK ship (RC1 ready)
 status: ready_to_publish
-stopped_at: "12/12 phases of v0.1.0 complete on main (Phase 4 merged at 7655b0e; Phase 3.1 REAL impl merged at 19d7416; Phase 3.2 REAL impl merged at de9b3af replacing the [nwp] seam). 1568 tests passing (was 1501; +67 for forecast_nwp pipeline + .idx parser + NOAA BDP mirror chain + per-row source overlay + UTC normalization). Phase 3.2 ships: 7 new modules under tradewinds.weather._fetchers._nwp_*, public forecast_nwp(station, model, ...), schema.forecast_nwp.v1 (7-model + 8-mirror enums; 4 ECMWF reserved for v0.2), 4 NwpError subclasses, [nwp] optional extra (cfgrib + xarray + sklearn). CI workflows shipped: test.yml + wheel-metadata-check.yml + release.yml + release-testpypi.yml + drift-rotate.yml. PyPI publish workflows EXIST but are operator-gated."
-last_updated: "2026-05-23T18:00:00.000Z"
-last_activity: 2026-05-23 -- Phase 3.2 REAL impl merged to main at de9b3af; 1568 tests passing; review iter-1 closed 4 HIGH (architect) + 4 P2 (codex); iter-2 closed 3 P2 (schema-contract); iter-3 closed 2 P2 (mirror fallback + UTC issued_at); architect iter-3 PASS. Next: Phase 3.3 Polymarket.
+stopped_at: "12/12 phases of v0.1.0 complete on main (Phase 4 at 7655b0e; Phase 3.1 REAL at 19d7416; Phase 3.2 REAL at de9b3af; Phase 3.3 REAL at 3b63870). 1603 tests passing (was 1568; +35 for Polymarket Gamma client + discovery + settlement engine + city derivation + numeric event_id support). Phase 3.3 ships: _polymarket_client.py (Gamma /events pagination + /events/id), polymarket_discover() returns DataFrame with per-row source overlay column + provenance attrs, polymarket_settle() with UUID/16KB/netloc-allowlist boundary guards before any HTTP fetch, _derive_city() heuristic for real Gamma payloads without explicit city field, _station_local_end_of_day for tz-correct finalization-window delays, defense-in-depth via DEFERRED_STATION_MEASURES, [polymarket] optional extra (pandas + tradewinds-weather), PolymarketSettlementError + TooEarlyToSettleError. CI workflows shipped: test.yml + wheel-metadata-check.yml + release.yml + release-testpypi.yml + drift-rotate.yml. PyPI publish workflows EXIST but are operator-gated."
+last_updated: "2026-05-23T20:00:00.000Z"
+last_activity: 2026-05-23 -- Phase 3.3 REAL impl merged to main at 3b63870; 1603 tests passing; review iter-1 closed 5 HIGH (architect: UTC/local TZ, defense-in-depth, ambiguous title, slug date rightmost, per-row source) + 4 P2 (codex: silent drop logging, pandas dep, weather dep, station-local TZ); iter-2 closed 2 P1 (codex: city derivation from slug for real Gamma, numeric event_id support for discover->settle round-trip); architect iter-2 PASS. Phase 3.2 + 3.3 seams both replaced with real implementations.
 progress:
   total_phases: 12
   completed_phases: 12
@@ -31,6 +31,31 @@ Status: v0.1.0rc1 ready to publish (operator-gated)
 Last activity: 2026-05-23 — Phase 4 merged to main at 7655b0e (1453 tests passing)
 
 Progress: [██████████] 100% (12/12 phases complete in v0.1.0; ready to tag rc1)
+
+## Phase 3.3 REAL implementation closeout summary (2026-05-23)
+
+Merge commits: `1255d28 Merge phase-3.3: Polymarket Integration (Discovery + Settlement)` + `3b63870 Merge phase-3.3/review-iter2` on `main`.
+
+Replaces the Phase 3.3 dispatch seam (both `polymarket_discover()` and `polymarket_settle()` raised NotImplementedError) with a working implementation against Polymarket's public Gamma API. Lift inspiration: mostlyright Sprint 2t s1+s4 (RESEARCH §3.3 documents the resolver architecture).
+
+**What ships:**
+- `tradewinds.markets._polymarket_client` — REST client over `gamma-api.polymarket.com`. Paginates `/events` (limit=100, dedup by slug, cap at 10k), `/events/{id}` for single lookup, polite 0.2s inter-request sleep, defensive on payload-shape changes (non-list/non-dict raises ValueError loudly).
+- `tradewinds.markets.polymarket.polymarket_discover()` — returns DataFrame with one row per active weather event. Columns: `event_id, slug, title, city, icao, measure, end_time, resolution_source_type, source`. Stamps `df.attrs["source"]="polymarket_gamma"` + `df.attrs["retrieved_at"]`. Filters via per-event station resolver; events that don't match a tradewinds-known city are dropped + logged at INFO so quants can audit. Derives city from slug/title/tags for real Gamma payloads (which lack a `city` field).
+- `tradewinds.markets.polymarket.polymarket_settle(event_id)` — settlement engine. Validates event_id (`[A-Za-z0-9_-]{1,128}` — accepts both numeric Gamma IDs and UUIDs), description (16 KB cap + netloc allowlist `wunderground.com` / `weather.gov`) BEFORE any HTTP fetch. Resolves station via per-event resolver, detects market measure (high/low) from event title independently of station_measure, parses settlement date from slug (last YYYY-MM-DD match), refuses ambiguous events with `PolymarketSettlementError`, enforces finalization-window delay using **station-local end-of-day** (TZ-correct for all 60 stations), defense-in-depth via `DEFERRED_STATION_MEASURES`, calls `daily_extremes()`, picks `tmax_c` or `tmin_c` per measure, returns settlement payload dict.
+- `tradewinds.markets.polymarket` exceptions: `PolymarketEventError` (boundary), `PolymarketSettlementError` (resolution failures), `TooEarlyToSettleError` (carries `wait_hours` for v0.2 MCP serialization).
+- `tradewinds-markets[polymarket]` optional extra — `pandas>=2.2,<3.0` + `tradewinds-weather>=0.1.0rc1,<0.2`. `_require_pandas()` + `_require_weather()` guards raise `SourceUnavailableError` with install hint when missing.
+
+**Out of scope (deferred to v0.2 per ROADMAP):**
+- Polymarket order book / fills (MARKETS-04 Sprint 0.5+).
+- UMA Oracle on-chain validation.
+- Taipei + HK-low markets (CWA + HKO clients — `DeferredMarketError`).
+- Persistent settlement-record parquet.
+
+**Review discipline (per .planning/REVIEW-DISCIPLINE.md):**
+- Iter 1: Architect (5 HIGH closed) — UTC-vs-station-local end-of-day, defense-in-depth via DEFERRED_STATION_MEASURES, ambiguous-title silent default, slug-date-rightmost, per-row source overlay column. Codex (1 P1 + 3 P2 closed) — silent drop logging, pandas dep, weather dep, station-local TZ (covered by architect HIGH-1).
+- Iter 2: Architect PASS clean. Codex (2 P1 closed) — `city` derivation from slug for real Gamma events, numeric event_id support for discover→settle round-trip.
+
+**Tests grew 1568 → 1603 (+35 net new).**
 
 ## Phase 3.2 REAL implementation closeout summary (2026-05-23)
 
