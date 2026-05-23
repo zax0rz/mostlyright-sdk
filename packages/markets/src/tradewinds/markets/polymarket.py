@@ -89,10 +89,17 @@ POLYMARKET_RESOLUTION_SOURCE_TYPES: tuple[str, ...] = (
 )
 
 
-#: Polymarket event_id pattern — UUID4 format only.
-_EVENT_ID_RE = re.compile(
-    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
-)
+#: Polymarket event_id pattern. Gamma uses numeric strings for production
+#: event IDs (e.g. ``"12345"``) but condition-tag UUIDs and slugs also
+#: appear in the wild. We accept anything that's a 1-128 char alphanumeric
+#: + ``-`` / ``_`` string — narrow enough to defend against injection
+#: into the URL path, wide enough to accept real Gamma payloads.
+#:
+#: Codex iter-2 P1 widened this from strict UUID4 (the seam's original
+#: shape) because real Gamma IDs are numeric and the strict UUID4 check
+#: rejected every id polymarket_discover would surface, breaking the
+#: discover -> settle round-trip.
+_EVENT_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
 
 
 #: Maximum size of a Polymarket event description we'll parse for
@@ -249,6 +256,42 @@ def _extract_resolution_source_type(description: str) -> str:
     return "other"
 
 
+def _derive_city(event: dict[str, Any], city_keys: tuple[str, ...]) -> str | None:
+    """Derive the city key from event slug + title + tags.
+
+    Real Polymarket Gamma events don't carry a custom ``city`` field;
+    tradewinds tests fabricate one to drive the resolver. To make
+    discovery work against the live API, scan slug+title (lowercase)
+    for a substring match against the city_map keys. Longest-first so
+    ``london_gatwick`` matches before ``london``.
+
+    Codex iter-2 P1 — previously every real Gamma event was dropped at
+    the ``KeyError("event missing 'city'")`` boundary.
+    """
+    haystack_parts: list[str] = []
+    slug = (event.get("slug") or "").lower()
+    title = (event.get("title") or "").lower()
+    haystack_parts.append(slug)
+    haystack_parts.append(title)
+    # Tags can be a list of {"label": str} or list of str.
+    for tag in event.get("tags") or []:
+        if isinstance(tag, dict):
+            label = tag.get("label") or tag.get("slug")
+            if isinstance(label, str):
+                haystack_parts.append(label.lower())
+        elif isinstance(tag, str):
+            haystack_parts.append(tag.lower())
+    haystack = " ".join(haystack_parts)
+    for city_key in city_keys:
+        # Match the underscore form ("hong_kong") and the spaced/hyphen
+        # forms commonly seen in slugs ("hong-kong", "hong kong").
+        needles = (city_key, city_key.replace("_", "-"), city_key.replace("_", " "))
+        for needle in needles:
+            if needle and needle in haystack:
+                return city_key
+    return None
+
+
 def _station_local_end_of_day(icao: str, settlement_date: date) -> datetime:
     """Return the UTC instant corresponding to station-local 23:59:59.
 
@@ -394,23 +437,28 @@ def polymarket_discover(
     sleep_arg = sleep_between if sleep_between is not None else 0.2
     raw_events = fetch_events(client=client, sleep_between=sleep_arg)
     city_map = load_polymarket_city_stations()
+    city_keys: tuple[str, ...] = tuple(sorted(city_map.keys(), key=len, reverse=True))
 
     rows: list[dict[str, Any]] = []
     for ev in raw_events:
-        # Light heuristic: weather events typically tag a category
-        # field with "weather" or carry recognizable city keys. We
-        # don't have a stable category enum from Gamma so we use the
-        # city-map resolution to filter — events that resolve to a
-        # known city are kept; anything else is dropped silently.
+        # Codex iter-2 P1: real Gamma events don't carry a `city` field —
+        # only slug/title/description/tags. Derive city from slug+title
+        # by scanning for known city keys (longest-first so e.g.
+        # "london_gatwick" matches before "london"). The resolver still
+        # raises KeyError on miss so unknown markets get logged + dropped.
+        ev_enriched = dict(ev)
+        if not ev_enriched.get("city"):
+            ev_enriched["city"] = _derive_city(ev_enriched, city_keys)
+
         icao: str | None = None
         measure: str | None = None
         try:
-            icao, _station_measure = resolve_station_for_event(ev, city_map)
+            icao, _station_measure = resolve_station_for_event(ev_enriched, city_map)
             # Surface the market measure (high vs low from the event
             # title), not the station-resolution measure — single-airport
             # cities always get station_measure="default" but the market
             # still resolves on tmax XOR tmin.
-            measure = _detect_market_measure(ev)
+            measure = _detect_market_measure(ev_enriched)
         except KeyError as exc:
             # No `city` field on the raw Gamma payload, OR the city
             # isn't in our map → not a tradewinds-known weather market.
@@ -442,7 +490,7 @@ def polymarket_discover(
                 "event_id": ev.get("id"),
                 "slug": ev.get("slug"),
                 "title": ev.get("title"),
-                "city": (ev.get("city") or "").lower() or None,
+                "city": (ev_enriched.get("city") or "").lower() or None,
                 "icao": icao,
                 "measure": measure,
                 "end_time": ev.get("endDate"),
@@ -520,7 +568,7 @@ def polymarket_settle(
     """
     if not isinstance(event_id, str) or not _EVENT_ID_RE.match(event_id):
         raise PolymarketEventError(
-            f"event_id must be a UUID4 string; got {event_id!r}",
+            f"event_id must be 1-128 chars of [A-Za-z0-9_-]; got {event_id!r}",
         )
 
     if description is not None:
@@ -551,8 +599,15 @@ def polymarket_settle(
     # independently from the event title for the value-picking step,
     # and use the resolver's measure only for station selection.
     city_map = load_polymarket_city_stations()
-    icao, _station_measure = resolve_station_for_event(event, city_map)
-    measure = _detect_market_measure(event)  # surfaced on the settlement record
+    # Codex iter-2 P1: derive city from slug/title/tags for real Gamma
+    # payloads that don't carry an explicit `city` field.
+    event_for_resolution = dict(event)
+    if not event_for_resolution.get("city"):
+        event_for_resolution["city"] = _derive_city(
+            event_for_resolution, tuple(sorted(city_map.keys(), key=len, reverse=True))
+        )
+    icao, _station_measure = resolve_station_for_event(event_for_resolution, city_map)
+    measure = _detect_market_measure(event_for_resolution)  # surfaced on the settlement record
 
     # Architect iter-1 HIGH-3: ambiguous title (no high/low keyword OR
     # both) used to silently pick tmax. Refuse so the caller can either

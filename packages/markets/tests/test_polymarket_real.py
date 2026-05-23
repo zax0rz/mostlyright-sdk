@@ -256,8 +256,8 @@ class TestPolymarketDiscover:
 # ---------------------------------------------------------------------------
 class TestPolymarketSettleBoundaries:
     def test_invalid_event_id_raises(self) -> None:
-        with pytest.raises(PolymarketEventError, match="UUID4"):
-            polymarket_settle("not-a-uuid")
+        with pytest.raises(PolymarketEventError, match=r"\[A-Za-z0-9_-\]"):
+            polymarket_settle("contains spaces and ! chars")
 
     def test_oversized_description_raises(self) -> None:
         with pytest.raises(PolymarketEventError, match="16 KB cap"):
@@ -515,6 +515,97 @@ class TestArchitectIter1Fixes:
             )
             combined = pd.concat([df, other], ignore_index=True)
             assert combined["source"].tolist() == ["polymarket_gamma", "test_other"]
+        finally:
+            client.close()
+
+
+class TestCodexIter2Fixes:
+    """Codex iter-2 P1 follow-ups: real Gamma payload compatibility."""
+
+    def test_city_derived_from_slug_without_explicit_city_field(self) -> None:
+        """Real Gamma events have no `city` field; derive from slug."""
+        from tradewinds.markets.polymarket import _derive_city
+
+        city_map = {"london": {"default": "EGLL"}, "paris": {"high": "LFPG"}}
+        city_keys = tuple(sorted(city_map.keys(), key=len, reverse=True))
+        ev = {
+            "id": "12345",
+            "slug": "will-london-see-record-high-on-2026-05-23",
+            "title": "London record high",
+        }
+        assert _derive_city(ev, city_keys) == "london"
+
+    def test_city_longest_match_wins(self) -> None:
+        """``london_gatwick`` matches before ``london`` (longest-first)."""
+        from tradewinds.markets.polymarket import _derive_city
+
+        city_map = {
+            "london": {"default": "EGLL"},
+            "london_gatwick": {"default": "EGKK"},
+        }
+        city_keys = tuple(sorted(city_map.keys(), key=len, reverse=True))
+        ev = {"slug": "highest-temp-london-gatwick-2026-05-23"}
+        assert _derive_city(ev, city_keys) == "london_gatwick"
+
+    def test_city_derived_from_tags(self) -> None:
+        """Events tagged via Gamma `tags` array also resolve."""
+        from tradewinds.markets.polymarket import _derive_city
+
+        city_keys = ("london",)
+        ev = {
+            "slug": "weather-event-xyz",
+            "title": "Will the temperature stay above 20C?",
+            "tags": [{"label": "London"}, {"label": "weather"}],
+        }
+        assert _derive_city(ev, city_keys) == "london"
+
+    def test_no_city_match_returns_none(self) -> None:
+        from tradewinds.markets.polymarket import _derive_city
+
+        city_keys = ("london", "paris")
+        ev = {"slug": "atlantis-temp-event", "title": "Atlantis weather"}
+        assert _derive_city(ev, city_keys) is None
+
+    def test_numeric_event_id_accepted(self) -> None:
+        """Real Gamma IDs are numeric strings, not UUID4."""
+        # No raise — id passes the relaxed validation.
+        # We use a stub event so we don't hit the network.
+        with pytest.raises(PolymarketSettlementError, match="no resolution date in slug"):
+            polymarket_settle(
+                "12345",
+                event={
+                    "id": "12345",
+                    "slug": "no-date-here",
+                    "title": "highest london",
+                    "city": "london",
+                    "description": "https://www.wunderground.com/x",
+                },
+            )
+
+    def test_discover_works_against_real_shape_events_without_city(self) -> None:
+        """End-to-end: events from real Gamma shape (no city field) resolve."""
+        # Numeric id, slug carrying city + date, no city field.
+        events = [
+            {
+                "id": "987654321",
+                "slug": "will-paris-be-above-30c-on-2026-07-15",
+                "title": "Paris temp above 30C on 2026-07-15?",
+                "description": "Resolves via https://www.wunderground.com/foo",
+            }
+        ]
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json=events)
+
+        client = httpx.Client(transport=httpx.MockTransport(handler))
+        try:
+            df = polymarket_discover(client=client, sleep_between=0)
+            assert len(df) == 1
+            assert df.iloc[0]["city"] == "paris"
+            # paris is a multi-airport city; "above 30C" matches the
+            # "highest" keyword family via the title and resolves to LFPG.
+            assert df.iloc[0]["icao"] in ("LFPG", "LFPB", "LFPO")
+            assert df.iloc[0]["event_id"] == "987654321"
         finally:
             client.close()
 
