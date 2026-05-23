@@ -17,7 +17,11 @@ name: Release (PyPI trusted publishing)
 on:
   push:
     tags:
+      # Final v* tags only (e.g. v0.1.0, v0.1.1). Release candidate tags
+      # matching v*rc* are routed to release-testpypi.yml instead, so this
+      # workflow does NOT publish rc wheels to prod pypi.org.
       - "v*"
+      - "!v*rc*"
 
 # Trusted publishing requires id-token write permission per
 # https://docs.pypi.org/trusted-publishers/using-a-publisher/.
