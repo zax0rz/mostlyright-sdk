@@ -182,10 +182,26 @@ def _lst_offset(station: str, tz_override: str | None = None) -> timedelta:
     elif code in _STATION_TZ:
         tz_name = _STATION_TZ[code]
     else:
-        raise ValueError(
-            f"Unknown station timezone: {code!r}. "
-            f"Add it to _STATION_TZ or pass tz_override='America/...'."
-        )
+        # Phase 3.1 extension: fall back to the expanded STATIONS registry
+        # so intl ICAOs (EGLL, RJTT, ...) resolve without a tz_override.
+        # The original 20-US tz map stays the primary lookup (preserves the
+        # v0.14.1 byte-equivalence path for US settlement-date math).
+        from tradewinds._internal._stations import STATIONS
+
+        info = STATIONS.get(code)
+        if info is None:
+            # Also accept the raw ICAO key in case the caller passed an ICAO
+            # whose normalization didn't match (e.g. non-K-prefix intl ICAO).
+            for s in STATIONS.values():
+                if s.icao == station.strip().upper() or s.code == code:
+                    info = s
+                    break
+        if info is None:
+            raise ValueError(
+                f"Unknown station timezone: {code!r}. "
+                f"Add it to _STATION_TZ or pass tz_override='America/...'."
+            )
+        tz_name = info.tz
     tz = ZoneInfo(tz_name)
     aware_jan = _JAN_REF.replace(tzinfo=tz)
     offset = aware_jan.utcoffset()

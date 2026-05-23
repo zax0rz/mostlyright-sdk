@@ -15,7 +15,7 @@ which exercises the public ``StationInfo`` SDK model.
 from __future__ import annotations
 
 import pytest
-from tradewinds._internal._stations import STATIONS, StationInfo
+from tradewinds._internal._stations import STATIONS, StationInfo, is_us_station
 
 # ---------------------------------------------------------------------------
 # StationInfo dataclass
@@ -53,9 +53,13 @@ def test_stations_registry_is_nonempty() -> None:
     assert len(STATIONS) > 0
 
 
-def test_stations_registry_has_20_entries() -> None:
-    # The v0.14.1 ingest registry hosts the 20 Kalshi-traded stations.
-    assert len(STATIONS) == 20
+def test_stations_registry_has_60_entries() -> None:
+    # Phase 3.1 expanded the 20-US Kalshi registry to 60 (20 US + 40 intl).
+    assert len(STATIONS) >= 60
+    us = [s for s in STATIONS.values() if s.country == "US"]
+    intl = [s for s in STATIONS.values() if s.country != "US"]
+    assert len(us) == 20
+    assert len(intl) >= 40
 
 
 def test_stations_nyc_metadata() -> None:
@@ -109,8 +113,12 @@ def test_stations_msy_central_tz() -> None:
     assert s.tz == "America/Chicago"
 
 
-def test_stations_all_icaos_start_with_k() -> None:
+def test_stations_us_icaos_start_with_k() -> None:
+    # The original v0.14.1 invariant applies to the 20 US stations only;
+    # Phase 3.1 added 40 intl stations whose ICAOs start with EG/LF/RJ/...
     for code, s in STATIONS.items():
+        if s.country != "US":
+            continue
         assert s.icao.startswith("K"), f"{code} icao={s.icao!r} should start with 'K'"
 
 
@@ -119,15 +127,92 @@ def test_stations_all_codes_match_key() -> None:
         assert s.code == code
 
 
-def test_stations_all_longitudes_negative() -> None:
-    # All 20 stations are in the contiguous US + west — all longitudes < 0.
+def test_stations_us_longitudes_negative() -> None:
+    # All 20 US stations are in the contiguous US + west — all longitudes < 0.
+    # Intl stations span the globe (e.g. EGLL ~0, RJTT +139) so this invariant
+    # is US-only.
     for code, s in STATIONS.items():
+        if s.country != "US":
+            continue
         assert s.longitude < 0, f"{code} longitude={s.longitude} should be west"
 
 
-def test_stations_all_ghcnh_ids_start_with_usw() -> None:
-    # Every Kalshi-traded station is a US first-order station (GHCN-h USW prefix).
+def test_stations_us_ghcnh_ids_start_with_usw() -> None:
+    # Every Kalshi-traded US station is a US first-order station (GHCN-h USW prefix).
+    # Intl stations carry ``ghcnh_id=""`` (NCEI is US-only).
     for code, s in STATIONS.items():
-        assert s.ghcnh_id.startswith("USW"), (
-            f"{code} ghcnh_id={s.ghcnh_id!r} should start with 'USW'"
-        )
+        if s.country != "US":
+            continue
+        assert s.ghcnh_id.startswith(
+            "USW"
+        ), f"{code} ghcnh_id={s.ghcnh_id!r} should start with 'USW'"
+
+
+# ---------------------------------------------------------------------------
+# Phase 3.1 — International station registry
+# ---------------------------------------------------------------------------
+
+
+def test_international_stations_have_tz() -> None:
+    """Every non-US station has a non-empty IANA timezone."""
+    intl = [s for s in STATIONS.values() if s.country != "US"]
+    assert len(intl) >= 40
+    for s in intl:
+        assert s.tz, f"{s.icao}: missing tz"
+        # IANA names always contain a "/" (region/city).
+        assert "/" in s.tz, f"{s.icao}: tz {s.tz!r} not in IANA Region/City form"
+
+
+def test_international_stations_have_empty_ghcnh_id() -> None:
+    """NCEI GHCNh is US-only — intl entries must carry ``ghcnh_id=''``."""
+    for s in STATIONS.values():
+        if s.country == "US":
+            continue
+        assert (
+            s.ghcnh_id == ""
+        ), f"{s.icao}: intl station must have empty ghcnh_id, got {s.ghcnh_id!r}"
+
+
+def test_paris_has_lfpg_and_lfpb() -> None:
+    """Paris ships both CDG (LFPG) and Le Bourget (LFPB) for the per-event split."""
+    assert "LFPG" in STATIONS
+    assert "LFPB" in STATIONS
+    assert STATIONS["LFPG"].tz == "Europe/Paris"
+    assert STATIONS["LFPB"].tz == "Europe/Paris"
+    assert STATIONS["LFPG"].country == "FR"
+
+
+def test_tokyo_haneda_tz() -> None:
+    s = STATIONS["RJTT"]
+    assert s.icao == "RJTT"
+    assert s.tz == "Asia/Tokyo"
+    assert s.country == "JP"
+
+
+def test_intl_lats_within_bounds() -> None:
+    """Every intl station's latitude is in the physically valid range."""
+    for s in STATIONS.values():
+        if s.country == "US":
+            continue
+        assert -90.0 <= s.latitude <= 90.0, f"{s.icao}: lat={s.latitude} out of range"
+        assert -180.0 <= s.longitude <= 180.0, f"{s.icao}: lon={s.longitude} out of range"
+
+
+def test_is_us_station_true_for_us_icaos() -> None:
+    assert is_us_station("KNYC") is True
+    assert is_us_station("KATL") is True
+    assert is_us_station("KSEA") is True
+
+
+def test_is_us_station_false_for_intl_icaos() -> None:
+    assert is_us_station("EGLL") is False
+    assert is_us_station("LFPG") is False
+    assert is_us_station("RJTT") is False
+
+
+def test_is_us_station_false_for_unknown() -> None:
+    """Defense in depth: an unknown K* ICAO must NOT be classified as US."""
+    assert is_us_station("KZZZ") is False
+    assert is_us_station("") is False
+    # Non-K prefix that happens to be unknown.
+    assert is_us_station("ZZZZ") is False
