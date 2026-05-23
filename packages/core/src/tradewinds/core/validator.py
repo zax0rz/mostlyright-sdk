@@ -218,29 +218,38 @@ def validate_dataframe(
             catalog_warning=None,
         )
 
-    # --- 1b. Per-row source-column check (codex iter-2 HIGH fix) ---
+    # --- 1b. Per-row source-column check (codex iter-2 HIGH + iter-3 HIGH) ---
     # If the DataFrame carries an overlay ``source`` column (catalog adapters
-    # always do), every non-null value must equal ``df.attrs["source"]``.
-    # Without this check, an attacker / buggy adapter could mix rows from
-    # multiple sources while leaving df.attrs labelled as one of them.
+    # always do), EVERY row's value must equal ``df.attrs["source"]``. Nulls
+    # in the source column are treated as mismatches (iter-3 fix): a
+    # buggy/adversarial cache path that nulled the per-row source for
+    # selected rows must not pass.
     if "source" in df.columns:
-        non_null_sources = df["source"].dropna()
-        if len(non_null_sources) > 0:
-            mismatched = non_null_sources[non_null_sources != data_source]
-            if len(mismatched) > 0:
-                distinct_bad = sorted(set(mismatched.astype(str).tolist()))[:_SAMPLE_CAP]
-                raise SourceMismatchError(
-                    f"Per-row 'source' column has {len(mismatched)} row(s) "
-                    f"not matching df.attrs['source']={data_source!r}; "
-                    f"distinct mismatched values: {distinct_bad}",
-                    schema_source=data_source,
-                    data_source=str(distinct_bad[0]) if distinct_bad else "<unknown>",
-                    role=None,
-                    catalog_warning=(
-                        "row-level source column drift; the validator requires "
-                        "all per-row sources to match df.attrs['source']"
-                    ),
-                )
+        col = df["source"]
+        # Null rows: every null in the source column counts as a mismatch.
+        null_mask = col.isna()
+        null_count = int(null_mask.sum())
+        # Non-null mismatches: any row whose source != attrs source.
+        non_null = col[~null_mask]
+        mismatch_mask = non_null != data_source
+        mismatch_count = int(mismatch_mask.sum())
+        if null_count > 0 or mismatch_count > 0:
+            distinct_bad = sorted(set(non_null[mismatch_mask].astype(str).tolist()))[:_SAMPLE_CAP]
+            if null_count > 0:
+                distinct_bad.insert(0, "<null>")
+            raise SourceMismatchError(
+                f"Per-row 'source' column has {null_count + mismatch_count} "
+                f"row(s) not matching df.attrs['source']={data_source!r} "
+                f"({null_count} null, {mismatch_count} mismatched); "
+                f"distinct bad values: {distinct_bad}",
+                schema_source=data_source,
+                data_source=str(distinct_bad[0]) if distinct_bad else "<null>",
+                role=None,
+                catalog_warning=(
+                    "row-level source column drift; the validator requires "
+                    "every row's source to equal df.attrs['source'] (no nulls)"
+                ),
+            )
 
     # --- 2-4. Column / dtype / enum / null checks ---
     violations: list[dict[str, Any]] = []

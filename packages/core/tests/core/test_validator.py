@@ -338,6 +338,22 @@ def test_per_row_source_mismatch_raises():
     assert "awc.live" in str(exc.value)
 
 
+def test_per_row_source_null_raises():
+    """codex iter-3 HIGH: nulls in per-row source column are mismatches.
+
+    An adversarial / buggy cache path could null out the per-row source
+    for selected rows to hide their true provenance. The validator must
+    treat null as a mismatch, not silently allow it.
+    """
+    from tradewinds.core.exceptions import SourceMismatchError
+
+    df = _good_observation_df(source="iem.archive")
+    df["source"] = pd.Series(["iem.archive", pd.NA], dtype="string")
+    with pytest.raises(SourceMismatchError) as exc:
+        validate_dataframe(df, "schema.observation.v1")
+    assert "null" in str(exc.value).lower()
+
+
 def test_per_row_source_all_match_passes():
     """All rows matching df.attrs['source'] is the happy path."""
     df = _good_observation_df(source="iem.archive")
