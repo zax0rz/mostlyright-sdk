@@ -6,3 +6,24 @@ export const version = "0.0.0";
 export function helloWeather(): string {
   return "hello @tradewinds/weather";
 }
+
+// TS-W1 Wave 4: IEM CLI fetcher + range + parser.
+export {
+  downloadCli,
+  downloadCliRange,
+  IEM_CLI_BASE_URL,
+  IEM_CLI_POLITE_DELAY_MS,
+  type CliRawRecord,
+  type DownloadCliRangeOptions,
+} from "./_fetchers/iem-cli.js";
+export {
+  parseCliRecord,
+  parseCliResponse,
+  inferReportType,
+  HIGH_TEMP_MAX_F,
+  HIGH_TEMP_MIN_F,
+  LOW_TEMP_MAX_F,
+  LOW_TEMP_MIN_F,
+  type ClimateObservation,
+  type ReportType,
+} from "./_parsers/cli.js";
