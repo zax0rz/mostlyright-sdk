@@ -150,10 +150,19 @@ class TestResolverTypeValidation:
         with pytest.raises(TypeError, match="contract_id"):
             kalshi_nlow.resolve(None, date(2025, 1, 1))  # type: ignore[arg-type]
 
-    def test_datetime_subclass_of_date_accepted(self):
-        """datetime is a subclass of date — should be accepted."""
+    def test_datetime_rejected_by_nhigh(self):
+        """codex iter-9 HIGH: datetime is a subclass of date but carries
+        a time component — must be rejected explicitly because
+        date(...) == datetime(...) is False, so downstream settlement-date
+        matching would silently miss the row.
+        """
         from datetime import datetime
 
-        # datetime → date subclass: passes the isinstance check.
-        r = kalshi_nhigh.resolve("KHIGHNYC", datetime(2025, 1, 1))
-        assert r.settlement_station == "KNYC"
+        with pytest.raises(TypeError, match="not datetime"):
+            kalshi_nhigh.resolve("KHIGHNYC", datetime(2025, 1, 1))
+
+    def test_datetime_rejected_by_nlow(self):
+        from datetime import datetime
+
+        with pytest.raises(TypeError, match="not datetime"):
+            kalshi_nlow.resolve("KLOWNYC", datetime(2025, 1, 1))

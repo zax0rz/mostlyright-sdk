@@ -44,10 +44,20 @@ def resolve(contract_id: str, settlement_date: _date) -> NHighResolution:
         ValueError: ``contract_id`` doesn't follow the ``KHIGH<CITY>`` format
             or the city ticker is not in :data:`KALSHI_SETTLEMENT_STATIONS`.
     """
-    # codex iter-8 HIGH fix: validate settlement_date type up front.
-    # Accepting arbitrary values lets invalid input escape the resolver
-    # boundary and fail later inside the settlement lookup with a
-    # confusing message.
+    # codex iter-8/9 HIGH fix: validate settlement_date type up front,
+    # rejecting datetime explicitly (iter-9). datetime is a subclass of
+    # date but carries a time component — downstream settlement-date
+    # matching uses pure date equality, and date(...) == datetime(...)
+    # is False, so a datetime would silently miss the row.
+    from datetime import datetime as _datetime
+
+    if isinstance(settlement_date, _datetime):
+        raise TypeError(
+            "settlement_date must be a datetime.date instance (not datetime); "
+            "the time component would break downstream settlement-date "
+            f"matching. Got {type(settlement_date).__name__}={settlement_date!r}; "
+            "call .date() if you have a datetime."
+        )
     if not isinstance(settlement_date, _date):
         raise TypeError(
             "settlement_date must be a datetime.date instance "

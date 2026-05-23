@@ -39,7 +39,18 @@ def resolve(contract_id: str, settlement_date: _date) -> NLowResolution:
         ValueError: ``contract_id`` doesn't follow ``KLOW<CITY>`` or the
             city ticker is unknown.
     """
-    # codex iter-8 HIGH fix: validate settlement_date + contract_id types.
+    # codex iter-8/9 HIGH fix: validate settlement_date type; reject
+    # datetime explicitly (a datetime carries a time component which would
+    # break downstream date-equality matching).
+    from datetime import datetime as _datetime
+
+    if isinstance(settlement_date, _datetime):
+        raise TypeError(
+            "settlement_date must be a datetime.date instance (not datetime); "
+            "the time component would break downstream settlement-date "
+            f"matching. Got {type(settlement_date).__name__}={settlement_date!r}; "
+            "call .date() if you have a datetime."
+        )
     if not isinstance(settlement_date, _date):
         raise TypeError(
             "settlement_date must be a datetime.date instance "
