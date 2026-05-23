@@ -1,0 +1,82 @@
+name: Release (PyPI trusted publishing)
+
+# Phase 4 CI-03 (PKG-01): publish the three sibling distributions to PyPI on
+# every v* tag, using PEP 740 trusted publishing (no API tokens stored in
+# secrets). Each package has its own job because trusted publishing is
+# registered per-package on PyPI.
+#
+# Setup checklist (one-time, before the first tagged release):
+#   1. Register the project as a "pending publisher" on PyPI for each of
+#      tradewinds, tradewinds-weather, tradewinds-markets.
+#      https://docs.pypi.org/trusted-publishers/adding-a-publisher/
+#   2. Workflow ref must match: workflow filename `release.yml`,
+#      environment name `pypi`.
+#
+# After the first publish, the pending-publisher entry becomes permanent.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+# Trusted publishing requires id-token write permission per
+# https://docs.pypi.org/trusted-publishers/using-a-publisher/.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  publish-core:
+    name: Publish tradewinds (core)
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/tradewinds/
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+      - name: Set up Python
+        run: uv python install 3.12
+      - name: Build tradewinds wheel + sdist
+        run: uv build --package tradewinds
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  publish-weather:
+    name: Publish tradewinds-weather
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/tradewinds-weather/
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+      - name: Set up Python
+        run: uv python install 3.12
+      - name: Build tradewinds-weather wheel + sdist
+        run: uv build --package tradewinds-weather
+      - name: Verify Requires-Dist pin (CI-04 gate)
+        run: uv run python scripts/check_wheel_metadata.py
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  publish-markets:
+    name: Publish tradewinds-markets
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/tradewinds-markets/
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+      - name: Set up Python
+        run: uv python install 3.12
+      - name: Build tradewinds-markets wheel + sdist
+        run: uv build --package tradewinds-markets
+      - name: Verify Requires-Dist pin (CI-04 gate)
+        run: uv run python scripts/check_wheel_metadata.py
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

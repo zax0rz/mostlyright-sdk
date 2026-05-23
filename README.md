@@ -14,14 +14,18 @@ Local-first Python SDK for quants researching prediction-market weather settleme
 | `tradewinds-weather` | [packages/weather/](packages/weather/) | v0.1.0 — AWC/IEM/GHCNh/NWS CLI clients + cache |
 | `tradewinds-markets` | [packages/markets/](packages/markets/) | v0.0.1 placeholder; v0.1.0 in Sprint 0.5 (Kalshi metadata) |
 
-## Quickstart (alpha1)
+## Quickstart (alpha1) — <5 minutes
 
 ```bash
 pip install "tradewinds[parquet]==0.1.0a1" "tradewinds-weather[parquet]==0.1.0a1"
 python -c "import tradewinds as tw; print(tw.research('KNYC', '2025-01-06', '2025-01-12').head())"
 ```
 
-That's it. `research(station, from_date, to_date)` returns a pandas DataFrame; local parquet cache lives at `$HOME/.tradewinds/cache/` (override with `TRADEWINDS_CACHE_DIR`); no API keys; no hosted backend.
+That's it. `research(station, from_date, to_date)` returns a pandas DataFrame;
+local parquet cache lives at `$HOME/.tradewinds/cache/` (override with
+`TRADEWINDS_CACHE_DIR`); no API keys; no hosted backend.
+
+### Mode 1 — v0.14.1 parity (default)
 
 ```python
 import tradewinds as tw
@@ -36,6 +40,57 @@ df = tw.research(
 # Columns: date, station, cli_high_f, cli_low_f, obs_high_f, obs_low_f, obs_high_at, obs_low_at
 # Byte-equivalent to mostlyright==0.14.1's client.pairs(station, from_date, to_date).
 ```
+
+### Temporal-safety primitives
+
+```python
+from datetime import datetime, UTC
+from tradewinds.core import (
+    TimePoint, KnowledgeView, LeakageDetector, assert_no_leakage,
+)
+
+# Filter a DataFrame to only rows visible at as_of (point-in-time safe).
+kv = KnowledgeView(df, TimePoint("2025-02-15T00:00:00+00:00"))
+visible = kv.dataframe()  # filtered copy; df unchanged
+
+# Or assert no rows leak past the cutoff (raises LeakageError otherwise).
+assert_no_leakage(df, TimePoint("2025-02-15T00:00:00+00:00"))
+```
+
+### Source-identity validator
+
+```python
+from tradewinds.core import validate_dataframe
+
+# Raises SourceMismatchError if df.attrs["source"] != registered_source.
+reg = validate_dataframe(
+    df,
+    schema_id="schema.observation.v1",
+    registered_source="iem.archive",
+)
+print(reg.audit_log())  # [{"event": "registered", "ts": "...", ...}]
+```
+
+### Kalshi NHIGH/NLOW resolvers
+
+```python
+from datetime import date
+from tradewinds.markets.catalog import kalshi_nhigh, kalshi_nlow
+
+source, station = kalshi_nhigh.resolve("NYC", date(2025, 1, 15))
+# ("cli.archive", "KNYC")  — NOT KLGA/KJFK
+assert kalshi_nhigh.resolve("NYC", date.today()) == kalshi_nlow.resolve("NYC", date.today())
+```
+
+### Why local-first
+
+- No hosted backend → no auth, no rate-limited tier, no vendor lock-in.
+- Parquet cache is byte-stable across runs → deterministic backtests.
+- Source-identity invariant on every DataFrame → train/infer mismatch fails
+  loudly instead of silently corrupting a model.
+
+See [docs/adapters/](docs/adapters/) for per-source notes (timezone gotchas,
+DST handling, settlement-station mappings).
 
 ## Contributing
 

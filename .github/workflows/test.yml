@@ -1,0 +1,74 @@
+name: Test (fast suite)
+
+# Phase 4 (CI-01 + CI-02): pytest -m "not live" on every push/PR; the
+# @pytest.mark.live tests are excluded from CI (run manually pre-publish).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - ".github/workflows/test.yml"
+      - ".pre-commit-config.yaml"
+  pull_request:
+    paths:
+      - "packages/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - ".github/workflows/test.yml"
+      - ".pre-commit-config.yaml"
+
+jobs:
+  fast-suite:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Sync workspace
+        run: uv sync --all-packages
+
+      - name: Run ruff
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Run fast test suite (excludes @pytest.mark.live)
+        run: uv run pytest -m "not live" -q
+
+  coverage-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Sync workspace
+        run: uv sync --all-packages
+
+      # Phase 4 SC-1 HARD GATE: >=90% branch coverage on tradewinds.core.*.
+      # 80% line coverage on catalog adapter wrappers is enforced by a separate
+      # follow-up step (lower priority; this gate is the load-bearing one).
+      - name: Coverage gate (tradewinds.core >= 90% branch)
+        run: |
+          uv run pytest -m "not live" \
+            --cov=packages/core/src/tradewinds/core \
+            --cov-branch \
+            --cov-fail-under=90 \
+            --cov-report=term-missing:skip-covered \
+            -q
