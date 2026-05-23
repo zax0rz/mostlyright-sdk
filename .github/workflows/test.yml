@@ -8,11 +8,17 @@ on:
   # (phase-X/integration, merged-vision) push to origin BEFORE the
   # final --no-ff merge to main; restricting CI to main bypassed the
   # fast suite + coverage gate on the very branches that need them.
+  # codex iter-5 HIGH fix: uv.lock added to paths. `uv sync --all-packages`
+  # consumes the lockfile, so a lock-only dependency-change can shift
+  # runtime/test behavior even when no .py file moves. Without uv.lock in
+  # the filter, a lockfile bump (new transitive minor that flips a
+  # pandas/pyarrow API) would bypass the fast suite + coverage gate.
   push:
     paths:
       - "packages/**"
       - "tests/**"
       - "pyproject.toml"
+      - "uv.lock"
       - ".github/workflows/test.yml"
       - ".pre-commit-config.yaml"
   pull_request:
@@ -20,6 +26,7 @@ on:
       - "packages/**"
       - "tests/**"
       - "pyproject.toml"
+      - "uv.lock"
       - ".github/workflows/test.yml"
       - ".pre-commit-config.yaml"
 

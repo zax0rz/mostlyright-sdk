@@ -55,6 +55,7 @@ dev = [
     "pandas>=2.2",
     "pyarrow>=17.0",
     "respx>=0.23.1",
+    "packaging>=23",
 ]
 
 [tool.ruff]
