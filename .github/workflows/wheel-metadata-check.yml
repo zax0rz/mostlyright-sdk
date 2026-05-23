@@ -7,8 +7,10 @@ name: Wheel METADATA Pin Check (PKG-03)
 # gate.
 
 on:
+  # codex iter-4 HIGH fix: no branch filter. PKG-03 must fire on every
+  # integration-branch push (where pyproject.toml dep changes land first),
+  # not only on the post-merge main push.
   push:
-    branches: [main]
     paths:
       - "packages/**/pyproject.toml"
       - "scripts/check_wheel_metadata.py"
