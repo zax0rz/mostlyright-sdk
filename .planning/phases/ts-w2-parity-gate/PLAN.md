@@ -23,17 +23,17 @@ Pass the 5-fixture parity gate against Python `research()` Mode 1 output. Land I
 ## Success Criteria
 
 1. All 5 Python parity fixtures pass against the TS implementation with exact numeric equality on every column. HTTP replay via `msw` against recordings captured from the Python tests.
-2. IEM ASOS fetcher uses yearly chunks (calendar-aligned, leap-year safe — lifted from Python `_iem_chunks.yearlyChunksInclusive`) at 1 req/sec politeness; CSV parser handles `#`-prefix comments + `M`/`T` sentinels + multi-column expansion identical to `_iem.iem_to_observation`.
+2. IEM ASOS fetcher uses yearly chunks (calendar-aligned, leap-year safe — port of Python `_iem_chunks.yearly_chunks_exclusive_end`, NOT `yearly_chunks_inclusive`; IEM's `day2` is EXCLUSIVE, so chunks end on Jan 1 of the following year) at 1 req/sec politeness; CSV parser handles `#`-prefix comments + `M`/`T` sentinels + multi-column expansion identical to `_iem.iem_to_observation`.
 3. GHCNh PSV fetcher handles 404-as-no-data per Python `download_ghcnh_range`; CORS workaround documented in `TS-CORS-MATRIX.md` if blocked; PSV parser filters `Quality_Code ∈ {"0","1","4","5",""}`.
-4. `mergeObservations(rows)` reproduces Python source priority `{awc: 3, iem: 2, ghcnh: 1}` + strict-`>` + first-seen tiebreak. Property test via fast-check: `mergeObservations(shuffleRows(rows))` byte-equivalent to `mergeObservations(rows)` over Hypothesis-equivalent inputs. `mergeClimate(rows)` dedups by `(stationCode, observationDate)` with `REPORT_TYPE_PRIORITY` from codegen.
+4. `mergeObservations(rows)` reproduces Python source priority `{awc: 3, iem: 2, ghcnh: 1}` + strict-`>` + first-seen tiebreak. `mergeClimate(rows)` dedups by `(stationCode, observationDate)` with `REPORT_TYPE_PRIORITY` from codegen. **Property test (fast-check)** asserts merge produces row-equivalent output across `shuffleRows(rows)` for the restricted input class where no two rows share the same `(stationCode, observedAt, observationType)` AND `sourcePriority` — i.e. permutation-stable on inputs WITHOUT same-priority duplicate-key conflicts (this preserves the parity-faithful first-seen semantics that Python's `merge_observations` exhibits; an arbitrary-shuffle stability test would FALSELY require TS to diverge from Python's order-dependent same-priority-tiebreak behavior). A separate **canonical-fetch-order replay test** asserts the parity-fixture HTTP recordings, replayed in their captured order, produce byte-equivalent merged output across runs.
 5. Weekly drift cron `drift-rotate-ts.yml` lands — captures `research()` for 5 parity cases into `tests/fixtures/ts/drift/`, soft-fails on mismatch (writes `drift-report.md`, opens GH issue, NEVER blocks CI).
 
 ## Waves (to be detailed)
 
-- **Wave 1**: IEM ASOS fetcher + yearly-chunk helper (port of `_iem_chunks.py`).
+- **Wave 1**: IEM ASOS fetcher + yearly-chunk helper (port of `_iem_chunks.yearly_chunks_exclusive_end` — the helper `download_iem_asos` actually uses per `packages/weather/src/tradewinds/weather/_fetchers/iem_asos.py:209`; NOT `yearly_chunks_inclusive`).
 - **Wave 2**: IEM CSV parser + `iemToObservation`.
 - **Wave 3**: GHCNh fetcher + PSV parser + station-id translator.
-- **Wave 4**: `mergeObservations` + `mergeClimate` + fast-check property tests for shuffle-stability.
+- **Wave 4**: `mergeObservations` + `mergeClimate` + fast-check property tests for restricted-input permutation stability + canonical-fetch-order replay test.
 - **Wave 5**: `_pairs.buildPairs` join + `pairsToRows` (TS equivalent of `pairs_to_dataframe`).
 - **Wave 6**: Update `research()` to include all 4 sources; remove W1's null-column placeholders.
 - **Wave 7**: Export 5 Python parity fixtures as JSON + capture HTTP recordings via `msw` recordHandlers OR replay vcrpy cassettes.

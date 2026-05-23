@@ -156,12 +156,19 @@ schemas/json/
 
 Each JSON Schema file carries `$id`, `$schema`, `title`, `version`, and a `properties` map with `type/format/enum/description/minimum/maximum` from `ColumnSpec`. Imperial-rename maps emit as a sibling `imperialRenames` field (non-standard but documented).
 
-The same script also writes:
+The same script also writes sibling data files (full set per [CROSS-SDK-SYNC.md §1.2](../CROSS-SDK-SYNC.md)):
+
+**Group A — TS-W0 (always emitted):**
 - `schemas/stations.json` — array of all 20 US + 41 international stations with `{code, icao, ghcnh_id, name, tz, latitude, longitude}`. Built from `_internal._stations.STATIONS` + `international.INTERNATIONAL_STATIONS`.
 - `schemas/kalshi-settlement-stations.json` — `{ stations: {NYC: {station: 'KNYC', citation: '...'}, ...}, known_wrong: ['KLGA', ...] }`. Built from `markets.catalog.kalshi_stations`.
 - `schemas/source-priority.json` — `{ observation: {awc: 3, iem: 2, ghcnh: 1, ncei: 0}, climate: {final: 3.0, ncei_final: 2.5, correction: 2.0, preliminary: 1.0, estimated: 0.0}, live_v1: {...} }`. Built from `_internal.merge.observations.SOURCE_PRIORITY` + `_internal.merge.climate.REPORT_TYPE_PRIORITY` + `core.merge.LIVE_V1`.
+- `schemas/EXPORT_MANIFEST.json` — list of every file the exporter writes + their SHA-256 (used by the drift gate as a checksum manifest).
 
-These files are **committed to git** (not gitignored) so the TS build doesn't require a Python environment. CI runs `export_schemas.py` and `git diff --exit-code schemas/` — drift fails the build.
+**Group B — gated outputs (emitted only when the underlying Python source artifact exists; absence is recorded as `{"gated": true, "reason": "..."}` in EXPORT_MANIFEST.json — NOT treated as drift):**
+- `schemas/polymarket-city-stations.json` — Phase 3.1 city-to-ICAO catalog. Source: `markets._per_event_station._CITY_TO_STATIONS` (lands with Python Phase 3.1 INTL-02). **Required by TS-W5.**
+- `schemas/qc-alpha-rules.json` — Phase 3.4 rule IDs + bit positions (so TS QC bit-positions can't drift). Source: `tradewinds.qc.ALPHA_RULES` (lands with Python Phase 3.4 QC-01). **Required by TS-W4.**
+
+These files are **committed to git** (not gitignored) so the TS build doesn't require a Python environment. CI runs `export_schemas.py` and `git diff --exit-code schemas/` — drift on Group A fails the build. Drift on Group B fails the build IFF the underlying Python source exists AND the regenerated output differs from the committed copy; the gated-empty case is not a drift.
 
 ### 4.3 The consume step (TS-side)
 

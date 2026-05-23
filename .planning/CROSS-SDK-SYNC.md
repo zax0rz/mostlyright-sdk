@@ -80,17 +80,24 @@ Requirements:
 
 Outputs (all under `schemas/` at repo root, all committed to git):
 
+**Group A — TS-W0 (always emitted from day 1):**
 - `schemas/json/schema.observation.v1.json`
 - `schemas/json/schema.forecast.iem_mos.v1.json`
 - `schemas/json/schema.settlement.cli.v1.json`
 - `schemas/json/schema.observation_ledger.v1.json`
 - `schemas/json/schema.observation_qc.v1.json`
-- `schemas/stations.json` — array of all stations (US + intl) with `{code, icao, ghcnh_id, name, tz, latitude, longitude}` where available
-- `schemas/kalshi-settlement-stations.json` — `{ stations: { NYC: {station, citation}, ... }, known_wrong: ["KLGA", ...] }`
-- `schemas/source-priority.json` — `{ observation: {...}, climate: {...}, live_v1: {...} }`
-- `schemas/polymarket-city-stations.json` — Phase 3.1 catalog (39 cities → 40 ICAOs)
-- `schemas/qc-alpha-rules.json` — Phase 3.4 rule IDs + bit positions (so TS QC bit-positions can't drift)
+- `schemas/stations.json` — array of all stations (US + intl) with `{code, icao, ghcnh_id, name, tz, latitude, longitude}` where available; source = `_internal._stations.STATIONS` + `international.INTERNATIONAL_STATIONS`
+- `schemas/kalshi-settlement-stations.json` — `{ stations: { NYC: {station, citation}, ... }, known_wrong: ["KLGA", ...] }`; source = `markets.catalog.kalshi_stations`
+- `schemas/source-priority.json` — `{ observation: {...}, climate: {...}, live_v1: {...} }`; source = `_internal.merge.observations.SOURCE_PRIORITY` + `_internal.merge.climate.REPORT_TYPE_PRIORITY` + `core.merge.LIVE_V1`
 - `schemas/EXPORT_MANIFEST.json` — list of every file the exporter writes + their SHA-256 (used by the drift gate as a checksum manifest)
+
+**Group B — gated outputs (emitted only when their Python source artifact exists; otherwise the exporter skips them and `EXPORT_MANIFEST.json` records `gated: true` with the missing-source reason):**
+- `schemas/polymarket-city-stations.json` — Phase 3.1 catalog (39 cities → 40 ICAOs); source = `markets._per_event_station._CITY_TO_STATIONS` (lands with Python Phase 3.1 INTL-02). **Required by TS-W5.**
+- `schemas/qc-alpha-rules.json` — Phase 3.4 rule IDs + bit positions (so TS QC bit-positions can't drift); source = `tradewinds.qc.ALPHA_RULES` (lands with Python Phase 3.4 QC-01). **Required by TS-W4.**
+
+**Rule:** Group A outputs are stable from TS-W0 onwards. Group B outputs require their source Python artifact to exist; until then, the exporter emits a stub entry in `EXPORT_MANIFEST.json` (e.g. `{"polymarket-city-stations.json": {"gated": true, "reason": "Python source `markets._per_event_station` not yet materialized in packages/"}}`) and downstream TS phases that consume them declare an explicit `Depends on: Python Phase X.Y (source artifact)` line in their PLAN.md.
+
+The `--check` mode treats gated outputs as PRESENT-WHEN-SOURCE-EXISTS / ABSENT-WHEN-SOURCE-MISSING — not as drift.
 
 ### 1.3 The codegen consumer (`@tradewinds/codegen`)
 
@@ -228,58 +235,65 @@ Release-readiness checklist (already exists for Python v0.1.0; adopt for TS v0.1
 
 ### 3.1 What MCP sync means
 
-The MCP server at `packages/mcp/` (lands in Python Phase 5) exposes tradewinds capabilities as MCP tools to AI agents. Every MCP tool wraps an SDK function. Drift between the MCP tool signature and the SDK function it wraps = silent agent failures.
+The MCP server at `packages/mcp/` (lands in Python Phase 5) exposes tradewinds capabilities as MCP tools to AI agents. **Per Phase 5 PLAN-01, the MCP surface is a fixed 5-tool catalog model**, NOT per-SDK-function tool wrapping:
+
+- `query(source_id, as_of, filters, format)` — read-time catalog query (temporal-safe)
+- `ingest(source_id, as_of, ...)` — ingest into a catalog source
+- `list_sources()` — enumerate registered catalog source_ids
+- `describe_source(source_id)` — return the 5-layer context for a source
+- `get_schema(schema_id)` — return a canonical schema from `tradewinds.core.schemas`
+
+What syncs is the **catalog `source_id` registry** (YAML entries at `packages/mcp/.../catalog/sources/*.yml`, landing in Phase 5 PLAN-02) and the **Python SDK functions / schemas those source entries dispatch into via `_adapter_bridge`**. Drift between catalog source entries and the Python adapters they cite = silent agent failures.
 
 Three sync invariants:
 
-1. **Tool schema ≡ SDK function signature.** Every MCP tool's input schema is derived from the wrapped SDK function's Python type hints (via a `typing.get_type_hints()` + `inspect.signature()` reflector); the output schema is derived from the function's return annotation. No hand-written tool schemas.
-2. **Tool surface ≡ public SDK surface.** Every public SDK function listed in §2.1's parity-ticket trigger list has either a corresponding MCP tool OR an explicit `mcp_tool_excluded: true` annotation in the function's docstring with a reason.
-3. **Tool behavior ≡ SDK behavior.** MCP tool tests are recorded-fixture tests that call the tool via JSON-RPC subprocess and compare result against direct SDK call. Any divergence is a sync bug.
+1. **Tool surface is fixed.** The 5 tools above are the entire MCP surface. New SDK functions do NOT get new tools — they get reached via `query` + `source_id`. Reflection asserts exactly these 5 tools are registered on `mcp` startup (Phase 5 PLAN-01 META-TEST `test_no_read_tool_lacks_as_of` is the structural guard against drift here).
+2. **Catalog source registry ≡ Python adapter surface.** Every catalog source entry in `catalog/sources/*.yml` cites a `python_adapter` (module path + callable) that MUST exist in `packages/core/`, `packages/weather/`, or `packages/markets/`. Conversely, every public Python adapter intended for MCP exposure MUST have a corresponding catalog source entry — OR an `mcp_excluded: true` annotation in the adapter docstring with a reason. (The §2.1 parity-ticket trigger list does NOT automatically imply MCP exposure; many SDK functions are TS-port relevant but not catalog-relevant — e.g., `tradewinds.transforms.lag` is a pure function, not a data source.)
+3. **Catalog-tool behavior ≡ underlying adapter behavior.** MCP tool tests are recorded-fixture tests that call `query(source_id=X, as_of=T, ...)` via JSON-RPC subprocess and compare the returned envelope's `data` field (TOON-encoded payload) against direct Python adapter call output for the same `(source_id, as_of, filters)`. Any divergence is a sync bug.
 
 ### 3.2 The MCP-sync CI workflow (`mcp-sdk-sync.yml`)
 
-Runs on every push that touches `packages/core/`, `packages/weather/`, `packages/markets/`, or `packages/mcp/`. Performs:
+Runs on every push that touches `packages/core/`, `packages/weather/`, `packages/markets/`, `packages/mcp/`, OR `packages/mcp/.../catalog/sources/`. Performs:
 
-1. **Tool-registration reflection.** Walks `packages/mcp/src/tradewinds/mcp/tools/*.py`; for each `@mcp.tool` decorated function, asserts the wrapped SDK function exists and the signatures match (parameters, types, return).
-2. **Coverage assertion.** Walks the public surface manifest at `schemas/public-surface.json` (a NEW codegen output — see §3.3) and confirms each entry has either a tool or an `mcp_tool_excluded` marker.
-3. **Behavioral parity.** Runs `tests/mcp/test_tool_sdk_parity.py` which spawns the MCP server subprocess and asserts every tool's JSON-RPC response matches the direct SDK call output for a small set of fixed inputs.
+1. **Tool-surface reflection.** Asserts `mcp._tool_manager._tools` contains exactly the 5 fixed tools (`query`, `ingest`, `list_sources`, `describe_source`, `get_schema`) and `TemporalSafetyMiddleware.READ_TOOLS == {"query", "ingest"}`. This is Phase 5 PLAN-01's META-TEST `test_no_read_tool_lacks_as_of` promoted to CI.
+2. **Catalog-source registry coverage.** Walks `catalog/sources/*.yml` + `schemas/catalog-sources.json` (a NEW codegen output — see §3.3) and asserts each entry's `python_adapter: module:callable` resolves to a real Python callable. Conversely, walks the Python adapter surface (registered via `tradewinds.weather.catalog.register_adapter` + future `tradewinds.markets.catalog.*` registrations) and asserts each has either a catalog source entry OR an `mcp_excluded: true` adapter docstring annotation.
+3. **Behavioral parity.** Runs `packages/mcp/tests/test_catalog_query_vs_adapter.py` which spawns the MCP server subprocess, calls `query` for each `source_id` with a fixed `(as_of, filters)` triple, and compares the envelope's TOON-decoded data against the direct Python adapter call. Bytes must match modulo TOON encoding determinism (RESEARCH.md §I.5 pitfall guard ships in Phase 5 PLAN-01 too).
 
 Failure modes:
 
-- `New SDK function added without corresponding MCP tool` → Fail. Author either adds the tool or sets `mcp_tool_excluded`.
-- `MCP tool signature drift` → Fail. Author updates the tool to match SDK.
-- `Behavioral divergence` → Fail. Almost certainly an MCP-side serialization bug.
+- `New catalog source entry cites nonexistent python_adapter` → Fail. Author updates the YAML or adds the adapter.
+- `Python adapter added without catalog entry and without mcp_excluded annotation` → Fail. Author adds catalog entry OR justifies exclusion.
+- `Tool surface changed` (anything other than the 5 fixed tools) → Fail. Tool surface evolves only via explicit Phase 5+ decision, not silent drift.
+- `Behavioral divergence` (catalog query vs direct adapter) → Fail. Almost certainly an `_adapter_bridge` serialization bug.
 
-### 3.3 The public-surface manifest
+### 3.3 The catalog-sources manifest
 
-`scripts/export_schemas.py` is extended (Phase 5 work, NOT v0.1.0 work) to emit `schemas/public-surface.json`:
+`scripts/export_schemas.py` is extended (Phase 5 work, NOT v0.1.0 work) to emit `schemas/catalog-sources.json`:
 
 ```json
 {
-  "functions": [
+  "sources": [
     {
-      "id": "tradewinds.research",
-      "module": "tradewinds.research",
-      "name": "research",
-      "signature": "research(station: str, from_date: str, to_date: str, ...) -> pd.DataFrame",
-      "parameters": [...],
-      "returns": {"type": "pd.DataFrame", "schema": "schema.research_pairs.v1"},
-      "mcp_tool": "research",
-      "mcp_tool_excluded_reason": null,
-      "added_in": "0.1.0",
-      "deprecated_in": null
+      "source_id": "weather.observation.iem.archive",
+      "python_adapter": "tradewinds.weather.catalog.iem:IEMAdapter",
+      "schema_id": "schema.observation.v1",
+      "temporal_safe": true,
+      "added_in": "0.2.0",
+      "mcp_excluded": false,
+      "mcp_excluded_reason": null,
+      "catalog_yaml": "packages/mcp/.../catalog/sources/weather_observation_iem_archive.yml"
     },
     ...
-  ],
-  "classes": [...],
-  "schemas": [...]
+  ]
 }
 ```
 
 This file is the single inventory consumed by:
-- `mcp-sdk-sync.yml` for coverage assertion.
-- `@tradewinds/codegen` for "do all Python public functions have a TS analog?" cross-language coverage report.
+- `mcp-sdk-sync.yml` for the catalog-source registry coverage assertion.
+- `@tradewinds/codegen` for an OPTIONAL cross-language coverage report (TS does NOT consume MCP directly per §3.4, but it MAY surface which Python sources are catalog-registered for tooling/docs purposes).
 - Documentation builders.
+
+**This manifest is NOT a Python public-function surface map.** TS-port traceability of Python public functions is covered by the PYTHON-SURFACE-INVENTORY.md spec + the parity-ticket workflow (§2), not by MCP coverage.
 
 ### 3.4 TS↔MCP relationship
 
@@ -363,13 +377,15 @@ When a parity ticket needs cross-lane work:
 
 ## 6. Change Process — Step-by-Step Recipes
 
+> **Integration-branch policy.** Per project `CLAUDE.md` "Branch workflow": `main` only receives merges from `merged-vision` (the sprint-integration branch); feature branches branch off `merged-vision` and merge back to `merged-vision`; `merged-vision → main` is a periodic big-PR. The recipes below use `merged-vision` as the merge target throughout. (If a future project-policy change retires `merged-vision` and feature branches start landing directly on `main`, update CLAUDE.md AND this section in lockstep.)
+
 ### 6.1 Recipe A: New Python public function (the common case)
 
 **Example:** Vu adds `tradewinds.transforms.bessel_filter(rows, col, order=4)` for a quant who asked.
 
-1. Branch off `main` → `feat/python-bessel-filter`.
+1. Branch off `merged-vision` → `feat/python-bessel-filter`.
 2. Implement + tests + docstring in Python.
-3. Open Python PR. Body includes:
+3. Open Python PR (target: `merged-vision`). Body includes:
    ```
    Adds `tradewinds.transforms.bessel_filter`. Closes #N.
 
@@ -377,14 +393,14 @@ When a parity ticket needs cross-lane work:
    ```
 4. File parity ticket `PT-NNNN` with template from §2.2, `Assigned to: @rob`.
 5. Python PR runs codex + python-architect + `parity-ticket-check.yml` (which sees the `Parity-Ticket:` line and passes).
-6. Python PR merges to `main`.
-7. Rob picks up `PT-NNNN`, opens TS PR `feat/ts-bessel-filter`. Body includes:
+6. Python PR merges to `merged-vision`.
+7. Rob picks up `PT-NNNN`, opens TS PR `feat/ts-bessel-filter` (target: `merged-vision`). Body includes:
    ```
    Resolves Parity-Ticket #M. Mirrors `tradewinds.transforms.bessel_filter` from #<canonical-PR>.
    ```
 8. TS PR runs codex + ts-architect + `schema-drift.yml` (no schema change, passes trivially) + `test-ts.yml`.
-9. TS PR merges; parity ticket updates to `resolved`.
-10. Next minor release of both SDKs ships the feature in lockstep.
+9. TS PR merges to `merged-vision`; parity ticket updates to `resolved`.
+10. When the milestone closes, `merged-vision → main` PR carries both lanes' work into `main` as one integration commit; next minor release of both SDKs ships the feature in lockstep.
 
 ### 6.2 Recipe B: Schema column added (additive)
 
@@ -395,8 +411,8 @@ When a parity ticket needs cross-lane work:
 3. Vu runs `pnpm codegen` locally; observes diff in `packages-ts/core/src/schemas/generated/observation.v1.d.ts`.
 4. Vu commits Python source + regenerated `schemas/` + regenerated TS `generated/` together.
 5. PR includes: parser updates (Python AWC/IEM/GHCNh/CLI parsers populate the new column where derivable) + parity-ticket `PT-NNNN` for TS parser equivalence.
-6. `schema-drift.yml` passes (regenerated artifacts committed).
-7. After Python PR merge, Rob ports the TS parser change to populate the same column from the same upstream fields. TS parity test asserts new column populated in shared fixture.
+6. `schema-drift.yml` passes (regenerated artifacts committed). Python PR targets `merged-vision`.
+7. After Python PR merges to `merged-vision`, Rob ports the TS parser change (also to `merged-vision`) to populate the same column from the same upstream fields. TS parity test asserts new column populated in shared fixture.
 
 ### 6.3 Recipe C: Bug fix that changes numeric output
 
@@ -412,21 +428,22 @@ When a parity ticket needs cross-lane work:
 
 **Example:** Add a TS helper `formatPairForKalshiOverlay(row)` used only by Rob's Chrome extension.
 
-1. Rob's PR has body line: `typescript_only: true — UI-layer helper specific to browser overlay; no Python equivalent needed.`
-2. `parity-ticket-check.yml` sees the label/flag and passes without requiring a parity ticket.
-3. PR reviewed normally; merges.
-4. No Python work item filed.
+1. Rob branches off `merged-vision` → `feat/ts-overlay-formatter`.
+2. PR body line: `typescript_only: true — UI-layer helper specific to browser overlay; no Python equivalent needed.` PR target: `merged-vision`.
+3. `parity-ticket-check.yml` sees the label/flag and passes without requiring a parity ticket.
+4. PR reviewed normally; merges to `merged-vision`.
+5. No Python work item filed.
 
 ### 6.5 Recipe E: Schema breaking change (rare)
 
 **Example:** `schema.observation.v1` needs to become `schema.observation.v2` because `temp_c` semantics change (different reference height).
 
-1. New schema `packages/core/src/tradewinds/core/schemas/observation.py` adds `ObservationV2Schema` (does NOT delete V1).
+1. Vu branches off `merged-vision` → `feat/python-observation-v2`. New schema `packages/core/src/tradewinds/core/schemas/observation.py` adds `ObservationV2Schema` (does NOT delete V1).
 2. Exporter emits both `schemas/json/schema.observation.v1.json` AND `schemas/json/schema.observation.v2.json`.
 3. Codegen emits both `.d.ts` types.
-4. Python `research()` defaults to `v1` for one minor; deprecation warning when v2 isn't explicit.
-5. Parity-ticket `PT-NNNN` ports v2 to TS.
-6. Next minor: TS adds v2 alongside; Chrome extension overlay can opt in via `{schemaVersion: 'v2'}`.
+4. Python `research()` defaults to `v1` for one minor; deprecation warning when v2 isn't explicit. Python PR target: `merged-vision`.
+5. Parity-ticket `PT-NNNN` ports v2 to TS; TS port PR also targets `merged-vision`.
+6. Next minor: TS adds v2 alongside; Chrome extension overlay can opt in via `{schemaVersion: 'v2'}`. Both lanes ride the `merged-vision → main` PR for the minor release.
 7. Minor after that: `v1` removal in both SDKs (CHANGELOG-cited).
 8. Migration logged as Key Decision in PROJECT.md.
 

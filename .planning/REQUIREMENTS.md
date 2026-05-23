@@ -339,10 +339,13 @@ Post-v0.1.0 requirements for the MCP-native data platform vision. See [`phase-05
 
 - [ ] **TS-PKG-01**: pnpm workspace under `packages-ts/` with 5 packages (`core`, `weather`, `markets`, `meta`, `codegen`); `pnpm install && pnpm -r build && pnpm -r test` exits 0 from clean clone (no network).
 - [ ] **TS-PKG-02**: Each package builds ESM (`.mjs`) + CJS (`.cjs`) + IIFE (`.global.js`) + types (`.d.ts`) via `tsup`. TypeScript `strict: true, noUncheckedIndexedAccess: true, exactOptionalPropertyTypes: true`.
-- [ ] **TS-CODEGEN-01**: `scripts/export_schemas.py` is deterministic — two consecutive runs produce identical `schemas/json/*.json` + `schemas/stations.json` + `schemas/kalshi-settlement-stations.json` + `schemas/source-priority.json`. CI workflow `schema-drift.yml` fails on uncommitted diff.
+- [ ] **TS-CODEGEN-01**: `scripts/export_schemas.py` is deterministic — two consecutive runs produce byte-identical outputs across the full set defined in [CROSS-SDK-SYNC.md §1.2](CROSS-SDK-SYNC.md). **Group A (always emitted)**: `schemas/json/{observation,forecast.iem_mos,settlement.cli,observation_ledger,observation_qc}.v1.json` + `schemas/stations.json` + `schemas/kalshi-settlement-stations.json` + `schemas/source-priority.json` + `schemas/EXPORT_MANIFEST.json`. **Group B (gated on Python source artifact existing)**: `schemas/polymarket-city-stations.json` (gated on Python Phase 3.1 INTL-02 `markets._per_event_station`) + `schemas/qc-alpha-rules.json` (gated on Python Phase 3.4 QC-01 `tradewinds.qc.ALPHA_RULES` materialization). CI workflow `schema-drift.yml` fails on uncommitted diff for Group A; Group B follows the gated-output rule in CROSS-SDK-SYNC §1.2 (recorded as `{"gated": true, "reason": "..."}` in `EXPORT_MANIFEST.json` when the Python source is absent).
 - [ ] **TS-CODEGEN-02**: `@tradewinds/codegen` reads `schemas/` and emits typed station registry + Kalshi map + ajv-standalone validators into `packages-ts/*/src/**/generated/`. Generated files committed; CI checks `git diff --exit-code packages-ts/*/src/**/generated/`.
 - [ ] **TS-CORS-01**: `.planning/research/TS-CORS-MATRIX.md` documents empirical CORS posture per upstream endpoint (AWC, IEM ASOS, IEM CLI, GHCNh, Polymarket Gamma) captured from a real browser fetch + per-endpoint workaround notes (CORS proxy template, Chrome extension `host_permissions` snippet).
 - [ ] **TS-CI-01**: GitHub Actions workflows `test-ts.yml` (push/PR) + `schema-drift.yml` (push/PR) green. `test-ts.yml`: pnpm install → codegen drift → biome → typecheck → vitest with coverage → `size-limit` bundle gate.
+- [ ] **TS-SYNC-01**: Cross-SDK sync process enforced via [`CROSS-SDK-SYNC.md`](CROSS-SDK-SYNC.md), `parity-ticket-check.yml` workflow, and a populated `.github/PULL_REQUEST_TEMPLATE.md` carrying the parity-ticket prompt block (`Parity-Ticket: #N` line or `python_only: true` / `typescript_only: true` opt-out with justification).
+- [ ] **TS-SYNC-02**: `scripts/parity_status.py --milestone <name>` lists open parity tickets per milestone (reads from GitHub via `gh issue list --label parity-ticket` or from `.planning/parity-tickets/*.md` front-matter). Consumed by release-readiness gate in TS-RELEASE-01 and equivalent Python release workflow; refuses to release on non-empty P0 list.
+- [ ] **TS-SYNC-03**: `.github/ISSUE_TEMPLATE/parity_ticket.md` ships, matching the template in [CROSS-SDK-SYNC.md §2.2](CROSS-SDK-SYNC.md) byte-for-byte; new parity tickets opened in GitHub Issues use this template by default.
 
 ### Core / Exceptions / Conversions (Phase TS-W1)
 
@@ -353,7 +356,7 @@ Post-v0.1.0 requirements for the MCP-native data platform vision. See [`phase-05
 
 - [ ] **TS-WEATHER-01**: AWC live-METAR fetcher (`fetchAwcMetars(stationIcaos, hours=168)`) hits `https://aviationweather.gov/api/data/metar` with same query shape as Python; retry/backoff on 429+5xx via `fetch()` + `AbortController` + exponential delay; returns `[]` (never throws) on 4xx / exhausted retries / non-array body.
 - [ ] **TS-WEATHER-02**: IEM CLI fetcher (`downloadCli(stationIcao, year)` + `downloadCliRange`) hits `https://mesonet.agron.iastate.edu/json/cli.py?station=<ICAO>&year=<YYYY>`; 404 → no data for year (skipped by range fetcher); 1s politeness delay; cache path key matches Python `dest_dir/<icao>/cli_<year>.json` layout (under TS cache root).
-- [ ] **TS-WEATHER-03**: IEM ASOS fetcher (`downloadIemAsos(station, start, end)`) uses yearly chunks (calendar-aligned, leap-year safe — lifted from Python Phase 1.5 `yearlyChunksInclusive`); 1s politeness; 60s timeout; CSV staging cache filename `iem_{startIso}_{endIso}_{suffix}.csv`; `skipCache: true && chunkEnd > todayUtc` routes to `_partial` namespace.
+- [ ] **TS-WEATHER-03**: IEM ASOS fetcher (`downloadIemAsos(station, start, end)`) uses yearly chunks (calendar-aligned, leap-year safe — port of Python Phase 1.5 `_iem_chunks.yearly_chunks_exclusive_end`, NOT `yearly_chunks_inclusive`; IEM's `day2` query parameter is EXCLUSIVE, so per-year chunks end on Jan 1 of the following year). 1s politeness; 60s timeout; CSV staging cache filename `iem_{startIso}_{endIso}_{suffix}.csv`; `skipCache: true && chunkEnd > todayUtc` routes to `_partial` namespace.
 - [ ] **TS-WEATHER-04**: GHCNh fetcher (`downloadGhcnh(stationId, year)` + range) hits `https://www.ncei.noaa.gov/oa/global-historical-climatology-network/hourly/access/by-year/<YEAR>/psv/GHCNh_<station_id>_<YEAR>.psv`; 404 → no data (skipped by range fetcher); 1s politeness AFTER successful download (cache hits + 404s skip delay); PSV parser filters `Quality_Code ∈ {"0","1","4","5",""}`.
 
 ### Parsers + Merge (Phase TS-W2)
@@ -368,15 +371,17 @@ Post-v0.1.0 requirements for the MCP-native data platform vision. See [`phase-05
 
 - [ ] **TS-RESEARCH-01**: `research(station, fromDate, toDate, opts?): Promise<ResearchRow[]>` — Mode 1, async, returns the 19-column shape Python returns. AWC + CLI live in TS-W1; full source set (+ IEM ASOS + GHCNh) in TS-W2. `tzOverride` / `casing` / `signal` (AbortSignal) / `cache` (CacheStore) options.
 - [ ] **TS-RESEARCH-02**: `researchBySource(station, source, fromDate, toDate)` — Mode 2 dispatch; rejects unknown source; `assertSourceIdentity(rows, expectedSource)` throws `SourceMismatchError` with `role` (`observations` / `forecasts` / `settlement`) per Python contract.
+- [ ] **TS-MODE2-01**: Source enum + dispatch table for Mode 2 mirrors Python `tradewinds.mode2._VALID_OBSERVATION_SOURCES = frozenset({"iem.archive", "iem.live", "awc.live", "ghcnh.archive"})`. Unknown source → `ValueError` matching Python; per-row source-identity invariant: all rows in a Mode-2 return value carry `source === expectedSource` (no mixed-source rows). Empty-result returns empty array, not throw.
 - [ ] **TS-SNAPSHOT-01**: `settlementDateFor(asOf, station, tzOverride?)`, `settlementWindowUtc(date, station, tzOverride?)`, `cliAvailableAt(date, station, delayHours=10, tzOverride?)`, `marketCloseUtc(date, station, tzOverride?)`, `buildSnapshot(...)`. LST = January UTC offset of station's IANA tz (DST ignored). `buildSnapshot` returns frozen `DataSnapshot` with `.toDict()` (JSON-safe) and `.toToon()` (TOON v3.0 encoded) methods matching Python output on 3-case fixture.
 - [ ] **TS-PARITY-01**: All 5 Python parity fixtures pass against TS `research()` with exact numeric equality on every column. HTTP replay via `msw` against recordings captured from Python; no tolerance loosening.
 
 ### Markets (Phases TS-W1 + TS-W5)
 
 - [ ] **TS-MARKETS-01**: Kalshi `KALSHI_SETTLEMENT_STATIONS` + `KNOWN_WRONG_STATIONS` from codegen. `kalshiNhighResolve(contractId, date)` and `kalshiNlowResolve(contractId, date)` return frozen `{settlementSource: 'cli.archive', settlementStation, cityTicker, contractDate}`. Type check: `date` must be `Date | string` (YYYY-MM-DD), not arbitrary timestamp. Contract test: no `KNOWN_WRONG_STATIONS` value appears in the resolver map.
+- [ ] **TS-MARKETS-02**: `kalshiSettlementFor(contractId, date)` higher-level helper for the Chrome-extension overlay. Dispatches by contract prefix (`KHIGH*` → `kalshiNhighResolve`, `KLOW*` → `kalshiNlowResolve`); returns the same frozen resolution shape. Wraps TS-MARKETS-01 for ergonomic single-call use; documented in `docs/chrome-extension-integration.md`.
 - [ ] **TS-POLY-01**: `PolymarketClient` over `https://gamma-api.polymarket.com` (no auth). User-Agent header required. 0.2s rate limit, 429+5xx retries, pagination `offset += 100` up to 10000 events, dedup by slug. Ports Python Sprint 2t s1+s4 client.
 - [ ] **TS-POLY-02**: `polymarketDiscover()` returns active weather events; Tier 0/1/2/3 resolver (Tier 0 → `DeferredMarketError` for Taipei/HK-lowest; Tier 1 `resolutionSource` URL match on Wunderground/NOAA WRH; Tier 2 description URL match; Tier 3 catalog fallback via `resolveStationForEvent`).
-- [ ] **TS-POLY-03**: `polymarketSettle(eventId, opts?)` enforces UUID4 regex on `eventId`, 16 KB description cap (→ `PayloadTooLargeError`), netloc allowlist (`wunderground.com`, `weather.gov`, + `www.` variants). Reads `internationalDailyExtremes()` for resolution; half-up rounding to whole-degree-native; ≤1°F / 0.6°C diff vs published Polymarket value emits `dataQualityAlert` (not throw); `TooEarlyToSettleError` for unfinalized.
+- [ ] **TS-POLY-03**: `polymarketSettle(eventId, opts?)` enforces UUID4 regex on `eventId`, 16 KB description cap (→ `PayloadTooLargeError`), netloc allowlist (`wunderground.com`, `weather.gov`, + `www.` variants). Reads `internationalDailyExtremes()` (TS-INTL-01) for resolution; half-up rounding to whole-degree-native; ≤1°F / 0.6°C diff vs the **published Polymarket settlement value** (NOT vs Python `polymarket_settle` — Python v0.1.0 ships only the boundary stub; the substantive engine lives in TS) emits `dataQualityAlert` (not throw); `TooEarlyToSettleError` for unfinalized. **Verification basis:** fixture set of ≥5 historically-resolved Polymarket weather events, each with `{eventId, expectedBucket, expectedValue, polymarketPublishedValue}` — TS engine must produce `expectedBucket` and a value within tolerance of `polymarketPublishedValue`. **Depends on TS-INTL-01 (`internationalDailyExtremes` from TS-W6) AND Python Phase 3.1 INTL-02 (`polymarket-city-stations.json` Group B gated codegen output).**
 
 ### Cache + Temporal + Validator (Phase TS-W3)
 
@@ -388,8 +393,9 @@ Post-v0.1.0 requirements for the MCP-native data platform vision. See [`phase-05
 
 ### Transforms + QC (Phase TS-W4)
 
-- [ ] **TS-TRANSFORM-01**: 9 transforms ported with identical column-naming convention `{col}_{op}_{param}`: `lag(rows, col, n)`, `diff(rows, col, n=1)`, `diff2(rows, col)`, `rolling(rows, col, window, fn='mean')`, `calendarFeatures(rows, dateCol, tz?)` (adds `month_sin/cos`, `dow_sin/cos`, `hour_sin/cos`), `spread(rows, colA, colB)`, `windChill(tempF, windMph)`, `heatIndex(tempF, rhPct)`, `clipOutliers(rows, col, opts={std: 3.0})`. NWS wind chill / heat index formulas match Python reference-table fixtures within 1°F.
-- [ ] **TS-QC-01**: `QCEngine.apply(rows)` adds an `obsQcStatus` Int (32-bit bitfield) column; ≥ 5 alpha rules ported with same rule IDs and bit positions as Python `ALPHA_RULES`: temp out-of-physics, dewpoint > temp, wind speed neg/huge, pressure out-of-physics, METAR-corruption. `QCRule` Protocol equivalent (TS interface).
+- [ ] **TS-TRANSFORM-01**: Temporal transforms ported with identical column-naming convention `{col}_{op}_{param}`: `lag(rows, col, n)`, `diff(rows, col, n=1)`, `diff2(rows, col)`, `rolling(rows, col, window, fn='mean'|'median'|'min'|'max'|'std'|'count')`. Pure functions over row arrays; produce derived columns with deterministic naming. Match Python `tradewinds.transforms` output byte-for-byte on a shared 50-row fixture.
+- [ ] **TS-TRANSFORM-02**: Calendar + cross-feature + preprocessing transforms ported: `calendarFeatures(rows, dateCol, tz?)` (adds `month_sin/cos`, `dow_sin/cos`, `hour_sin/cos` using `Intl.DateTimeFormat` for tz-aware extraction), `spread(rows, colA, colB)`, `windChill(tempF, windMph)` (NWS formula; out-of-domain → null), `heatIndex(tempF, rhPct)` (NWS Rothfusz; out-of-domain → null), `clipOutliers(rows, col, opts={std: 3.0})`. Heat-index `heatIndex(90, 70)` and wind-chill `windChill(20, 15)` match NWS reference tables within 1°F. Out-of-domain inputs return `null` (matching Python's `None`); does NOT throw.
+- [ ] **TS-QC-01**: `QCEngine.apply(rows)` adds an `obsQcStatus` Int (32-bit bitfield) column. The 5 alpha rules ported with the EXACT rule IDs and bit positions Python `ALPHA_RULES` ships at `packages/core/src/tradewinds/qc.py:103`: `temp_c.out_of_range` (bit 0), `dew_point_c.exceeds_temp` (bit 1), `wind_speed_ms.negative` (bit 2), `wind_dir_deg.out_of_range` (bit 3), `slp_hpa.out_of_range` (bit 4). The rule IDs and bit positions are loaded from codegen `schemas/qc-alpha-rules.json` (a Group B gated output per CROSS-SDK-SYNC.md §1.2) — TS implementation MUST NOT hand-redefine them. `QCRule` Protocol equivalent (TS interface) carries `ruleId: string` + `bitPosition: number` + `evaluate(rows) → boolean[]` fields. **Depends on Python Phase 3.4 QC-01 materialization of `ALPHA_RULES`; if the gated codegen output is empty at TS-W4 time, TS-W4's QC implementation is blocked until that ships.**
 - [ ] **TS-QC-02**: `crosscheckIemGhcnh(iemRows, ghcnhRows, opts={tolC: 2.0})` returns disagreement rows with `{station, eventTime, tempCIem, tempCGhcnh, deltaC}` columns matching Python output. `clipOutliers` is preprocessing twin.
 
 ### Discovery + International + Versioning (Phase TS-W6)
@@ -416,16 +422,16 @@ Post-v0.1.0 requirements for the MCP-native data platform vision. See [`phase-05
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TS-PKG-01, TS-PKG-02, TS-CODEGEN-01, TS-CODEGEN-02, TS-CORS-01, TS-CI-01 | TS-W0 | Pending |
+| TS-PKG-01, TS-PKG-02, TS-CODEGEN-01, TS-CODEGEN-02, TS-CORS-01, TS-CI-01, TS-SYNC-01, TS-SYNC-02, TS-SYNC-03 | TS-W0 | Pending |
 | TS-CORE-01, TS-CORE-02, TS-WEATHER-01, TS-WEATHER-02, TS-MARKETS-01, TS-RESEARCH-01, TS-SNAPSHOT-01 | TS-W1 | Pending |
 | TS-WEATHER-03, TS-WEATHER-04, TS-PARSER-01..04, TS-MERGE-01, TS-PARITY-01 | TS-W2 | Pending |
 | TS-CACHE-01, TS-CACHE-02, TS-TEMPORAL-01, TS-TEMPORAL-02, TS-VALIDATOR-01, TS-FORMAT-01 | TS-W3 | Pending |
-| TS-RESEARCH-02, TS-TRANSFORM-01, TS-QC-01, TS-QC-02 | TS-W4 | Pending |
-| TS-POLY-01, TS-POLY-02, TS-POLY-03 | TS-W5 | Pending |
+| TS-RESEARCH-02, TS-MODE2-01, TS-TRANSFORM-01, TS-TRANSFORM-02, TS-QC-01, TS-QC-02 | TS-W4 | Pending |
+| TS-MARKETS-02, TS-POLY-01, TS-POLY-02, TS-POLY-03 | TS-W5 | Pending |
 | TS-DISCOVERY-01, TS-DISCOVERY-02, TS-INTL-01, TS-VERSION-01 | TS-W6 | Pending |
 | TS-BUNDLE-01, TS-RELEASE-01, TS-DOCS-01, TS-DOCS-02, TS-DOCS-03, TS-CI-02 | TS-W7 | Pending |
 
-**TS coverage:** 36 requirements, all mapped to TS-W0..TS-W7.
+**TS coverage:** 42 requirements, all mapped to TS-W0..TS-W7.
 
 ---
 *Requirements defined: 2026-05-21*

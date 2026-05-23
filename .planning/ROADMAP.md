@@ -328,20 +328,20 @@ Mirrors the Python v0.1.0 public surface from the same repo (`packages-ts/`). Sa
 
 ### Phase TS-W4: Mode 2 + Transforms + QC Alpha
 **Goal**: Quality layer matching Python Phase 3 + 3.4 + 3.5 — source-explicit dispatch with role-scoped source-identity errors, transforms (lag/diff/rolling/calendar/cross-features) for baseline quant ergonomics, QC alpha rules producing the `obsQcStatus` bitfield.
-**Depends on**: Phase TS-W3
-**Requirements**: TS-MODE2-01, TS-TRANSFORM-01, TS-TRANSFORM-02, TS-QC-01, TS-QC-02
+**Depends on**: Phase TS-W3 AND Python Phase 3.4 QC-01 (the Group B gated codegen output `schemas/qc-alpha-rules.json` must be populated for Wave 5; Waves 1-4 + 6 can proceed without it).
+**Requirements**: TS-RESEARCH-02, TS-MODE2-01, TS-TRANSFORM-01, TS-TRANSFORM-02, TS-QC-01, TS-QC-02
 **Success Criteria** (what must be TRUE):
   1. `researchBySource(station, source, fromDate, toDate)` dispatches per `source ∈ {iem.archive, iem.live, awc.live, ghcnh.archive}`; `assertSourceIdentity(rows, expectedSource)` throws `SourceMismatchError` naming the offending role (`observations`/`forecasts`/`settlement`) per Python contract.
   2. Transforms (`lag`/`diff`/`diff2`/`rolling`/`calendarFeatures`/`spread`/`windChill`/`heatIndex`/`clipOutliers`) match Python `transforms.*` output byte-for-byte on a shared 50-row fixture; column-naming convention `{col}_{op}_{param}` honored.
   3. `heatIndex(90, 70)` and `windChill(20, 15)` match NWS reference table values within 1°F; out-of-domain inputs return `null` (matching Python's `None`).
-  4. `QCEngine.apply(rows)` adds an `obsQcStatus` Int (32-bit bitfield) column; ≥ 5 alpha rules ported (temp/dewpoint/wind/pressure physics bounds + METAR-corruption); same rule IDs and bit positions as Python `ALPHA_RULES`.
+  4. `QCEngine.apply(rows)` adds an `obsQcStatus` Int (32-bit bitfield) column; the 5 alpha rules ported with EXACT rule IDs + bit positions Python `ALPHA_RULES` ships at `packages/core/src/tradewinds/qc.py:103`: `temp_c.out_of_range` (bit 0), `dew_point_c.exceeds_temp` (bit 1), `wind_speed_ms.negative` (bit 2), `wind_dir_deg.out_of_range` (bit 3), `slp_hpa.out_of_range` (bit 4); loaded from codegen `schemas/qc-alpha-rules.json`.
   5. `crosscheckIemGhcnh(iemRows, ghcnhRows, {tolC?})` returns disagreement rows with `{station, eventTime, tempCIem, tempCGhcnh, deltaC}` columns matching Python `crosscheck_iem_ghcnh` output.
 **Plans**: TBD (run `/gsd-plan-phase ts-w4` to break down — directory: `.planning/phases/ts-w4-mode2-transforms-qc-alpha/`)
 
 ### Phase TS-W5: Markets (Polymarket Live + Kalshi Wiring)
-**Goal**: Activate Polymarket discover/settle (Python ships these as `NotImplementedError` stubs in v0.1.0; TS lights them up in v0.1.0). Maintain Python's security defenses verbatim — UUID4 regex, 16 KB description cap, netloc allowlist.
-**Depends on**: Phase TS-W4 (transforms + per-source role tracking) and Phase TS-W6's `internationalDailyExtremes()` if running sequentially; can parallel TS-W6 if internationalDailyExtremes is hoisted from W6 into a shared utility.
-**Requirements**: TS-POLY-01, TS-POLY-02, TS-POLY-03, TS-MARKETS-02
+**Goal**: Activate Polymarket discover/settle in TS. Python v0.1.0 ships only boundary stubs (`NotImplementedError`); the substantive engine lives in TS. Maintain Python's security defenses verbatim — UUID4 regex, 16 KB description cap, netloc allowlist.
+**Depends on**: Phase TS-W4 (transforms + per-source role tracking) AND Phase TS-W6 (`internationalDailyExtremes()` from TS-INTL-01 is consumed by `polymarketSettle`) AND Python Phase 3.1 INTL-02 (Group B gated codegen output `schemas/polymarket-city-stations.json` populated). **Strictly serial after TS-W6 — NOT parallel.**
+**Requirements**: TS-MARKETS-02, TS-POLY-01, TS-POLY-02, TS-POLY-03
 **Success Criteria** (what must be TRUE):
   1. `PolymarketClient` over `https://gamma-api.polymarket.com`: User-Agent header required, 0.2s rate limit, 429+5xx retries, pagination by `offset += 100` up to 10000 events, dedup by slug.
   2. `polymarketDiscover()` against live Gamma API returns ≥ 50 active weather events end-to-end; Tier 0 deferred-station check raises `DeferredMarketError` for Taipei/HK-lowest; Tier 1/2/3 resolver chain matches Python.
