@@ -448,7 +448,23 @@ def forecast_nwp(
             )
             if attempt is None:
                 continue
-            plan, filtered_records, _ = attempt
+            plan_candidate, filtered_records_candidate, _ = attempt
+            # Codex iter-2 P2: an upstream layout change could leave the
+            # .idx intact but match zero records under our variable map.
+            # The old code accepted that as success and produced a
+            # frame of all-NaN rows with `grid_dist_km=NaN` — violating
+            # the schema (grid_dist_km is non-nullable). Treat as
+            # "this mirror has nothing for us" and fall through to the
+            # next one; if every mirror returns nothing, NoLiveForNwpError.
+            if not filtered_records_candidate:
+                log.info(
+                    "forecast_nwp: mirror %s served .idx but matched zero "
+                    "records for variable_map keys=%s",
+                    m,
+                    sorted(variable_map.keys()),
+                )
+                continue
+            plan, filtered_records = plan_candidate, filtered_records_candidate
             break
         if plan is None:
             raise NoLiveForNwpError(
@@ -581,6 +597,13 @@ def forecast_nwp(
                 row.setdefault(col, float("nan"))
             row["qc_status"] = _qc_status_for_row(row)
             row["retrieved_at"] = retrieved_at
+            # Codex iter-2 P2: validator requires a per-row `source`
+            # overlay column on every canonical DataFrame in addition to
+            # df.attrs["source"] (an adversarial frame could otherwise
+            # keep attrs source but strip the per-row column, masking
+            # lost provenance). Populate from the schema's registered
+            # source so the row-level invariant holds.
+            row["source"] = "noaa_bdp"
             rows.append(row)
         df = pd.DataFrame(rows)
         # Codex iter-1 P2: validator (tradewinds.core.validator) checks
@@ -589,6 +612,7 @@ def forecast_nwp(
         # validate the documented schema.forecast_nwp.v1 result do not
         # hit `source_attr_required`.
         df.attrs["source"] = "noaa_bdp"
+        df.attrs["retrieved_at"] = retrieved_at
         # Coerce nullable numeric columns to float64 even if every row
         # turned out NaN — pandas otherwise leaves the column as
         # `object` (silent dtype drift).
@@ -665,8 +689,11 @@ def _empty_dataframe(*, model: str, grid_kind: str) -> pd.DataFrame:
         }
     )
     # Codex iter-1 P2: source attr stamped even on empty path so
-    # downstream validators see it.
+    # downstream validators see it. Codex iter-2 P2: retrieved_at also
+    # required when the rows column is empty — validator falls back to
+    # df.attrs["retrieved_at"] for provenance.
     df.attrs["source"] = "noaa_bdp"
+    df.attrs["retrieved_at"] = datetime.now(UTC)
     return df
 
 

@@ -423,6 +423,15 @@ class TestCodexP2Followups:
         df = _empty_dataframe(model="hrrr", grid_kind="lambert_conformal_conus")
         assert df.attrs.get("source") == "noaa_bdp"
 
+    def test_empty_dataframe_carries_retrieved_at_attr(self) -> None:
+        """Codex iter-2 P2: validator requires `retrieved_at` attr when empty."""
+        from tradewinds.weather.forecast_nwp import _empty_dataframe
+
+        df = _empty_dataframe(model="hrrr", grid_kind="lambert_conformal_conus")
+        retrieved_at = df.attrs.get("retrieved_at")
+        assert retrieved_at is not None
+        assert retrieved_at.tzinfo is UTC
+
     def test_empty_dataframe_nullable_numeric_columns_are_float64(self) -> None:
         from tradewinds.weather.forecast_nwp import _empty_dataframe
 
