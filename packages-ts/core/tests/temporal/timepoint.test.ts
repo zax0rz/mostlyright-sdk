@@ -236,3 +236,109 @@ describe("TimePoint.now()", () => {
     expect(ms).toBeLessThanOrEqual(after);
   });
 });
+
+describe("TimePoint — microsecond precision (iter-11 C13)", () => {
+  // Codex iter-11 CRITICAL: `Date.parse` collapses microsecond-resolution
+  // ISO strings to the same epoch-ms (e.g. ".123456Z" and ".123789Z" both
+  // parse to ms=123). assertNoLeakage / KnowledgeView compared via
+  // `.getTime()`, so a row "known" 333µs after `asOf` could silently
+  // pass the leakage gate. The fix: carry an epoch-µs `bigint` alongside
+  // the Date and route ALL comparisons through it.
+
+  it("parses + preserves 6-digit fractional seconds (.123456Z) as distinct from .123789Z", () => {
+    const a = new TimePoint("2025-01-02T12:00:00.123456Z");
+    const b = new TimePoint("2025-01-02T12:00:00.123789Z");
+    // Date.getTime() would say these are equal (both ms=123) — that's
+    // the bug. equals() must use µs precision and report them as distinct.
+    expect(a.toUTCDate().getTime()).toBe(b.toUTCDate().getTime()); // ms collision (the latent bug surface)
+    expect(a.equals(b)).toBe(false); // µs precision distinguishes them (the fix)
+    expect(a.before(b)).toBe(true);
+    expect(b.after(a)).toBe(true);
+  });
+
+  it("epoch-µs accessor reflects the source string's microsecond field", () => {
+    const tp = new TimePoint("2025-01-02T12:00:00.123456Z");
+    // 2025-01-02T12:00:00Z whole-second epoch = 1735819200 sec
+    // → ms = 1_735_819_200_000, µs base = 1_735_819_200_000_000
+    // plus 123_456 µs → 1_735_819_200_123_456n
+    expect(tp.toEpochMicros()).toBe(1_735_819_200_123_456n);
+  });
+
+  it("epoch-µs accessor for ms-precision input pads the µs field with zeros", () => {
+    const tp = new TimePoint("2025-01-02T12:00:00.123Z");
+    // ".123" pads to ".123000" µs → epoch ms × 1000.
+    expect(tp.toEpochMicros()).toBe(BigInt(Date.UTC(2025, 0, 2, 12, 0, 0, 123)) * 1000n);
+  });
+
+  it("epoch-µs accessor for no-fractional input equals ms × 1000n", () => {
+    const tp = new TimePoint("2025-01-02T12:00:00Z");
+    expect(tp.toEpochMicros()).toBe(BigInt(Date.UTC(2025, 0, 2, 12, 0, 0)) * 1000n);
+  });
+
+  it("epoch-µs accessor for Date input equals ms × 1000n (Date is ms-only)", () => {
+    const d = new Date(Date.UTC(2025, 0, 2, 12, 0, 0, 123));
+    const tp = new TimePoint(d);
+    expect(tp.toEpochMicros()).toBe(BigInt(d.getTime()) * 1000n);
+  });
+
+  it("truncates ≥7-digit fractional seconds to 6 digits (matches Python fromisoformat)", () => {
+    // Python `datetime.fromisoformat` accepts arbitrary precision but
+    // truncates to 6 (microseconds). ".1234567Z" → µs=123456; the 7th
+    // digit is sub-µs and dropped (no rounding).
+    const tp = new TimePoint("2025-01-02T12:00:00.1234567Z");
+    expect(tp.toEpochMicros() % 1_000_000n).toBe(123_456n);
+  });
+
+  it("pads <6-digit fractional seconds (.1Z → 100000 µs)", () => {
+    const tp = new TimePoint("2025-01-02T12:00:00.1Z");
+    expect(tp.toEpochMicros() % 1_000_000n).toBe(100_000n);
+  });
+
+  it("equals — two strings with identical full µs are equal", () => {
+    const a = new TimePoint("2025-01-02T12:00:00.123456Z");
+    const b = new TimePoint("2025-01-02T12:00:00.123456Z");
+    expect(a.equals(b)).toBe(true);
+  });
+
+  it("equals — same instant via different tz suffixes (with µs) is still equal", () => {
+    // 12:00:00.123456 UTC == 07:00:00.123456 -05:00. The µs field must
+    // ride along through the tz normalization.
+    const a = new TimePoint("2025-01-02T12:00:00.123456Z");
+    const b = new TimePoint("2025-01-02T07:00:00.123456-05:00");
+    expect(a.equals(b)).toBe(true);
+  });
+
+  it("before — µs-resolution strict ordering across same ms", () => {
+    const a = new TimePoint("2025-01-02T12:00:00.123456Z");
+    const b = new TimePoint("2025-01-02T12:00:00.123457Z");
+    expect(a.before(b)).toBe(true);
+    expect(b.before(a)).toBe(false);
+    expect(a.before(a)).toBe(false);
+  });
+
+  it("toPythonIso round-trips 6-digit microseconds exactly (iter-11 C13)", () => {
+    // The H1 fix emitted `.123000` for a `.123Z` source; the C13 fix
+    // extends that to emit the TRUE 6-digit fraction for sources that
+    // carry full µs precision.
+    const tp = new TimePoint("2025-01-02T12:00:00.123456Z");
+    expect(tp.toPythonIso()).toBe("2025-01-02T12:00:00.123456+00:00");
+  });
+
+  it("toPythonIso — zero microseconds (no fractional) → no subsecond portion", () => {
+    const tp = new TimePoint("2025-01-02T12:00:00Z");
+    expect(tp.toPythonIso()).toBe("2025-01-02T12:00:00+00:00");
+  });
+
+  it("toPythonIso — ms-precision input still pads to 6 digits (back-compat with H1)", () => {
+    const tp = new TimePoint("2025-01-02T12:00:00.123Z");
+    expect(tp.toPythonIso()).toBe("2025-01-02T12:00:00.123000+00:00");
+  });
+
+  it("toPythonIso — preserves the lowest µs (.000001Z) without dropping to zero", () => {
+    // The bug-bait case: a single µs above zero must NOT round down to
+    // "+00:00" (no fractional). The µs accessor sees 1, the formatter
+    // emits ".000001+00:00".
+    const tp = new TimePoint("2025-01-02T12:00:00.000001Z");
+    expect(tp.toPythonIso()).toBe("2025-01-02T12:00:00.000001+00:00");
+  });
+});

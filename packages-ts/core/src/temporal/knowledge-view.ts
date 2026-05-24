@@ -28,7 +28,11 @@ import { TimePoint } from "./timepoint.js";
 export class KnowledgeView<Row extends { knowledge_time: string }> {
   readonly #rows: ReadonlyArray<Row>;
   readonly #asOf: TimePoint;
-  readonly #asOfMs: number;
+  // Iter-11 C13: cache the asOf epoch-µs (BigInt) for filter comparisons.
+  // Previously cached `asOfMs` (epoch-ms) and compared via `Date.parse`,
+  // which collapsed `.123456Z` and `.123789Z` to the same instant — a
+  // µs-resolution row "known" after asOf could slip through.
+  readonly #asOfMicros: bigint;
 
   constructor(rows: ReadonlyArray<Row>, asOf: TimePoint) {
     if (!(asOf instanceof TimePoint)) {
@@ -75,7 +79,7 @@ export class KnowledgeView<Row extends { knowledge_time: string }> {
     }
     this.#rows = rows;
     this.#asOf = asOf;
-    this.#asOfMs = asOf.toUTCDate().getTime();
+    this.#asOfMicros = asOf.toEpochMicros();
   }
 
   /**
@@ -85,7 +89,16 @@ export class KnowledgeView<Row extends { knowledge_time: string }> {
    * affecting subsequent calls.
    */
   rows(): ReadonlyArray<Row> {
-    return this.#rows.filter((r) => Date.parse(r.knowledge_time) <= this.#asOfMs);
+    // Iter-11 C13: per-row comparison goes through TimePoint so we get
+    // epoch-µs precision. Constructing a TimePoint per row is more work
+    // than the previous `Date.parse(...)` shortcut, but the constructor
+    // is also the only path that captures 4-6-digit fractional seconds
+    // correctly — without it, two distinct µs-resolution rows would
+    // compare equal via `Date.parse` (which is ms-only).
+    return this.#rows.filter((r) => {
+      const ktMicros = new TimePoint(r.knowledge_time).toEpochMicros();
+      return ktMicros <= this.#asOfMicros;
+    });
   }
 
   /** The as-of cutoff supplied at construction. */

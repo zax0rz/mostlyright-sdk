@@ -50,7 +50,10 @@ export function assertNoLeakage<Row extends { knowledge_time: string }>(
   if (!(asOf instanceof TimePoint)) {
     throw new TypeError(`asOf must be a TimePoint; got ${typeof asOf}`);
   }
-  const asOfMs = asOf.toUTCDate().getTime();
+  // Iter-11 C13: compare via TimePoint.after() (epoch-µs) rather than
+  // `toUTCDate().getTime()` (epoch-ms). A row "known" 333µs after `asOf`
+  // would silently pass the ms-comparison gate; the µs-aware comparison
+  // catches it.
   const violations: Array<{ row_idx: number; knowledge_time: string }> = [];
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
@@ -110,8 +113,11 @@ export function assertNoLeakage<Row extends { knowledge_time: string }>(
         },
       );
     }
-    const t = kt.toUTCDate().getTime();
-    if (t > asOfMs) {
+    // Iter-11 C13: µs-aware comparison. `kt.after(asOf)` uses epoch-µs
+    // (BigInt), so a `.123456Z` knowledge_time vs `.123000Z` asOf is
+    // correctly flagged as leakage (456µs strictly after asOf), whereas
+    // the previous `.getTime() > asOfMs` (epoch-ms) would have missed it.
+    if (kt.after(asOf)) {
       // Re-emit knowledge_time in the Python isoformat shape so cross-
       // language MCP consumers see byte-equivalent strings.
       violations.push({ row_idx: i, knowledge_time: kt.toPythonIso() });

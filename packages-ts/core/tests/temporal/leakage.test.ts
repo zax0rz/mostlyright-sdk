@@ -242,6 +242,70 @@ describe("assertNoLeakage — iter-3 C9 validation contract", () => {
   });
 });
 
+describe("assertNoLeakage — microsecond precision (iter-11 C13)", () => {
+  // Codex iter-11 CRITICAL: previously `assertNoLeakage` compared via
+  // `toUTCDate().getTime()` (epoch-ms). A row with knowledge_time
+  // 333µs after asOf shared the same epoch-ms and silently passed the
+  // gate — a temporal-safety violation. The fix routes the comparison
+  // through `TimePoint.after()` which uses epoch-µs (BigInt).
+
+  it("rejects a row with knowledge_time 333µs after asOf (the C13 bug case)", () => {
+    // The literal sample assertion from the iter-11 finding: knowledge
+    // 333µs after asOf. ms-comparison would call this leak-free; µs
+    // comparison correctly flags it.
+    const asOfUs = new TimePoint("2025-01-02T12:00:00.123456Z");
+    const rows = [{ knowledge_time: "2025-01-02T12:00:00.123789Z" }];
+    expect(() => assertNoLeakage(rows, asOfUs)).toThrow(LeakageError);
+    try {
+      assertNoLeakage(rows, asOfUs);
+    } catch (e) {
+      const err = e as LeakageError;
+      expect(err.violatingCount).toBe(1);
+      expect(err.sampleViolations[0]).toMatchObject({
+        row_idx: 0,
+        knowledge_time: "2025-01-02T12:00:00.123789+00:00",
+      });
+    }
+  });
+
+  it("accepts a row with knowledge_time exactly equal at µs precision (boundary)", () => {
+    const asOfUs = new TimePoint("2025-01-02T12:00:00.123456Z");
+    const rows = [{ knowledge_time: "2025-01-02T12:00:00.123456Z" }];
+    expect(() => assertNoLeakage(rows, asOfUs)).not.toThrow();
+  });
+
+  it("accepts a row with knowledge_time 1µs BEFORE asOf", () => {
+    const asOfUs = new TimePoint("2025-01-02T12:00:00.123456Z");
+    const rows = [{ knowledge_time: "2025-01-02T12:00:00.123455Z" }];
+    expect(() => assertNoLeakage(rows, asOfUs)).not.toThrow();
+  });
+
+  it("rejects a row with knowledge_time 1µs AFTER asOf", () => {
+    const asOfUs = new TimePoint("2025-01-02T12:00:00.123456Z");
+    const rows = [{ knowledge_time: "2025-01-02T12:00:00.123457Z" }];
+    expect(() => assertNoLeakage(rows, asOfUs)).toThrow(LeakageError);
+  });
+
+  it("ms-comparison would have falsely passed: distinct µs within same ms (regression pin)", () => {
+    // Both knowledge_times share epoch-ms (123); only the µs field
+    // separates them. The previous `.getTime() > asOfMs` would miss the
+    // leakage. This test pins the µs-aware behavior.
+    const asOfUs = new TimePoint("2025-01-02T12:00:00.123000Z");
+    const rows = [
+      { knowledge_time: "2025-01-02T12:00:00.123001Z" }, // 1µs after — leak
+      { knowledge_time: "2025-01-02T12:00:00.123999Z" }, // 999µs after — leak
+    ];
+    try {
+      assertNoLeakage(rows, asOfUs);
+      throw new Error("expected LeakageError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(LeakageError);
+      const err = e as LeakageError;
+      expect(err.violatingCount).toBe(2);
+    }
+  });
+});
+
 describe("LeakageDetector", () => {
   it(".check(rows) delegates to assertNoLeakage", () => {
     const detector = new LeakageDetector(asOf);
