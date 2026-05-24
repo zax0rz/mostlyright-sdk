@@ -75,6 +75,11 @@
       "types": "./dist/internal/cache/fs.d.ts",
       "import": "./dist/internal/cache/fs.mjs",
       "require": "./dist/internal/cache/fs.cjs"
+    },
+    "./discovery": {
+      "types": "./dist/discovery/index.d.ts",
+      "import": "./dist/discovery/index.mjs",
+      "require": "./dist/discovery/index.cjs"
     }
   },
   "files": ["dist"],

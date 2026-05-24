@@ -180,4 +180,24 @@ export default defineConfig([
       return { js: ".cjs" };
     },
   },
+  {
+    // TS-W6 — discovery surface (availability, internationalDailyExtremes,
+    // buildSnapshot/DataSnapshot, dataVersionFromComponents/forResearch,
+    // describe/featureCatalog/climateGaps). Emitted at
+    // @tradewinds/core/discovery. Lives at subpath (NOT root barrel) to
+    // keep the @tradewinds/core main bundle under its 25 KB size-limit
+    // gate (TS-BUNDLE-01); same pattern as transforms / temporal /
+    // formats / qc / validator.
+    entry: { index: "src/discovery/index.ts" },
+    format: ["esm", "cjs"],
+    dts: true,
+    sourcemap: true,
+    clean: false,
+    target: "es2022",
+    outDir: "dist/discovery",
+    outExtension({ format }) {
+      if (format === "esm") return { js: ".mjs" };
+      return { js: ".cjs" };
+    },
+  },
 ]);

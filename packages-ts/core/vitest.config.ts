@@ -8,6 +8,7 @@ export default defineConfig({
     // everything else stays on Node default for speed.
     environmentMatchGlobs: [
       ["tests/internal/cache/indexeddb.test.ts", "jsdom"],
+      ["tests/internal/cache/list-keys-idb.test.ts", "jsdom"],
       ["tests/internal/cache/default.test.ts", "jsdom"],
     ],
     setupFiles: ["./tests/setup-fake-indexeddb.ts"],
