@@ -373,6 +373,105 @@ describe("research() cache integration (TS-W3 Plan 06)", () => {
     );
   });
 
+  // iter-12 C14: observation cache must skip future + not-strictly-past
+  // UTC months. The pre-existing `shouldSkipCacheForCurrentLstMonth` and
+  // `isMonthVolatile` gates catch the current LST month and the 30-day
+  // post-month volatile window, but both return false for months in the
+  // FUTURE relative to `now` — and `shouldSkipCacheForCurrentLstMonth`
+  // can also miss the current UTC month when the station's LST is in the
+  // prior UTC month (negative tz offsets near UTC midnight). Without
+  // `isWritableMonth`, empty / partial IEM ASOS or GHCNh chunks for a
+  // future or current-UTC month would be persisted and later served as
+  // complete. These tests pin the gate.
+  it("C14: future month → no IEM/GHCNh cache.set, no cache.get attempted", async () => {
+    installFetchMock({
+      cli: [],
+      awc: [],
+    });
+    const store = new MemoryStore();
+    const getSpy = vi.spyOn(store, "get");
+    const setSpy = vi.spyOn(store, "set");
+    // now = 2025-06-15. Query a future month (2026-01). research() will
+    // still attempt to fetch live data; we just require that the cache
+    // is bypassed entirely for that month.
+    const now = new Date("2025-06-15T12:00:00Z");
+    await research("NYC", "2026-01-15", "2026-01-15", { cache: store, now });
+
+    const writtenKeys = setSpy.mock.calls.map((c) => String(c[0]));
+    const readKeys = getSpy.mock.calls.map((c) => String(c[0]));
+
+    // No IEM/GHCNh observation key for 2026-01 may be written.
+    expect(writtenKeys).not.toContain("tradewinds:v1:observations:NYC:2026:01:iem");
+    expect(writtenKeys).not.toContain("tradewinds:v1:observations:NYC:2026:01:ghcnh");
+    // And no read attempts for those keys either.
+    expect(readKeys).not.toContain("tradewinds:v1:observations:NYC:2026:01:iem");
+    expect(readKeys).not.toContain("tradewinds:v1:observations:NYC:2026:01:ghcnh");
+  });
+
+  it("C14: current UTC month → no IEM/GHCNh cache.set (covers UTC-rollover tail)", async () => {
+    installFetchMock({
+      cli: [],
+      awc: [],
+    });
+    const store = new MemoryStore();
+    const setSpy = vi.spyOn(store, "set");
+    // now = 2025-01-01T01:00Z (just past UTC midnight Jan 1). For a UTC-5
+    // station (NYC), LST is still 2024-12-31T20:00. The OLD
+    // `shouldSkipCacheForCurrentLstMonth` would return false for the
+    // current UTC month 2025-01 (because station LST is 2024-12) — but
+    // `isWritableMonth` correctly rejects 2025-01 as the current UTC
+    // month, preventing a partial cache write at the UTC-rollover tail.
+    const now = new Date("2025-01-01T01:00:00Z");
+    await research("NYC", "2025-01-01", "2025-01-01", { cache: store, now });
+
+    const writtenKeys = setSpy.mock.calls.map((c) => String(c[0]));
+    expect(writtenKeys).not.toContain("tradewinds:v1:observations:NYC:2025:01:iem");
+    expect(writtenKeys).not.toContain("tradewinds:v1:observations:NYC:2025:01:ghcnh");
+  });
+
+  it("C14: past UTC month that is still current LST month → still gated by shouldSkipCacheForCurrentLstMonth", async () => {
+    installFetchMock({
+      cli: [],
+      awc: [],
+    });
+    const store = new MemoryStore();
+    const setSpy = vi.spyOn(store, "set");
+    // Choose a station and `now` such that:
+    //   - UTC month is (year, month+1) — so isWritableMonth(year, month, now) = true (past UTC month)
+    //   - station LST is still in (year, month) — so shouldSkipCacheForCurrentLstMonth = true
+    // LAX (America/Los_Angeles → UTC-8 LST) at 2025-02-01T07:00Z:
+    //   - UTC month = Feb 2025 → isWritableMonth(2025, 1) = true (past UTC month)
+    //   - LST = 2025-01-31T23:00 → station LST still in Jan 2025
+    //   → shouldSkipCacheForCurrentLstMonth(LAX, 2025, 1) = true → no write.
+    const now = new Date("2025-02-01T07:00:00Z");
+    await research("LAX", "2025-01-15", "2025-01-15", { cache: store, now });
+
+    const writtenKeys = setSpy.mock.calls.map((c) => String(c[0]));
+    // Jan 2025 is a past UTC month (writable) but LST is still in Jan
+    // for LAX, so `shouldSkipCacheForCurrentLstMonth` MUST fire and block
+    // the write. The combined skipCache predicate stays true → no IEM
+    // write for 2025-01.
+    expect(writtenKeys).not.toContain("tradewinds:v1:observations:LAX:2025:01:iem");
+    expect(writtenKeys).not.toContain("tradewinds:v1:observations:LAX:2025:01:ghcnh");
+  });
+
+  it("C14: past UTC month + past LST month → cacheable (existing behavior preserved)", async () => {
+    installFetchMock({
+      cli: [],
+      awc: [],
+    });
+    const store = new MemoryStore();
+    const setSpy = vi.spyOn(store, "set");
+    // 2025-06-15: 2023-01 is past UTC AND past LST AND past volatile window.
+    // It MUST still be written — `isWritableMonth` is an ADDITIONAL gate,
+    // not a replacement.
+    const now = new Date("2025-06-15T12:00:00Z");
+    await research("NYC", "2023-01-15", "2023-01-15", { cache: store, now });
+
+    const writtenKeys = setSpy.mock.calls.map((c) => String(c[0]));
+    expect(writtenKeys).toContain("tradewinds:v1:observations:NYC:2023:01:iem");
+  });
+
   it("H14: GHCNh 404 is memoized; empty per-month entries cached so warm calls skip NCEI", async () => {
     let ghcnhHits = 0;
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {

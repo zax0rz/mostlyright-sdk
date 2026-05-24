@@ -24,5 +24,6 @@ export {
   shouldSkipCacheForCurrentLstYear,
   isLiveSource,
   isWithinVolatileWindow,
+  isWritableMonth,
 } from "./skip-rules.js";
 export { cacheKeyForObservations, cacheKeyForClimate } from "./keys.js";

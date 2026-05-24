@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   isLiveSource,
   isWithinVolatileWindow,
+  isWritableMonth,
   shouldSkipCacheForCurrentLstMonth,
   shouldSkipCacheForCurrentLstYear,
 } from "../../../src/internal/cache/skip-rules.js";
@@ -91,6 +92,37 @@ describe("isWithinVolatileWindow", () => {
   it("invalid dates throw RangeError", () => {
     expect(() => isWithinVolatileWindow("not-a-date", "2025-01-15")).toThrow(RangeError);
     expect(() => isWithinVolatileWindow("2025-01-15", "not-a-date")).toThrow(RangeError);
+  });
+});
+
+describe("isWritableMonth (iter-12 C14)", () => {
+  it("future month → not writable", () => {
+    const now = new Date("2025-06-15T12:00:00Z");
+    expect(isWritableMonth(2026, 1, now)).toBe(false);
+    expect(isWritableMonth(2025, 12, now)).toBe(false);
+    expect(isWritableMonth(2025, 7, now)).toBe(false);
+  });
+
+  it("current UTC month → not writable", () => {
+    const now = new Date("2025-06-15T12:00:00Z");
+    expect(isWritableMonth(2025, 6, now)).toBe(false);
+  });
+
+  it("strictly past UTC month → writable", () => {
+    const now = new Date("2025-06-15T12:00:00Z");
+    expect(isWritableMonth(2025, 5, now)).toBe(true);
+    expect(isWritableMonth(2025, 1, now)).toBe(true);
+    expect(isWritableMonth(2024, 12, now)).toBe(true);
+    expect(isWritableMonth(2020, 6, now)).toBe(true);
+  });
+
+  it("UTC year boundary: Jan 1 UTC is in the new year regardless of station LST", () => {
+    // 2025-01-01T01:00Z is 2025-01 UTC. The previous UTC month (2024-12)
+    // is writable; 2025-01 is the current UTC month and NOT writable —
+    // even though a UTC-5 station's LST is still 2024-12-31T20:00.
+    const now = new Date("2025-01-01T01:00:00Z");
+    expect(isWritableMonth(2024, 12, now)).toBe(true);
+    expect(isWritableMonth(2025, 1, now)).toBe(false);
   });
 });
 

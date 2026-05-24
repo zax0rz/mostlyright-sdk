@@ -69,6 +69,36 @@ export function shouldSkipCacheForCurrentLstYear(
 }
 
 /**
+ * True iff `(year, month)` is a **strictly past** UTC month relative to
+ * `now` — i.e. cacheable on the strictest possible temporal axis.
+ *
+ * iter-12 C14: `shouldSkipCacheForCurrentLstMonth` and `isMonthVolatile`
+ * (lives in `meta/src/research.ts`) only catch the *current* LST month
+ * and the immediate post-month volatile tail. Both predicates return
+ * false for months that lie in the FUTURE relative to `now`, or for the
+ * current UTC month when the station's LST is still in the prior UTC
+ * month (negative tz offsets near UTC midnight). An empty / partial
+ * fetch for such a month would be persisted and later served as
+ * "complete." `isWritableMonth` is a stricter additional gate: it
+ * requires the (year, month) to be lexicographically less than the
+ * UTC current month, so neither future months nor the partial current
+ * UTC month are ever cacheable — regardless of any station's LST.
+ *
+ * Mirrors Python `cache.py:_is_current_lst_month`'s implicit invariant
+ * (Python paths use parquet-on-disk which can't be written for future
+ * dates because the cache root never spawns those years). TS callers
+ * MUST gate cache reads AND writes on this predicate before applying
+ * the LST / volatile-window gates.
+ */
+export function isWritableMonth(year: number, month: number, now: Date): boolean {
+  const nowYear = now.getUTCFullYear();
+  const nowMonth = now.getUTCMonth() + 1; // 1-12
+  if (year < nowYear) return true;
+  if (year > nowYear) return false;
+  return month < nowMonth;
+}
+
+/**
  * True iff `source` ends with `.live`.
  *
  * Mirrors Python `_is_live_source` byte-equivalently — accepts null /

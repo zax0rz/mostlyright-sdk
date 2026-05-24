@@ -26,6 +26,7 @@ import {
   defaultCacheStore,
   isLiveSource,
   isWithinVolatileWindow,
+  isWritableMonth,
   shouldSkipCacheForCurrentLstMonth,
   shouldSkipCacheForCurrentLstYear,
 } from "@tradewinds/core/internal/cache";
@@ -512,9 +513,16 @@ async function fetchIemAsosWithCache(
   const pairs = monthsInRange(fromDate, extendedTo);
   for (const [year, month] of pairs) {
     const cacheKey = cacheKeyForObservations(stationCode, year, month, "iem");
+    // iter-12 C14: `isWritableMonth` is the strictest temporal gate.
+    // Any month that isn't STRICTLY in the past UTC-wise (future months
+    // or the current UTC month, including the UTC-rollover tail where
+    // LST is still in the prior UTC month) is never cacheable —
+    // regardless of LST or volatile-window logic. Force a live fetch
+    // and skip both reads AND writes for non-writable months.
+    const writable = isWritableMonth(year, month, now);
     const skipCurrentMonth = shouldSkipCacheForCurrentLstMonth(stationCode, year, month, now);
     const skipVolatile = isMonthVolatile(year, month, now);
-    const skipCache = skipCurrentMonth || skipVolatile;
+    const skipCache = !writable || skipCurrentMonth || skipVolatile;
 
     // --- Cache read (best-effort) -------------------------------------
     // iter-6 C12: a `cache.get` failure must not abort the month — fall
@@ -660,9 +668,14 @@ async function fetchGhcnhWithCache(
   const pairs = monthsInRange(fromDate, extendedTo);
   for (const [year, month] of pairs) {
     const cacheKey = cacheKeyForObservations(stationCode, year, month, "ghcnh");
+    // iter-12 C14: stricter additional temporal gate — see the matching
+    // comment in `fetchIemAsosWithCache`. NCEI's archive can return
+    // empty data for not-yet-published months; we must NEVER persist a
+    // not-strictly-past UTC month as if it were complete.
+    const writable = isWritableMonth(year, month, now);
     const skipCurrentMonth = shouldSkipCacheForCurrentLstMonth(stationCode, year, month, now);
     const skipVolatile = isMonthVolatile(year, month, now);
-    const skipCache = skipCurrentMonth || skipVolatile;
+    const skipCache = !writable || skipCurrentMonth || skipVolatile;
 
     // --- Cache read (best-effort) -------------------------------------
     let monthRows: Observation[] | null = null;
