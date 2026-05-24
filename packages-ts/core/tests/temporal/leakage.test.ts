@@ -6,7 +6,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { LeakageError } from "../../src/exceptions/index.js";
+import { LeakageError, SchemaValidationError } from "../../src/exceptions/index.js";
 import { LeakageDetector, assertNoLeakage } from "../../src/temporal/leakage.js";
 import { TimePoint } from "../../src/temporal/timepoint.js";
 
@@ -99,23 +99,146 @@ describe("assertNoLeakage", () => {
     ).toThrow(TypeError);
   });
 
-  it("rows with non-string knowledge_time are SKIPPED (not counted as leakage)", () => {
-    // Matches Python: validation is KnowledgeView's job; leakage check is
-    // the > comparison only. A non-string knowledge_time silently skips.
+  it("rows with non-string knowledge_time → SchemaValidationError (iter-3 C9)", () => {
+    // Iter-3 C9 fix: Python's `assert_no_leakage` raises
+    // SchemaValidationError when the column isn't a datetime dtype. Skipping
+    // those rows let malformed temporal data pass the leakage gate
+    // silently. The TS port now raises with `rule="datetime_dtype"`.
     const rows = [
       { knowledge_time: "2025-01-01T00:00:00Z" },
-      { knowledge_time: 12345 }, // skip
+      { knowledge_time: 12345 },
     ] as unknown as Array<{ knowledge_time: string }>;
-    expect(() => assertNoLeakage(rows, asOf)).not.toThrow();
+    expect(() => assertNoLeakage(rows, asOf)).toThrow(SchemaValidationError);
+    try {
+      assertNoLeakage(rows, asOf);
+    } catch (e) {
+      const err = e as SchemaValidationError;
+      expect(err.violations[0]).toMatchObject({
+        column: "knowledge_time",
+        rule: "datetime_dtype",
+        row_idx: 1,
+      });
+    }
   });
 
-  it("rows with unparseable knowledge_time string are skipped (not counted)", () => {
+  it("rows with unparseable knowledge_time string → SchemaValidationError (iter-3 C9)", () => {
+    // Iter-3 C9 fix: an unparseable string is the per-row analog of
+    // Python's `col.dt.tz is None` (i.e. not a tz-aware datetime). Surfaced
+    // as `rule="tz_aware_utc"`.
     const rows = [{ knowledge_time: "2025-01-01T00:00:00Z" }, { knowledge_time: "not-a-date" }];
-    expect(() => assertNoLeakage(rows, asOf)).not.toThrow();
+    expect(() => assertNoLeakage(rows, asOf)).toThrow(SchemaValidationError);
+    try {
+      assertNoLeakage(rows, asOf);
+    } catch (e) {
+      const err = e as SchemaValidationError;
+      expect(err.violations[0]).toMatchObject({
+        column: "knowledge_time",
+        rule: "tz_aware_utc",
+        row_idx: 1,
+      });
+    }
   });
 
   it("empty input → returns void", () => {
     expect(() => assertNoLeakage([], asOf)).not.toThrow();
+  });
+});
+
+describe("assertNoLeakage — iter-3 C9 validation contract", () => {
+  // Pin every branch of the Python `assert_no_leakage` validation
+  // contract: missing field → `required`, non-string → `datetime_dtype`,
+  // naive / date-only → `tz_aware_utc`, valid → no throw. Cross-SDK MCP
+  // consumers see byte-equivalent rule strings.
+
+  it("missing knowledge_time field → SchemaValidationError(rule='required')", () => {
+    const rows = [{ knowledge_time: undefined }] as unknown as Array<{
+      knowledge_time: string;
+    }>;
+    expect(() => assertNoLeakage(rows, asOf)).toThrow(SchemaValidationError);
+    try {
+      assertNoLeakage(rows, asOf);
+    } catch (e) {
+      const err = e as SchemaValidationError;
+      expect(err.violations[0]).toMatchObject({
+        column: "knowledge_time",
+        rule: "required",
+        row_idx: 0,
+      });
+    }
+  });
+
+  it("numeric knowledge_time → SchemaValidationError(rule='datetime_dtype')", () => {
+    const rows = [{ knowledge_time: 12345 }] as unknown as Array<{
+      knowledge_time: string;
+    }>;
+    expect(() => assertNoLeakage(rows, asOf)).toThrow(SchemaValidationError);
+    try {
+      assertNoLeakage(rows, asOf);
+    } catch (e) {
+      const err = e as SchemaValidationError;
+      expect(err.violations[0]).toMatchObject({
+        column: "knowledge_time",
+        rule: "datetime_dtype",
+        row_idx: 0,
+      });
+    }
+  });
+
+  it("date-only string (no tz) → SchemaValidationError(rule='tz_aware_utc')", () => {
+    const rows = [{ knowledge_time: "2025-01-01" }];
+    expect(() => assertNoLeakage(rows, asOf)).toThrow(SchemaValidationError);
+    try {
+      assertNoLeakage(rows, asOf);
+    } catch (e) {
+      const err = e as SchemaValidationError;
+      expect(err.violations[0]).toMatchObject({
+        column: "knowledge_time",
+        rule: "tz_aware_utc",
+        row_idx: 0,
+      });
+    }
+  });
+
+  it("naive datetime (no tz suffix) → SchemaValidationError(rule='tz_aware_utc')", () => {
+    const rows = [{ knowledge_time: "2025-01-01T12:00:00" }];
+    expect(() => assertNoLeakage(rows, asOf)).toThrow(SchemaValidationError);
+    try {
+      assertNoLeakage(rows, asOf);
+    } catch (e) {
+      const err = e as SchemaValidationError;
+      expect(err.violations[0]).toMatchObject({
+        column: "knowledge_time",
+        rule: "tz_aware_utc",
+        row_idx: 0,
+      });
+    }
+  });
+
+  it("valid tz-aware UTC datetime → does NOT throw", () => {
+    const rows = [{ knowledge_time: "2025-01-01T12:00:00Z" }];
+    expect(() => assertNoLeakage(rows, asOf)).not.toThrow();
+  });
+
+  it("valid tz-aware non-UTC datetime → does NOT throw (offset preserved)", () => {
+    // "2025-01-01T07:00:00-05:00" → UTC 2025-01-01T12:00:00, equal to asOf
+    // (NOT leakage). Confirms the offset path through TimePoint flows
+    // correctly through the new validation pass.
+    const rows = [{ knowledge_time: "2025-01-01T07:00:00-05:00" }];
+    expect(() => assertNoLeakage(rows, asOf)).not.toThrow();
+  });
+
+  it("impossible calendar date (iter-3 C8 sibling) → SchemaValidationError", () => {
+    // The C8 calendar-validity fix makes "2025-02-30T00:00:00Z" raise from
+    // TimePoint; assertNoLeakage's re-wrap surfaces it as
+    // `rule="tz_aware_utc"` (the per-row analog of Python's "not a valid
+    // datetime"). Without C9, this would have been silently skipped.
+    const rows = [{ knowledge_time: "2025-02-30T00:00:00Z" }];
+    expect(() => assertNoLeakage(rows, asOf)).toThrow(SchemaValidationError);
+  });
+
+  it("null row → SchemaValidationError(rule='required')", () => {
+    const rows = [null] as unknown as Array<{ knowledge_time: string }>;
+    expect(() => assertNoLeakage(rows, asOf)).toThrow(SchemaValidationError);
   });
 });
 
