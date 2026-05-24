@@ -22,6 +22,13 @@ const ISO_DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 // in `_from_iso_string` that checks `"T" not in s and " " not in s`.
 const DATETIME_SEPARATOR = /[T ]/;
 const TZ_SUFFIX = /(?:Z|[+-]\d{2}:?\d{2})$/;
+// Calendar-validity check (iter-3 C8): extract the YYYY-MM-DD prefix so we
+// can verify that the parsed UTC date matches the literal date the caller
+// supplied. `Date.parse("2025-02-30T00:00:00Z")` silently normalizes to
+// `2025-03-02T00:00:00.000Z`, while Python `datetime.fromisoformat(...)`
+// raises ValueError. Mirror the Python contract by rejecting any string
+// whose calendar fields don't survive the round-trip.
+const ISO_DATE_PREFIX = /^(\d{4})-(\d{2})-(\d{2})/;
 
 /**
  * UTC-aware timestamp wrapper.
@@ -86,6 +93,65 @@ export class TimePoint {
     const parsed = Date.parse(trimmed);
     if (!Number.isFinite(parsed)) {
       throw new RangeError(`TimePoint could not parse ISO 8601 string ${JSON.stringify(value)}`);
+    }
+    // Calendar-validity check (iter-3 C8): `Date.parse` is forgiving — it
+    // silently normalizes impossible dates (e.g. "2025-02-30T..." becomes
+    // "2025-03-02T...", "2025-13-01T..." becomes "2026-01-01T..."). Python
+    // `datetime.fromisoformat` raises ValueError for the same inputs. To
+    // match the Python contract, extract the YYYY-MM-DD prefix from the
+    // ORIGINAL trimmed input and require that the parsed Date's UTC
+    // year/month/day match exactly. Any mismatch means Date.parse rolled
+    // the date over — reject loudly. The parsed date's UTC fields are the
+    // right basis for comparison because non-UTC tz-suffixes (e.g.
+    // "...T23:00:00-05:00") legitimately shift the wall-clock date forward
+    // when converted to UTC, but only by ±1 day; an off-by-one shift due
+    // to a legitimate tz offset will still hit this check, so we ALSO
+    // accept a match against the local fields the source string asserts.
+    //
+    // Strategy: compute what the source-side year/month/day would be after
+    // applying the declared UTC offset, then compare those derived fields
+    // against the literal YYYY-MM-DD in the string. If the source string
+    // was an impossible calendar date, Date.parse's silent normalization
+    // will have shifted the underlying ms beyond what the declared offset
+    // alone could account for, so the derived fields won't match.
+    const dateMatch = ISO_DATE_PREFIX.exec(trimmed);
+    if (dateMatch !== null) {
+      const litYear = Number(dateMatch[1]);
+      const litMonth = Number(dateMatch[2]);
+      const litDay = Number(dateMatch[3]);
+      // Derive the source-side date by undoing the declared tz offset.
+      // The trailing tz suffix is one of: "Z", "+HH:MM", "-HH:MM", "+HHMM",
+      // "-HHMM". For "Z" the offset is 0. For the signed forms, the offset
+      // is the source's distance ahead/behind UTC: a "-05:00" tz on
+      // "10:00:00" means UTC is 15:00:00, so to recover the source's
+      // wall-clock year/month/day we ADD the offset back to the UTC ms
+      // before extracting Y/M/D. Equivalently: build a Date at the same
+      // ms, then read its UTC fields after offsetting.
+      let offsetMin = 0;
+      const tzMatch = /(Z|[+-]\d{2}:?\d{2})$/.exec(trimmed);
+      if (tzMatch !== null && tzMatch[1] !== "Z") {
+        const tz = tzMatch[1];
+        // tz is like "+05:30", "-0500", "+0000".
+        const sign = tz.startsWith("-") ? -1 : 1;
+        const body = tz.slice(1).replace(":", "");
+        const hh = Number(body.slice(0, 2));
+        const mm = Number(body.slice(2, 4));
+        offsetMin = sign * (hh * 60 + mm);
+      }
+      // The source's wall-clock instant in ms-since-epoch: take the UTC ms
+      // and add the offset (positive offset means source is ahead of UTC).
+      const sourceMs = parsed + offsetMin * 60_000;
+      const sourceDate = new Date(sourceMs);
+      const derivedYear = sourceDate.getUTCFullYear();
+      const derivedMonth = sourceDate.getUTCMonth() + 1;
+      const derivedDay = sourceDate.getUTCDate();
+      if (derivedYear !== litYear || derivedMonth !== litMonth || derivedDay !== litDay) {
+        throw new RangeError(
+          `TimePoint rejects impossible calendar date in ${JSON.stringify(
+            value,
+          )}: literal date ${dateMatch[0]} does not survive round-trip (parser normalized to ${derivedYear}-${String(derivedMonth).padStart(2, "0")}-${String(derivedDay).padStart(2, "0")}). Python datetime.fromisoformat raises ValueError on this input.`,
+        );
+      }
     }
     this.#utc = new Date(parsed);
   }

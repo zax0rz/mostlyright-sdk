@@ -68,7 +68,34 @@ function isIsoDateTime(v: unknown): boolean {
   if (!ISO_DATETIME_SEPARATOR_REGEX.test(trimmed)) return false;
   if (!ISO_DATETIME_TZ_SUFFIX_REGEX.test(trimmed)) return false;
   const ms = Date.parse(trimmed);
-  return Number.isFinite(ms);
+  if (!Number.isFinite(ms)) return false;
+  // Calendar-validity check (iter-3 C8 sibling): `Date.parse` silently
+  // normalizes impossible dates (e.g. "2025-02-30T00:00:00Z" →
+  // "2025-03-02T00:00:00.000Z"). Python's datetime.fromisoformat rejects
+  // these; mirror that contract here so schema validation catches them as
+  // `dtype_mismatch` violations (same path as malformed strings).
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})/.exec(trimmed);
+  if (dateMatch === null) return false;
+  const litYear = Number(dateMatch[1]);
+  const litMonth = Number(dateMatch[2]);
+  const litDay = Number(dateMatch[3]);
+  let offsetMin = 0;
+  const tzMatch = /(Z|[+-]\d{2}:?\d{2})$/.exec(trimmed);
+  if (tzMatch !== null && tzMatch[1] !== "Z") {
+    const tz = tzMatch[1];
+    const sign = tz.startsWith("-") ? -1 : 1;
+    const body = tz.slice(1).replace(":", "");
+    const hh = Number(body.slice(0, 2));
+    const mm = Number(body.slice(2, 4));
+    offsetMin = sign * (hh * 60 + mm);
+  }
+  const sourceMs = ms + offsetMin * 60_000;
+  const sourceDate = new Date(sourceMs);
+  return (
+    sourceDate.getUTCFullYear() === litYear &&
+    sourceDate.getUTCMonth() + 1 === litMonth &&
+    sourceDate.getUTCDate() === litDay
+  );
 }
 
 /**
