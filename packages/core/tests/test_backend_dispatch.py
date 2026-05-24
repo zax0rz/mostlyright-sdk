@@ -12,18 +12,16 @@ default kwargs preserve v0.1.0 zero-behaviour-change.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pandas as pd
 import pytest
-
 from tradewinds.core._backend_dispatch import (
     convert_to_backend,
     validate_backend_kwargs,
     wrap_result,
 )
 from tradewinds.core.result import TradewindsResult
-
 
 # ----------------------- validate_backend_kwargs -----------------------
 
@@ -74,7 +72,7 @@ def test_wrap_result_default_returns_unwrapped_dataframe() -> None:
 
 def test_wrap_result_pandas_wrapper() -> None:
     df = pd.DataFrame({"value": [1, 2]})
-    ts = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    ts = datetime(2025, 1, 1, tzinfo=UTC)
     out = wrap_result(
         df,
         backend="pandas",
@@ -91,7 +89,7 @@ def test_wrap_result_pandas_wrapper() -> None:
 def test_wrap_result_polars_wrapper() -> None:
     pl = pytest.importorskip("polars")
     df = pd.DataFrame({"value": [1, 2]})
-    ts = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    ts = datetime(2025, 1, 1, tzinfo=UTC)
     out = wrap_result(
         df,
         backend="polars",

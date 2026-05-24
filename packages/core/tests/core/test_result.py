@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pandas as pd
 import pytest
-
 from tradewinds.core import (
     KnowledgeView,
     LeakageError,
@@ -19,7 +18,6 @@ from tradewinds.core import (
 )
 from tradewinds.core.temporal.leakage import LeakageDetector
 
-
 # ----------------------- dataclass shape -----------------------
 
 
@@ -28,7 +26,7 @@ def test_result_minimal_construction() -> None:
     result = TradewindsResult(
         frame=df,
         source="iem.live",
-        retrieved_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
+        retrieved_at=datetime(2025, 1, 1, tzinfo=UTC),
     )
     assert result.source == "iem.live"
     assert result.schema_id is None
@@ -41,7 +39,7 @@ def test_result_is_frozen() -> None:
     result = TradewindsResult(
         frame=df,
         source="iem.live",
-        retrieved_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
+        retrieved_at=datetime(2025, 1, 1, tzinfo=UTC),
     )
     with pytest.raises(FrozenInstanceError):
         result.source = "awc.live"  # type: ignore[misc]
@@ -53,7 +51,7 @@ def test_result_rejects_empty_source() -> None:
         TradewindsResult(
             frame=df,
             source="",
-            retrieved_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            retrieved_at=datetime(2025, 1, 1, tzinfo=UTC),
         )
 
 
@@ -85,7 +83,7 @@ def test_frame_as_pandas_returns_pandas_as_is() -> None:
     result = TradewindsResult(
         frame=df,
         source="iem.live",
-        retrieved_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
+        retrieved_at=datetime(2025, 1, 1, tzinfo=UTC),
     )
     out = result.frame_as_pandas()
     assert isinstance(out, pd.DataFrame)
@@ -95,7 +93,7 @@ def test_frame_as_pandas_returns_pandas_as_is() -> None:
 
 def test_legacy_df_with_attrs_stamps_all_provenance_fields() -> None:
     df = pd.DataFrame({"value": [1, 2]})
-    ts = datetime(2025, 3, 4, 5, 6, 7, tzinfo=timezone.utc)
+    ts = datetime(2025, 3, 4, 5, 6, 7, tzinfo=UTC)
     result = TradewindsResult(
         frame=df,
         source="awc.live",
@@ -119,7 +117,7 @@ def test_legacy_df_with_attrs_omits_optional_fields_when_unset() -> None:
     result = TradewindsResult(
         frame=df,
         source="iem.live",
-        retrieved_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
+        retrieved_at=datetime(2025, 1, 1, tzinfo=UTC),
     )
     legacy = result.legacy_df_with_attrs()
     assert legacy.attrs["source"] == "iem.live"
@@ -134,7 +132,7 @@ def test_legacy_df_with_attrs_returns_copy() -> None:
     result = TradewindsResult(
         frame=df,
         source="iem.live",
-        retrieved_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
+        retrieved_at=datetime(2025, 1, 1, tzinfo=UTC),
     )
     legacy = result.legacy_df_with_attrs()
     legacy.attrs["source"] = "tampered"
@@ -151,7 +149,7 @@ def test_to_dict_is_json_safe() -> None:
     result = TradewindsResult(
         frame=pd.DataFrame({"value": [1]}),
         source="iem.live",
-        retrieved_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
+        retrieved_at=datetime(2025, 1, 1, tzinfo=UTC),
         schema_id="schema.observation.v1",
         qc={"rules_fired": {"r1": 0}},
     )
@@ -177,7 +175,7 @@ def test_validator_accepts_tradewinds_result() -> None:
             "low_temp_f": [20.0],
             "report_type": ["DAILY_CLIMATE_RECORD"],
             "report_type_priority": [4],
-            "retrieved_at": [datetime(2025, 1, 6, 12, 0, tzinfo=timezone.utc)],
+            "retrieved_at": [datetime(2025, 1, 6, 12, 0, tzinfo=UTC)],
             "source": ["nws_cli"],
         }
     )
@@ -185,7 +183,7 @@ def test_validator_accepts_tradewinds_result() -> None:
     # Direct call MUST raise the same source-identity error as wrapped call
     # when source doesn't match the registered canonical source.
     df.attrs["source"] = "awc.live"  # mismatch
-    df.attrs["retrieved_at"] = datetime(2025, 1, 6, 12, 0, tzinfo=timezone.utc).isoformat()
+    df.attrs["retrieved_at"] = datetime(2025, 1, 6, 12, 0, tzinfo=UTC).isoformat()
     with pytest.raises(SourceMismatchError):
         validate_dataframe(df, "schema.observation.v1")
 
@@ -196,7 +194,7 @@ def test_validator_accepts_tradewinds_result() -> None:
     result = TradewindsResult(
         frame=df2,
         source="awc.live",  # still a mismatch
-        retrieved_at=datetime(2025, 1, 6, 12, 0, tzinfo=timezone.utc),
+        retrieved_at=datetime(2025, 1, 6, 12, 0, tzinfo=UTC),
     )
     with pytest.raises(SourceMismatchError):
         validate_dataframe(result, "schema.observation.v1")
@@ -217,7 +215,7 @@ def test_knowledge_view_accepts_tradewinds_result() -> None:
     result = TradewindsResult(
         frame=df,
         source="iem.live",
-        retrieved_at=datetime(2025, 1, 4, tzinfo=timezone.utc),
+        retrieved_at=datetime(2025, 1, 4, tzinfo=UTC),
     )
     view = KnowledgeView(result, TimePoint("2025-01-02T00:00:00Z"))
     out = view.dataframe()
@@ -238,7 +236,7 @@ def test_assert_no_leakage_accepts_tradewinds_result() -> None:
     result = TradewindsResult(
         frame=df,
         source="iem.live",
-        retrieved_at=datetime(2025, 1, 4, tzinfo=timezone.utc),
+        retrieved_at=datetime(2025, 1, 4, tzinfo=UTC),
     )
     with pytest.raises(LeakageError):
         assert_no_leakage(result, TimePoint("2025-01-02T00:00:00Z"))
@@ -254,7 +252,7 @@ def test_leakage_detector_check_accepts_tradewinds_result() -> None:
     result = TradewindsResult(
         frame=df,
         source="iem.live",
-        retrieved_at=datetime(2025, 1, 4, tzinfo=timezone.utc),
+        retrieved_at=datetime(2025, 1, 4, tzinfo=UTC),
     )
     detector = LeakageDetector(TimePoint("2025-01-02T00:00:00Z"))
     # No leak: must not raise.

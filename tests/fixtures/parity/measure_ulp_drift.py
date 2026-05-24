@@ -34,7 +34,7 @@ the parity test reads the looser tolerance, and a note lands in
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -67,9 +67,7 @@ def measure() -> dict[str, object]:
     import tradewinds
 
     # Load sibling coerce_pd3.py without making tests/ a package.
-    _spec = importlib.util.spec_from_file_location(
-        "_coerce_pd3_local", FIXTURES / "coerce_pd3.py"
-    )
+    _spec = importlib.util.spec_from_file_location("_coerce_pd3_local", FIXTURES / "coerce_pd3.py")
     assert _spec is not None and _spec.loader is not None
     _mod = importlib.util.module_from_spec(_spec)
     sys.modules["_coerce_pd3_local"] = _mod
@@ -101,7 +99,7 @@ def measure() -> dict[str, object]:
 
     return {
         "pandas_version": pd.__version__,
-        "measured_at": datetime.now(timezone.utc).isoformat(),
+        "measured_at": datetime.now(UTC).isoformat(),
         "tolerance_used": tolerance,
         "per_column_max_abs_drift": per_column,
     }

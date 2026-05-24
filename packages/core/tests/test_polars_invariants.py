@@ -121,13 +121,9 @@ def test_parity_locked_modules_load_pandas_only() -> None:
             if not stripped or stripped.startswith("#"):
                 continue
             if stripped.startswith("import polars") or stripped.startswith("from polars"):
-                pytest.fail(
-                    f"{module_name} is parity-locked but imports polars at: {line!r}"
-                )
+                pytest.fail(f"{module_name} is parity-locked but imports polars at: {line!r}")
             if stripped.startswith("import narwhals") or stripped.startswith("from narwhals"):
-                pytest.fail(
-                    f"{module_name} is parity-locked but imports narwhals at: {line!r}"
-                )
+                pytest.fail(f"{module_name} is parity-locked but imports narwhals at: {line!r}")
 
 
 # ----------------------- W4-T5 DataVersion backend invariance -----------------------

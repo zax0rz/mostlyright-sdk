@@ -63,10 +63,7 @@ def coerce_2x_to_3x(parquet_or_df: Path | pd.DataFrame) -> pd.DataFrame:
         are byte-identical to the input modulo the documented
         resolution + storage shifts.
     """
-    if isinstance(parquet_or_df, Path):
-        df = pd.read_parquet(parquet_or_df)
-    else:
-        df = parquet_or_df.copy()
+    df = pd.read_parquet(parquet_or_df) if isinstance(parquet_or_df, Path) else parquet_or_df.copy()
 
     for col in df.columns:
         s = df[col]

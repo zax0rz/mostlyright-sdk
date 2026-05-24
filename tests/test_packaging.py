@@ -116,9 +116,9 @@ def test_pandas_cap_in_specific_known_locations() -> None:
     }
     for pkg, extra in expected_locations:
         deps = _extras(pkg).get(extra, [])
-        assert any(
-            EXPECTED_BOUNDS["pandas"] in d for d in deps
-        ), f"{pkg}[{extra}] must include `{EXPECTED_BOUNDS['pandas']}`; got {deps}"
+        assert any(EXPECTED_BOUNDS["pandas"] in d for d in deps), (
+            f"{pkg}[{extra}] must include `{EXPECTED_BOUNDS['pandas']}`; got {deps}"
+        )
 
 
 def test_pyarrow_cap_in_specific_known_locations() -> None:
@@ -135,14 +135,14 @@ def test_pyarrow_cap_in_specific_known_locations() -> None:
     }
     for pkg in expected_runtime:
         deps = _runtime_deps(pkg)
-        assert any(
-            EXPECTED_BOUNDS["pyarrow"] in d for d in deps
-        ), f"{pkg} runtime must include `{EXPECTED_BOUNDS['pyarrow']}`; got {deps}"
+        assert any(EXPECTED_BOUNDS["pyarrow"] in d for d in deps), (
+            f"{pkg} runtime must include `{EXPECTED_BOUNDS['pyarrow']}`; got {deps}"
+        )
     for pkg, extra in expected_extras:
         deps = _extras(pkg).get(extra, [])
-        assert any(
-            EXPECTED_BOUNDS["pyarrow"] in d for d in deps
-        ), f"{pkg}[{extra}] must include `{EXPECTED_BOUNDS['pyarrow']}`; got {deps}"
+        assert any(EXPECTED_BOUNDS["pyarrow"] in d for d in deps), (
+            f"{pkg}[{extra}] must include `{EXPECTED_BOUNDS['pyarrow']}`; got {deps}"
+        )
 
 
 def test_core_version_is_rc1() -> None:

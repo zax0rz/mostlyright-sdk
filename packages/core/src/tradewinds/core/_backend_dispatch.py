@@ -26,7 +26,7 @@ focused on its existing pandas pipeline.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Literal
 
 from tradewinds.core.result import TradewindsResult
@@ -66,13 +66,10 @@ def validate_backend_kwargs(
     actually need to convert.
     """
     if backend not in _SUPPORTED_BACKENDS:
-        raise ValueError(
-            f"backend must be one of {_SUPPORTED_BACKENDS}; got {backend!r}"
-        )
+        raise ValueError(f"backend must be one of {_SUPPORTED_BACKENDS}; got {backend!r}")
     if return_type not in _SUPPORTED_RETURN_TYPES:
         raise ValueError(
-            f"return_type must be one of {_SUPPORTED_RETURN_TYPES}; "
-            f"got {return_type!r}"
+            f"return_type must be one of {_SUPPORTED_RETURN_TYPES}; got {return_type!r}"
         )
     if backend == "polars" and return_type == "dataframe":
         raise ValueError(
@@ -156,7 +153,7 @@ def wrap_result(
     return TradewindsResult(
         frame=frame,
         source=source,
-        retrieved_at=retrieved_at or datetime.now(timezone.utc),
+        retrieved_at=retrieved_at or datetime.now(UTC),
         schema_id=schema_id,
         qc=qc,
         data_version=data_version,

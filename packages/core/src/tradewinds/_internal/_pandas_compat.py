@@ -72,6 +72,4 @@ def is_string_like_dtype(s: pd.Series) -> bool:
     """
     if pd.api.types.is_string_dtype(s):
         return True
-    if s.dtype == "object":
-        return True
-    return False
+    return s.dtype == "object"

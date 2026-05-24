@@ -14,10 +14,9 @@ before merge.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import importlib.util
 import sys
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -27,9 +26,7 @@ FIXTURES = Path(__file__).parent / "fixtures" / "parity"
 
 def _load_coerce_module():
     """Load tests/fixtures/parity/coerce_pd3.py without making `tests` a package."""
-    spec = importlib.util.spec_from_file_location(
-        "_coerce_pd3", FIXTURES / "coerce_pd3.py"
-    )
+    spec = importlib.util.spec_from_file_location("_coerce_pd3", FIXTURES / "coerce_pd3.py")
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     sys.modules["_coerce_pd3"] = module

@@ -111,8 +111,15 @@ def research_by_source(
     """
     if source not in _VALID_OBSERVATION_SOURCES:
         raise ValueError(
-            f"Mode 2 source must be one of {sorted(_VALID_OBSERVATION_SOURCES)}; " f"got {source!r}"
+            f"Mode 2 source must be one of {sorted(_VALID_OBSERVATION_SOURCES)}; got {source!r}"
         )
+
+    # Codex iter-4 P2 fix: validate backend/return_type BEFORE any
+    # network fetch or cache write so a typo doesn't trigger live
+    # API calls + cache mutations before raising.
+    from tradewinds.core._backend_dispatch import validate_backend_kwargs
+
+    validate_backend_kwargs(backend, return_type)  # type: ignore[arg-type]
 
     # Local import — research.py is heavy and we don't want mode2 to
     # pay the import cost on every package-level `from tradewinds`.

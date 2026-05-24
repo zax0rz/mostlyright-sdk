@@ -18,6 +18,8 @@ import pytest
 pl = pytest.importorskip("polars")
 pytestmark = pytest.mark.polars
 
+from datetime import UTC  # noqa: E402
+
 from tradewinds import preprocessing, qc, transforms  # noqa: E402
 from tradewinds.core.formats import csv as csv_fmt  # noqa: E402
 from tradewinds.core.formats import json as json_fmt  # noqa: E402
@@ -59,9 +61,7 @@ def sample_pldf(sample_pdf: pd.DataFrame) -> pl.DataFrame:
 # ----------------------- transforms -----------------------
 
 
-def test_lag_backend_equivalence(
-    sample_pdf: pd.DataFrame, sample_pldf: pl.DataFrame
-) -> None:
+def test_lag_backend_equivalence(sample_pdf: pd.DataFrame, sample_pldf: pl.DataFrame) -> None:
     pandas_out = transforms.lag(sample_pdf, "temp_f", periods=2)
     polars_out = transforms.lag(sample_pldf, "temp_f", periods=2)
     # polars→pandas conversion preserves values and null positions.
@@ -69,27 +69,21 @@ def test_lag_backend_equivalence(
     assert _series_equal_nansafe(polars_out.to_pandas().tolist(), pandas_out.tolist())
 
 
-def test_diff_backend_equivalence(
-    sample_pdf: pd.DataFrame, sample_pldf: pl.DataFrame
-) -> None:
+def test_diff_backend_equivalence(sample_pdf: pd.DataFrame, sample_pldf: pl.DataFrame) -> None:
     pandas_out = transforms.diff(sample_pdf, "temp_f")
     polars_out = transforms.diff(sample_pldf, "temp_f")
     assert isinstance(polars_out, pl.Series)
     assert _series_equal_nansafe(polars_out.to_pandas().tolist(), pandas_out.tolist())
 
 
-def test_diff2_backend_equivalence(
-    sample_pdf: pd.DataFrame, sample_pldf: pl.DataFrame
-) -> None:
+def test_diff2_backend_equivalence(sample_pdf: pd.DataFrame, sample_pldf: pl.DataFrame) -> None:
     pandas_out = transforms.diff2(sample_pdf, "temp_f")
     polars_out = transforms.diff2(sample_pldf, "temp_f")
     assert isinstance(polars_out, pl.Series)
     assert _series_equal_nansafe(polars_out.to_pandas().tolist(), pandas_out.tolist())
 
 
-def test_rolling_backend_equivalence(
-    sample_pdf: pd.DataFrame, sample_pldf: pl.DataFrame
-) -> None:
+def test_rolling_backend_equivalence(sample_pdf: pd.DataFrame, sample_pldf: pl.DataFrame) -> None:
     pandas_out = transforms.rolling(sample_pdf, "temp_f", window=3, fn="mean")
     polars_out = transforms.rolling(sample_pldf, "temp_f", window=3, fn="mean")
     assert isinstance(polars_out, pl.Series)
@@ -109,9 +103,7 @@ def test_calendar_features_backend_equivalence(
         assert pl_as_pd[col].tolist() == pandas_out[col].tolist()
 
 
-def test_spread_backend_equivalence(
-    sample_pdf: pd.DataFrame, sample_pldf: pl.DataFrame
-) -> None:
+def test_spread_backend_equivalence(sample_pdf: pd.DataFrame, sample_pldf: pl.DataFrame) -> None:
     pandas_out = transforms.spread(sample_pdf, "temp_f", "wind_mph")
     polars_out = transforms.spread(sample_pldf, "temp_f", "wind_mph")
     assert isinstance(polars_out, pl.Series)
@@ -193,9 +185,7 @@ def test_json_dumps_backend_equivalence(
     assert json_fmt.dumps(sample_pdf) == json_fmt.dumps(sample_pldf)
 
 
-def test_csv_dumps_backend_equivalence(
-    sample_pdf: pd.DataFrame, sample_pldf: pl.DataFrame
-) -> None:
+def test_csv_dumps_backend_equivalence(sample_pdf: pd.DataFrame, sample_pldf: pl.DataFrame) -> None:
     assert csv_fmt.dumps(sample_pdf) == csv_fmt.dumps(sample_pldf)
 
 
@@ -210,7 +200,7 @@ def test_toon_dumps_backend_equivalence(
 
 def test_knowledge_view_accepts_polars_via_wrapper() -> None:
     """KV via TradewindsResult wrapper handles polars frames (W0 path)."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from tradewinds.core import KnowledgeView, TimePoint, TradewindsResult
 
@@ -226,7 +216,7 @@ def test_knowledge_view_accepts_polars_via_wrapper() -> None:
     result = TradewindsResult(
         frame=pldf,
         source="iem.live",
-        retrieved_at=datetime(2025, 1, 4, tzinfo=timezone.utc),
+        retrieved_at=datetime(2025, 1, 4, tzinfo=UTC),
     )
     view = KnowledgeView(result, TimePoint("2025-01-02T00:00:00Z"))
     out = view.dataframe()

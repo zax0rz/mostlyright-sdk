@@ -434,6 +434,13 @@ def polymarket_discover(
         httpx.HTTPStatusError: Gamma API returned non-2xx.
         SourceUnavailableError: ``[polymarket]`` extra not installed.
     """
+    # Codex iter-4 P2 fix: validate backend/return_type BEFORE the Gamma
+    # API pagination + sleep cycles so a typo doesn't trigger any HTTP
+    # work before raising ValueError.
+    from tradewinds.core._backend_dispatch import validate_backend_kwargs
+
+    validate_backend_kwargs(backend, return_type)  # type: ignore[arg-type]
+
     pd = _require_pandas()
 
     sleep_arg = sleep_between if sleep_between is not None else 0.2

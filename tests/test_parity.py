@@ -89,6 +89,7 @@ def test_ulp_drift_artifact_under_tolerance() -> None:
         "tests/fixtures/parity/measure_ulp_drift.py to refresh the artifact."
     )
 
+
 # (case_num, station_icao, from_date, to_date) - inclusive bounds.
 CASES: list[tuple[int, str, str, str]] = [
     (1, "KNYC", "2025-01-06", "2025-01-12"),
