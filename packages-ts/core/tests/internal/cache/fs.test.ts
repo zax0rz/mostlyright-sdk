@@ -84,9 +84,53 @@ describe("FsStore", () => {
       const got = await store.get(key);
       expect(got).toBe("value");
       // The file lives under scratchDir, not under any nested directory.
-      const expectedPath = join(scratchDir, "tradewinds__v1__observations__KNYC__2025__01.json");
+      // Iter-13 C16: key → file is now injective via `encodeURIComponent`,
+      // so `:` becomes `%3A` rather than being collapsed to `__`.
+      const expectedPath = join(
+        scratchDir,
+        "tradewinds%3Av1%3Aobservations%3AKNYC%3A2025%3A01.json",
+      );
       const content = await readFile(expectedPath, "utf8");
       expect(JSON.parse(content)).toEqual({ value: "value" });
+    });
+  });
+
+  describe("injective key → file mapping (iter-13 C16)", () => {
+    // CRITICAL regression: the previous `.replace(/[:/\\]/g, "__")`
+    // implementation collapsed `"a:b"`, `"a/b"`, and the literal `"a__b"`
+    // all to the same `a__b.json`. One key's write silently overwrote
+    // another key's read. `encodeURIComponent` is bijective on string
+    // inputs, so distinct keys MUST round-trip independently.
+    it("keys 'a:b', 'a/b', and 'a__b' are stored and read back distinctly", async () => {
+      const store = new FsStore({ root: scratchDir });
+      await store.set("a:b", "V1");
+      await store.set("a/b", "V2");
+      await store.set("a__b", "V3");
+      // Order matters: under the old lossy mapping, the third write would
+      // overwrite the first two and all three reads would return "V3".
+      expect(await store.get("a:b")).toBe("V1");
+      expect(await store.get("a/b")).toBe("V2");
+      expect(await store.get("a__b")).toBe("V3");
+    });
+
+    it("backslash keys are also encoded (Windows path separator safety)", async () => {
+      const store = new FsStore({ root: scratchDir });
+      // `\` would otherwise be a path separator on Windows; encode it too.
+      await store.set("a\\b", "backslash-value");
+      await store.set("a__b", "underscore-value");
+      expect(await store.get("a\\b")).toBe("backslash-value");
+      expect(await store.get("a__b")).toBe("underscore-value");
+    });
+
+    it("delete is also key-injective (removing 'a:b' does not affect 'a/b')", async () => {
+      const store = new FsStore({ root: scratchDir });
+      await store.set("a:b", "V1");
+      await store.set("a/b", "V2");
+      await store.delete("a:b");
+      expect(await store.get("a:b")).toBeNull();
+      // 'a/b' must still be intact — under the old lossy mapping, the
+      // delete would have removed it as collateral damage.
+      expect(await store.get("a/b")).toBe("V2");
     });
   });
 

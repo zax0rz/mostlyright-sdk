@@ -69,9 +69,30 @@ export class FsStore implements CacheStore {
     this.#root = opts.root ?? defaultFsRoot();
   }
 
-  /** Path resolver — `key` is sanitized so `:` / `/` don't escape the root. */
+  /**
+   * Path resolver — `key` is sanitized via `encodeURIComponent` so that
+   *
+   *   1. `:` `/` `\` cannot escape the root (all percent-encoded), and
+   *   2. the key → file mapping is INJECTIVE: distinct keys always map to
+   *      distinct files.
+   *
+   * Iter-13 C16 fix: the previous implementation collapsed `:` / `/` / `\`
+   * to the literal substring `"__"`, which is a lossy mapping — `"a:b"`,
+   * `"a/b"`, and the literal `"a__b"` all hashed to `a__b.json`, so one
+   * key's write would silently overwrite (and corrupt subsequent reads of)
+   * another key. `encodeURIComponent` is bijective on string inputs and
+   * filesystem-safe on every platform we ship (POSIX + Windows): the
+   * characters it leaves unescaped (alphanumerics, `-._~!*'()`) are all
+   * legal in NTFS, APFS, and ext4 filenames, and `%` is itself legal.
+   *
+   * BREAKING in v0.1.0: on-disk cache files written by any prior
+   * pre-release of this package use the old `__`-replacement scheme and
+   * are unreadable after upgrade. This is acceptable for a local-first
+   * cache: entries are regenerated on demand from live data, and the
+   * cache directory can be safely deleted by the user.
+   */
   #pathFor(key: string): string {
-    const safe = key.replace(/[:/\\]/g, "__");
+    const safe = encodeURIComponent(key);
     return join(this.#root, `${safe}.json`);
   }
 
