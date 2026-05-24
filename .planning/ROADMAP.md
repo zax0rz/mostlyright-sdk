@@ -40,6 +40,7 @@ Decimal phases appear between their surrounding integers in numeric order. TS ph
 - [ ] **Phase 4: Coverage, Docs, CI/CD, Release** - ≥90% branch coverage on `core/`; <5-min quickstart timed by external person; GH Actions trusted publishing; two-tier fixture set; v0.1.0 ship (Days 42-45)
 - [ ] **Phase 5: MCP Data Platform** [Python v0.2+] - MCP server layer at `packages/mcp/` exposing tradewinds as MCP-native data platform for prediction market ML; 5-layer context-engineered data catalog; agent-generated connector pipeline; server-enforced temporal safety; multi-vertical expansion (weather → sports → politics → finance). See [`phases/05-mcp-data-platform/VISION.md`](phases/05-mcp-data-platform/VISION.md). **Post-v0.1.0; depends on Phase 2 (temporal primitives + catalog) and Phase 4 (CI/CD).**
 - [ ] **Phase 6: Pandas 3 Readiness + Optional Polars Backend** [Python v0.2+] [PLANNED 2026-05-23] - Data-layer infrastructure across two paired tracks: (a) **PANDAS3** — drop `pandas<3.0` cap, prove parity under pandas 3.x via the `tests/fixtures/parity/coerce_pd3.py` invertible-transform bridge (NOT a second fixture set — see PLAN W1-T5; the canonical 2.x fixtures stay immutable and the pandas-3 test reads them, applies a documented `ns→us` + `object→string` coercion, then compares against live `research()` output), audit the 6 datetime/dtype risk sites flagged in the recon (validator string-vs-object branching, `pd.Series([], dtype="datetime64[ns, UTC]")` in `cli.py:158,216`, `to_datetime` calls in `_pairs.py:397` + `cli.py:149-151,225` + `_obs_projection.py:172`), keep parity-locked modules byte-equivalent under CoW; ULP-drift carried forward as a committed `ulp_drift_pd3.json` artifact + CI gate. (b) **POLARS** — opt-in `backend="polars"` kwarg on `research()` / `research_by_source()` / `polymarket_discover()` / `forecast_nwp()` / `daily_extremes()` that returns a `TradewindsResult` wrapping a Polars DataFrame (`backend="polars"` requires `return_type="wrapper"`; default return shape stays v0.1.0-compatible — pandas DataFrame for the four DataFrame-returning surfaces, `list[dict]` for `daily_extremes()`), narwhals-mediated internal data layer for the 5 cleanly-portable modules (`transforms.py`, `preprocessing.py`, `qc.crosscheck_iem_ghcnh`, `core/temporal/knowledge_view.py`, `core/formats/{json,csv,toon}.py`) serving DIRECT user calls (research() itself stays pandas end-to-end per W4-T1), pandas stays the canonical backend for parity-locked paths (`_pairs.py`, `core/merge.py`, `_climate.py`, validator). `df.attrs` migration: introduce `TradewindsResult` thin wrapper that carries provenance separate from the frame, so both backends carry `source`/`retrieved_at` provenance without polars-incompatible `.attrs` writes. Optional extras: `tradewinds[polars]` + `tradewinds-weather[polars]` + `tradewinds-markets[polars]` add `polars>=1.0,<2.0` and `narwhals>=1.20`. **Post-v0.1.0; independent of Phase 5 (MCP doesn't dictate backend). Depends on Phase 4 CI/CD (re-runs the parity gate via the `coerce_pd3.py` bridge under pandas 3).** See [`phases/06-pandas-3-polars-backend/PLAN.md`](phases/06-pandas-3-polars-backend/PLAN.md).
+- [ ] **Phase 7: Ingest Auto-Planner + `tw.weather.obs()` Public Surface** [INSERTED 2026-05-24] [Python v0.2+] - New public surface `tw.weather.obs(station, start, end, source=None, strategy="auto")` smart-routes between 3 ingest strategies: `exact_window` (small cold one-off, ≤2 MB), `warm_cache` (current `research()` orchestration, year-aligned cache), `hosted` (precomputed-API seam, NotImplementedError gate until v0.2.x). Empirical motivation: 1mo and 3mo `research()` calls currently download **identical 13.4 MB** because `iem_asos.py:204-209` normalizes start to `date(year, 1, 1)`. See [`.planning/research/INGEST-PLANNER-RESEARCH.md`](./research/INGEST-PLANNER-RESEARCH.md). Numbered 7 (not 6) because Phase 6 (pandas3-polars) is reserved on main.
 
 ### TypeScript SDK milestone (v0.1.0 — `@tradewinds/*` on npm)
 
@@ -449,6 +450,7 @@ TS phases execute strictly serial after Python v0.1.0 final: **TS-W0** → **TS-
 | 4. Coverage, Docs, CI/CD, Release | done/done | ✅ Merged at 7655b0e (1453 tests; 94.20% coverage; rc1 ready) | 2026-05-23 |
 | 5. MCP Data Platform [Python v0.2+] | 0/6 | Plans committed (PLAN-00..PLAN-05); execution gated on TS v0.1.0 ship + Python v0.2 milestone open | - |
 | 6. Pandas 3 Readiness + Optional Polars Backend [Python v0.2+] | 0/TBD | Phase entry committed; PLAN.md to follow via `/gsd-plan-phase 06`. Independent of Phase 5 (can run in parallel). | - |
+| 7. Ingest Auto-Planner + `tw.weather.obs()` Public Surface [Python v0.2+] | 0/5 | Plans committed (07-01..07-05); execution gated on Python v0.2 milestone open. Research doc at `.planning/research/INGEST-PLANNER-RESEARCH.md`. | - |
 
 ### TypeScript v0.1.0 (`@tradewinds/*` on npm)
 
@@ -462,3 +464,38 @@ TS phases execute strictly serial after Python v0.1.0 final: **TS-W0** → **TS-
 | TS-W6. Discovery + Snapshot + DataVersion | 0/TBD | Planning — runs after TS-W4; blocks TS-W5 (`internationalDailyExtremes` consumed by `polymarketSettle`) | - |
 | TS-W5. Markets (Polymarket Live + Kalshi Wiring) | 0/TBD | Planning — activates Python's `NotImplementedError` Polymarket stubs; strictly serial after TS-W6 | - |
 | TS-W7. Docs + npm Publish | 0/TBD | Planning — 4 npm OIDC pending publishers + Changesets | - |
+
+### Phase 7: Ingest Auto-Planner + `tw.weather.obs()` Public Surface
+
+**Goal:** Ship the `tw.weather.obs(station, start, end, source=None, strategy="auto")` public surface that smart-routes between three ingest strategies — **`exact_window`** (bypass year-normalization, day-granular IEM URL params, ≤2 MB cold for a 1mo KNYC query vs the current 13.4 MB), **`warm_cache`** (current `research()` orchestration with year-aligned cache hit-rate optimization for backtest callers), **`hosted`** (precomputed-API seam gated by `TW_HOSTED_URL` env var; `NotImplementedError` until the hosted-API client lands in a later v0.2.x phase) — while preserving every mutable-period invariant the existing code enforces (`_is_writable_month`, `_is_current_lst_month/_year`, source-cache UNION skip predicate). Default `strategy="auto"` picks the right mode from window size + cache state + env-var presence. Also adds a `source=` parameter that skips unused source fetchers (single-source IEM call saves ~1-2 MB and ~3-5 s vs the current always-4-sources orchestration). **Numbered 7 (not 6) because Phase 6 (pandas3-polars) is already reserved on `main`.**
+
+**Depends on:** Phase 4 (v0.1.0 ship — package surface stable so the new `tw.weather.obs` re-export doesn't conflict with any in-flight rename). Independent of Phases 5 (MCP) and 6 (pandas3-polars).
+
+**Requirements** (to add to REQUIREMENTS.md as part of `/gsd-plan-phase 7`):
+- INGEST-01 — `tw.weather.obs(station, start, end, source=None, strategy="auto")` public surface at `packages/weather/src/tradewinds/weather/obs.py`; re-export at `tradewinds.weather.obs`.
+- INGEST-02 — `exact_window` strategy bypasses year-normalization (`iem_asos.py:204-209`), uses day-granular IEM `year1/month1/day1/year2/month2/day2` URL params, separate `_exact_` cache namespace (no canonical-yearly-cache pollution).
+- INGEST-03 — `warm_cache` strategy preserves current `research()` orchestration semantics; obs aggregates byte-equivalent to `research()` Mode-1 output on the 5 Phase 1 parity fixtures.
+- INGEST-04 — `hosted` strategy seam: `TW_HOSTED_URL` env-var presence gates; raises `NotImplementedError("hosted strategy deferred to v0.2.x — set TW_HOSTED_URL to enable once client lands")` in Phase 7.
+- INGEST-05 — `strategy="auto"` decision tree: window-size + cache-warmth + env-var triage, with documented selection rules + unit tests for every transition.
+- INGEST-06 — `source=None | "iem" | "ghcnh" | "awc"` single-source path skips the other fetchers entirely (and skips the orchestrator-level prefetch worker for that source).
+- INGEST-07 — mutable-period invariants preserved across all strategies (existing `_is_writable_month` + LST-current + UNION skip predicate carries forward unchanged; new code paths reuse the same helpers, do not reinvent).
+- INGEST-08 — empirical-timing harness at `tests/perf/test_ingest_obs.py` reproduces the 1mo/3mo/12mo timings from the research doc and gates `exact_window` ≤2 MB cold for 1mo KNYC.
+
+**Success Criteria** (what must be TRUE):
+1. `tw.weather.obs("KNYC", "2024-03-01", "2024-03-31", source="iem", strategy="exact_window")` downloads ≤2 MB cold (vs current 13.4 MB) and returns single-month IEM observation rows.
+2. `tw.weather.obs(..., strategy="warm_cache")` is byte-equivalent to the equivalent `research()` Mode-1 obs aggregates for the 5 Phase 1 parity fixtures (no parity regression).
+3. `tw.weather.obs(..., strategy="auto")` picks `exact_window` when window < 90 days AND no cached parquets exist; picks `warm_cache` when any cached parquet for the requested year exists; picks `hosted` when `TW_HOSTED_URL` is set. Decision-tree unit tests cover all 6 transitions (3 modes × 2 dimensions = 6 cells).
+4. `tw.weather.obs(..., strategy="hosted")` raises `NotImplementedError` with the documented "deferred to v0.2.x" message until the hosted-API client lands.
+5. Mutable-period invariants verified: a query crossing the current LST month touches that month but never writes its parquet (regardless of strategy); the `_partial` cache namespace stays the destination for not-strictly-past-UTC fetches.
+6. `tests/perf/test_ingest_obs.py` empirical harness reproduces the 1mo/3mo/12mo timings from `.planning/research/INGEST-PLANNER-RESEARCH.md` and asserts the `exact_window` byte budget (≤2 MB for 1mo KNYC). Skipped under `@pytest.mark.live` in CI; run before publish.
+7. README + 1-page `docs/ingest-strategies.md` document the decision tree + per-strategy cost table (cold MB, warm s, target use case).
+
+**Out of Scope** (defer):
+- Hosted-API client implementation (separate v0.2.x phase post-INGEST seam).
+- `tw.weather.climate(...)` separate surface for CLI/year-granular climate access (CLI is climate, not observations — different ingest pattern).
+- TS port of `obs()` — tracked under TS-W3+ once the Python contract is stable; see `.planning/CROSS-SDK-SYNC.md` for the per-feature port discipline.
+- AWC-only `exact_window` for tight live windows beyond the 168h endpoint — AWC is already a single-call live fetch with no disk cache; no efficiency win to extract.
+
+**Review panel:** standard 2-reviewer loop per `.planning/REVIEW-DISCIPLINE.md` — codex `high` + python-architect. No 3rd reviewer needed; Mode-1 parity for `research()` is preserved by INGEST-03 SC#2, not parity-critical for the 5 fixtures themselves.
+
+**Plans**: 5 plans committed at `.planning/phases/07-ingest-auto-planner-tw-weather-obs-public-surface/07-01..05-PLAN.md` (research input: `.planning/research/INGEST-PLANNER-RESEARCH.md`)

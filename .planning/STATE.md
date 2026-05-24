@@ -602,6 +602,7 @@ Validation:
 - 2026-05-22: Phase 3.5 inserted after Phase 3.3 (Transforms DSL + Preprocessing Primitives — lift `mostlyright/src/mostlyright/{transforms,preprocessing}.py`; lag/diff/rolling/calendar/cross-features + `clip_outliers` + standalone `iem_crosscheck`) — scope expansion (removes the Sprint-0.5+ preprocessing defer)
 - 2026-05-22: Phase 3.6 inserted after Phase 3.3 (Discovery API + Public Settlement + DataVersion — `availability()`/`climate_gaps()`/`describe()`/`feature_catalog()` + `settlement_date_for()`/`settlement_window_utc()` at top level + `DataVersion` reproducibility token) — scope expansion (closes day-one quant ergonomics gap)
 - 2026-05-22: Phase 5 (MCP Data Platform) PLAN-00..PLAN-05 committed on merged-vision; execution gated on v0.1.0 ship
+- 2026-05-24: Phase 7 added after Phase 5 (Ingest Auto-Planner + `tw.weather.obs()` Public Surface — `exact_window` / `warm_cache` / `hosted` strategy modes; closes the empirical 13.4 MB-for-1mo year-normalization waste documented in `.planning/research/INGEST-PLANNER-RESEARCH.md`). Numbered 7 (skipping 6) because Phase 6 (pandas3-polars) is reserved on `main` at commit `e909859` — this branch is behind main and `gsd-tools phase add` computed the next int as 6 from the local ROADMAP; fixed manually. Run `/gsd-plan-phase 7` to break down into Plans.
 
 ### Decisions
 
