@@ -23,7 +23,8 @@ export default defineConfig([
     },
   },
   {
-    entry: ["src/internal/bounds.ts", "src/internal/convert.ts"],
+    // TS-W2 Plan 05 — pairs join (Mode 1; forecast-less buildPairs).
+    entry: ["src/internal/bounds.ts", "src/internal/convert.ts", "src/internal/pairs.ts"],
     format: ["esm", "cjs"],
     dts: true,
     sourcemap: true,

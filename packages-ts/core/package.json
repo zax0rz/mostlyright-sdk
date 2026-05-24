@@ -27,6 +27,11 @@
       "types": "./dist/internal/merge/index.d.ts",
       "import": "./dist/internal/merge/index.mjs",
       "require": "./dist/internal/merge/index.cjs"
+    },
+    "./internal/pairs": {
+      "types": "./dist/internal/pairs.d.ts",
+      "import": "./dist/internal/pairs.mjs",
+      "require": "./dist/internal/pairs.cjs"
     }
   },
   "files": ["dist"],
