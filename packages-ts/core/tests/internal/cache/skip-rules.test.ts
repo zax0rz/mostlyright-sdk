@@ -71,6 +71,18 @@ describe("isWithinVolatileWindow", () => {
     expect(isWithinVolatileWindow("2025-01-16", "2025-01-15")).toBe(false); // future
   });
 
+  it("treats the documented boundary (exactly `days` days back) as volatile", () => {
+    // archiveAsOf - eventDate == 30 days; doc comment defines the window as
+    // [archiveAsOf - days, archiveAsOf] inclusive at both endpoints, so an
+    // event exactly 30 days old MUST still be skipped (off-by-one regression
+    // closed in iter-5 H10).
+    expect(isWithinVolatileWindow("2024-12-16", "2025-01-15")).toBe(true); // 30 days
+    expect(isWithinVolatileWindow("2024-12-15", "2025-01-15")).toBe(false); // 31 days
+    // Custom-window boundary: days=7 → 7 days back is inclusive.
+    expect(isWithinVolatileWindow("2025-01-08", "2025-01-15", 7)).toBe(true);
+    expect(isWithinVolatileWindow("2025-01-07", "2025-01-15", 7)).toBe(false);
+  });
+
   it("custom `days` window", () => {
     expect(isWithinVolatileWindow("2025-01-01", "2025-01-15", 7)).toBe(false);
     expect(isWithinVolatileWindow("2025-01-12", "2025-01-15", 7)).toBe(true);

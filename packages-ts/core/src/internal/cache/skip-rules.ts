@@ -84,7 +84,10 @@ export function isLiveSource(source: string | null | undefined): boolean {
  * published data for ~30 days post-event). NOT a Python port today — file
  * a CROSS-SDK-SYNC parity ticket if Python adopts it.
  *
- * Returns true iff `eventDate` falls within `[archiveAsOf - days, archiveAsOf]`.
+ * Returns true iff `eventDate` falls within `[archiveAsOf - days, archiveAsOf]`
+ * (inclusive at both endpoints — an event exactly `days` days before
+ * `archiveAsOf` is still volatile and MUST be re-fetched).
+ *
  * Events AFTER `archiveAsOf` are never volatile by this rule (deltaDays < 0).
  */
 export function isWithinVolatileWindow(eventDate: string, archiveAsOf: string, days = 30): boolean {
@@ -96,5 +99,5 @@ export function isWithinVolatileWindow(eventDate: string, archiveAsOf: string, d
     );
   }
   const deltaDays = (a - e) / 86_400_000;
-  return deltaDays >= 0 && deltaDays < days;
+  return deltaDays >= 0 && deltaDays <= days;
 }
