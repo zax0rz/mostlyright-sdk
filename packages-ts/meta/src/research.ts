@@ -293,8 +293,11 @@ export async function research(
         politenessMs: opts.iemPolitenessMs ?? 1000,
       };
       if (opts.signal !== undefined) iemOpts.signal = opts.signal;
+      // IEM ASOS expects the 3-letter NWS station code (`station=NYC`),
+      // NOT the 4-letter ICAO. Python `_fetchers/iem_asos.py:119` uses
+      // `station={station.code}`. Use resolved.code, NOT resolved.icao.
       const chunks = await downloadIemAsos(
-        resolved.icao,
+        resolved.code,
         `${year}-01-01`,
         `${year}-12-31`,
         iemOpts,
