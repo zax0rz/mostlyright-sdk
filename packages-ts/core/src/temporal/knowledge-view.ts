@@ -9,6 +9,12 @@
 // / date-only / NaN inputs). Any failure throws SchemaValidationError with
 // the violating row indices in `violations`.
 //
+// Iter-1 H2: violation `rule` vocabulary matches Python EXACTLY for MCP
+// cross-language serialization parity:
+//
+//   - "required"      — missing column / non-string knowledge_time
+//   - "tz_aware_utc"  — naive or otherwise invalid tz-aware ISO string
+//
 // See docs/design.md §M for the leakage-free training-view semantics.
 
 import { SchemaValidationError } from "../exceptions/index.js";
@@ -35,18 +41,28 @@ export class KnowledgeView<Row extends { knowledge_time: string }> {
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
       if (r == null || typeof r.knowledge_time !== "string") {
+        // H2: Python `knowledge_view.py` uses `rule="required"` when the
+        // knowledge_time column is missing or wrong-typed. Mirror the
+        // vocabulary so MCP wire payloads match cross-language.
         violations.push({
+          column: "knowledge_time",
           row_idx: i,
-          rule: "knowledge_time_missing_or_wrong_type",
+          rule: "required",
         });
         continue;
       }
       try {
         new TimePoint(r.knowledge_time);
       } catch (e) {
+        // H2: Python uses `rule="tz_aware_utc"` for naive / invalid
+        // datetime strings (the upstream Python check is on the column
+        // dtype, not per-row, but the rule string is what the wire
+        // payload pins). Preserve the parsed error message in `message`
+        // for debugging.
         violations.push({
+          column: "knowledge_time",
           row_idx: i,
-          rule: "knowledge_time_invalid",
+          rule: "tz_aware_utc",
           message: String(e),
         });
       }

@@ -48,26 +48,64 @@ describe("KnowledgeView", () => {
     expect(view.rows()).toHaveLength(2);
   });
 
-  it("missing knowledge_time → SchemaValidationError at construction", () => {
+  it("missing knowledge_time → SchemaValidationError with rule='required' (H2 parity)", () => {
     // Runtime defensive check — cast through unknown so TS allows the
     // structurally-invalid row to exercise the runtime guard.
     const rows = [{ knowledge_time: "2025-01-01T00:00:00Z" }, { value: 99 }] as unknown as Array<{
       knowledge_time: string;
     }>;
-    expect(() => new KnowledgeView(rows, asOf)).toThrow(SchemaValidationError);
+    try {
+      new KnowledgeView(rows, asOf);
+      throw new Error("expected SchemaValidationError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(SchemaValidationError);
+      const err = e as SchemaValidationError;
+      // H2: literal rule string from Python `knowledge_view.py`.
+      expect(err.violations[0]).toMatchObject({
+        column: "knowledge_time",
+        row_idx: 1,
+        rule: "required",
+      });
+    }
   });
 
-  it("non-string knowledge_time → SchemaValidationError", () => {
+  it("non-string knowledge_time → SchemaValidationError with rule='required' (H2 parity)", () => {
     const rows = [
       { knowledge_time: "2025-01-01T00:00:00Z" },
       { knowledge_time: 123 },
     ] as unknown as Array<{ knowledge_time: string }>;
-    expect(() => new KnowledgeView(rows, asOf)).toThrow(SchemaValidationError);
+    try {
+      new KnowledgeView(rows, asOf);
+      throw new Error("expected SchemaValidationError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(SchemaValidationError);
+      const err = e as SchemaValidationError;
+      // H2: non-string knowledge_time also fires the `required` rule —
+      // matches Python's column-level "missing or wrong type" semantics.
+      expect(err.violations[0]).toMatchObject({
+        column: "knowledge_time",
+        row_idx: 1,
+        rule: "required",
+      });
+    }
   });
 
-  it("naive knowledge_time string → SchemaValidationError (delegates to TimePoint validation)", () => {
+  it("naive knowledge_time string → SchemaValidationError with rule='tz_aware_utc' (H2 parity)", () => {
     const rows = [{ knowledge_time: "2025-01-01T00:00:00" }]; // no Z, no offset
-    expect(() => new KnowledgeView(rows, asOf)).toThrow(SchemaValidationError);
+    try {
+      new KnowledgeView(rows, asOf);
+      throw new Error("expected SchemaValidationError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(SchemaValidationError);
+      const err = e as SchemaValidationError;
+      // H2: literal rule string `tz_aware_utc` from Python — naive /
+      // invalid tz strings fail this check.
+      expect(err.violations[0]).toMatchObject({
+        column: "knowledge_time",
+        row_idx: 0,
+        rule: "tz_aware_utc",
+      });
+    }
   });
 
   it("non-TimePoint asOf → TypeError", () => {
