@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v0.1.0
 milestone_name: — `@tradewinds/*` on npm)
-status: Phase 7 (Ingest Auto-Planner) merged. Python v0.1.0rc1 ready to publish (operator-gated). 8/8 TS phases code-complete.
-stopped_at: "Merged Phase 7 (Ingest Auto-Planner) — 5 plans, codex high + Python Architect review (iter-3 close), 1720 passed (+41 Phase 7 tests)"
+status: Phase 7 (Ingest Auto-Planner) + Phase 8 (Polymarket US Coverage) both merged. Python v0.1.0rc1 ready to publish (operator-gated).
+stopped_at: "Merged Phase 7 (Ingest Auto-Planner) — 5 plans, codex high + Python Architect review, 1720+ passed; Phase 8 already on main"
 last_updated: "2026-05-25T00:00:00.000Z"
 last_activity: "2026-05-25 - Phase 7 Ingest Auto-Planner shipped: tw.weather.obs() + exact_window/warm_cache/auto/hosted strategies"
 progress:
   total_phases: 22
-  completed_phases: 2
-  total_plans: 26
-  completed_plans: 19
-  percent: 73
+  completed_phases: 3
+  total_plans: 27
+  completed_plans: 20
+  percent: 74
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-21; STATE.md refreshed 2026-05-25)
 
 **Core value:** `research(contract, station, from_date, to_date)` returns clean, leakage-free, source-identified training pairs that backtest the same way they trade — and any train/infer source mismatch errors loudly instead of silently corrupting a model.
-**Current focus:** Phase 7 (Ingest Auto-Planner) merged. v0.1.0rc1 publish remains operator-gated. TS-W5 (Polymarket settlement) next on the TS side.
+**Current focus:** Phase 7 (Ingest Auto-Planner) + Phase 8 (Polymarket US Coverage) merged. v0.1.0rc1 publish remains operator-gated. Phase 9 (Markets Trade History) next.
 
 ## Current Position
 
-Phase: Python v0.1.0 (12/12 phases COMPLETE) + Phase 7 Ingest Auto-Planner COMPLETE + TS v0.1.0 milestone planning COMPLETE + **TS-W0 → TS-W7 COMPLETE**
-Plan: TS-W5 follow-ups (already shipped) + Phase 8/9/10 Markets composability (PLAN docs only; not yet executed).
-Status: Phase 7 merged with 5 sub-plans + Codex iter-3 close + Python Architect PASS. 1720 Python tests passing (+41 net Phase 7 tests since pre-Phase-7 1679 baseline).
-Last activity: 2026-05-25 - Phase 7 merged (5 plans, Codex high iter-1→iter-4 close, Python Architect PASS)
+Phase: Python v0.1.0 (12/12 phases COMPLETE) + **Phase 7 Ingest Auto-Planner COMPLETE** + **Phase 8 Polymarket US Coverage COMPLETE** + TS v0.1.0 milestone planning COMPLETE + **TS-W0 → TS-W7 COMPLETE**
+Plan: Phase 9 (Markets Trade History) next on roadmap; Phase 10 (Composable research()) queued.
+Status: Phase 7 + Phase 8 both merged to main. **1784 Python tests passing** post-merge. All review iterations PASS across both phases.
+Last activity: 2026-05-25 - Phase 7 merged (5 plans, Codex high iter-1→iter-4 close, Python Architect PASS); Phase 8 already merged.
 
-Progress: Python [██████████] 100% (12/12 phases + Phase 7, 1720 tests) | TS [8/8 phases shipped — TS-W0 → TS-W7 code-complete; ~1212 TS tests; npm publish operator-gated]
+Progress: Python [██████████] 100% (12/12 phases + Phase 7 + Phase 8, ~1763 tests) | TS [8/8 phases shipped — TS-W0 → TS-W7 code-complete; 1228 TS tests; npm publish operator-gated]
 
 ## Phase 7 Ingest Auto-Planner closeout (2026-05-25)
 
@@ -111,6 +111,32 @@ period tests + 2 perf-harness budget tests; all run pre-publish only).
 **TS Parity:** Phase 7 paired TS work tracked separately (Phase 8/9/10
 Markets composability initiative already drafted; obs() TS parity is a P2
 follow-up — not blocking v0.1.0rc1).
+
+## Phase 8 closeout (2026-05-24) — Polymarket US Coverage + Per-Issuer Settlement Invariants
+
+Merged to main. Closes the silent-corruption invariant gap and unblocks cross-issuer (Kalshi vs Polymarket) basis-trade research for US cities. Phase 8 is **dual-SDK** (paired Python + TS in same merge).
+
+**Requirements shipped (6/6):**
+- POLY-US-01 — Polymarket city catalog extended with 17 US cities (NYC→KLGA NOT KNYC, Chicago→KORD NOT KMDW, LAX/MIA/DEN/BOS/AUS/DC/PHL/SFO/SEA/ATL/HOU/DAL/PHX/MSP/DTW). Per-city `POLYMARKET_CITY_CITATIONS` audit-trail registry (`polymarket_city_citations.py`) — each entry carries the canonical Polymarket event URL + Wunderground proof.
+- POLY-US-02 — `polymarket.KNOWN_WRONG_STATIONS: Mapping[str, frozenset[str]]` (MappingProxyType, runtime-read-only) symmetric to `kalshi_stations.KNOWN_WRONG_STATIONS`. Per-city granularity because Polymarket catalog is multi-city; flat denylist would forbid KLGA from ever resolving even though KLGA IS the correct NYC Polymarket station.
+- POLY-US-03 — Tier 1.5 Wunderground URL extraction in `_per_event_station.py` (Python) + `resolver.ts` (TS). Canonical-anchor regex (`/pws/`, `/dashboard/pws/`, `/history/daily/`, `/history/airport/`, `/weather-station/`, `/cat/forecasts/`) + optional lowercase-slug intermediate segments + negative-lookahead `(?![A-Za-z0-9_-])` for Markdown URL terminators. Case-sensitive (iter-3 fix) so intermediate slugs cannot consume uppercase station segments. Multi-URL disambiguation: ALL extracted ICAOs must agree, else abstain.
+- POLY-US-04 — `tests/test_cross_issuer_station_identity.py` (Python, 9 tests) + `packages-ts/markets/tests/polymarket/cross-issuer.test.ts` (TS, 6 tests). Asserts NYC: Kalshi=KNYC vs Polymarket=KLGA + Chicago: KMDW vs KORD + namespace-isolated denylist semantics.
+- POLY-US-05 — `schemas/polymarket-city-stations.json` regenerated via `scripts/export_schemas.py` (determinism `--check` green). `packages-ts/markets/src/data/generated/polymarket-city-stations.ts` regenerated via `pnpm codegen`. No hand-edits.
+- POLY-US-06 — Parity-fixture pre-flight gate green (non-live dtype lock, `tests/test_parity.py::test_dtypes_match_ground_truth`). Phase 8 does NOT touch parity-locked `_internal/_pairs.py` / `_internal/merge/` — catalog-data + resolver-layer only.
+
+**Review discipline:** Mixed Python+TS PR per REVIEW-DISCIPLINE.md routing. 4-iteration loop with codex `high` + python-architect + ts-architect dispatched in parallel:
+- iter-1: codex CRITICAL (loose regex extracted "KONG" from `wunderground.com/weather/hk/hong-kong/VHHH`), python-architect 3 HIGH (regex too loose / multi-URL first-match-wins / tautological test), ts-architect CRITICAL (`city` field drift between Python + TS via `findCityForIcao` reverse-lookup).
+- iter-2: codex CRITICAL (regex over-tightened — Markdown terminators broke), python-architect CRITICAL (real Polymarket URLs use `/history/daily/us/ny/new-york-city/KLGA` shape — iter-1 fix missed every real URL), ts-architect 2 HIGH (`city`/`stationMeasure` parity drift).
+- iter-3: codex CRITICAL (IGNORECASE let intermediate slugs consume uppercase station segments — `/history/daily/KORD/date/KLAX` extracted KLAX). Dropped IGNORECASE entirely; case-sensitive matching pins ICAO to canonical station slot.
+- iter-4: **codex + python-architect + ts-architect ALL PASS**. Loop terminated 1 iteration under the user-specified 5-iter cap.
+
+**Test coverage delta:**
+- Python: +85 tests (`test_polymarket_us_coverage.py` 18 + `test_per_event_station.py` +47 Tier 1.5 / URL coverage + `test_cross_issuer_station_identity.py` 9 + helpers). Total Python: 1743 passing (up from 1662 baseline).
+- TS: +29 tests across `polymarket/{known-wrong-stations,url-extract,resolver,cross-issuer}.test.ts`. Total TS: 1228 passing (up from ~1199 baseline).
+
+**Unblocks:**
+- Phase 9 (Markets Trade History) — needs Polymarket US settlement working.
+- Phase 10 (Composable research()) — needs multi-contract Polymarket US resolution.
 
 ## TS-W7 Docs + Release Workflow closeout (2026-05-24)
 
