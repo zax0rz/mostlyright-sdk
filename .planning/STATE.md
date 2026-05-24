@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v0.1.0
 milestone_name: — `@tradewinds/*` on npm)
-status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W6 + TS-W5 + TS-W7 docs/workflow merged. 8/8 TS phases code-complete (npm publish operator-gated).
-stopped_at: "Merged ts-w7/docs-npm-publish (docs + Changesets + release-ts.yml; npm OIDC registration + tagging operator-gated)"
-last_updated: "2026-05-24T21:00:00.000Z"
-last_activity: "2026-05-24 - TS-W6 + TS-W5 + TS-W7 docs/workflow shipped via 5-iteration codex `high` review per phase"
+status: Phase 6 (pandas 3 + optional polars backend) shipped on `claude/silly-jennings-6c9cfa`; 5-iter review loop clean; merging to main. Python v0.1.0rc1 still operator-gated publish.
+stopped_at: "Phase 6 complete — 5-iter codex high + python-architect review cycle PASS; 1737 tests passing; merged to main"
+last_updated: "2026-05-25T07:00:00.000Z"
+last_activity: "2026-05-25 - Phase 6 (TradewindsResult wrapper + pandas 3 dual-lock + opt-in polars backend) shipped via 5-iter review loop"
 progress:
   total_phases: 21
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 21
-  completed_plans: 14
-  percent: 67
+  completed_plans: 15
+  percent: 71
 ---
 
 # Project State
@@ -21,16 +21,41 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-21; STATE.md refreshed 2026-05-24)
 
 **Core value:** `research(contract, station, from_date, to_date)` returns clean, leakage-free, source-identified training pairs that backtest the same way they trade — and any train/infer source mismatch errors loudly instead of silently corrupting a model.
-**Current focus:** v0.1.0rc1 publish (operator-gated PyPI trusted-publisher setup) + TS-W5 (Polymarket settlement) next
+**Current focus:** v0.1.0rc1 publish (operator-gated PyPI trusted-publisher setup); Phase 6 (pandas 3 + opt-in polars) merged 2026-05-25 — v0.2 foundation laid.
 
 ## Current Position
 
-Phase: Python v0.1.0 (12/12 phases, 1674 tests, all REAL impls) COMPLETE + TS v0.1.0 milestone planning COMPLETE + **TS-W0 + TS-W1 + TS-W2 + TS-W3 + TS-W4 COMPLETE**
-Plan: TS-W5 (Polymarket settlement) next; operator-gated capture of TS-W2 Plan 07 msw recordings still unblocks the parity test HARD GATE.
-Status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W4 merged with Mode 2 dispatch + 9 transforms + QC alpha (5 rules + crosscheck). All 4 bundle gates green.
-Last activity: 2026-05-24 - Merged TS-W4 Mode 2 + transforms + QC alpha (6 plans, codex high + TS Architect parallel review, 1 P2 fixed inline)
+Phase: Python v0.1.0 (12/12 phases, 1674 tests, all REAL impls) COMPLETE + **Phase 6 v0.2 (pandas 3 dual-lock + opt-in polars backend) COMPLETE** + TS v0.1.0 milestone planning COMPLETE + TS-W0 → TS-W7 code-complete.
+Plan: TS-W5 (Polymarket settlement) operator-gated msw recording capture still pending; Phase 6 ships v0.2 wrapper + polars infrastructure that downstream consumers can opt into.
+Status: 1737 Python tests passing. Phase 6 merged via 5-iter review loop (codex high + python-architect parallel; both PASS at iter-5). Python v0.1.0rc1 still operator-gated PyPI publish.
+Last activity: 2026-05-25 - Phase 6 shipped: TradewindsResult provenance wrapper, pandas<3.0 cap lifted (pandas>=2.2,<4.0), coerce_pd3 invertible bridge + ULP drift artifact, narwhals-mediated polars-input shim on 5 cleanly-portable modules, opt-in backend/return_type kwargs on 5 public entry points, [polars] extras with pandas+pyarrow, defense-in-depth grep on 6 parity-locked modules, dual-pandas + polars CI matrix.
 
-Progress: Python [██████████] 100% (12/12 phases, 1674 tests) | TS [8/8 phases shipped — TS-W0 → TS-W7 code-complete; ~1212 TS tests; npm publish operator-gated]
+Progress: Python [██████████] 100% v0.1 (12/12 phases) + **Phase 6 v0.2 COMPLETE** (1679→1737 tests) | TS [8/8 phases shipped — TS-W0 → TS-W7 code-complete; ~1212 TS tests; npm publish operator-gated]
+
+## Phase 6 — Pandas 3 + Optional Polars Backend closeout (2026-05-25)
+
+Merge commit pending. Lands the v0.2 data-layer infrastructure:
+
+**Shipped (W0..W5):**
+- W0 — `tradewinds.core.result.TradewindsResult` backend-neutral provenance wrapper (frame + source + retrieved_at + schema_id + qc + data_version). Frozen dataclass; `legacy_df_with_attrs()` bridges v0.1.0 `df.attrs` consumers; `frame_as_pandas()` for parity-locked module dispatch; `to_dict()` for v0.2 MCP JSON-RPC. Validator + KnowledgeView + LeakageDetector + LeakageDetector.check accept `TradewindsResult` and unwrap.
+- W1 — pandas 3 readiness: `pandas<3.0` cap dropped across all 6 affected extras → `pandas>=2.2,<4.0`. 6 datetime/dtype WARN risk sites remediated via new `_internal/_pandas_compat.py` helpers (`PANDAS_MAJOR`, `empty_utc_datetime_series`, `is_string_like_dtype`). `tests/fixtures/parity/coerce_pd3.py` invertible `ns↔us` + `object↔string` bridge with `None`-position preservation on object-string round-trip. `tests/fixtures/parity/measure_ulp_drift.py` measurement script + seeded `ulp_drift_pd3.json` artifact. Parity gate reads artifact tolerance (not hardcoded `1e-12`). Dual-pandas CI matrix: `pandas-3-suite` deletes uv.lock + `uv lock --upgrade-package pandas` + asserts major>=3.
+- W2 — narwhals-mediated polars-input shim on 5 cleanly-portable modules: `transforms.{lag, diff, diff2, rolling, calendar_features, spread, clip_outliers}`, `preprocessing.{clip_outliers, iem_crosscheck}`, `qc.crosscheck_iem_ghcnh`, `core.formats.{json, csv, toon}.dumps`, `KnowledgeView` (via wrapper). New `core/_narwhals_compat.py` + `core/_polars_compat.py` boundary helpers. Backend-preserving I/O.
+- W3 — `backend: Literal["pandas","polars"]="pandas"` + `return_type: Literal["dataframe","wrapper"]="dataframe"` kwargs on `research()`, `research_by_source()`, `polymarket_discover()`, `forecast_nwp()`, `daily_extremes()`. Default preserves v0.1.0 zero-behaviour-change. Strict validation order: (1) backend value (2) backend+return_type combo (3) lazy polars install. `[polars]` optional extra on all 3 packages (`polars>=1.0,<2.0` + `narwhals>=1.20,<2.0` + `pandas>=2.2,<4.0` + `pyarrow>=17.0,<24.0`).
+- W4 — sort-stability + parity invariants: adversarial 10k-row duplicate-key test, polars→pandas round-trip ordering verified, defense-in-depth grep test rejects narwhals/polars imports in 6 parity-locked modules (`_internal/_pairs`, `core/merge`, `core/validator`, `core/_json_safe`, `core/temporal/timepoint`, `core/temporal/leakage`), DataVersion backend-invariance.
+- W5 — `@pytest.mark.polars` marker registration; `polars-suite` CI job installs `[polars]` on each of 3 member packages (workspace root has no `[polars]` — per-package iteration); `test_coerce_pd3.py` (10 tests, NOT @live) runs the coerce bridge on every CI commit under whichever pandas the matrix resolved. CHANGELOG omnibus entry for v0.2.0.
+
+**5-iter review loop (codex `high` + python-architect, parallel):**
+- iter-1: 1 CRITICAL (daily_extremes hardcoded return_type='wrapper') + 4 HIGH/P2 fixed.
+- iter-2: 1 P1 (pandas-3 CI didn't escape lockfile) + 2 P2 (research kwarg validation order; ULP_DRIFT atol unused) fixed.
+- iter-3: 3 P2 ([polars] missing pandas; daily_extremes lost attrs; forecast retrieved_at dropped) fixed.
+- iter-4: 1 P1 (ruff failures from new code) + 2 P2 (mode2 + polymarket validated after fetch) fixed.
+- iter-5: 1 P1 ([polars] missing pyarrow) fixed; 1 P2 (live parity not in pandas-3 CI) accepted — live tests stay operator-gated by CLAUDE.md design; `test_coerce_pd3.py` provides the CI-runnable equivalent.
+
+**Test count:** 1679 (baseline) → 1737 passing. +58 tests across W0 (14 wrapper), W2 (13 cross-backend), W3 (15 dispatch), W4 (5 invariants), W1 (10 coerce_pd3 round-trip + 1 ULP gate).
+
+**TS parity work needed (Dual-SDK Rule):** Phase 6 changes the Python public API surface (`backend`/`return_type` kwargs on 5 entry points, `TradewindsResult` wrapper). A parity ticket should land in `.planning/CROSS-SDK-SYNC.md` to track the TS port. TS-W4 already has `Mode2Result` analogue but doesn't carry the `backend` kwarg. NOT built here — Python-only this round per user instruction.
+
+**Deferred to v0.2.x or v0.3:** pyarrow backend (PYARROW-BACKEND-01), polars LazyFrame default (POLARS-LAZY-01), backend autodetection from env, rewriting parity-locked paths in polars, df.attrs strict deprecation (v0.2 supports both wrapper + legacy attrs).
 
 ## TS-W7 Docs + Release Workflow closeout (2026-05-24)
 
