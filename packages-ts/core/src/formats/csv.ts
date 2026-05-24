@@ -6,10 +6,12 @@
 //   - all values stringify to "" if null/undefined (matches pandas NaN
 //     emit behavior + the load-side empty-cell → empty-string convention)
 //
-// Hand-rolled minimal RFC-4180 parser to avoid the `papaparse` bundle hit
-// (TS-SDK-DESIGN §5.4 explicit guidance). Limitation: does NOT handle
-// newlines embedded inside quoted cells. Callers with free-form text
-// should prefer jsonDumps/jsonLoads or toonDumps/toonLoads.
+// Hand-rolled RFC-4180 parser to avoid the `papaparse` bundle hit
+// (TS-SDK-DESIGN §5.4 explicit guidance). Iter-1 C4: the parser is now
+// stateful (character-level state machine) so it correctly preserves
+// newlines inside quoted cells — which `csvDumps` itself emits when a
+// cell contains `\n`. Previously `csvLoads` line-split first, breaking
+// every multi-line quoted cell into spurious extra rows.
 
 const QUOTE_NEEDED = /[,"\n\r]/;
 
@@ -38,48 +40,96 @@ export function csvDumps(rows: ReadonlyArray<Record<string, unknown>>): string {
 }
 
 /**
- * Minimal RFC-4180 single-line tokenizer — splits one row into cells.
- * Quoted cells unwrap doubled internal quotes. Does NOT handle embedded
- * newlines (the caller pre-splits on `\n`).
+ * Stateful RFC-4180 parser. Reads the whole `data` buffer character by
+ * character, tracking whether the cursor is inside a quoted cell. Inside
+ * a quoted cell every byte except `""` (escaped quote → literal `"`) and
+ * the closing `"` is preserved verbatim — including newlines and commas,
+ * which is the whole point of the quoting.
+ *
+ * Returns the parsed rows as `string[][]` (the header is row 0). Empty
+ * `data` returns `[]`. A trailing newline is treated as a row terminator
+ * (no spurious empty row), matching `pd.read_csv` and `csvDumps`'s emit.
+ *
+ * CR / CRLF normalization: standalone `\r` or `\r\n` outside a quoted
+ * cell collapse to `\n`. INSIDE a quoted cell every newline byte is
+ * preserved as-is to keep the roundtrip lossless.
  */
-function parseCsvLine(line: string): string[] {
-  const out: string[] = [];
-  const n = line.length;
+function parseCsvBuffer(data: string): string[][] {
+  const rows: string[][] = [];
+  let cur: string[] = [];
+  let cell = "";
+  let inQuotes = false;
   let i = 0;
-  while (i <= n) {
-    if (i < n && line[i] === '"') {
-      // Quoted cell — scan to matching close quote, unwrapping `""` → `"`.
-      let v = "";
-      i++;
-      while (i < n) {
-        if (line[i] === '"') {
-          if (line[i + 1] === '"') {
-            v += '"';
-            i += 2;
-            continue;
-          }
-          i++;
-          break;
+  const n = data.length;
+
+  while (i < n) {
+    const ch = data[i];
+
+    if (inQuotes) {
+      if (ch === '"') {
+        // Lookahead: doubled quote inside a quoted cell → literal `"`.
+        if (data[i + 1] === '"') {
+          cell += '"';
+          i += 2;
+          continue;
         }
-        v += line[i];
+        // Otherwise this closes the quoted cell.
+        inQuotes = false;
         i++;
+        continue;
       }
-      out.push(v);
-    } else {
-      // Bare cell — read until next comma or EOL.
-      let v = "";
-      while (i < n && line[i] !== ",") {
-        v += line[i];
-        i++;
-      }
-      out.push(v);
-    }
-    if (i >= n) break;
-    if (line[i] === ",") {
+      // Any other char (including raw `\n`/`\r`/`,`) is part of the cell.
+      cell += ch;
       i++;
+      continue;
     }
+
+    // OUTSIDE a quoted cell:
+    if (ch === '"') {
+      // Opening quote. Per RFC 4180, a quoted cell starts at the
+      // beginning of a field — but we accept a stray `"` mid-field
+      // gracefully (matching `csv.reader` permissive mode): treat it as
+      // entering quoted mode. The next `"` (unless doubled) ends it.
+      inQuotes = true;
+      i++;
+      continue;
+    }
+    if (ch === ",") {
+      cur.push(cell);
+      cell = "";
+      i++;
+      continue;
+    }
+    if (ch === "\r") {
+      // CR or CRLF outside quotes → row terminator. Consume optional LF.
+      cur.push(cell);
+      rows.push(cur);
+      cur = [];
+      cell = "";
+      i++;
+      if (i < n && data[i] === "\n") i++;
+      continue;
+    }
+    if (ch === "\n") {
+      cur.push(cell);
+      rows.push(cur);
+      cur = [];
+      cell = "";
+      i++;
+      continue;
+    }
+    cell += ch;
+    i++;
   }
-  return out;
+
+  // Flush the trailing record. Match csvDumps which always emits a final
+  // `\n`: if the buffer ends on a newline we already pushed the final
+  // row and `cur`/`cell` are both empty — skip in that case.
+  if (cell.length > 0 || cur.length > 0) {
+    cur.push(cell);
+    rows.push(cur);
+  }
+  return rows;
 }
 
 /**
@@ -90,18 +140,22 @@ function parseCsvLine(line: string): string[] {
  *
  * Empty input → `{ rows: [], columns: [] }`. Header-only input →
  * `{ rows: [], columns: [...] }`.
+ *
+ * Iter-1 C4: stateful parser preserves newlines inside quoted cells, so
+ * `csvLoads(csvDumps(rows))` is now a faithful roundtrip even when cells
+ * contain `\n` — previously the line-splitter exploded such cells into
+ * extra rows.
  */
 export function csvLoads(data: string): {
   rows: Array<Record<string, string>>;
   columns: string[];
 } {
-  // Normalize line endings + strip exactly one trailing newline.
-  const normalized = data.replace(/\r\n/g, "\n").replace(/\r/g, "\n").replace(/\n$/, "");
-  if (normalized.length === 0) return { rows: [], columns: [] };
-  const lines = normalized.split("\n");
-  const columns = parseCsvLine(lines[0] ?? "");
-  const rows = lines.slice(1).map((line) => {
-    const cells = parseCsvLine(line);
+  if (data.length === 0) return { rows: [], columns: [] };
+  const parsed = parseCsvBuffer(data);
+  if (parsed.length === 0) return { rows: [], columns: [] };
+  const columns = parsed[0] ?? [];
+  const dataRows = parsed.slice(1);
+  const rows = dataRows.map((cells) => {
     const r: Record<string, string> = {};
     for (let i = 0; i < columns.length; i++) {
       r[columns[i] as string] = cells[i] ?? "";

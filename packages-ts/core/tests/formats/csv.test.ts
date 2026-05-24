@@ -65,13 +65,28 @@ describe("csvDumps + csvLoads", () => {
     expect(rows).toEqual([]);
   });
 
-  it.skip("embedded newlines inside quoted cells (v0.1.0 documented gap)", () => {
-    // The hand-rolled parser does NOT handle multi-line quoted cells.
-    // Use jsonDumps/jsonLoads or toonDumps/toonLoads for free-form text.
-    // This test documents the gap; it intentionally lives behind .skip.
+  it("embedded newlines inside quoted cells roundtrip (iter-1 C4)", () => {
+    // Previously skipped — the line-splitter exploded multi-line quoted
+    // cells into spurious rows. The stateful parser now preserves them.
     const rows = [{ note: "line1\nline2" }];
     const dumped = csvDumps(rows);
     const { rows: loaded } = csvLoads(dumped);
     expect(loaded[0]?.note).toBe("line1\nline2");
+  });
+
+  it("embedded newlines + commas + quotes inside one cell roundtrip", () => {
+    // Belt-and-suspenders: every quoting trigger present in a single
+    // cell to confirm the state machine handles them together.
+    const rows = [{ note: 'a,b\n"c",d\r\ne' }];
+    const dumped = csvDumps(rows);
+    const { rows: loaded } = csvLoads(dumped);
+    expect(loaded[0]?.note).toBe('a,b\n"c",d\r\ne');
+  });
+
+  it("CRLF row terminator outside quotes parses one row, not two", () => {
+    const data = "a,b\r\n1,2\r\n";
+    const { rows, columns } = csvLoads(data);
+    expect(columns).toEqual(["a", "b"]);
+    expect(rows).toEqual([{ a: "1", b: "2" }]);
   });
 });
