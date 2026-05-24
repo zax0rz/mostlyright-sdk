@@ -131,4 +131,23 @@ describe("buildSnapshot", () => {
     rows.push({ a: 2 });
     expect(s.rows).toHaveLength(1);
   });
+
+  it("isolates schemaId/source from post-build opts mutation (codex iter-1 P2)", () => {
+    // Codex iter-1 P2: previously toDict() read schemaId/source through the
+    // mutable `opts` closure, so mutating `opts` post-build leaked into
+    // provenance while the frozen snapshot fields stayed unchanged.
+    const opts = {
+      schemaId: "original.schema.v1",
+      source: "original.source",
+      rows: [{ a: 1 }],
+    };
+    const s = buildSnapshot(opts);
+    opts.schemaId = "MUTATED.schema.v1";
+    opts.source = "MUTATED.source";
+    expect(s.schemaId).toBe("original.schema.v1");
+    expect(s.source).toBe("original.source");
+    const d = s.toDict();
+    expect(d.schema_id).toBe("original.schema.v1");
+    expect(d.source).toBe("original.source");
+  });
 });

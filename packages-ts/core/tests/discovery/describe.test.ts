@@ -37,6 +37,22 @@ describe("describe()", () => {
     expect(() => describeSchema("nonexistent.schema.v1")).toThrow(UnknownSchemaError);
   });
 
+  it("ships v0.1.0 schemas pre-registered (codex iter-1 P2 regression)", () => {
+    // Fresh import must already know the canonical schemas; callers must
+    // NOT need to call `registerSchema` before `describe(...)` works.
+    for (const id of [
+      "schema.observation.v1",
+      "schema.forecast.iem_mos.v1",
+      "schema.settlement.cli.v1",
+      "schema.observation_ledger.v1",
+      "schema.observation_qc.v1",
+    ]) {
+      const out = describeSchema(id);
+      expect(out).toContain(`Schema: ${id}`);
+      expect(out).toContain("Columns:");
+    }
+  });
+
   it("omits the dash when a column has no description", () => {
     registerSchema({
       id: "test.describe.no-desc",

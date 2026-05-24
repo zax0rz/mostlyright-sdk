@@ -86,15 +86,23 @@ export function buildSnapshot(opts: BuildSnapshotOptions): DataSnapshot {
     throw new RangeError("buildSnapshot: rows must be an array");
   }
 
+  // Capture every component into local consts so the returned snapshot's
+  // closures never read from the mutable `opts` argument. Codex iter-1
+  // P2: a caller that did `const s = buildSnapshot({...}); opts.schemaId = "x"`
+  // would have seen `s.toDict()` emit the mutated schemaId while
+  // `s.schemaId` still showed the original — provenance drift on an API
+  // that promises immutability.
   const knowledgeTime = normalizeKnowledgeTime(opts.knowledgeTime);
+  const schemaId = opts.schemaId;
+  const source = opts.source;
   const rows = freezeRows(opts.rows);
   const dataVersion = opts.dataVersion ?? null;
   const metadata = Object.freeze({ ...(opts.metadata ?? {}) });
 
   const snapshot: DataSnapshot = {
     knowledgeTime,
-    schemaId: opts.schemaId,
-    source: opts.source,
+    schemaId,
+    source,
     rows,
     dataVersion,
     metadata,
@@ -103,8 +111,8 @@ export function buildSnapshot(opts: BuildSnapshotOptions): DataSnapshot {
       // is a plain dict-shaped object already, so it round-trips cleanly.
       return toJsonSafe({
         knowledge_time: knowledgeTime,
-        schema_id: opts.schemaId,
-        source: opts.source,
+        schema_id: schemaId,
+        source,
         rows,
         data_version: dataVersion,
         metadata,
