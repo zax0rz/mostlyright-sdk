@@ -89,6 +89,18 @@ jobs:
         run: |
           python3 scripts/parity_status.py --milestone "TS v0.1.0"
 
+      - name: Preflight — normalize tag + verify versions + rewrite peerDeps
+        # Codex iter-5 P1 (×2):
+        # 1. Verify every package.json matches the version implied by the tag
+        #    (normalize vts-0.1.0rc1 → 0.1.0-rc.1). A stale-commit tag would
+        #    otherwise publish whatever's in the files, leaving a partial
+        #    release that can't be redone (npm versions are immutable).
+        # 2. Rewrite weather/markets peerDependencies['@tradewinds/core']
+        #    from the workspace-time ^0.0.0 placeholder to ^<expected>.
+        #    pnpm publish rewrites `workspace:*` but leaves plain
+        #    peerDependencies untouched.
+        run: node scripts/release-ts-preflight.mjs "${{ github.ref_name }}"
+
       - name: Choose dist-tag (rc → next, non-rc → latest)
         id: dist_tag
         run: |
