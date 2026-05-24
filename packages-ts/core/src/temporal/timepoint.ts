@@ -129,8 +129,13 @@ export class TimePoint {
       // ms, then read its UTC fields after offsetting.
       let offsetMin = 0;
       const tzMatch = /(Z|[+-]\d{2}:?\d{2})$/.exec(trimmed);
-      if (tzMatch !== null && tzMatch[1] !== "Z") {
-        const tz = tzMatch[1];
+      // Under `noUncheckedIndexedAccess: true`, `tzMatch[1]` is typed
+      // `string | undefined` even after the `null` guard. Capture it once
+      // and narrow with an explicit undefined check (unreachable when
+      // tzMatch is non-null — the regex always populates group 1 — but
+      // the type checker can't prove that on its own).
+      const tz = tzMatch === null ? undefined : tzMatch[1];
+      if (tz !== undefined && tz !== "Z") {
         // tz is like "+05:30", "-0500", "+0000".
         const sign = tz.startsWith("-") ? -1 : 1;
         const body = tz.slice(1).replace(":", "");
