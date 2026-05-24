@@ -9,7 +9,7 @@ import { DeferredMarketError } from "@tradewinds/core";
 import { type FetchEventsOptions, type PolymarketEventRaw, fetchEvents } from "./client.js";
 import { extractResolutionSourceType, validateDescription } from "./description.js";
 import { PayloadTooLargeError, PolymarketEventError } from "./errors.js";
-import { detectMarketMeasure, resolveStationForEvent } from "./resolver.js";
+import { deriveCity, detectMarketMeasure, resolveStationForEvent } from "./resolver.js";
 import type { PolymarketDiscoveryRow, PolymarketResolutionSourceType } from "./types.js";
 
 export interface PolymarketDiscoverOptions extends FetchEventsOptions {
@@ -56,8 +56,12 @@ export async function polymarketDiscover(
       measureOut = marketMeasure;
     } catch (err) {
       if (err instanceof DeferredMarketError) {
-        // Surface so callers see it exists but can't be settled in v0.1.
-        cityKey = null;
+        // Codex iter-4 P2: surface the matched city even when the market is
+        // deferred. The catch path used to null out `city` along with `icao`
+        // and `measure`, making deferred markets indistinguishable from
+        // unresolved-city rows for downstream consumers. Recover the city
+        // via deriveCity (cheap; the resolver had already done the same).
+        cityKey = deriveCity(ev);
         icao = null;
         measureOut = null;
       } else {
@@ -66,7 +70,10 @@ export async function polymarketDiscover(
     }
 
     const description = typeof ev.description === "string" ? ev.description : "";
-    let resolutionSourceType: PolymarketResolutionSourceType | null = null;
+    // Codex iter-4 P2: an empty/missing description means "no allowlisted
+    // URL found" — that's the `other` classification (24h fallback delay),
+    // NOT `null` (unknown). Mirrors extractResolutionSourceType's contract.
+    let resolutionSourceType: PolymarketResolutionSourceType | null = "other";
     if (description.length > 0) {
       try {
         validateDescription(description);

@@ -45,7 +45,7 @@ describe("polymarketDiscover", () => {
     expect(calls).toBeLessThanOrEqual(2);
   });
 
-  it("surfaces deferred markets with icao: null", async () => {
+  it("surfaces deferred markets with icao: null but PRESERVES the matched city (codex iter-4 P2)", async () => {
     const fetchFn = async () =>
       jsonResponse([
         {
@@ -60,7 +60,23 @@ describe("polymarketDiscover", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]?.icao).toBeNull();
     expect(rows[0]?.measure).toBeNull();
+    expect(rows[0]?.city).toBe("taipei"); // preserved across the deferred path
     expect(rows[0]?.slug).toBe("will-taipei-be-hot-2026-05-23");
+  });
+
+  it("classifies empty descriptions as 'other' (codex iter-4 P2)", async () => {
+    const fetchFn = async () =>
+      jsonResponse([
+        {
+          id: "50",
+          slug: "will-london-hottest-on-2026-07-04",
+          title: "London July 4",
+          description: "",
+        },
+      ]);
+    const rows = await polymarketDiscover({ fetchFn, sleepBetweenMs: 0 });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.resolutionSourceType).toBe("other");
   });
 
   it("drops unresolvable events via the onSkip callback", async () => {
