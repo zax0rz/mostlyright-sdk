@@ -86,9 +86,11 @@ describe("TS-W2 HARD parity gate (SC#1)", () => {
           iemPolitenessMs: 0,
           ghcnhPolitenessMs: 0,
           cliPolitenessMs: 0,
-          // Reference clock far enough past toDate that the AWC short-circuit
-          // matches the original capture's behavior.
-          now: new Date(`${c.to}T23:59:59Z`),
+          // No `now` override — let the AWC short-circuit fire identically to
+          // capture-time AND Python fixture-generation time. All 5 cases are
+          // historical (oldest in late 2024); AWC will skip in both places.
+          // Forcing `now` here would make TS fetch AWC, hit msw's
+          // onUnhandledRequest="error", and fail with no AWC recordings.
         });
         assertRowsRowEqual(actual, expected, `case_${c.n}`);
       }, 30_000);

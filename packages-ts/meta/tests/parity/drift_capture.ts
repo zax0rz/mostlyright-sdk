@@ -31,18 +31,28 @@ const __dirname = path.dirname(__filename);
 const DRIFT_DIR = path.resolve(__dirname, "drift");
 
 async function main(): Promise<void> {
+  // SOFT-FAIL discipline (SC#5): per-case errors are logged + skipped; we
+  // ALWAYS exit 0 so the weekly cron never reds main. Mirrors Python
+  // `tests/fixtures/drift/capture_drift.py` per-case try/except + return 0.
   fs.mkdirSync(DRIFT_DIR, { recursive: true });
+  let failures = 0;
   for (const c of CASES) {
     console.log(`[drift] capturing case_${c.n} ${c.station} ${c.from} → ${c.to}`);
-    const rows = await research(c.station, c.from, c.to);
-    const outPath = path.join(DRIFT_DIR, `case_${c.n}_${c.station}_${c.from}_${c.to}.json`);
-    const sorted = [...rows].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-    fs.writeFileSync(outPath, `${JSON.stringify(sorted, null, 2)}\n`, "utf-8");
+    try {
+      const rows = await research(c.station, c.from, c.to);
+      const outPath = path.join(DRIFT_DIR, `case_${c.n}_${c.station}_${c.from}_${c.to}.json`);
+      const sorted = [...rows].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+      fs.writeFileSync(outPath, `${JSON.stringify(sorted, null, 2)}\n`, "utf-8");
+    } catch (err) {
+      failures++;
+      console.error(`[drift] case_${c.n} failed (continuing, soft-fail):`, err);
+    }
   }
-  console.log("✓ drift capture complete");
+  console.log(`✓ drift capture complete (${CASES.length - failures}/${CASES.length} cases)`);
 }
 
+// SOFT-FAIL guard for any unhandled async error — still exit 0. The drift
+// watchdog NEVER blocks CI per TS-W2 SC#5.
 main().catch((err) => {
-  console.error("drift capture failed:", err);
-  process.exit(2);
+  console.error("drift capture: unexpected error (soft-fail, exiting 0):", err);
 });
