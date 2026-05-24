@@ -96,4 +96,25 @@ export default defineConfig([
       return { js: ".cjs" };
     },
   },
+  {
+    // Iter-2 H5: dedicated Node-only subpath for FsStore. The cache
+    // barrel (above) intentionally does NOT re-export FsStore /
+    // defaultFsRoot because tsup hoists them into a sibling chunk
+    // that the browser-facing subbundle then top-level-imports
+    // (pulling node:fs/promises, node:os, node:path, node:crypto,
+    // proper-lockfile into MV3 bundles). FsStore consumers must
+    // import from this subpath, NOT from `@tradewinds/core/internal/
+    // cache`. Emitted at `@tradewinds/core/internal/cache/fs`.
+    entry: { "cache/fs": "src/internal/cache/fs-entry.ts" },
+    format: ["esm", "cjs"],
+    dts: true,
+    sourcemap: true,
+    clean: false,
+    target: "es2022",
+    outDir: "dist/internal",
+    outExtension({ format }) {
+      if (format === "esm") return { js: ".mjs" };
+      return { js: ".cjs" };
+    },
+  },
 ]);

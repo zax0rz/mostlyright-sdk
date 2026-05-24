@@ -8,8 +8,13 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+// Iter-2 H5: FsStore no longer re-exported from the cache barrel
+// (the re-export pulled node:fs/promises etc. into the browser
+// subbundle). Import directly from the fs module — production Node
+// callers should use the dedicated subpath
+// `@tradewinds/core/internal/cache/fs`.
+import { FsStore } from "../../../src/internal/cache/fs.js";
 import {
-  FsStore,
   IndexedDBStore,
   MemoryStore,
   defaultCacheStore,

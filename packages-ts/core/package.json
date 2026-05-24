@@ -48,6 +48,11 @@
       "types": "./dist/internal/cache/index.d.ts",
       "import": "./dist/internal/cache/index.mjs",
       "require": "./dist/internal/cache/index.cjs"
+    },
+    "./internal/cache/fs": {
+      "types": "./dist/internal/cache/fs.d.ts",
+      "import": "./dist/internal/cache/fs.mjs",
+      "require": "./dist/internal/cache/fs.cjs"
     }
   },
   "files": ["dist"],
