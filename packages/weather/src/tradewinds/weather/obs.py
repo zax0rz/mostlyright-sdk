@@ -123,6 +123,7 @@ def obs(
             to_date=date.fromisoformat(end),
             station=info.icao,  # cache uses ICAO (e.g. KNYC), not raw user input
             env=os.environ,
+            source=source,
         )
     else:
         resolved = strategy
@@ -202,11 +203,7 @@ def _warm_cache_fetch(
     """
     from datetime import timedelta
 
-    from tradewinds.research import (
-        _all_caches_warm,
-        _fetch_observations_range,
-        _prefetch_sources,
-    )
+    from tradewinds.research import _fetch_observations_range
 
     if source is not None:
         raise ValueError(
@@ -219,18 +216,17 @@ def _warm_cache_fetch(
     # Mirror research.py:1167 — extend by 1 day for the LST-pre-midnight tail.
     extended_to_iso = (date.fromisoformat(to_date_iso) + timedelta(days=1)).isoformat()
 
-    # _all_caches_warm gate (preserves the zero-network invariant for fully
-    # cached re-runs; see research.py:1183-1185).
-    awc_rows = None
-    if not _all_caches_warm(info, from_date_iso, to_date_iso, extended_to_iso):
-        prefetch = _prefetch_sources(info, from_date_iso, to_date_iso, extended_to_iso)
-        awc_rows = prefetch["awc_rows"]
-
+    # Skip _all_caches_warm + _prefetch_sources from research.py: those gate on
+    # CLI climate cache + fire a CLI prefetch worker that obs() never consumes.
+    # Calling _fetch_observations_range directly with prefetched_awc_rows=None
+    # makes it perform its own per-month cache reads + lazy AWC fetch. Fully
+    # cached re-runs still short-circuit at the per-month read_cache layer in
+    # research.py:_fetch_observations_range (codex iter-2 HIGH #3).
     return _fetch_observations_range(
         info,
         from_date_iso,
         extended_to_iso,
-        prefetched_awc_rows=awc_rows,
+        prefetched_awc_rows=None,
     )
 
 
@@ -292,17 +288,22 @@ def _resolve_strategy(
     env,
     *,
     cache_root=None,
+    source: Source | None = None,
 ) -> Literal["exact_window", "warm_cache", "hosted"]:
     """Decide which ingest strategy ``auto`` should dispatch to.
 
     Decision rules (applied in order; first match wins):
 
     1. If ``env["TW_HOSTED_URL"]`` is set → ``"hosted"``.
-    2. Else if window < 90 days AND no cached parquet for ANY year touching
+    2. If ``source`` is not None → ``"exact_window"`` (warm_cache rejects
+       source-filtered queries because post-merge filtering would corrupt
+       SOURCE_PRIORITY semantics; only the fetcher-boundary enforcement in
+       exact_window honors source filtering correctly — codex iter-2 HIGH).
+    3. Else if window < 90 days AND no cached parquet for ANY year touching
        the window → ``"exact_window"``.
-    3. Else if any cached parquet for ANY year touching the window exists →
+    4. Else if any cached parquet for ANY year touching the window exists →
        ``"warm_cache"``.
-    4. Else (large window, no cache, no env) → ``"warm_cache"`` (fallback;
+    5. Else (large window, no cache, no env) → ``"warm_cache"`` (fallback;
        long windows benefit from year-aligned caching even cold because
        multiple months hit the same yearly IEM CSV).
 
@@ -327,6 +328,10 @@ def _resolve_strategy(
     cache_root : Path | None
         Override cache root for tests. Defaults to ``$TRADEWINDS_CACHE_DIR``
         or ``~/.tradewinds/cache`` via ``_cache_root()``.
+    source : {"iem", "ghcnh", "awc"} | None
+        Source filter from the obs() caller. When set, forces exact_window
+        regardless of window size or cache warmth — warm_cache cannot honor
+        source filtering correctly.
 
     Returns
     -------
@@ -336,6 +341,12 @@ def _resolve_strategy(
 
     if env.get("TW_HOSTED_URL"):
         return "hosted"
+
+    # Source-filtered queries always go through exact_window because
+    # warm_cache (research()-style orchestration + merge) cannot honor
+    # source filtering at the fetcher boundary.
+    if source is not None:
+        return "exact_window"
 
     window_days = (to_date - from_date).days + 1
     has_cache = any(

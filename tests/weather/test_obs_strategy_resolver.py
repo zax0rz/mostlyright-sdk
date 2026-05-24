@@ -160,6 +160,45 @@ def test_obs_auto_with_env_set_raises_hosted_not_implemented(monkeypatch, empty_
         obs("KNYC", "2024-03-01", "2024-03-31", strategy="auto")
 
 
+# --- auto + source=... routes to exact_window even with warm cache ----------
+def test_resolver_source_filter_forces_exact_window_even_with_warm_cache(warm_cache):
+    """auto + source!=None ALWAYS picks exact_window (codex iter-2 HIGH).
+
+    warm_cache cannot honor source filtering (post-merge filter would corrupt
+    SOURCE_PRIORITY semantics), so the auto resolver MUST never route a
+    source-filtered query to warm_cache — regardless of cache warmth or
+    window size.
+    """
+    from tradewinds.weather.obs import _resolve_strategy
+
+    # Small window + warm cache + no env: normally → warm_cache.
+    # With source set → exact_window (forced).
+    result = _resolve_strategy(
+        from_date=date(2024, 3, 1),
+        to_date=date(2024, 3, 31),
+        station="KNYC",
+        env={},
+        cache_root=warm_cache,
+        source="iem",
+    )
+    assert result == "exact_window"
+
+
+def test_resolver_source_filter_forces_exact_window_for_large_window(empty_cache):
+    """auto + source + large window: exact_window (would otherwise be warm_cache)."""
+    from tradewinds.weather.obs import _resolve_strategy
+
+    result = _resolve_strategy(
+        from_date=date(2024, 1, 1),
+        to_date=date(2024, 12, 31),  # 366 days
+        station="KNYC",
+        env={},
+        cache_root=empty_cache,
+        source="ghcnh",
+    )
+    assert result == "exact_window"
+
+
 # --- _has_cached_year lives in cache.py (I-4) -------------------------------
 def test_has_cached_year_lives_in_cache_module(tmp_path):
     from tradewinds.weather.cache import _has_cached_year
