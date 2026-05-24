@@ -50,6 +50,15 @@ research = [
     "pyarrow>=17.0,<24.0",
     "pandas>=2.2,<4.0",
 ]
+# Phase 6 (POLARS-05): opt-in polars backend. Default install never
+# pulls polars; calling `backend="polars"` without the extra raises
+# SourceUnavailableError with an install hint (mirrors the [nwp] pattern).
+# narwhals is the cross-backend abstraction layer the cleanly-portable
+# modules go through.
+polars = [
+    "polars>=1.0,<2.0",
+    "narwhals>=1.20,<2.0",
+]
 
 [build-system]
 requires = ["hatchling"]

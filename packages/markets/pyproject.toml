@@ -42,6 +42,12 @@ polymarket = [
     "pandas>=2.2,<4.0",
     "tradewinds-weather>=0.1.0rc1,<0.2",
 ]
+# Phase 6 (POLARS-05): mirror tradewinds[polars] so polymarket_discover
+# can return polars frames via the `backend="polars"` kwarg.
+polars = [
+    "polars>=1.0,<2.0",
+    "narwhals>=1.20,<2.0",
+]
 
 [build-system]
 requires = ["hatchling"]

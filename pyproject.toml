@@ -56,6 +56,13 @@ dev = [
     "pyarrow>=17.0",
     "respx>=0.23.1",
     "packaging>=23",
+    # Phase 6 W2-T1: narwhals is the cross-backend abstraction layer the
+    # 5 cleanly-portable modules go through. polars is the second backend
+    # the [polars] extra wires up. Both are dev deps so the cross-backend
+    # test matrix runs locally + in CI without forcing every user to
+    # install polars on a default `pip install tradewinds`.
+    "narwhals>=1.20,<2.0",
+    "polars>=1.0,<2.0",
 ]
 
 [tool.ruff]
@@ -70,6 +77,10 @@ ignore = ["E501"]  # line length handled by formatter
 [tool.pytest.ini_options]
 markers = [
     "live: tests that hit live public APIs (skipped by default per testing playbook)",
+    # Phase 6 W5-T2: opt-in polars-backend tests. Default install does NOT
+    # pull polars; tests gated on this marker `pytest.importorskip("polars")`
+    # at collection time so a pandas-only environment can skip cleanly.
+    "polars: tests that exercise the optional [polars] backend",
 ]
 testpaths = ["packages", "tests"]
 # Include both the per-package tests under packages/*/tests AND the

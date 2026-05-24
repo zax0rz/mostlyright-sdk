@@ -21,7 +21,13 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+from tradewinds.core._narwhals_compat import (
+    pandas_series_to_polars,
+    pandas_to_polars,
+    to_pandas_if_polars,
+)
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -40,19 +46,35 @@ __all__ = [
 ]
 
 
+# Phase 6 W2-T2: Each Series-returning function accepts pandas OR polars
+# input. The polars path converts to pandas at the in-boundary (parity-
+# tested math stays unchanged), runs the existing logic, and converts
+# the result back to a polars Series before returning. Pandas input
+# returns pandas; polars input returns polars — backend-preserving.
+
+
+def _series_op(df: Any, fn: Callable[[Any], Any]) -> Any:
+    """Run a Series-returning op on ``df``, preserving backend."""
+    pdf, was_polars = to_pandas_if_polars(df)
+    result = fn(pdf)
+    if was_polars:
+        return pandas_series_to_polars(result)
+    return result
+
+
 def lag(df: pd.DataFrame, column: str, periods: int = 1) -> pd.Series:
     """Return a Series with ``df[column]`` lagged by ``periods`` rows."""
-    return df[column].shift(periods)
+    return _series_op(df, lambda pdf: pdf[column].shift(periods))
 
 
 def diff(df: pd.DataFrame, column: str, periods: int = 1) -> pd.Series:
     """First-difference of ``df[column]``."""
-    return df[column].diff(periods)
+    return _series_op(df, lambda pdf: pdf[column].diff(periods))
 
 
 def diff2(df: pd.DataFrame, column: str) -> pd.Series:
     """Second-difference of ``df[column]``."""
-    return df[column].diff().diff()
+    return _series_op(df, lambda pdf: pdf[column].diff().diff())
 
 
 def rolling(
@@ -62,10 +84,14 @@ def rolling(
     fn: str | Callable = "mean",
 ) -> pd.Series:
     """Apply a rolling reduction to ``df[column]``."""
-    r = df[column].rolling(window=window, min_periods=1)
-    if isinstance(fn, str):
-        return getattr(r, fn)()
-    return r.apply(fn, raw=False)
+
+    def _impl(pdf: Any) -> Any:
+        r = pdf[column].rolling(window=window, min_periods=1)
+        if isinstance(fn, str):
+            return getattr(r, fn)()
+        return r.apply(fn, raw=False)
+
+    return _series_op(df, _impl)
 
 
 def calendar_features(df: pd.DataFrame, date_column: str) -> pd.DataFrame:
@@ -81,20 +107,24 @@ def calendar_features(df: pd.DataFrame, date_column: str) -> pd.DataFrame:
     Cyclical pairs satisfy ``sin² + cos² ≈ 1`` so a model sees the
     wraparound (Dec → Jan is 1 day, not 11 months apart). Property
     test asserts this invariant via Hypothesis (Phase 3.5 ROADMAP SC-2).
+
+    Phase 6 W2-T2: accepts pandas OR polars input; returns the same
+    backend type the caller passed.
     """
     import numpy as np
     import pandas as pd
 
-    out = df.copy()
+    pdf, was_polars = to_pandas_if_polars(df)
+    out = pdf.copy()
     # PANDAS3: caller-supplied column. Use format='ISO8601' so naive
     # string parsing is locked to ISO semantics on both pandas 2.x and
     # 3.x; without an explicit format, pandas 3.x default-resolution
     # inference can shift ns → us at this boundary. Already-typed
     # datetime columns pass through unchanged.
-    if pd.api.types.is_datetime64_any_dtype(df[date_column]):
-        ts = df[date_column]
+    if pd.api.types.is_datetime64_any_dtype(pdf[date_column]):
+        ts = pdf[date_column]
     else:
-        ts = pd.to_datetime(df[date_column], format="ISO8601")
+        ts = pd.to_datetime(pdf[date_column], format="ISO8601")
     out["month_sin"] = np.sin(2 * np.pi * ts.dt.month / 12)
     out["month_cos"] = np.cos(2 * np.pi * ts.dt.month / 12)
     out["dow_sin"] = np.sin(2 * np.pi * ts.dt.dayofweek / 7)
@@ -105,12 +135,14 @@ def calendar_features(df: pd.DataFrame, date_column: str) -> pd.DataFrame:
     # sees seasonal periodicity directly (DOY 365 wraps to DOY 1).
     out["day_of_year_sin"] = np.sin(2 * np.pi * ts.dt.dayofyear / 365.0)
     out["day_of_year_cos"] = np.cos(2 * np.pi * ts.dt.dayofyear / 365.0)
+    if was_polars:
+        return pandas_to_polars(out)
     return out
 
 
 def spread(df: pd.DataFrame, col_a: str, col_b: str) -> pd.Series:
     """Return ``df[col_a] - df[col_b]``."""
-    return df[col_a] - df[col_b]
+    return _series_op(df, lambda pdf: pdf[col_a] - pdf[col_b])
 
 
 def wind_chill(temp_f: float, wind_mph: float) -> float | None:
@@ -157,9 +189,13 @@ def heat_index(temp_f: float, rh_pct: float) -> float | None:
 
 def clip_outliers(df: pd.DataFrame, column: str, *, std: float = 3.0) -> pd.Series:
     """Winsorize: clip ``df[column]`` to ``mean ± std * sigma``."""
-    s = df[column]
-    mu = s.mean()
-    sigma = s.std()
-    lower = mu - std * sigma
-    upper = mu + std * sigma
-    return s.clip(lower=lower, upper=upper)
+
+    def _impl(pdf: Any) -> Any:
+        s = pdf[column]
+        mu = s.mean()
+        sigma = s.std()
+        lower = mu - std * sigma
+        upper = mu + std * sigma
+        return s.clip(lower=lower, upper=upper)
+
+    return _series_op(df, _impl)

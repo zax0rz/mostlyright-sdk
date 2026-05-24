@@ -37,7 +37,14 @@ def dumps(df: pd.DataFrame) -> str:
 
     Drops the index (``index=False``) to match the wire shape the
     catalog adapters emit. Column order is preserved.
+
+    Phase 6 W2-T6: accepts pandas OR polars input; polars frames are
+    converted to pandas at the boundary so the wire bytes stay
+    identical regardless of caller backend.
     """
+    from tradewinds.core._narwhals_compat import to_pandas_if_polars
+
+    df, _ = to_pandas_if_polars(df)
     return df.to_csv(index=False)
 
 

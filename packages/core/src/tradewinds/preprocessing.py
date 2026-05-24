@@ -17,6 +17,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from tradewinds.core._narwhals_compat import (
+    pandas_series_to_polars,
+    pandas_to_polars,
+    to_pandas_if_polars,
+)
+
 if TYPE_CHECKING:
     import pandas as pd
 
@@ -71,24 +77,33 @@ def clip_outliers(
 
     Raises:
         KeyError: ``column`` not in ``df``.
+
+    Phase 6 W2-T3: accepts pandas OR polars input; returns the same
+    backend the caller passed.
     """
-    s = df[column]
+    pdf, was_polars = to_pandas_if_polars(df)
+    s = pdf[column]
     if bounds is not None:
         lower, upper = bounds
-        return s.clip(lower=lower, upper=upper)
-    physics = PHYSICS_BOUNDS.get(column)
-    if physics is not None:
-        return s.clip(lower=physics[0], upper=physics[1])
-    # Architect iter-1 HIGH: std<=0 in the sigma fallback collapses every
-    # row to the mean — silent dataset corruption. Refuse explicitly.
-    if std <= 0:
-        raise ValueError(
-            f"clip_outliers: std must be > 0 for the sigma fallback (got {std}); "
-            "pass bounds=(lo, hi) or use a physics-default column",
-        )
-    mu = s.mean()
-    sigma = s.std()
-    return s.clip(lower=mu - std * sigma, upper=mu + std * sigma)
+        out = s.clip(lower=lower, upper=upper)
+    else:
+        physics = PHYSICS_BOUNDS.get(column)
+        if physics is not None:
+            out = s.clip(lower=physics[0], upper=physics[1])
+        else:
+            # Architect iter-1 HIGH: std<=0 in the sigma fallback collapses
+            # every row to the mean — silent dataset corruption. Refuse.
+            if std <= 0:
+                raise ValueError(
+                    f"clip_outliers: std must be > 0 for the sigma fallback (got {std}); "
+                    "pass bounds=(lo, hi) or use a physics-default column",
+                )
+            mu = s.mean()
+            sigma = s.std()
+            out = s.clip(lower=mu - std * sigma, upper=mu + std * sigma)
+    if was_polars:
+        return pandas_series_to_polars(out)
+    return out
 
 
 def iem_crosscheck(
@@ -118,11 +133,15 @@ def iem_crosscheck(
 
     Raises:
         ValueError: ``silver_df`` lacks a ``source`` column.
+
+    Phase 6 W2-T3: accepts pandas OR polars input; returns the same
+    backend the caller passed.
     """
     import pandas as pd
 
     from tradewinds.qc import crosscheck_iem_ghcnh
 
+    silver_df, was_polars = to_pandas_if_polars(silver_df)
     if "source" not in silver_df.columns:
         raise ValueError(
             "iem_crosscheck: silver_df must carry a 'source' column "
@@ -143,8 +162,12 @@ def iem_crosscheck(
     iem_df = work.loc[work["source"].astype(str).str.startswith("iem")]
     ghcnh_df = work.loc[work["source"].astype(str).str.startswith("ghcnh")]
     if iem_df.empty or ghcnh_df.empty:
-        return pd.DataFrame(
+        out = pd.DataFrame(
             columns=["station", "event_time", "temp_c_iem", "temp_c_ghcnh", "delta_c"]
         )
-    tol_c: float = 2.0 if tolerance == "default" else float(tolerance)
-    return crosscheck_iem_ghcnh(iem_df, ghcnh_df, tol_c=tol_c)
+    else:
+        tol_c: float = 2.0 if tolerance == "default" else float(tolerance)
+        out = crosscheck_iem_ghcnh(iem_df, ghcnh_df, tol_c=tol_c)
+    if was_polars:
+        return pandas_to_polars(out)
+    return out
