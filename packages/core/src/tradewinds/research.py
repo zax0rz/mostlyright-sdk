@@ -1081,6 +1081,8 @@ def research(
     as_dataframe: bool = True,
     tz_override: str | None = None,
     qc: bool = False,
+    backend: str = "pandas",
+    return_type: str = "dataframe",
 ) -> Any:
     """Return joined observation + climate + (optional) forecast rows for a date range.
 
@@ -1235,6 +1237,17 @@ def research(
         forecast_model=forecast_model,
         tz_override=tz_override,
     )
+    # Phase 6 W3-T2 + W3-T3: validate backend/return_type kwargs upfront
+    # (steps 1 + 2 of the strict order — fails BEFORE the polars install
+    # check). When return_type='dataframe' the legacy v0.1.0 shape is
+    # returned unchanged; when 'wrapper' the result is a TradewindsResult.
+    from tradewinds.core._backend_dispatch import (
+        validate_backend_kwargs,
+        wrap_result,
+    )
+
+    validate_backend_kwargs(backend, return_type)  # type: ignore[arg-type]
+
     result = pairs_to_dataframe(rows) if as_dataframe else rows
     # Phase 3.4: surface qc summary on df.attrs when the qc=True opt-in
     # ran. Mode 1 parity rows themselves are unchanged (only attrs).
@@ -1243,7 +1256,25 @@ def research(
 
         with contextlib.suppress(AttributeError):
             result.attrs["qc"] = qc_summary
-    return result
+
+    # Phase 6 W3-T2: when as_dataframe=False the caller wants raw list[dict] —
+    # backend/return_type kwargs do not apply. Same when backend kwarg is the
+    # default (pandas + dataframe) — return unchanged for zero-overhead.
+    if not as_dataframe or (backend == "pandas" and return_type == "dataframe"):
+        return result
+
+    # Wrapper / polars conversion path. result.attrs carries source +
+    # retrieved_at populated by mode2/upstream adapters; the wrapper
+    # surfaces them as explicit fields.
+    return wrap_result(
+        result,
+        backend=backend,  # type: ignore[arg-type]
+        return_type=return_type,  # type: ignore[arg-type]
+        source=str(result.attrs.get("source", "tradewinds.research")),
+        retrieved_at=None,  # default to now() — research() is pairs-level, not adapter-level
+        schema_id=None,  # research() returns heterogeneous pairs, not a single schema
+        qc=qc_summary,
+    )
 
 
 __all__ = ["research"]

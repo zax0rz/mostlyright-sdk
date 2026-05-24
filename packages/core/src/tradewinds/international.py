@@ -203,6 +203,8 @@ def daily_extremes(
     to_date: _date,
     *,
     merge: str = "live_v1",
+    backend: str = "pandas",
+    return_type: str = "list",
 ) -> list[dict[str, Any]]:
     """Roll up cached hourly observations to per-local-day temperature extremes.
 
@@ -370,4 +372,41 @@ def daily_extremes(
             }
         )
 
-    return out
+    # Phase 6 W3-T2 (codex iter-3 P2): daily_extremes' DEFAULT return is
+    # list[dict] (preserves v0.1.0 zero-behaviour-change). Backend/return
+    # kwargs are OPT-IN: callers must explicitly pass return_type='wrapper'
+    # (and optionally backend='polars') to get a TradewindsResult.
+    if return_type == "list" and backend == "pandas":
+        return out
+
+    from tradewinds.core._backend_dispatch import (
+        validate_backend_kwargs,
+        wrap_result,
+    )
+
+    if return_type == "list":
+        # backend='polars' with return_type='list' is incoherent — polars
+        # frames cannot exist without a wrapper to carry provenance.
+        raise ValueError(
+            "daily_extremes: backend='polars' requires return_type='wrapper'; "
+            "got return_type='list'"
+        )
+
+    # return_type='wrapper': validate via the shared dispatcher (which
+    # also rejects backend='polars' + return_type='dataframe').
+    if return_type == "dataframe":
+        validate_backend_kwargs(backend, "dataframe")  # type: ignore[arg-type]
+    else:
+        validate_backend_kwargs(backend, "wrapper")  # type: ignore[arg-type]
+
+    import pandas as pd
+
+    df = pd.DataFrame(out)
+    return wrap_result(
+        df,
+        backend=backend,  # type: ignore[arg-type]
+        return_type="wrapper",
+        source=f"daily_extremes.{merge}",
+        retrieved_at=None,
+        schema_id="schema.daily_extreme.v1",
+    )
