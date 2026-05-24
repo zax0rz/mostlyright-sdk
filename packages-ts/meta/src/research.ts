@@ -77,10 +77,17 @@ export interface ResearchOptions {
   cache?: CacheStore | null;
 }
 
-/** Resolve the cache from opts. `null` means opt-out (returns null). */
-function resolveCache(opts: ResearchOptions): CacheStore | null {
+/**
+ * Resolve the cache from opts. `null` means opt-out (returns null).
+ *
+ * Iter-1 H3: `defaultCacheStore()` is now async (FsStore loaded via
+ * dynamic import behind a Node feature-detect). Caller already runs
+ * inside `research()`'s async path, so awaiting here is free.
+ */
+async function resolveCache(opts: ResearchOptions): Promise<CacheStore | null> {
   if (opts.cache === null) return null;
-  return opts.cache ?? defaultCacheStore();
+  if (opts.cache !== undefined) return opts.cache;
+  return await defaultCacheStore();
 }
 
 // ---------------------------------------------------------------------------
@@ -378,7 +385,7 @@ export async function research(
   const baseOpts: { signal?: AbortSignal } = {};
   if (opts.signal !== undefined) baseOpts.signal = opts.signal;
 
-  const cache = resolveCache(opts);
+  const cache = await resolveCache(opts);
   const cacheNow = opts.now ?? new Date();
 
   // --- IEM CLI climate (per-year) ---------------------------------------

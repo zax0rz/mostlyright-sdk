@@ -1,5 +1,10 @@
 // TS-W3 Plan 02 Task 2 — defaultCacheStore() runtime auto-detection tests.
 // Routed through jsdom so the IndexedDB branch is exercisable.
+//
+// Iter-1 H3: defaultCacheStore is now async — FsStore is loaded via
+// dynamic `import('./fs.js')` behind a `process.versions?.node` guard to
+// keep `node:fs/promises` & friends out of browser / MV3 bundles. Tests
+// now `await` the call.
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -11,8 +16,8 @@ import {
 } from "../../../src/internal/cache/index.js";
 
 describe("defaultCacheStore()", () => {
-  it("returns IndexedDBStore when indexedDB is present (jsdom + fake-indexeddb)", () => {
-    expect(defaultCacheStore()).toBeInstanceOf(IndexedDBStore);
+  it("returns IndexedDBStore when indexedDB is present (jsdom + fake-indexeddb)", async () => {
+    expect(await defaultCacheStore()).toBeInstanceOf(IndexedDBStore);
   });
 
   describe("FsStore fallback (no indexedDB, Node process present)", () => {
@@ -29,8 +34,8 @@ describe("defaultCacheStore()", () => {
       }
     });
 
-    it("returns FsStore when indexedDB is absent and process.versions.node is present", () => {
-      expect(defaultCacheStore()).toBeInstanceOf(FsStore);
+    it("returns FsStore when indexedDB is absent and process.versions.node is present", async () => {
+      expect(await defaultCacheStore()).toBeInstanceOf(FsStore);
     });
   });
 
@@ -53,14 +58,14 @@ describe("defaultCacheStore()", () => {
       }
     });
 
-    it("returns MemoryStore when no runtime markers are present", () => {
-      expect(defaultCacheStore()).toBeInstanceOf(MemoryStore);
+    it("returns MemoryStore when no runtime markers are present", async () => {
+      expect(await defaultCacheStore()).toBeInstanceOf(MemoryStore);
     });
   });
 
-  it("each call returns a NEW instance (not a singleton)", () => {
-    const a = defaultCacheStore();
-    const b = defaultCacheStore();
+  it("each call returns a NEW instance (not a singleton)", async () => {
+    const a = await defaultCacheStore();
+    const b = await defaultCacheStore();
     expect(a).not.toBe(b);
   });
 });
