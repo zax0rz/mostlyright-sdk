@@ -58,10 +58,16 @@ function recentUtcDate(daysAgo: number): string {
   return `${y}-${m}-${d}`;
 }
 
-// Mock router — inspects URL and returns CLI or AWC payload.
+// Mock router — inspects URL and routes to CLI / AWC / IEM ASOS / GHCNh.
+// TS-W2 Plan 06 adds IEM ASOS + GHCNh sources; the router returns empty
+// bodies for those by default so TS-W1 behavioral tests still pass
+// without per-test setup.
 function installFetchMock(routes: {
   cli?: ReadonlyArray<CliMockRecord>;
   awc?: ReadonlyArray<AwcMockMetar>;
+  iemAsosCsv?: string;
+  ghcnhPsv?: string;
+  ghcnhStatus?: number;
   awcStatus?: number;
   cliStatus?: number;
 }) {
@@ -73,11 +79,27 @@ function installFetchMock(routes: {
       }
       return mockAwcResponse(routes.awc ?? []);
     }
-    if (url.includes("mesonet.agron.iastate.edu")) {
+    if (url.includes("mesonet.agron.iastate.edu/json/cli.py")) {
       if (routes.cliStatus !== undefined && routes.cliStatus !== 200) {
         return new Response("err", { status: routes.cliStatus });
       }
       return mockCliResponse(routes.cli ?? []);
+    }
+    if (url.includes("mesonet.agron.iastate.edu/cgi-bin/request/asos.py")) {
+      // IEM ASOS yearly chunks — empty header-only CSV by default.
+      const body = routes.iemAsosCsv ?? "#DEBUG: empty test fixture\nstation,valid\n";
+      return new Response(body, { status: 200, headers: { "content-type": "text/plain" } });
+    }
+    if (url.includes("ncei.noaa.gov/oa/global-historical-climatology-network")) {
+      // GHCNh — 404 (no data) by default; treated as silent-skip by the range fetcher.
+      const status = routes.ghcnhStatus ?? 404;
+      if (status === 200) {
+        return new Response(routes.ghcnhPsv ?? "", {
+          status,
+          headers: { "content-type": "text/plain" },
+        });
+      }
+      return new Response("", { status, headers: { "content-type": "text/plain" } });
     }
     throw new Error(`Unexpected fetch URL: ${url}`);
   });
@@ -327,7 +349,12 @@ describe("research() — TS-W1 Wave 6 (AWC + CLI)", () => {
       },
     ];
     installFetchMock({ cli: [], awc });
-    const rows = await research("NYC", dateStr, dateStr);
+    // Force AWC fetch despite the historical date — TS-W2 Plan 06 adds an
+    // AWC-168h-window short-circuit; pass `now` so the test stays focused
+    // on DST bucketing, not the short-circuit gate.
+    const rows = await research("NYC", dateStr, dateStr, {
+      now: new Date("2024-03-10T05:00:00Z"),
+    });
     expect(rows).toHaveLength(1);
     expect(rows[0]?.obs_count).toBe(1);
     expect(rows[0]?.obs_high_f).not.toBeNull();

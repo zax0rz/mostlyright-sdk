@@ -23,7 +23,22 @@ export default defineConfig([
     },
   },
   {
-    entry: ["src/internal/bounds.ts", "src/internal/convert.ts"],
+    // TS-W2 Plan 05 — pairs join (Mode 1; forecast-less buildPairs).
+    entry: ["src/internal/bounds.ts", "src/internal/convert.ts", "src/internal/pairs.ts"],
+    format: ["esm", "cjs"],
+    dts: true,
+    sourcemap: true,
+    clean: false,
+    target: "es2022",
+    outDir: "dist/internal",
+    outExtension({ format }) {
+      if (format === "esm") return { js: ".mjs" };
+      return { js: ".cjs" };
+    },
+  },
+  {
+    // TS-W2 Plan 04 — multi-source merge policies.
+    entry: { "merge/index": "src/internal/merge/index.ts" },
     format: ["esm", "cjs"],
     dts: true,
     sourcemap: true,

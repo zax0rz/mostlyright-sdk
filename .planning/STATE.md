@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
 milestone: v0.1.0
-milestone_name: Local-first SDK ship (RC1 ready)
-status: ready_to_publish
-stopped_at: "12/12 phases of v0.1.0 complete on main with ALL SEAMS REPLACED. Phase progression: 4 at 7655b0e; 3.1 REAL at 19d7416; 3.2 REAL at de9b3af; 3.3 REAL at 3b63870; 3.4 REAL at 691b228; 3.5 REAL at 11d167a; 3.6 REAL at 922225b; Mode 2 REAL at f4d75d7. 1662 tests passing (was 1603; +59 net new for Phase 3.4 QC wiring + 3.5 preprocessing + 3.6 discovery + Mode 2). Phase 3.4 ships QC engine wired into research(qc=True) with sidecar writer; Phase 3.5 ships tradewinds.preprocessing module + day_of_year cyclical features; Phase 3.6 ships availability/climate_gaps/describe/feature_catalog + DataVersion.for_research() reproducibility token + settlement_date_for / settlement_window_utc wrappers; Mode 2 ships research_by_source() with parser-tag alias bridge and truthful per-row source provenance. CI workflows shipped: test.yml + wheel-metadata-check.yml + release.yml + release-testpypi.yml + drift-rotate.yml. PyPI publish workflows EXIST but are operator-gated."
-last_updated: "2026-05-23T22:00:00.000Z"
-last_activity: 2026-05-23 -- Mode 2 REAL impl merged to main at f4d75d7; 1662 tests passing. ALL seams (Phase 3.2 NWP + Phase 3.3 Polymarket + Phase 3.4 QC wire + Phase 3.5 preprocessing + Phase 3.6 discovery + Mode 2) replaced with real implementations across 7 review iterations. Each phase ran codex high + python-architect; closed 5 CRITICAL/HIGH + 22 P1/P2 cumulatively.
+milestone_name: — `@tradewinds/*` on npm)
+status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W1 merged; 271 TS tests green; Chrome-extension MVP shipped.
+stopped_at: Completed ts-w2-parity-gate/ts-w2-01-PLAN.md
+last_updated: "2026-05-24T05:47:00.819Z"
+last_activity: "2026-05-24 - Completed quick task 260524-9pq: Update REVIEW-DISCIPLINE.md to add a TypeScript Architect reviewer"
 progress:
-  total_phases: 12
-  completed_phases: 12
-  total_plans: 36
-  completed_plans: 36
+  total_phases: 21
+  completed_phases: 1
+  total_plans: 1
+  completed_plans: 1
   percent: 100
 ---
 
@@ -37,6 +37,7 @@ Progress: Python [██████████] 100% (12/12 phases, 1674 tests
 Merged at the commit just landed on main. TS-W1 ships the smallest useful TS surface to unblock the Chrome extension overlay on kalshi.com: `@tradewinds/core` foundations (exceptions + convert + bounds + http + snapshot math), `@tradewinds/markets` Kalshi NHIGH/NLOW resolvers, `@tradewinds/weather` AWC + IEM CLI fetchers + parsers + `mergeClimate`, and a minimal `research()` orchestrator in `packages-ts/meta/src/research.ts` covering the AWC + CLI subset.
 
 **Branch lineage (10 commits on top of 42e2772 TS-W0 closeout):**
+
 - `985c930` — Wave 1+5: core exceptions (15-class hierarchy) + internal/convert + internal/bounds + internal/http (fetchWithRetry) + snapshot LST math
 - `c126be4` — Wave 2: Kalshi NHIGH/NLOW resolvers + KNOWN_WRONG_STATIONS contract test
 - `0a90ebc` — octopus merge Round 1
@@ -49,6 +50,7 @@ Merged at the commit just landed on main. TS-W1 ships the smallest useful TS sur
 - `08eb906` — review iter-1 fixes (1 CRITICAL + 4 HIGH)
 
 **Key technical decisions:**
+
 - `@tradewinds/core` exports `./internal/bounds` and `./internal/convert` as subpath exports so `@tradewinds/weather` can consume without inlining (closed an iter-1 HIGH).
 - `research()` lives in the meta package (`tradewinds`), NOT in `@tradewinds/core`, to avoid a core→weather circular dep.
 - AWC obs are grouped by LST settlement date (via `settlementDateFor()` from snapshot), NOT DST-aware local date — matches Python `_lst_offset()`.
@@ -62,6 +64,7 @@ Merged at the commit just landed on main. TS-W1 ships the smallest useful TS sur
 **Size-limit results (TS-W1 SC#5: ≤ 30 KB):** core=6.02KB, weather=7.32KB, markets=1.59KB, meta=12.03KB. All well under gate. Bundle target (`index.bundle.mjs`) is 71.84KB — intentionally outside the gate; it's a single-file artifact for MV3 service workers, not the npm-published surface.
 
 **Review discipline:** 2-iteration loop per `.planning/REVIEW-DISCIPLINE.md` (codex `high` reasoning + python-architect, parallel dispatch):
+
 - Iter 1 (against `750411c`): REVISE — 1 CRITICAL + 4 HIGH
   - [CRITICAL codex] CLI duplicate merge ignored report priority
   - [HIGH codex] AWC obs grouped by DST-aware local date instead of LST
@@ -71,6 +74,7 @@ Merged at the commit just landed on main. TS-W1 ships the smallest useful TS sur
 - Iter 2 (against `08eb906`): **PASS PASS clean** (both reviewers, zero findings)
 
 **Outstanding follow-ups (for TS-W2):**
+
 - Lift `mergeObservations` (Python `_internal.merge.observations.merge_observations`) for AWC + IEM ASOS + GHCNh source dedup — currently TS only merges CLI.
 - Add `_pairs.buildPairs` proper join (not just per-date aggregation). Python's `_pairs` is the parity-gate target.
 - Wire the 5 Python parity fixtures into TS via msw recordings.
@@ -82,6 +86,7 @@ Merged at the commit just landed on main. TS-W1 ships the smallest useful TS sur
 Merge commit: `c3489b0 Merge claude/lucid-grothendieck-47fe70 (TS-W0 Foundations)` (`--no-ff` into main).
 
 **Branch lineage (11 commits on top of `6191ff3` — TS planning closeout):**
+
 - `d766b88` — Wave 1: pnpm workspace + 5 package scaffolds + build/test/lint
 - `5a1f65c` — Wave 2: scripts/export_schemas.py + canonical schemas/ (11 files)
 - `221c82e` — Wave 4: CI workflows + PR/issue templates + parity scripts
@@ -95,6 +100,7 @@ Merge commit: `c3489b0 Merge claude/lucid-grothendieck-47fe70 (TS-W0 Foundations
 - `6999136` — lefthook pre-push test arg-passthrough fix
 
 **What ships:**
+
 - pnpm workspace at `packages-ts/` with 5 packages: `@tradewinds/core`, `@tradewinds/weather`, `@tradewinds/markets`, `tradewinds` (meta), `@tradewinds/codegen`
 - TypeScript build/test/lint tooling: tsup 8.3, vitest 2.1, biome 1.9, lefthook 1.7, size-limit, TypeScript 5.6 strict mode (4 mandated flags: strict, noUncheckedIndexedAccess, exactOptionalPropertyTypes, verbatimModuleSyntax)
 - `scripts/export_schemas.py` — deterministic Python→JSON Schema exporter emitting 11 canonical artifacts to `schemas/`:
@@ -109,6 +115,7 @@ Merge commit: `c3489b0 Merge claude/lucid-grothendieck-47fe70 (TS-W0 Foundations
 **Test coverage:** 27 TS tests (5 packages, all green) + 12 new Python tests (export_schemas + parity_ticket_check) on top of the existing 1662 = 1686 Python tests + 27 TS tests total.
 
 **Review discipline:** 3-iteration loop per `.planning/REVIEW-DISCIPLINE.md` (codex `high` reasoning + python-architect, parallel dispatch):
+
 - Iter 1 (against `9379db2`): REVISE — 2 CRITICAL + 5 unique HIGH
   - [CRITICAL] Polymarket measure-specific mappings dropped (paris would silently route to LFPG instead of LFPB)
   - [CRITICAL] Parity gate bypassed by default PR template example (HTML-comment example matched the regex)
@@ -121,6 +128,7 @@ Merge commit: `c3489b0 Merge claude/lucid-grothendieck-47fe70 (TS-W0 Foundations
 Plus one post-review lefthook bug fix (`6999136`): pre-push test command — `pnpm test --run` was being intercepted by pnpm; needed `pnpm test -- --run`.
 
 **Outstanding follow-ups (none operator-gated; tracked for TS-W1+):**
+
 1. ajv-standalone validators deferred to TS-W3 (TS-VALIDATOR-01) — placeholder file `packages-ts/core/src/schemas/validators/index.ts` cites the work-item.
 2. Bundle size-limit gate is currently `continue-on-error` (soft-gate); upgrade to hard-gate when first stable bundle ships in TS-W2.
 3. Polymarket `/events` endpoint returns deprecation header pointing at `/events/keyset` (sunset 2026-05-01 already passed). Re-capture CORS against keyset endpoint in TS-W5 if the deprecation actually takes effect.
@@ -132,6 +140,7 @@ Next: `/gsd-plan-phase ts-w1` then TS-W1 execution (Chrome-extension MVP — AWC
 Merge commit: `9d6b738 Merge branch 'claude/lucid-grothendieck-47fe70'` (`--no-ff` into main, on top of `d062b3f Phase 3.4-3.6 + Mode 2 REAL impls`).
 
 **Branch lineage (6 commits on top of the prior `c3b7504` Phase 4 closeout):**
+
 - `fa4cee3` — initial TS planning + cross-SDK sync (14 files, 3596 insertions)
 - `17bfb01` + `d117b33` — retroactive GSD wrapping as quick task 260523-thb
 - `5725129` — review-iter-1 fixes (1 CRITICAL + 9 HIGH from codex + python-architect)
@@ -139,6 +148,7 @@ Merge commit: `9d6b738 Merge branch 'claude/lucid-grothendieck-47fe70'` (`--no-f
 - `2e088a2` — review-iter-3 residual (1 HIGH)
 
 **Documents landed:**
+
 - `.planning/research/PYTHON-SURFACE-INVENTORY.md` (1147 lines) — Python public surface map; the spec the TS port works against
 - `.planning/research/TS-SDK-DESIGN.md` (~847 lines, incl. §14 ongoing-maintenance workflow) — TS port design contract
 - `.planning/CROSS-SDK-SYNC.md` (~480 lines) — binding cross-SDK sync contract: schema codegen (Group A/B taxonomy), parity-ticket workflow, MCP-sync rules (catalog-tool model matching Phase 5 PLAN-01), CI enforcement matrix, ownership model, change-process recipes
@@ -148,6 +158,7 @@ Merge commit: `9d6b738 Merge branch 'claude/lucid-grothendieck-47fe70'` (`--no-f
 **TS execution order:** `TS-W0 → TS-W1 → TS-W2 (parity gate; HARD) → TS-W3 → TS-W4 → TS-W6 → TS-W5 → TS-W7`. Strictly serial; no in-milestone parallelism (TS-POLY-03 in W5 reads `internationalDailyExtremes` from W6). Estimate 18-25 days single-lane wall-clock.
 
 **Review discipline:** Two-reviewer loop per `.planning/REVIEW-DISCIPLINE.md` (codex `high` reasoning + python-architect, parallel dispatch). 4 iterations:
+
 - Iter 1 (against `d117b33`): REVISE — 1 CRITICAL (TS-QC-01 alpha-rules contract mismatch with Python `ALPHA_RULES`) + 9 HIGH (output-list misalignment, missing IDs, wrong chunker reference, branch-policy contradiction, MCP-model mismatch with Phase 5, etc.)
 - Iter 2 (against `5725129`): REVISE — 3 HIGH (cross-doc text-mirror drift not propagated to status table)
 - Iter 3 (against `e4cf682`): REVISE — 1 HIGH (residual stale status-table row)
@@ -156,6 +167,7 @@ Merge commit: `9d6b738 Merge branch 'claude/lucid-grothendieck-47fe70'` (`--no-f
 `.planning/REVIEW-DISCIPLINE.md` says 3-iteration cap is a smell-escalate. We exceeded it by 1 iteration (4 total). The pattern was convergent: each iteration caught a single one-line text-mirror omission, all classes of "I updated the canonical paragraph but not the cross-reference table." Acceptable here because each finding was narrowly-scoped and clearly resolved by the same family of fix (mirror the canonical text). Going forward, the parity-ticket-check.yml workflow (TS-W0 deliverable) + the schema-drift gate should catch this class earlier.
 
 **Outstanding follow-ups (none operator-gated for this milestone planning round):**
+
 1. When TS-W0 starts: `/gsd-plan-phase ts-w0` to expand the foundations stub into a full task breakdown.
 2. CROSS-SDK-SYNC.md §8 open questions to resolve early in TS-W0: `schemas/` location, GitHub-issues-vs-files for parity tickets, `ts-architect` reviewer agent definition, `scripts/parity_status.py` impl details.
 
@@ -167,43 +179,54 @@ Four seams replaced in sequence, each through the two-reviewer loop
 (codex high + python-architect). 1603 → 1662 tests (+59 net new).
 
 **Phase 3.4 (QC engine wired into research):**
+
 - `691b228 Merge phase-3.4: QC engine + IEM/GHCNh crosscheck`.
 - `research(qc=True)` opt-in runs QCEngine + crosscheck against raw
   observations; sidecar parquet written to
   `~/.tradewinds/cache/v1/observations_qc/{station}/{YYYY}/{MM}.parquet`.
+
 - `df.attrs["qc"]` summary (rules_fired, rows_flagged, sidecar_paths,
   crosscheck_disagreements). Mode 1 parity rows unchanged.
+
 - New `tradewinds.weather.qc_sidecar` module.
 - Iter 1 closed 2 architect HIGH (production parser column-name
   mismatch) + 2 codex P2 (same root cause).
 
 **Phase 3.5 (transforms polish + preprocessing):**
+
 - `11d167a Merge phase-3.5: transforms polish + preprocessing module`.
 - New `tradewinds.preprocessing` module: `PHYSICS_BOUNDS`,
   `clip_outliers()`, `iem_crosscheck()` standalone.
+
 - Added `day_of_year_sin/cos` cyclical features to `calendar_features`.
 - Hypothesis property test asserts sin²+cos²≈1 across 50 examples.
 - Iter 1 closed 1 architect HIGH (clip_outliers std<=0 silent collapse).
 
 **Phase 3.6 (discovery + DataVersion + settlement primitives):**
+
 - `922225b Merge phase-3.6: discovery + DataVersion + settlement primitives`.
 - Real `climate_gaps()` (year-cache scan) + real
   `settlement_window_utc()` wrapper (was NotImplementedError seams).
+
 - `availability()` extended with climate years + QC sidecar counts.
 - `DataVersion.for_research()` factory: SHA-256 over
   `(sdk_version, schema_ids, sources, query, data_cache_fingerprint)`.
+
 - Architect iter-1 PASS clean.
 
 **Mode 2 (research_by_source):**
+
 - `f4d75d7 Merge mode-2: real research_by_source`.
 - Routes through `_fetch_observations_range`, filters by source via
   `_SOURCE_ALIASES` table that bridges parser-emitted bare tags
   (`iem`/`awc`/`ghcnh`) with tradewinds' canonical dotted vocabulary
   (`iem.archive`/`awc.live`/`ghcnh.archive`). Both forms accepted at
   input; per-row source preserves parser-truthful provenance.
+
 - Iter 1 closed 1 architect CRITICAL (parser-tag mismatch — every
   production IEM/AWC call silently returned zero rows) + 1 architect
   HIGH (silent identity column rewrite) + 2 codex P1 (same root cause).
+
 - v0.2 follow-up documented: `_fetch_observations_range` pre-merges
   per Mode 1 priority, so Mode 2 sees the post-merge view. True
   pre-merge isolation ships in v0.2.
@@ -217,6 +240,7 @@ Merge commits: `1255d28 Merge phase-3.3: Polymarket Integration (Discovery + Set
 Replaces the Phase 3.3 dispatch seam (both `polymarket_discover()` and `polymarket_settle()` raised NotImplementedError) with a working implementation against Polymarket's public Gamma API. Lift inspiration: mostlyright Sprint 2t s1+s4 (RESEARCH §3.3 documents the resolver architecture).
 
 **What ships:**
+
 - `tradewinds.markets._polymarket_client` — REST client over `gamma-api.polymarket.com`. Paginates `/events` (limit=100, dedup by slug, cap at 10k), `/events/{id}` for single lookup, polite 0.2s inter-request sleep, defensive on payload-shape changes (non-list/non-dict raises ValueError loudly).
 - `tradewinds.markets.polymarket.polymarket_discover()` — returns DataFrame with one row per active weather event. Columns: `event_id, slug, title, city, icao, measure, end_time, resolution_source_type, source`. Stamps `df.attrs["source"]="polymarket_gamma"` + `df.attrs["retrieved_at"]`. Filters via per-event station resolver; events that don't match a tradewinds-known city are dropped + logged at INFO so quants can audit. Derives city from slug/title/tags for real Gamma payloads (which lack a `city` field).
 - `tradewinds.markets.polymarket.polymarket_settle(event_id)` — settlement engine. Validates event_id (`[A-Za-z0-9_-]{1,128}` — accepts both numeric Gamma IDs and UUIDs), description (16 KB cap + netloc allowlist `wunderground.com` / `weather.gov`) BEFORE any HTTP fetch. Resolves station via per-event resolver, detects market measure (high/low) from event title independently of station_measure, parses settlement date from slug (last YYYY-MM-DD match), refuses ambiguous events with `PolymarketSettlementError`, enforces finalization-window delay using **station-local end-of-day** (TZ-correct for all 60 stations), defense-in-depth via `DEFERRED_STATION_MEASURES`, calls `daily_extremes()`, picks `tmax_c` or `tmin_c` per measure, returns settlement payload dict.
@@ -224,12 +248,14 @@ Replaces the Phase 3.3 dispatch seam (both `polymarket_discover()` and `polymark
 - `tradewinds-markets[polymarket]` optional extra — `pandas>=2.2,<3.0` + `tradewinds-weather>=0.1.0rc1,<0.2`. `_require_pandas()` + `_require_weather()` guards raise `SourceUnavailableError` with install hint when missing.
 
 **Out of scope (deferred to v0.2 per ROADMAP):**
+
 - Polymarket order book / fills (MARKETS-04 Sprint 0.5+).
 - UMA Oracle on-chain validation.
 - Taipei + HK-low markets (CWA + HKO clients — `DeferredMarketError`).
 - Persistent settlement-record parquet.
 
 **Review discipline (per .planning/REVIEW-DISCIPLINE.md):**
+
 - Iter 1: Architect (5 HIGH closed) — UTC-vs-station-local end-of-day, defense-in-depth via DEFERRED_STATION_MEASURES, ambiguous-title silent default, slug-date-rightmost, per-row source overlay column. Codex (1 P1 + 3 P2 closed) — silent drop logging, pandas dep, weather dep, station-local TZ (covered by architect HIGH-1).
 - Iter 2: Architect PASS clean. Codex (2 P1 closed) — `city` derivation from slug for real Gamma events, numeric event_id support for discover→settle round-trip.
 
@@ -242,6 +268,7 @@ Merge commits: `f965cab Merge phase-3.2: Multi-Forecast Live Path (HRRR/GFS/NBM)
 Replaces the v0.1.0a1 NWP dispatch seam (`forecast_nwp` raised NotImplementedError) with a working live-fetch pipeline against NOAA Big Data Program S3 mirrors. Lift source: mostlyright Sprint 2r-impl-bundle (RESEARCH §3.2 documents the architecture).
 
 **What ships:**
+
 - `tradewinds.weather._fetchers._nwp_idx` — pure-Python `.idx` parser with `compute_byte_end` HEAD-resolution (closes Pitfall 1).
 - `tradewinds.weather._fetchers._nwp_archive` — NOAA BDP mirror URLs (AWS + NOMADS), SSRF-allowlist gated, per-model path builders (HRRR sfcf, GFS pre/post-v16 split per Pitfall 4, NBM core), byte-range fetch with UTC-normalized cycle.
 - `tradewinds.weather._fetchers._nwp_grids/{hrrr,gfs,nbm}.py` — per-model variable maps (9-row subset covering 2m temp/dewpoint/RH, 10m wind, gust, precip, surface + MSLP pressure).
@@ -252,6 +279,7 @@ Replaces the v0.1.0a1 NWP dispatch seam (`forecast_nwp` raised NotImplementedErr
 - `tradewinds-weather[nwp]` optional extra: `cfgrib>=0.9.15,<1.0`, `xarray>=2024.0`, `scikit-learn>=1.3,<2.0`, `pandas`.
 
 **Out of scope (deferred to v0.2 per ROADMAP):**
+
 - ECMWF Tier-2 (4 models reserved in enum; raises `NwpModelNotAvailableError`).
 - Historical NWP backfill (~35 GB; requires hosted parquet mirror).
 - Bitemporal `snapshot_as_of` queries (persistent ledger).
@@ -259,6 +287,7 @@ Replaces the v0.1.0a1 NWP dispatch seam (`forecast_nwp` raised NotImplementedErr
 - Forecast-side QC sidecar (Phase 3.4 ships observation QC engine; forecast QC stays deferred).
 
 **Review discipline (per .planning/REVIEW-DISCIPLINE.md):**
+
 - Iter 1: Architect (4 HIGH closed) + Codex (4 P2 closed) — alias dedup, test fidelity, cfgrib model context, math clarity, UTC normalization, df.attrs, dtype, ambiguous .idx.
 - Iter 2: Codex (3 P2 closed) — per-row source overlay column, empty retrieved_at attr, empty filter_records as false success.
 - Iter 3: Architect PASS clean. Codex (2 P2 closed) — mirror fallback now extends to byte-range HTTP failures; issued_at/valid_at UTC-normalized.
@@ -282,14 +311,17 @@ Replaces the v0.1.0a1 NWP dispatch seam (`forecast_nwp` raised NotImplementedErr
 - **CI-05 two-tier fixtures**: `tests/fixtures/parity/` frozen + `tests/fixtures/README.md` documents the never-re-record discipline; `tests/fixtures/drift/` scaffold + capture + compare scripts + soft-fail pytest skeleton.
 
 Review discipline:
+
 - 6 codex review iterations against the initial 08311ef commit (PEP 440 normalize, setup-python for PEP 668, CI branch filter including integration branches, coverage scope honesty, uv.lock path inclusion, semantic METADATA lower-bound sentinel).
 - Python Architect against the consolidated Wave 1 diff: PASS clean. Codex final review: only 1 P2 finding (non-blocking) re: NaN-only numeric drift edge case in `compare.py:103` — noted for follow-up.
 
 User decisions:
+
 - Coverage gate softened from 90% hard → 85% enforced floor, 90% aspirational. Empirical 94.20% leaves headroom.
 - PyPI publish: workflows shipped but NOT gated. Operator will configure trusted publishers separately.
 
 Outstanding follow-ups (post-merge, operator-gated):
+
 1. Register 3 PyPI pending publishers (prod) + 3 TestPyPI pending publishers on pypi.org/manage/account/publishing/ — project names `tradewinds`, `tradewinds-weather`, `tradewinds-markets`; repo `helloiamvu/tradewinds`; workflow filename `release.yml` (prod) / `release-testpypi.yml` (test); environment `pypi` / `testpypi`.
 2. Create GH repo environments `pypi` and `testpypi` with appropriate required reviewers.
 3. Tag `v0.1.0rc1` → fires `release-testpypi.yml` → 3 wheels on TestPyPI.
@@ -307,41 +339,54 @@ Tests grew 1451 → 1453 (+2 doctest collections + drift skeleton).
   Validator with source-identity invariant; 4 weather catalog adapters with
   canonical-units projection; Kalshi NHIGH/NLOW resolvers + 20-station whitelist;
   markets pkg PKG-03 pin. 10 codex review iterations + 1 architect pass.
+
 - Phase 2.1 (LINEAGE-01..05): silver-tier observation_ledger.v1 schema +
   observation_qc.v1 sidecar; query_time_merge(silver_df, policy=LIVE_V1)
   materializes single-row-per-key gold from rows-per-source silver;
   ObservationMergePolicy properly immutable via MappingProxyType.
+
 - Phase 3: tradewinds.mode2.research_by_source() Mode 2 dispatch seam +
   assert_source_identity() per-row check. Catalog adapter dispatch wired;
   fetch wiring deferred to Phase 3.1/3.2 alphas.
+
 - Phase 3.1 (International) — REAL IMPLEMENTATION (merged 19d7416, replacing earlier seam):
   - SC1: STATIONS registry grew 20→60 (20 US + 40 international ICAOs);
     country field added (default 'US'); intl ghcnh_id='' since NCEI is US-only;
     is_us_station() helper for adapter-coverage gating.
+
   - SC2: resolve_station_for_event(event, city_map) + bundled
     polymarket_city_stations.json catalog. Paris LFPG (high) / LFPB (low)
     split lifted; ambiguous-title (both keywords) falls back to 'default';
     DeferredMarketError for Taipei + HK-low.
+
   - SC3: daily_extremes(station, from_date, to_date, merge='live_v1') reads
     from cached observations (read_cache), buckets by station-local IANA
     calendar day with correct UTC-month envelope across non-UTC stations,
     low_coverage gate (n_obs<12 → nulls + WARN), whole-°C precision intl /
     0.1-°C precision US.
+
   - SC4: schema.daily_extreme.v1 registered as 'daily_extreme' entity in
     _capabilities._SCHEMA_FILES.
+
   - SC5: research() rejects non-US stations with pointer to daily_extremes;
     GHCNh fetch+parse short-circuit for non-US; adapter coverage documented
     via is_us_station().
+
   - Review discipline: iter-1 closed 1 CRITICAL + 4 HIGH from codex + architect;
     iter-2 PASS clean.
+
 - Phase 3.2 (NWP): SUPPORTED_NWP_MODELS = {hrrr, gfs, nbm}; forecast_nwp()
   dispatch seam with [nwp] optional-extra check.
+
 - Phase 3.3 (Polymarket): polymarket_discover/settle with strict UUID4 +
   16KB description cap + netloc allowlist (wunderground.com, weather.gov).
+
 - Phase 3.4 (QC): 5 ALPHA_RULES (temp/dewpoint/wind/pressure bounds) +
   QCEngine.apply() bitfield + build_sidecar_rows() + crosscheck_iem_ghcnh().
+
 - Phase 3.5 (Transforms): lag/diff/rolling/calendar_features/spread +
   wind_chill + heat_index (NWS algorithms) + clip_outliers.
+
 - Phase 3.6 (Discovery): DataVersion reproducibility token + availability /
   describe / feature_catalog / settlement_date_for top-level wrappers.
 
@@ -352,21 +397,25 @@ Tests grew 1342 → 1451 (+109 across the 6 phases). Phase 3.1 REAL impl bumped 
 Merge commit: `738232e Merge phase-1-5/integration: Phase 1.5 fetcher optimization + cross-source parallelism` (--no-ff on main, pushed to origin/main).
 
 Plans shipped:
+
 - **PLAN-01 (PERF-01/02/03)** — Lifted mostlyright PR #85 commit `cf9eb85`. Yearly chunks via shared `_iem_chunks.py` (leap-year safe), cache-window filename + `_partial` namespace, HTTP_TIMEOUT 30→60s. Tradewinds-specific deviation documented: caller's `start` is normalized to `date(start.year, 1, 1)` before the chunker fires, for cache idempotence under per-month research.py callers. Required a parity-preserving month-filter in `_fetch_iem_month` post-parse.
 - **PLAN-02 (PERF-05)** — `spike/source_limits/` (3 CLI scripts + shared helpers) characterizing AWC, GHCNh, IEM concurrent-request behavior; output `.planning/research/SOURCE-LIMITS.md` with deterministic Option-C recommendation (smoke-run scale; caveat documented). Spike scripts kept under version control for v0.2 re-validation.
 - **PLAN-03 (PERF-04)** — `_prefetch_sources` in research.py: 4-way ThreadPoolExecutor (Option C per SOURCE-LIMITS.md) with Pitfall-6 timing pattern (submitted_at captured immediately after ex.submit()), narrow-except contract (httpx.HTTPStatusError, httpx.RequestError, OSError only — programming bugs propagate via f.result()), current-UTC-year skip (no double-fetch), AWC-window-relevance skip (preserves no-network invariant for cached re-runs). Live perf gate: KNYC 5-year backfill 50.3s vs 720s (12 min) gate.
 
 Review discipline (per .planning/REVIEW-DISCIPLINE.md):
+
 - Iter 1: codex `high` + python-architect ran in parallel against the integration branch diff vs main. Returned 3 + 6 HIGH findings (overlap; 6 unique). Commit `7e26fa2` closed all six: reversed-range guard in download_iem_asos, narrowed except clauses in `_warm_*`, current-year skip, parallelism-ratio assertion in live perf test, strengthened Pitfall-6 AST scan, RuntimeError-based propagation contract test.
 - Iter 2: BOTH reviewers PASS clean. No CRITICAL or HIGH findings.
 
 Wins:
+
 - IEM ASOS: ~12x fewer HTTP requests per backfill (monthly → yearly chunks).
 - research() parity gate: 97s → 49s (~2x faster after PERF-04).
 - research() KNYC 5-year live: ~14x under the ROADMAP 12-min gate.
 - HTTP_TIMEOUT=60s confirmed load-bearing for GHCNh ~10 MB PSV downloads at N=4 concurrent.
 
 Validation:
+
 - 5-fixture parity gate (Phase 1 HARD GATE invariant): green.
 - Fast suite: 976 passed, 10 deselected (live).
 - Live perf gate: green.
@@ -396,6 +445,7 @@ Validation:
 - Trend: N/A
 
 *Updated after each plan completion*
+| Phase ts-w2-parity-gate P01 | 11 | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -469,7 +519,7 @@ Open decisions to resolve during execution (per research SUMMARY.md):
 
 ## Session Continuity
 
-Last session: 2026-05-22
-Stopped at: ROADMAP enriched with 4 new phases (2.1, 3.1, 3.2, 3.3) for v0.1.0 scope expansion (international + multi-forecast + Polymarket + Sprint 2o lineage). Phase stubs created via `gsd-tools phase insert`; ROADMAP entries enriched with full Goal/Depends-on/Requirements/Success Criteria/Out-of-Scope/Review-panel blocks. STATE.md updated with Roadmap Evolution section + new decisions + new blockers/concerns. **Pending follow-ups before execution:** (1) add LINEAGE-01..05 + INTL-01..05 + NWP-01..06 + POLY-01..05 entries to REQUIREMENTS.md (POLY-01 currently a Sprint 0.5+ deferral — activate and split); (2) update PROJECT.md "Active scope" to reflect expanded v0.1.0; (3) run `/gsd-plan-phase` per new phase to write detailed PLAN.md; (4) decide whether to migrate existing `.planning/phase-NN-...` dirs to new `.planning/phases/NN.M-...` convention created by gsd-tools, or move the new dirs to match existing convention.
-Resume file: Run `/gsd-plan-phase 2.1` (next blocking sequence) — Phase 2.1 must land before 3.1/3.3.
+Last session: 2026-05-24T05:47:00.811Z
+Stopped at: Completed ts-w2-parity-gate/ts-w2-01-PLAN.md
+Resume file: None
 Branch state: Working on `planning/v01-intl-nwp-polymarket` off `merged-vision@d698886`. Commits not yet made — user decides when to commit. Suggested commit sequence: (a) ROADMAP + STATE updates as one commit; (b) REQUIREMENTS.md additions as separate commit; (c) PROJECT.md update as separate commit; (d) per-phase PLAN.md files in subsequent commits via `/gsd-plan-phase`.

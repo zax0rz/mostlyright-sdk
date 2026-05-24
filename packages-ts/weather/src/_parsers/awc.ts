@@ -57,7 +57,15 @@ export interface Observation {
   readonly station_code: string;
   readonly observed_at: string;
   readonly observation_type: "METAR" | "SPECI";
-  readonly source: "awc";
+  /**
+   * Per-row source tag. Widened in TS-W2 Plan 01 to cover all 3 row-level
+   * observation sources (AWC live, IEM ASOS archive, GHCNh archive). Each
+   * parser still emits its own literal — AWC emits `"awc"`, IEM ASOS emits
+   * `"iem"`, GHCNh emits `"ghcnh"` — but the shared `Observation` contract
+   * accepts all three so `mergeObservations` (TS-W2 Plan 04) sees one row
+   * shape across sources. Matches Python `schema.observation.v1.source` enum.
+   */
+  readonly source: "awc" | "iem" | "ghcnh";
   readonly temp_c: number | null;
   readonly dewpoint_c: number | null;
   readonly temp_f: number | null;

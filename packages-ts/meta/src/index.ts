@@ -16,9 +16,10 @@ import * as weather from "@tradewinds/weather";
 
 export { core, markets, weather };
 
-// TS-W1 Wave 6: minimal `research()` orchestrator (AWC + CLI only).
-// Lives here (NOT in @tradewinds/core) so the core package stays
-// dep-free; the orchestrator pulls in both core + weather.
-export { research, type ResearchOptions, type ResearchRow } from "./research.js";
+// TS-W2 Wave 4: full multi-source `research()` orchestrator (AWC + IEM
+// ASOS + GHCNh + CLI). Lives here (NOT in @tradewinds/core) so the core
+// package stays dep-free; the orchestrator pulls in both core + weather.
+// `PairsRow` is the canonical row shape from @tradewinds/core/internal/pairs.
+export { research, type ResearchOptions, type PairsRow } from "./research.js";
 
 export const version = "0.0.0";

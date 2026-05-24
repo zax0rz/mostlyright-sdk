@@ -22,6 +22,16 @@
       "types": "./dist/internal/convert.d.ts",
       "import": "./dist/internal/convert.mjs",
       "require": "./dist/internal/convert.cjs"
+    },
+    "./internal/merge": {
+      "types": "./dist/internal/merge/index.d.ts",
+      "import": "./dist/internal/merge/index.mjs",
+      "require": "./dist/internal/merge/index.cjs"
+    },
+    "./internal/pairs": {
+      "types": "./dist/internal/pairs.d.ts",
+      "import": "./dist/internal/pairs.mjs",
+      "require": "./dist/internal/pairs.cjs"
     }
   },
   "files": ["dist"],
@@ -34,6 +44,7 @@
     "codegen": "echo \"@tradewinds/core — no codegen step at this layer (consumes from @tradewinds/codegen output)\""
   },
   "devDependencies": {
+    "fast-check": "3.23.2",
     "tsup": "8.3.5",
     "typescript": "5.6.3",
     "vitest": "2.1.9"

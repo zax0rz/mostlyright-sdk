@@ -1,0 +1,69 @@
+name: Drift Watchdog TS (weekly)
+
+# TS-W2 Plan 08 SC#5 — weekly Mon 07:00 UTC cron. Captures the current
+# TS research() output for the 5 parity cases, diffs against
+# tests/fixtures/parity/ts/ JSON fixtures.
+#
+# SOFT-FAIL POLICY: this workflow NEVER fails CI. Drift is a watchdog
+# signal — a labelled GH issue is the only side-effect on mismatch.
+# Mirror of .github/workflows/drift-rotate.yml (Python) — see that file
+# + .planning/phases/ts-w2-parity-gate/PLAN.md SC#5 + §Sync-process discipline.
+
+on:
+  schedule:
+    - cron: "0 7 * * 1" # Mondays 07:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  drift-ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm -r build
+
+      - name: Capture current research() output → drift/
+        env:
+          TRADEWINDS_TS_LIVE: "1"
+        run: pnpm --filter tradewinds drift-capture
+
+      - name: Compare drift/ vs ts/ JSON fixtures (soft-fail watchdog)
+        run: pnpm --filter tradewinds drift-compare
+
+      - name: Check for drift report
+        id: report
+        run: |
+          if [ -f packages-ts/meta/tests/parity/drift-report.md ]; then
+            echo "report_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "report_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open drift issue (if report exists)
+        if: steps.report.outputs.report_exists == 'true'
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "Drift detected: TS weekly watchdog (${{ github.run_id }})"
+          content-filepath: packages-ts/meta/tests/parity/drift-report.md
+          labels: |
+            drift-ts
+            ts-w2

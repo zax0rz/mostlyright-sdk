@@ -1,8 +1,8 @@
 # Phase TS-W2 — Parity Gate
 
-**Status:** Stub (run `/gsd-plan-phase ts-w2`).
+**Status:** Planned (8 sub-plans below; ready for `/gsd-execute-phase ts-w2`).
 **Milestone:** TypeScript v0.1.0
-**Lane:** Rob (primary) + Vu (Python fixture export + parity-comparison helper)
+**Lane:** Rob (primary) + Vu (Python fixture export — Plan 03 — + parity-comparison helper)
 **Depends on:** Phase TS-W1
 **Blocks:** TS-W3, TS-W4, TS-W5, TS-W6 (everything depends on a green parity gate as the trust foundation)
 
@@ -28,26 +28,63 @@ Pass the 5-fixture parity gate against Python `research()` Mode 1 output. Land I
 4. `mergeObservations(rows)` reproduces Python source priority `{awc: 3, iem: 2, ghcnh: 1}` + strict-`>` + first-seen tiebreak. `mergeClimate(rows)` dedups by `(stationCode, observationDate)` with `REPORT_TYPE_PRIORITY` from codegen. **Property test (fast-check)** asserts merge produces row-equivalent output across `shuffleRows(rows)` for the restricted input class where no two rows share the same `(stationCode, observedAt, observationType)` AND `sourcePriority` — i.e. permutation-stable on inputs WITHOUT same-priority duplicate-key conflicts (this preserves the parity-faithful first-seen semantics that Python's `merge_observations` exhibits; an arbitrary-shuffle stability test would FALSELY require TS to diverge from Python's order-dependent same-priority-tiebreak behavior). A separate **canonical-fetch-order replay test** asserts the parity-fixture HTTP recordings, replayed in their captured order, produce byte-equivalent merged output across runs.
 5. Weekly drift cron `drift-rotate-ts.yml` lands — captures `research()` for 5 parity cases into `tests/fixtures/ts/drift/`, soft-fails on mismatch (writes `drift-report.md`, opens GH issue, NEVER blocks CI).
 
-## Waves (to be detailed)
+## Sub-Plans + Execution Waves
 
-- **Wave 1**: IEM ASOS fetcher + yearly-chunk helper (port of `_iem_chunks.yearly_chunks_exclusive_end` — the helper `download_iem_asos` actually uses per `packages/weather/src/tradewinds/weather/_fetchers/iem_asos.py:209`; NOT `yearly_chunks_inclusive`).
-- **Wave 2**: IEM CSV parser + `iemToObservation`.
-- **Wave 3**: GHCNh fetcher + PSV parser + station-id translator.
-- **Wave 4**: `mergeObservations` + `mergeClimate` + fast-check property tests for restricted-input permutation stability + canonical-fetch-order replay test.
-- **Wave 5**: `_pairs.buildPairs` join + `pairsToRows` (TS equivalent of `pairs_to_dataframe`).
-- **Wave 6**: Update `research()` to include all 4 sources; remove W1's null-column placeholders.
-- **Wave 7**: Export 5 Python parity fixtures as JSON + capture HTTP recordings via `msw` recordHandlers OR replay vcrpy cassettes.
-- **Wave 8**: TS parity test (loads fixture → msw → `research()` → row-equivalent assertion). `drift-rotate-ts.yml` workflow.
+The 8-wave breakdown collapses into 6 execution waves once dependencies are mapped. Plans inside the same wave can run in parallel (no file-overlap; independent fetchers/parsers).
+
+| Plan | File | Wave | Depends on | Touches | What it ships |
+|------|------|------|------------|---------|---------------|
+| 01 | [ts-w2-01-PLAN.md](./ts-w2-01-PLAN.md) | 1 | — | `packages-ts/weather/{src,tests}/...iem*` | IEM ASOS fetcher + yearly-chunk helper + IEM CSV parser (stub Waves 1+2 fused — chunker+fetcher+parser are tightly coupled; the parser consumes CSV bodies the fetcher emits). |
+| 02 | [ts-w2-02-PLAN.md](./ts-w2-02-PLAN.md) | 1 | — | `packages-ts/weather/{src,tests}/...ghcnh*`, `_station_translator.ts` | GHCNh fetcher + PSV parser + station-id translator (stub Wave 3). Parallel to Plan 01 — no shared files. |
+| 03 | [ts-w2-03-PLAN.md](./ts-w2-03-PLAN.md) | 1 | — | `tests/fixtures/parity/{export_for_ts.py,ts/*.json,test_parity_ts_export.py}` | Python-side: export 5 parquet parity fixtures as JSON. Plan 07 captures HTTP recordings; this plan captures FIXTURES. Parallel to Plans 01+02 (Python-only edits). |
+| 04 | [ts-w2-04-PLAN.md](./ts-w2-04-PLAN.md) | 2 | 01, 02 | `packages-ts/core/{src,tests}/internal/merge/`, `packages-ts/weather/src/_parsers/cli.ts` migration | `mergeObservations` + `mergeClimate` migration to `@tradewinds/core/internal/merge` + fast-check property test for restricted-input permutation stability + canonical-fetch-order replay test (stub Wave 4). |
+| 05 | [ts-w2-05-PLAN.md](./ts-w2-05-PLAN.md) | 3 | 04 | `packages-ts/core/{src,tests}/internal/pairs.ts` | `buildPairs` + `_obsAggregates` + `pairsToRows` ported (Mode 1 only, no forecast — stub Wave 5). |
+| 06 | [ts-w2-06-PLAN.md](./ts-w2-06-PLAN.md) | 4 | 05 | `packages-ts/meta/{src,tests}/research.ts` rewrite | `research()` updated to call all 4 sources + merge + buildPairs; W1 null-column placeholders removed (stub Wave 6). |
+| 07 | [ts-w2-07-PLAN.md](./ts-w2-07-PLAN.md) | 5 | 06 | `packages-ts/meta/tests/parity/{capture_recordings.ts, recordings/}` | Capture msw recordings via operator-gated live run against the 5 case windows (stub Wave 7 — recordings half; fixture-JSON half is Plan 03). |
+| 08 | [ts-w2-08-PLAN.md](./ts-w2-08-PLAN.md) | 6 | 07 | `packages-ts/meta/tests/parity/{parity.test.ts,_load_handlers.ts,_assertions.ts,drift_*}`, `.github/workflows/drift-rotate-ts.yml` | HARD parity test (5 cases × full byte-equivalence) + drift-rotate-ts.yml weekly soft-fail cron (stub Wave 8). |
+
+### Wave-by-wave execution map
+
+```
+Wave 1 (parallel):  [Plan 01: IEM]    [Plan 02: GHCNh]   [Plan 03: JSON export]
+                          ╲                 ╱                       │
+                           ╲               ╱                        │
+Wave 2:                [Plan 04: merge policies]                    │
+                                │                                    │
+Wave 3:                [Plan 05: buildPairs join]                    │
+                                │                                    │
+Wave 4:                [Plan 06: research() orchestrator]            │
+                                │                                    │
+Wave 5:                [Plan 07: msw recording capture] ─────────────┤
+                                │                                    │
+Wave 6:                [Plan 08: HARD parity test + drift cron] ─────┘
+```
+
+Plan 03 runs in Wave 1 (Python-only, no TS deps) but its output (`tests/fixtures/parity/ts/*.json`) is consumed in Wave 6 (Plan 08's HARD parity comparison). Plan 07's recordings are also consumed in Wave 6.
+
+### Critical invariants (carry across all sub-plans)
+
+1. **`yearly_chunks_exclusive_end`** (NOT `_inclusive`) — IEM's `day2` is exclusive; chunks end on Jan 1 of next year. Plan 01.
+2. **Parsers byte-faithful:** `#` comments stripped, `M`/`T` sentinels, multi-column expansion. Plans 01 (IEM), 02 (GHCNh).
+3. **mergeObservations priority** `{awc: 3, iem: 2, ghcnh: 1}` with **STRICT >** + first-seen tiebreak. Plan 04.
+4. **mergeClimate dedup** by `(stationCode, observationDate)` with REPORT_TYPE_PRIORITY (codegen-sourced). Plan 04.
+5. **Property test** asserts RESTRICTED-input permutation stability ONLY (no arbitrary-shuffle stability — that would falsely require divergence from Python's order-dependent tiebreak). Plan 04.
+6. **drift-rotate-ts.yml SOFT-FAIL** — never blocks CI; opens labeled issue. Plan 08.
+7. **GHCNh Quality_Code** filter accepts `{0, 1, 4, 5, ""}` (empty string IS valid, critical for case 5). Plan 02.
+8. **No tolerance loosening** if fixtures fail — refactor away the precision loss OR document the divergence per CROSS-SDK-SYNC §2.3. Plan 08.
 
 ## Out of Scope
 
 - Cache (TS-W3).
 - Mode 2 dispatch (TS-W4).
 - Validator beyond the parity-test internal use.
+- Forecast wiring (TS-W5+).
+- Parallel prefetch — TS-W2's `research()` is sequential (no `_prefetch_sources` analog). Lands in TS-W3+.
+- ajv-standalone validators on TS schemas — deferred to TS-W3 per TS-W0 follow-up #1.
 
 ## Review panel
 
-3-reviewer panel temporarily (codex `high` + python-architect + security) — chunk-size + cache-poisoning paths are parity-critical and security-adjacent (same threshold Python Phase 1.5 used). Drift cron MUST never block CI (soft-fail discipline).
+3-reviewer panel temporarily (codex `high` + TypeScript Architect + python-architect) — chunk-size + cache-poisoning paths are parity-critical and security-adjacent (same threshold Python Phase 1.5 used). Drift cron MUST never block CI (soft-fail discipline). Plan 03's Python-side edits route under `python-architect`; Plans 01, 02, 04, 05, 06, 07, 08 (TS-only) route under `TypeScript Architect`. See `.planning/REVIEW-DISCIPLINE.md` Language-routing matrix for the per-Plan reviewer pair.
 
 ## Parity gate handling
 
