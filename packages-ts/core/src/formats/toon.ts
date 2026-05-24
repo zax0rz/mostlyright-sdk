@@ -144,6 +144,76 @@ function sortedJson(obj: Record<string, unknown>): string {
 }
 
 // ---------------------------------------------------------------------------
+// Tabular validation (mirrors Python `_is_tabular`)
+// ---------------------------------------------------------------------------
+
+/**
+ * Thrown when {@link toonDumps} receives rows that aren't valid tabular
+ * input. Mirrors the Python `encode_tabular` `ValueError` — the encoder
+ * MUST refuse non-uniform rows or non-primitive values rather than
+ * silently dropping columns or stringifying nested structures.
+ *
+ * Iter-1 C3: the previous TS encoder used `Object.keys(rows[0])` and
+ * encoded every subsequent row through that column list — meaning rows
+ * with extra keys had them dropped, rows missing a first-row key got a
+ * silent `null`, and rows with object/array values stringified via
+ * `JSON.stringify` (also silent). All three are data corruption when the
+ * caller didn't realize their rows weren't uniform.
+ */
+export class ToonTabularError extends RangeError {
+  override name = "ToonTabularError";
+}
+
+function isToonPrimitive(v: unknown): boolean {
+  // Python `_is_tabular` accepts None / str / int / float / bool. The TS
+  // analog: null/undefined (both encode as `null`), string, finite or
+  // non-finite number (NaN/Inf encode as `null` via formatNumber),
+  // boolean. Anything else (object, array, function, symbol, bigint) is
+  // non-tabular.
+  if (v === null || v === undefined) return true;
+  const t = typeof v;
+  return t === "string" || t === "number" || t === "boolean";
+}
+
+function assertTabular(rows: ReadonlyArray<Record<string, unknown>>): void {
+  if (rows.length === 0) return;
+  const first = rows[0] as Record<string, unknown>;
+  const expectedKeys = Object.keys(first);
+  if (expectedKeys.length === 0) {
+    throw new ToonTabularError(
+      "toonDumps requires non-empty rows; first row has no keys (Python parity: encode_tabular rejects empty key set)",
+    );
+  }
+  const expectedKeySet = new Set(expectedKeys);
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i] as Record<string, unknown>;
+    const rowKeys = Object.keys(row);
+    // (a) Key-set equality. Python compares `set(item.keys()) != key_set`.
+    if (rowKeys.length !== expectedKeySet.size) {
+      throw new ToonTabularError(
+        `toonDumps requires uniform rows; row ${i} has ${rowKeys.length} key(s) vs row 0's ${expectedKeySet.size}. Python encode_tabular rejects rows whose key sets differ.`,
+      );
+    }
+    for (const k of rowKeys) {
+      if (!expectedKeySet.has(k)) {
+        throw new ToonTabularError(
+          `toonDumps requires uniform rows; row ${i} has key ${JSON.stringify(k)} not present in row 0. Python encode_tabular rejects rows whose key sets differ.`,
+        );
+      }
+    }
+    // (b) Value primitivity. Python check: `v is None or isinstance(v, str|int|float|bool)`.
+    for (const k of expectedKeys) {
+      const v = row[k];
+      if (!isToonPrimitive(v)) {
+        throw new ToonTabularError(
+          `toonDumps requires primitive cell values; row ${i} column ${JSON.stringify(k)} has non-primitive value of type ${typeof v}. Python encode_tabular rejects nested objects/arrays at the cell level.`,
+        );
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Public encoder
 // ---------------------------------------------------------------------------
 
@@ -158,6 +228,11 @@ function sortedJson(obj: Record<string, unknown>): string {
  * carries column names through `rows[0]{...}:`). The TS encoder accepts
  * a `columns` second arg in the empty case for parity with that
  * pandas-aware wrapper.
+ *
+ * @throws {ToonTabularError} when rows are non-uniform (differing key
+ *   sets across rows) or when any cell value is non-primitive
+ *   (object/array/bigint/etc.). Mirrors Python `encode_tabular`'s
+ *   `ValueError`. Iter-1 C3 fix.
  */
 export function toonDumps(
   rows: ReadonlyArray<Record<string, unknown>>,
@@ -173,6 +248,10 @@ export function toonDumps(
     }
     return "rows[0]:";
   }
+  // C3 hard gate: refuse non-uniform rows BEFORE looking at row 0's keys
+  // for the column header. Otherwise we'd silently drop extra columns or
+  // null-fill missing ones.
+  assertTabular(rows);
   const cols = Object.keys(rows[0] as Record<string, unknown>);
   const colHeader = cols.map((c) => formatKey(c)).join(",");
   const header = `rows[${rows.length}]{${colHeader}}:`;

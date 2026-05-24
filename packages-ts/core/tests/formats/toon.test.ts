@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { toonDumps, toonLoads } from "../../src/formats/toon.js";
+import { ToonTabularError, toonDumps, toonLoads } from "../../src/formats/toon.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURE_PATH = join(__dirname, "fixtures", "toon-byte-equiv.txt");
@@ -117,5 +117,72 @@ describe("toonDumps + toonLoads", () => {
     const rows = [{ a: Number.NaN, b: Number.POSITIVE_INFINITY }];
     const dumped = toonDumps(rows);
     expect(dumped).toContain("null,null");
+  });
+});
+
+describe("toonDumps — non-tabular input is REJECTED (iter-1 C3 — Python parity)", () => {
+  // Python `encode_tabular` raises `ValueError` when rows aren't uniform or
+  // contain non-primitive values. The TS port must match — silent column
+  // drops or JSON-stringified objects are data corruption.
+
+  it("differing key sets across rows → ToonTabularError (missing column)", () => {
+    const rows = [
+      { a: 1, b: 2 },
+      { a: 3 }, // missing `b`
+    ];
+    expect(() => toonDumps(rows)).toThrow(ToonTabularError);
+  });
+
+  it("differing key sets across rows → ToonTabularError (extra column)", () => {
+    const rows = [
+      { a: 1, b: 2 },
+      { a: 3, b: 4, c: 5 }, // extra `c`
+    ];
+    expect(() => toonDumps(rows)).toThrow(ToonTabularError);
+  });
+
+  it("renamed key (same length, different name) → ToonTabularError", () => {
+    const rows = [
+      { a: 1, b: 2 },
+      { a: 3, c: 4 }, // `b` swapped for `c`
+    ];
+    expect(() => toonDumps(rows)).toThrow(ToonTabularError);
+  });
+
+  it("non-primitive cell value (object) → ToonTabularError", () => {
+    const rows = [{ a: 1, b: { nested: true } }];
+    expect(() => toonDumps(rows)).toThrow(ToonTabularError);
+  });
+
+  it("non-primitive cell value (array) → ToonTabularError", () => {
+    const rows = [{ a: 1, b: [1, 2, 3] }];
+    expect(() => toonDumps(rows)).toThrow(ToonTabularError);
+  });
+
+  it("non-primitive cell value (bigint) → ToonTabularError", () => {
+    const rows = [{ a: 1, b: 99n }] as ReadonlyArray<Record<string, unknown>>;
+    expect(() => toonDumps(rows)).toThrow(ToonTabularError);
+  });
+
+  it("non-primitive cell value appearing past row 0 → ToonTabularError", () => {
+    const rows = [
+      { a: 1, b: 2 },
+      { a: 3, b: { hidden: true } }, // sneaks in late
+    ];
+    expect(() => toonDumps(rows)).toThrow(ToonTabularError);
+  });
+
+  it("first row with no keys → ToonTabularError", () => {
+    const rows = [{}, { a: 1 }];
+    expect(() => toonDumps(rows)).toThrow(ToonTabularError);
+  });
+
+  it("uniform primitive rows still encode successfully (regression)", () => {
+    const rows = [
+      { a: 1, b: "x", c: null, d: true },
+      { a: 2, b: "y", c: 3.14, d: false },
+    ];
+    // Sanity: the new guard must not break valid input.
+    expect(() => toonDumps(rows)).not.toThrow();
   });
 });

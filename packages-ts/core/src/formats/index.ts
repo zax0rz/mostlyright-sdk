@@ -12,4 +12,4 @@
 
 export { jsonDumps, jsonLoads } from "./json.js";
 export { csvDumps, csvLoads } from "./csv.js";
-export { toonDumps, toonLoads } from "./toon.js";
+export { toonDumps, toonLoads, ToonTabularError } from "./toon.js";
