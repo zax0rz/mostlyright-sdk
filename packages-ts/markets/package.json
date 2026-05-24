@@ -12,6 +12,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
+    },
+    "./polymarket": {
+      "types": "./dist/polymarket/index.d.ts",
+      "import": "./dist/polymarket/index.mjs",
+      "require": "./dist/polymarket/index.cjs"
     }
   },
   "files": ["dist"],
