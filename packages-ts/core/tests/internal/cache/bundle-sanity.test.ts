@@ -1,6 +1,6 @@
-// Iter-1 H3 + iter-2 H6 + iter-8 H16 regression — verify the browser-facing
-// cache subbundle does NOT statically OR dynamically import any Node-only
-// modules.
+// Iter-1 H3 + iter-2 H6 + iter-8 H16 + iter-9 H18 regression — verify the
+// browser-facing cache subbundle does NOT statically OR dynamically import
+// any Node-only modules.
 //
 // Iter-1 H3 fix made `defaultCacheStore` use a dynamic `import('./fs.js')`,
 // but the barrel `index.ts` STILL re-exported FsStore/defaultFsRoot — so
@@ -30,6 +30,19 @@
 //   - Node entry: Node-only patterns ARE allowed (FsStore lives here).
 //   - Browser entry: Node-only patterns MUST be absent (catches drift).
 //
+// Iter-9 H18 fix (this test): the iter-8 split was correct, but the
+// conditional-exports map only takes effect when the bundler is configured
+// to use browser conditions. The meta package's `index.bundle.mjs` build
+// inlines workspace siblings via tsup's `noExternal` for MV3 service
+// workers — but defaults to `platform: "node"`, so esbuild resolves the
+// "node" branch of `@tradewinds/core/internal/cache` and hoists FsStore +
+// proper-lockfile + node:fs/promises into the bundle's sibling chunk
+// (`fs-XXXX.mjs`). The H18 assertion scans the ACTUAL MV3-deployed
+// artifact (`packages-ts/meta/dist/index.bundle.mjs`) — the H15/H16
+// assertions only scan the in-package subbundle, which was browser-safe
+// by construction but doesn't reflect what the chrome-extension-mvp
+// example loads.
+//
 // The build must have run before this test — see `prebuild` in
 // package.json. If `dist/` is absent (developer-only fresh clone), the
 // test no-ops with a skip rather than masking a real regression.
@@ -43,6 +56,17 @@ import { describe, expect, it } from "vitest";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CACHE_BUNDLE_NODE = join(__dirname, "../../../dist/internal/cache/index.mjs");
 const CACHE_BUNDLE_BROWSER = join(__dirname, "../../../dist/internal/cache/index.browser.mjs");
+// Iter-9 H18: the MV3-deployed artifact lives in the meta package's
+// `dist/`. The bundled build inlines workspace siblings (noExternal), so
+// when tsup defaults to `platform: "node"` the cache entry resolves via
+// its "node" conditional export — pulling FsStore + proper-lockfile +
+// node:fs/promises into a sibling chunk next to `index.bundle.mjs`. This
+// path lets the same `findViolations` walker scan that artifact too.
+//
+// Relative to this test file
+// (`packages-ts/core/tests/internal/cache/bundle-sanity.test.ts`):
+// go up 4 levels to `packages-ts/`, then into `meta/dist/`.
+const META_BUNDLE_MV3 = join(__dirname, "../../../../meta/dist/index.bundle.mjs");
 
 const NODE_ONLY_PATTERNS = [
   // Bare Node built-ins — static imports.
@@ -154,5 +178,43 @@ describe("cache subbundle browser-safety (iter-1 H3 + iter-2 H6 + iter-8 H15/H16
     // regressed and the walker is back to missing dynamic imports.
     const reachedFs = reachable.some((p) => /\/(fs|fs-[A-Z0-9]+)\.mjs$/.test(p) && existsSync(p));
     expect(reachedFs, "walker must follow `await import(...)` into the FsStore chunk").toBe(true);
+  });
+
+  it("the META MV3 bundle (packages-ts/meta/dist/index.bundle.mjs) and every reachable chunk must be free of Node-only modules — this is the ACTUAL MV3-deployed artifact", () => {
+    // Iter-9 H18: the H15/H16 assertions only scan the in-package cache
+    // subbundle, which was browser-safe by construction (a 755-byte
+    // re-export shim). They never scan the artifact that the
+    // chrome-extension-mvp example loads:
+    //   `packages-ts/meta/dist/index.bundle.mjs`.
+    //
+    // That bundle is built by tsup with `noExternal` for the three
+    // @tradewinds/* siblings. Without an explicit `platform: "browser"`
+    // (or equivalent esbuild `conditions` override), esbuild defaults to
+    // node conditions, resolves the `"node"` branch of the cache entry,
+    // and hoists FsStore + proper-lockfile + node:fs/promises into a
+    // sibling chunk (`fs-XXXX.mjs`). The walker's dynamic-import branch
+    // (H16) already follows `await import("./fs-XXXX.mjs")` into that
+    // sibling, so once H17 lands (browser platform on the bundle build)
+    // this assertion passes by construction.
+    //
+    // If the meta bundle hasn't been built yet (developer-only fresh
+    // clone, or running this file in isolation without
+    // `pnpm --filter tradewinds run build`), skip rather than fail —
+    // matches the H15/H16 skip pattern above.
+    if (!existsSync(META_BUNDLE_MV3)) {
+      console.warn(
+        `[bundle-sanity] skipped meta MV3 bundle check: ${META_BUNDLE_MV3} not built yet. Run \`pnpm --filter tradewinds run build\` to materialize it.`,
+      );
+      return;
+    }
+    const reachable = collectReachableChunks(META_BUNDLE_MV3);
+    expect(reachable).toContain(META_BUNDLE_MV3);
+    const violations = findViolations(reachable);
+    if (violations.length > 0) {
+      const detail = violations.map((v) => `  - ${v.pattern} in ${v.file}`).join("\n");
+      throw new Error(
+        `Meta MV3 bundle (packages-ts/meta/dist/index.bundle.mjs + reachable chunks) must not import Node-only modules — static OR dynamic. This is the artifact MV3 service workers load (see packages-ts/examples/chrome-extension-mvp/service-worker.js).\nFound ${violations.length} violation(s):\n${detail}\n\nFix: ensure packages-ts/meta/tsup.config.ts sets \`platform: "browser"\` on the bundled (noExternal) build entry. Without it, tsup/esbuild defaults to node conditions and resolves the "node" branch of @tradewinds/core/internal/cache, which pulls FsStore + proper-lockfile + node:fs/promises into the bundle.`,
+      );
+    }
   });
 });
