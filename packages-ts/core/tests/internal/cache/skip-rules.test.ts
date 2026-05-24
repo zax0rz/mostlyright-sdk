@@ -7,6 +7,7 @@ import {
   isLiveSource,
   isWithinVolatileWindow,
   isWritableMonth,
+  isWritableYear,
   shouldSkipCacheForCurrentLstMonth,
   shouldSkipCacheForCurrentLstYear,
 } from "../../../src/internal/cache/skip-rules.js";
@@ -123,6 +124,35 @@ describe("isWritableMonth (iter-12 C14)", () => {
     const now = new Date("2025-01-01T01:00:00Z");
     expect(isWritableMonth(2024, 12, now)).toBe(true);
     expect(isWritableMonth(2025, 1, now)).toBe(false);
+  });
+});
+
+describe("isWritableYear (iter-12 C15)", () => {
+  it("future year → not writable", () => {
+    const now = new Date("2025-06-15T12:00:00Z");
+    expect(isWritableYear(2026, now)).toBe(false);
+    expect(isWritableYear(2030, now)).toBe(false);
+  });
+
+  it("current UTC year → not writable", () => {
+    const now = new Date("2025-06-15T12:00:00Z");
+    expect(isWritableYear(2025, now)).toBe(false);
+  });
+
+  it("strictly past UTC year → writable", () => {
+    const now = new Date("2025-06-15T12:00:00Z");
+    expect(isWritableYear(2024, now)).toBe(true);
+    expect(isWritableYear(2000, now)).toBe(true);
+  });
+
+  it("UTC Jan-1 boundary: new UTC year is not writable even if station LST is in prior year", () => {
+    // 2025-01-01T01:00Z is 2025 UTC. The prior UTC year (2024) IS
+    // writable; 2025 is the current UTC year and NOT writable — even
+    // though a UTC-5 station's LST is still 2024-12-31T20:00, which
+    // would let `shouldSkipCacheForCurrentLstYear` return false for 2025.
+    const now = new Date("2025-01-01T01:00:00Z");
+    expect(isWritableYear(2024, now)).toBe(true);
+    expect(isWritableYear(2025, now)).toBe(false);
   });
 });
 

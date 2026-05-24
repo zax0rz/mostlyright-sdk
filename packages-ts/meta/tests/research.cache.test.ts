@@ -472,6 +472,74 @@ describe("research() cache integration (TS-W3 Plan 06)", () => {
     expect(writtenKeys).toContain("tradewinds:v1:observations:NYC:2023:01:iem");
   });
 
+  // iter-12 C15: climate (CLI) cache must skip future + not-strictly-past
+  // UTC years. The pre-existing `shouldSkipCacheForCurrentLstYear` only
+  // catches the current LST year, and the volatile-window rule only
+  // catches the immediate-post-year tail. Both miss future years and the
+  // UTC Jan-1 boundary window where the station's LST is still in the
+  // prior calendar year (negative tz offsets) but the UTC year has
+  // already rolled over. Without `isWritableYear`, empty / incomplete
+  // CLI data for such a year would be persisted and later served as
+  // complete.
+  it("C15: future year → no CLI cache.set, no cache.get attempted", async () => {
+    installFetchMock({
+      cli: [],
+      awc: [],
+    });
+    const store = new MemoryStore();
+    const getSpy = vi.spyOn(store, "get");
+    const setSpy = vi.spyOn(store, "set");
+    // now = 2025-06-15. Query a future year (2026). research() still
+    // calls into the CLI fetcher, but the cache must be bypassed.
+    const now = new Date("2025-06-15T12:00:00Z");
+    await research("NYC", "2026-01-15", "2026-01-15", { cache: store, now });
+
+    const writtenKeys = setSpy.mock.calls.map((c) => String(c[0]));
+    const readKeys = getSpy.mock.calls.map((c) => String(c[0]));
+
+    // No CLI key for 2026 may be written nor read.
+    const climate2026 = cacheKeyForClimate("NYC", 2026);
+    expect(writtenKeys).not.toContain(climate2026);
+    expect(readKeys).not.toContain(climate2026);
+  });
+
+  it("C15: current UTC year → no CLI cache.set (covers UTC Jan-1 boundary)", async () => {
+    installFetchMock({
+      cli: [],
+      awc: [],
+    });
+    const store = new MemoryStore();
+    const setSpy = vi.spyOn(store, "set");
+    // now = 2025-01-01T01:00Z (just past UTC midnight Jan 1). For a UTC-5
+    // station (NYC), LST is still 2024-12-31T20:00 → year 2024 in LST.
+    // The OLD `shouldSkipCacheForCurrentLstYear` would return false for
+    // 2025 (because station LST is 2024). `isWritableYear` correctly
+    // rejects 2025 as the current UTC year — preventing a partial cache
+    // write at the UTC Jan-1 boundary.
+    const now = new Date("2025-01-01T01:00:00Z");
+    await research("NYC", "2025-01-01", "2025-01-01", { cache: store, now });
+
+    const writtenKeys = setSpy.mock.calls.map((c) => String(c[0]));
+    expect(writtenKeys).not.toContain(cacheKeyForClimate("NYC", 2025));
+  });
+
+  it("C15: past UTC year → CLI cache write fires (existing behavior preserved)", async () => {
+    installFetchMock({
+      cli: [{ valid: "2023-01-15", high: 50, low: 30, product: "test-cli" }],
+      awc: [],
+    });
+    const store = new MemoryStore();
+    const setSpy = vi.spyOn(store, "set");
+    // 2025-06-15: 2023 is strictly past UTC AND past LST AND past volatile
+    // window. `isWritableYear` is an ADDITIONAL gate; the write must
+    // still fire.
+    const now = new Date("2025-06-15T12:00:00Z");
+    await research("NYC", "2023-01-15", "2023-01-15", { cache: store, now });
+
+    const writtenKeys = setSpy.mock.calls.map((c) => String(c[0]));
+    expect(writtenKeys).toContain(cacheKeyForClimate("NYC", 2023));
+  });
+
   it("H14: GHCNh 404 is memoized; empty per-month entries cached so warm calls skip NCEI", async () => {
     let ghcnhHits = 0;
     vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {

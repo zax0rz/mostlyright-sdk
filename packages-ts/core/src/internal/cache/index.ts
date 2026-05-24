@@ -25,5 +25,6 @@ export {
   isLiveSource,
   isWithinVolatileWindow,
   isWritableMonth,
+  isWritableYear,
 } from "./skip-rules.js";
 export { cacheKeyForObservations, cacheKeyForClimate } from "./keys.js";

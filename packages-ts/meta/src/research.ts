@@ -27,6 +27,7 @@ import {
   isLiveSource,
   isWithinVolatileWindow,
   isWritableMonth,
+  isWritableYear,
   shouldSkipCacheForCurrentLstMonth,
   shouldSkipCacheForCurrentLstYear,
 } from "@tradewinds/core/internal/cache";
@@ -353,13 +354,21 @@ async function fetchCliWithCache(
 ): Promise<ClimateObservation[]> {
   const acc: ClimateObservation[] = [];
   for (let year = fromYear; year <= toYear; year++) {
+    // iter-12 C15: `isWritableYear` is the strictest temporal gate.
+    // Any year that isn't STRICTLY in the past UTC-wise (future years
+    // or the current UTC year, including the UTC Jan-1 boundary window
+    // where a negative-offset station's LST is still in the prior year)
+    // is never cacheable — regardless of LST or volatile-window logic.
+    // Force a live fetch and skip both reads AND writes for non-writable
+    // years.
+    const writable = isWritableYear(year, now);
     const skipCurrentYear = shouldSkipCacheForCurrentLstYear(cacheCode, year, now);
     // iter-5 H9: the 30-day volatile amendment window MUST also block
     // cache reads — a hit served from inside the window would re-serve
     // soon-to-be-amended rows. Always prefer a fresh fetch when the
     // window is active.
     const skipVolatile = isYearVolatile(year, now);
-    const skip = skipCurrentYear || skipVolatile;
+    const skip = !writable || skipCurrentYear || skipVolatile;
 
     // --- Cache read (best-effort) -------------------------------------
     // iter-6 C12: a `cache.get` failure must not abort the per-year

@@ -99,6 +99,24 @@ export function isWritableMonth(year: number, month: number, now: Date): boolean
 }
 
 /**
+ * True iff `year` is a **strictly past** UTC year relative to `now` —
+ * the annual analog of `isWritableMonth`.
+ *
+ * iter-12 C15: `shouldSkipCacheForCurrentLstYear` only catches the
+ * current LST year. It misses (a) future years, which would silently
+ * cache empty/incomplete data, and (b) the UTC Jan-1 boundary window
+ * where the station's LST is still in the prior calendar year (negative
+ * tz offsets) but the UTC year has already rolled over — without this
+ * gate the new UTC year, which is mutable, could be written. Stricter
+ * additional gate: require `year < now.getUTCFullYear()`. TS callers
+ * MUST gate cache reads AND writes on this predicate before applying
+ * the LST / volatile-window gates.
+ */
+export function isWritableYear(year: number, now: Date): boolean {
+  return year < now.getUTCFullYear();
+}
+
+/**
  * True iff `source` ends with `.live`.
  *
  * Mirrors Python `_is_live_source` byte-equivalently — accepts null /
