@@ -50,9 +50,16 @@
       "require": "./dist/validator.cjs"
     },
     "./internal/cache": {
-      "types": "./dist/internal/cache/index.d.ts",
-      "import": "./dist/internal/cache/index.mjs",
-      "require": "./dist/internal/cache/index.cjs"
+      "node": {
+        "types": "./dist/internal/cache/index.d.ts",
+        "import": "./dist/internal/cache/index.mjs",
+        "require": "./dist/internal/cache/index.cjs"
+      },
+      "default": {
+        "types": "./dist/internal/cache/index.browser.d.ts",
+        "import": "./dist/internal/cache/index.browser.mjs",
+        "require": "./dist/internal/cache/index.browser.cjs"
+      }
     },
     "./internal/cache/fs": {
       "types": "./dist/internal/cache/fs.d.ts",

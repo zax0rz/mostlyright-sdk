@@ -100,7 +100,17 @@ export default defineConfig([
     // TS-W3 Plan 01-03 — cache subsystem (CacheStore, MemoryStore, FsStore,
     // IndexedDBStore [plan 02], defaultCacheStore [plan 02], skip-rules + keys
     // [plan 03]). Emitted at @tradewinds/core/internal/cache.
-    entry: { "cache/index": "src/internal/cache/index.ts" },
+    //
+    // Iter-8 H15: TWO entries — Node (`index.ts`, keeps the dynamic
+    // FsStore import) and browser (`index.browser.ts`, NO reference to
+    // FsStore via any mechanism). package.json conditional exports route
+    // Node consumers to `index.mjs` and browser/MV3 consumers to
+    // `index.browser.mjs`, eliminating the Node-only-deps edge that
+    // breaks `pnpm size` for the meta bundle.
+    entry: {
+      "cache/index": "src/internal/cache/index.ts",
+      "cache/index.browser": "src/internal/cache/index.browser.ts",
+    },
     format: ["esm", "cjs"],
     dts: true,
     sourcemap: true,
