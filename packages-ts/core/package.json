@@ -60,7 +60,9 @@
   },
   "devDependencies": {
     "@types/proper-lockfile": "^4.1.4",
+    "fake-indexeddb": "^6.0.0",
     "fast-check": "3.23.2",
+    "jsdom": "^25.0.1",
     "tsup": "8.3.5",
     "typescript": "5.6.3",
     "vitest": "2.1.9"
@@ -69,6 +71,7 @@
     "access": "public"
   },
   "dependencies": {
+    "idb": "^8.0.0",
     "proper-lockfile": "^4.1.2"
   }
 }

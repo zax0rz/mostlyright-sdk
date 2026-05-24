@@ -4,6 +4,13 @@ export default defineConfig({
   test: {
     include: ["tests/**/*.test.ts"],
     exclude: ["**/*.live.test.ts", "**/node_modules/**", "**/dist/**"],
+    // Route browser-API tests (IndexedDB, navigator.locks) through jsdom;
+    // everything else stays on Node default for speed.
+    environmentMatchGlobs: [
+      ["tests/internal/cache/indexeddb.test.ts", "jsdom"],
+      ["tests/internal/cache/default.test.ts", "jsdom"],
+    ],
+    setupFiles: ["./tests/setup-fake-indexeddb.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov"],
