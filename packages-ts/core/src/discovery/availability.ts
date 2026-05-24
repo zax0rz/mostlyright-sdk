@@ -5,9 +5,14 @@
 // CacheStore implementation (Memory / IndexedDB / Fs) is the persistence layer.
 //
 // The keys we scan match `cacheKeyForObservations(station, year, month, source?)`
-// and `cacheKeyForClimate(station, year)` — the Python file-path equivalents are
-// `v1/observations/STATION/YYYY/MM.parquet` and `v1/climate/STATION/YYYY.parquet`.
+// and `cacheKeyForClimate(station, year)`. @tradewinds/meta's `research()` writes
+// cache entries under the 3-letter NWS code (`resolved.code` from
+// STATION_BY_ICAO / STATION_BY_CODE) for US stations — e.g. `KNYC` resolves to
+// `NYC` and the cache key reads `...:observations:NYC:...`. Codex iter-2 P2:
+// availability resolves the input the same way so `availability("KNYC", cache)`
+// finds entries written by `research("KNYC", ...)`.
 
+import { STATION_BY_CODE, STATION_BY_ICAO } from "../data/generated/stations.js";
 import type { CacheStore } from "../internal/cache/index.js";
 
 /**
@@ -54,6 +59,17 @@ function hasListKeys(store: CacheStore): store is KeyEnumerableStore {
 
 const STATION_RE = /^[A-Z0-9]{3,5}$/;
 
+/**
+ * Resolve `station` to the canonical CACHE-KEY station code.
+ *
+ * - For known stations: returns the 3-letter NWS `code` (e.g. `KNYC` → `NYC`)
+ *   if one exists, falling back to the 4-letter ICAO. This matches the cache
+ *   key that `research()` writes for US stations via `resolved.code` and
+ *   international stations via `resolved.icao` (no NWS code exists).
+ * - For unknown inputs that still satisfy the 3-5 char alphanumeric format:
+ *   returns the upper-cased input. This lets bespoke callers query custom
+ *   keys without coupling availability to the station registry.
+ */
 function normalizeStation(station: string): string {
   const upper = station.toUpperCase();
   if (!STATION_RE.test(upper)) {
@@ -61,6 +77,18 @@ function normalizeStation(station: string): string {
       `availability: station must be a 3-5 char alphanumeric code; got ${JSON.stringify(station)}`,
     );
   }
+  const byIcao = STATION_BY_ICAO.get(upper);
+  if (byIcao !== undefined) {
+    // US stations: NWS code is the cache-key form. International stations:
+    // no NWS code, ICAO is the cache-key form.
+    return byIcao.code ?? byIcao.icao;
+  }
+  const byCode = STATION_BY_CODE.get(upper);
+  if (byCode !== undefined) {
+    return byCode.code ?? byCode.icao;
+  }
+  // Bespoke / unknown codes — pass through. availability() returns
+  // zero-coverage if the cache doesn't have entries under this exact key.
   return upper;
 }
 
