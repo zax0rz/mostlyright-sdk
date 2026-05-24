@@ -199,7 +199,11 @@ export function internationalDailyExtremes(
     let sourceTmin: string | null = null;
     let sourceTmax: string | null = null;
 
-    if (nObs >= minObs) {
+    // Codex iter-4 P2: `nObs >= minObs` alone is not enough when minObs=0,
+    // because a day with a parseable timestamp but no finite temp_c reaches
+    // this branch with nObs === 0 and then dereferences bucket.temps[0].
+    // Always require at least one temperature row before computing extremes.
+    if (nObs > 0 && nObs >= minObs) {
       let minIdx = 0;
       let maxIdx = 0;
       let sum = 0;

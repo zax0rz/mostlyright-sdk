@@ -149,6 +149,23 @@ describe("internationalDailyExtremes — basic semantics", () => {
     expect(out[0]?.nObs).toBe(1);
     expect(out[0]?.tempMinC).toBe(5);
   });
+
+  it("does not crash when minObs=0 and a day has no finite temps (codex iter-4 P2)", () => {
+    // Day-bucket has a parseable timestamp but no usable temperature. With
+    // minObs=0 the prior code-path entered the extremes branch with nObs=0
+    // and dereferenced an empty temps[] → TypeError. Should now emit a
+    // null-temps row instead.
+    const rows: InternationalRow[] = [
+      { observed_at: "2025-01-01T00:00:00Z", temp_c: null },
+      { observed_at: "2025-01-01T01:00:00Z", temp_c: Number.NaN },
+    ];
+    const out = internationalDailyExtremes(rows, { stationTz: "UTC", minObs: 0 });
+    expect(out).toHaveLength(1);
+    expect(out[0]?.nObs).toBe(0);
+    expect(out[0]?.tempMinC).toBeNull();
+    expect(out[0]?.tempMaxC).toBeNull();
+    expect(out[0]?.tempMeanC).toBeNull();
+  });
 });
 
 describe("internationalDailyExtremes — UTC-wrap edge cases", () => {
