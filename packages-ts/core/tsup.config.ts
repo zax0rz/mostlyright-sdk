@@ -35,4 +35,18 @@ export default defineConfig([
       return { js: ".cjs" };
     },
   },
+  {
+    // TS-W2 Plan 04 — multi-source merge policies.
+    entry: { "merge/index": "src/internal/merge/index.ts" },
+    format: ["esm", "cjs"],
+    dts: true,
+    sourcemap: true,
+    clean: false,
+    target: "es2022",
+    outDir: "dist/internal",
+    outExtension({ format }) {
+      if (format === "esm") return { js: ".mjs" };
+      return { js: ".cjs" };
+    },
+  },
 ]);

@@ -17,13 +17,13 @@ import {
   marketCloseUtc,
   settlementDateFor,
 } from "@tradewinds/core";
+import { mergeClimate } from "@tradewinds/core/internal/merge";
 import {
   type ClimateObservation,
   type Observation,
   awcToObservation,
   downloadCliRange,
   fetchAwcMetars,
-  mergeClimate,
   parseCliResponse,
 } from "@tradewinds/weather";
 

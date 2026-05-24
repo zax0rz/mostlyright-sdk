@@ -23,6 +23,10 @@ export default defineConfig({
         replacement: resolve(__dirname, "../core/src/internal/convert.ts"),
       },
       {
+        find: "@tradewinds/core/internal/merge",
+        replacement: resolve(__dirname, "../core/src/internal/merge/index.ts"),
+      },
+      {
         find: "@tradewinds/core",
         replacement: resolve(__dirname, "../core/src/index.ts"),
       },

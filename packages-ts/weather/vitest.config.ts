@@ -23,8 +23,17 @@ export default defineConfig({
         replacement: resolve(__dirname, "../core/src/internal/convert.ts"),
       },
       {
+        find: "@tradewinds/core/internal/merge",
+        replacement: resolve(__dirname, "../core/src/internal/merge/index.ts"),
+      },
+      {
         find: "@tradewinds/core",
         replacement: resolve(__dirname, "../core/src/index.ts"),
+      },
+      // Self-alias so backward-compat tests can import from @tradewinds/weather.
+      {
+        find: "@tradewinds/weather",
+        replacement: resolve(__dirname, "./src/index.ts"),
       },
     ],
   },
