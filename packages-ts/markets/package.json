@@ -17,6 +17,11 @@
       "types": "./dist/polymarket/index.d.ts",
       "import": "./dist/polymarket/index.mjs",
       "require": "./dist/polymarket/index.cjs"
+    },
+    "./trades": {
+      "types": "./dist/trades/index.d.ts",
+      "import": "./dist/trades/index.mjs",
+      "require": "./dist/trades/index.cjs"
     }
   },
   "files": ["dist"],
