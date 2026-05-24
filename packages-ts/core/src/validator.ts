@@ -24,9 +24,52 @@
 
 import { SchemaValidationError, SourceMismatchError } from "./exceptions/index.js";
 import type { AjvErrorObject } from "./schemas/validators/index.js";
-import { getValidator } from "./schemas/validators/index.js";
+import { getFormatMap, getValidator } from "./schemas/validators/index.js";
 
 const SAMPLE_CAP = 10;
+
+// ISO 8601 date (YYYY-MM-DD) and date-time format guards.
+//
+// Codegen's ajv config uses `strict: false` + no `addFormats`, so
+// `format: "date"` / `"date-time"` keywords are silently ignored by the
+// compiled standalone validators (per the codegen.ts header comment —
+// addFormats would defeat the MV3-CSP guarantee). This means the wire
+// validator alone would accept `event_time: "not-an-iso-string"`.
+//
+// The format post-pass below closes that gap: walks the per-schema format
+// map (emitted by codegen) and applies these CSP-safe regex checks to each
+// row's value. Mismatches surface as `dtype_mismatch` violations — matching
+// Python's behavior (Python uses pandas dtype checks for date / timestamp_utc
+// columns; in TS our wire shape is JSON strings, so format-on-string is the
+// equivalent guard).
+const ISO_DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+// date-time: require explicit `T` (or space) separator AND tz suffix
+// (`Z` or `±HH:MM` / `±HHMM`). Matches TimePoint's constructor semantics.
+const ISO_DATETIME_SEPARATOR_REGEX = /[T ]/;
+const ISO_DATETIME_TZ_SUFFIX_REGEX = /(?:Z|[+-]\d{2}:?\d{2})$/;
+const ISO_DATETIME_DATE_PREFIX_REGEX = /^\d{4}-\d{2}-\d{2}/;
+
+function isIsoDate(v: unknown): boolean {
+  if (typeof v !== "string") return false;
+  if (!ISO_DATE_ONLY_REGEX.test(v)) return false;
+  // Reject "2025-13-01" / "2025-02-30" etc. — Date.parse accepts them but
+  // normalizes silently; we want strict calendar validity.
+  const ms = Date.parse(`${v}T00:00:00Z`);
+  if (!Number.isFinite(ms)) return false;
+  const reparsed = new Date(ms).toISOString().slice(0, 10);
+  return reparsed === v;
+}
+
+function isIsoDateTime(v: unknown): boolean {
+  if (typeof v !== "string") return false;
+  const trimmed = v.trim();
+  if (trimmed.length === 0) return false;
+  if (!ISO_DATETIME_DATE_PREFIX_REGEX.test(trimmed)) return false;
+  if (!ISO_DATETIME_SEPARATOR_REGEX.test(trimmed)) return false;
+  if (!ISO_DATETIME_TZ_SUFFIX_REGEX.test(trimmed)) return false;
+  const ms = Date.parse(trimmed);
+  return Number.isFinite(ms);
+}
 
 /**
  * Per-schema canonical source — mirrors Python `_registered_source` on
@@ -288,6 +331,39 @@ export function validateRows<Row extends Record<string, unknown> = Record<string
         }
         if (violations.length >= SAMPLE_CAP * 2) break;
       }
+    }
+  }
+
+  // 6b. Format post-pass: ajv `strict: false` + no addFormats means
+  // `format: "date"` / `"date-time"` keywords are silently ignored by the
+  // compiled standalone validators. Walk the codegen-emitted format map and
+  // apply CSP-safe regex checks here. Mismatches surface as
+  // `dtype_mismatch` violations (Python's analog: the dtype check on a
+  // `date` / `timestamp_utc` column fails when the column isn't actually a
+  // date / tz-aware datetime).
+  const formatMap = getFormatMap(schemaId);
+  if (formatMap !== null) {
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i] as Record<string, unknown>;
+      for (const [propName, kind] of Object.entries(formatMap)) {
+        if (!(propName in r)) continue;
+        const v = r[propName];
+        // Null/undefined handled by the ajv `type` keyword + non_nullable
+        // check above; here we only police format on present, non-null
+        // string-typed values.
+        if (v == null) continue;
+        const valid = kind === "date" ? isIsoDate(v) : isIsoDateTime(v);
+        if (!valid) {
+          violations.push({
+            rule: "dtype_mismatch",
+            column: propName,
+            row_idx: i,
+            value: v,
+          });
+        }
+        if (violations.length >= SAMPLE_CAP * 2) break;
+      }
+      if (violations.length >= SAMPLE_CAP * 2) break;
     }
   }
 

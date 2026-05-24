@@ -41,3 +41,6 @@ export function getValidator(schemaId: string): AjvValidator | null {
 export function listValidators(): readonly string[] {
   return Object.freeze(Object.keys(VALIDATORS));
 }
+
+export { getFormatMap } from "./format-map.js";
+export type { FormatKind, SchemaFormatMap } from "./format-map.js";

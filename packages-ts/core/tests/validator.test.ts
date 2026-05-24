@@ -244,6 +244,172 @@ describe("validateRows — canonical source map parity with Python (iter-1 C2)",
   }
 });
 
+describe("validateRows — date / date-time format post-pass (iter-2 C5)", () => {
+  // Codegen's ajv uses `strict: false` + no addFormats, so `format: "date"` /
+  // `"date-time"` keywords compile out. The format post-pass in validateRows
+  // closes that gap; without it, malformed date-time strings would pass
+  // validation silently. See packages-ts/codegen/src/codegen.ts header
+  // comment + validator.ts §6b.
+
+  it("rejects malformed date-time string with dtype_mismatch", () => {
+    const row = { ...VALID_OBS_ROW, event_time: "not-an-iso-string" };
+    try {
+      validateRows([row], "schema.observation.v1");
+      throw new Error("expected SchemaValidationError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(SchemaValidationError);
+      const err = e as SchemaValidationError;
+      const violation = err.violations.find(
+        (v) => v.rule === "dtype_mismatch" && v.column === "event_time",
+      );
+      expect(violation).toBeDefined();
+    }
+  });
+
+  it("rejects naive (no-tz) date-time string with dtype_mismatch", () => {
+    // Date-time WITHOUT a tz suffix — TimePoint rejects this; the post-pass
+    // must mirror that contract so JSON wire payloads can't smuggle naive
+    // timestamps past validation.
+    const row = { ...VALID_OBS_ROW, event_time: "2025-01-15T12:00:00" };
+    try {
+      validateRows([row], "schema.observation.v1");
+      throw new Error("expected SchemaValidationError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(SchemaValidationError);
+      const err = e as SchemaValidationError;
+      const violation = err.violations.find(
+        (v) => v.rule === "dtype_mismatch" && v.column === "event_time",
+      );
+      expect(violation).toBeDefined();
+    }
+  });
+
+  it("rejects date-only string for a date-time field with dtype_mismatch", () => {
+    const row = { ...VALID_OBS_ROW, event_time: "2025-01-15" };
+    try {
+      validateRows([row], "schema.observation.v1");
+      throw new Error("expected SchemaValidationError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(SchemaValidationError);
+      const err = e as SchemaValidationError;
+      const violation = err.violations.find(
+        (v) => v.rule === "dtype_mismatch" && v.column === "event_time",
+      );
+      expect(violation).toBeDefined();
+    }
+  });
+
+  it("rejects malformed date string with dtype_mismatch (date format)", () => {
+    // schema.settlement.cli.v1 has `observation_date` with format: "date".
+    const cliRow = {
+      cli_data_quality: "clean",
+      event_time: "2025-01-15T12:00:00Z",
+      observation_date: "not-a-date",
+      product_release_time: "2025-01-15T12:30:00Z",
+      report_type: "final",
+      settlement_finality: "final",
+      station: "KNYC",
+      station_tz: "America/New_York",
+      source: "cli.archive",
+      retrieved_at: "2025-01-15T13:00:00Z",
+    };
+    try {
+      validateRows([cliRow], "schema.settlement.cli.v1");
+      throw new Error("expected SchemaValidationError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(SchemaValidationError);
+      const err = e as SchemaValidationError;
+      const violation = err.violations.find(
+        (v) => v.rule === "dtype_mismatch" && v.column === "observation_date",
+      );
+      expect(violation).toBeDefined();
+    }
+  });
+
+  it("rejects date-time string passed where date format is expected", () => {
+    // observation_date is `format: "date"` — a full ISO date-time must NOT
+    // sneak through.
+    const cliRow = {
+      cli_data_quality: "clean",
+      event_time: "2025-01-15T12:00:00Z",
+      observation_date: "2025-01-15T00:00:00Z",
+      product_release_time: "2025-01-15T12:30:00Z",
+      report_type: "final",
+      settlement_finality: "final",
+      station: "KNYC",
+      station_tz: "America/New_York",
+      source: "cli.archive",
+      retrieved_at: "2025-01-15T13:00:00Z",
+    };
+    try {
+      validateRows([cliRow], "schema.settlement.cli.v1");
+      throw new Error("expected SchemaValidationError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(SchemaValidationError);
+      const err = e as SchemaValidationError;
+      const violation = err.violations.find(
+        (v) => v.rule === "dtype_mismatch" && v.column === "observation_date",
+      );
+      expect(violation).toBeDefined();
+    }
+  });
+
+  it("rejects invalid calendar date (e.g. 2025-02-30) with dtype_mismatch", () => {
+    const cliRow = {
+      cli_data_quality: "clean",
+      event_time: "2025-01-15T12:00:00Z",
+      observation_date: "2025-02-30",
+      product_release_time: "2025-01-15T12:30:00Z",
+      report_type: "final",
+      settlement_finality: "final",
+      station: "KNYC",
+      station_tz: "America/New_York",
+      source: "cli.archive",
+      retrieved_at: "2025-01-15T13:00:00Z",
+    };
+    try {
+      validateRows([cliRow], "schema.settlement.cli.v1");
+      throw new Error("expected SchemaValidationError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(SchemaValidationError);
+      const err = e as SchemaValidationError;
+      const violation = err.violations.find(
+        (v) => v.rule === "dtype_mismatch" && v.column === "observation_date",
+      );
+      expect(violation).toBeDefined();
+    }
+  });
+
+  it("accepts valid date-time string with Z suffix", () => {
+    const row = { ...VALID_OBS_ROW, event_time: "2025-01-15T12:00:00Z" };
+    const result = validateRows([row], "schema.observation.v1");
+    expect(result.rowCount).toBe(1);
+  });
+
+  it("accepts valid date-time string with +HH:MM offset", () => {
+    const row = { ...VALID_OBS_ROW, event_time: "2025-01-15T12:00:00+02:00" };
+    const result = validateRows([row], "schema.observation.v1");
+    expect(result.rowCount).toBe(1);
+  });
+
+  it("accepts valid date and date-time strings together", () => {
+    const cliRow = {
+      cli_data_quality: "clean",
+      event_time: "2025-01-15T12:00:00Z",
+      observation_date: "2025-01-15",
+      product_release_time: "2025-01-15T12:30:00Z",
+      report_type: "final",
+      settlement_finality: "final",
+      station: "KNYC",
+      station_tz: "America/New_York",
+      source: "cli.archive",
+      retrieved_at: "2025-01-15T13:00:00Z",
+    };
+    const result = validateRows([cliRow], "schema.settlement.cli.v1");
+    expect(result.rowCount).toBe(1);
+  });
+});
+
 describe("validateRows — error wire shape (snake_case parity)", () => {
   it("SchemaValidationError.toDict() emits snake_case schema_id / violations / quarantine_count / sample_violations", () => {
     try {
