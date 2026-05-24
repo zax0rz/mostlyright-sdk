@@ -133,6 +133,7 @@ def download_iem_asos(
     *,
     skip_cache: bool = False,
     report_type: int = 3,
+    exact_window: bool = False,
 ) -> list[Path]:
     """Download yearly chunks of IEM ASOS data, returning local CSV paths.
 
@@ -140,6 +141,18 @@ def download_iem_asos(
     end]`` and split into per-calendar-year EXCLUSIVE-end chunks (PERF-01). Each
     chunk's response is cached at
     ``dest_dir / station.code / iem_{start_iso}_{end_iso}_{partial?}_{suffix}.csv``.
+
+    Phase 7 ``exact_window`` mode
+    -----------------------------
+    When ``exact_window=True``, the year-normalization is BYPASSED — the URL
+    uses the caller's ``start``/``end`` directly (day-granular ``day1=``/``day2=``).
+    For a 1-month KNYC query, this drops the cold-fetch budget from ~13 MB
+    (full-year CSV) to ~2 MB. Callers are responsible for pointing ``dest_dir``
+    at a SEPARATE directory namespace (e.g. ``sources/iem_asos_exact``) so the
+    canonical yearly-cache filenames are never poisoned (B-5: directory-level
+    separation, NOT filename infix). The ``_partial`` mutable-period gate is
+    preserved — chunks whose end exceeds today UTC still route to the
+    ``_partial`` infix.
 
     A chunk is treated as **partial** (and routed to the ``_partial_`` namespace
     that backfill never reads) when either:
@@ -175,6 +188,11 @@ def download_iem_asos(
         report_type: ``3`` for METAR (default), ``4`` for SPECI. Callers that need
             both should invoke this twice and pass the matching
             ``observation_type_override`` to ``parse_iem_file``.
+        exact_window: When ``True``, Phase 7 path — skip year-normalization and
+            issue a single day-granular request for the caller's exact
+            ``[start, end]``. Callers must point ``dest_dir`` at a separate
+            namespace (e.g. ``sources/iem_asos_exact``) to avoid polluting the
+            canonical yearly-cache directory.
 
     Returns:
         List of local file paths — one entry per yearly chunk. Both cached and
@@ -201,12 +219,23 @@ def download_iem_asos(
     if start > end:
         return []
     suffix = _REPORT_TYPE_SUFFIX[report_type]
-    # Tradewinds-specific: normalize start to Jan 1 of its year so per-month callers
-    # share a yearly cache key. PR #85's chunker uses max(current, start), which
-    # floats the chunk_start with the caller — fine for one-shot backfills, wasteful
-    # for tradewinds' per-month research.py loop. See module docstring "Deviation".
-    normalized_start = date(start.year, 1, 1)
-    chunks = yearly_chunks_exclusive_end(normalized_start, end)
+    if exact_window:
+        # Phase 7: skip year-normalization entirely; one day-granular chunk
+        # for the caller's exact [start, end]. IEM treats day2 as EXCLUSIVE,
+        # so extend by 1 day to mirror the chunker's contract — preserves the
+        # downstream code path (filename / partial gate / URL builder) without
+        # special-casing it.
+        from datetime import timedelta as _td
+
+        chunks = [(start, end + _td(days=1))]
+    else:
+        # Tradewinds-specific: normalize start to Jan 1 of its year so per-month
+        # callers share a yearly cache key. PR #85's chunker uses
+        # max(current, start), which floats the chunk_start with the caller —
+        # fine for one-shot backfills, wasteful for tradewinds' per-month
+        # research.py loop. See module docstring "Deviation".
+        normalized_start = date(start.year, 1, 1)
+        chunks = yearly_chunks_exclusive_end(normalized_start, end)
     today_utc = datetime.now(UTC).date()
     paths: list[Path] = []
     for chunk_start, chunk_end in chunks:
