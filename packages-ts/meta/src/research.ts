@@ -14,6 +14,15 @@
 // are sequential — fine for the parity gate; performance work is later.
 
 import { STATION_BY_CODE, STATION_BY_ICAO, settlementDateFor } from "@tradewinds/core";
+import {
+  type CacheStore,
+  cacheKeyForClimate,
+  cacheKeyForObservations,
+  defaultCacheStore,
+  isLiveSource,
+  shouldSkipCacheForCurrentLstMonth,
+  shouldSkipCacheForCurrentLstYear,
+} from "@tradewinds/core/internal/cache";
 import { mergeClimate, mergeObservations } from "@tradewinds/core/internal/merge";
 import {
   type PairsClimateLike,
@@ -60,6 +69,18 @@ export interface ResearchOptions {
    * historical date ranges in unit tests.
    */
   now?: Date;
+  /**
+   * Pluggable cache backend (TS-W3). When omitted, uses
+   * `defaultCacheStore()` (auto-detects IndexedDB → FsStore → MemoryStore).
+   * Pass `null` to opt out of caching entirely.
+   */
+  cache?: CacheStore | null;
+}
+
+/** Resolve the cache from opts. `null` means opt-out (returns null). */
+function resolveCache(opts: ResearchOptions): CacheStore | null {
+  if (opts.cache === null) return null;
+  return opts.cache ?? defaultCacheStore();
 }
 
 // ---------------------------------------------------------------------------
@@ -211,6 +232,112 @@ function sortByObservedAtThenSource(rows: ReadonlyArray<Observation>): Observati
   });
 }
 
+/**
+ * Fetch CLI climate per-year with read-through cache. Yearly chunks are
+ * cached at `cacheKeyForClimate(code, year)`. Skip rules:
+ *   - Current LST year — mutable, never cached.
+ *   - Live source (`.live`) — never cached (CLI is archive `iem.cli` →
+ *     this never fires today; defensive for future).
+ */
+async function fetchCliWithCache(
+  fetchIcao: string,
+  cacheCode: string,
+  fromYear: number,
+  toYear: number,
+  opts: ResearchOptions,
+  cache: CacheStore | null,
+  now: Date,
+): Promise<ClimateObservation[]> {
+  const acc: ClimateObservation[] = [];
+  for (let year = fromYear; year <= toYear; year++) {
+    const skip = shouldSkipCacheForCurrentLstYear(cacheCode, year, now);
+    if (cache !== null && !skip) {
+      const cached = await cache.get<ClimateObservation[]>(cacheKeyForClimate(cacheCode, year));
+      if (cached !== null) {
+        acc.push(...cached);
+        continue;
+      }
+    }
+    const cliOpts: { signal?: AbortSignal; politenessMs?: number } = {};
+    if (opts.signal !== undefined) cliOpts.signal = opts.signal;
+    if (opts.cliPolitenessMs !== undefined) cliOpts.politenessMs = opts.cliPolitenessMs;
+    const cliRaw = await downloadCliRange(fetchIcao, year, year, cliOpts);
+    const parsed = parseCliResponse(cliRaw, cacheCode);
+    acc.push(...parsed);
+    // Write-through: cache only when (1) backend present, (2) skip permits,
+    // (3) source isn't `.live` (defensive — iem.cli is archive). All parsed
+    // rows share the same `source`; sample the first.
+    const sample = parsed[0]?.source;
+    if (cache !== null && !skip && !isLiveSource(sample)) {
+      await cache.set(cacheKeyForClimate(cacheCode, year), parsed);
+    }
+  }
+  return acc;
+}
+
+/** Fetch IEM ASOS observations per-year with read-through cache. */
+async function fetchIemAsosWithCache(
+  stationCode: string,
+  fromYear: number,
+  extendedToYear: number,
+  fromDate: string,
+  extendedTo: string,
+  opts: ResearchOptions,
+  cache: CacheStore | null,
+  now: Date,
+): Promise<Observation[]> {
+  const acc: Observation[] = [];
+  for (let year = fromYear; year <= extendedToYear; year++) {
+    for (const reportType of [3, 4] as const) {
+      // Year-granularity cache key (we don't have a yearly key generator;
+      // re-use the observations key with month=01 as the year-sentinel and
+      // a report-type-specific suffix encoded into the station).
+      const cacheKey = `${cacheKeyForObservations(stationCode, year, 1)}:rt=${reportType}`;
+      // Skip when the year contains the current LST year (annual granularity
+      // for the year-grained cache — conservative; the per-month rule fires
+      // at the cache-key level where Python's per-month observations cache
+      // lives).
+      const skipCurrentMonth = shouldSkipCacheForCurrentLstYear(stationCode, year, now);
+
+      let yearRows: Observation[] | null = null;
+      if (cache !== null && !skipCurrentMonth) {
+        const cached = await cache.get<Observation[]>(cacheKey);
+        if (cached !== null) yearRows = cached;
+      }
+      if (yearRows === null) {
+        const iemOpts: { reportType: 3 | 4; politenessMs: number; signal?: AbortSignal } = {
+          reportType,
+          politenessMs: opts.iemPolitenessMs ?? 1000,
+        };
+        if (opts.signal !== undefined) iemOpts.signal = opts.signal;
+        const chunks = await downloadIemAsos(
+          stationCode,
+          `${year}-01-01`,
+          `${year}-12-31`,
+          iemOpts,
+        );
+        const fetched: Observation[] = [];
+        for (const chunk of chunks) {
+          const parsed = parseIemCsv(chunk.csv, {
+            observationTypeOverride: reportType === 3 ? "METAR" : "SPECI",
+          });
+          fetched.push(...parsed);
+        }
+        yearRows = fetched;
+        const sample = fetched[0]?.source;
+        if (cache !== null && !skipCurrentMonth && !isLiveSource(sample)) {
+          await cache.set(cacheKey, fetched);
+        }
+      }
+      for (const obs of yearRows) {
+        const obsDate = obs.observed_at.slice(0, 10);
+        if (obsDate >= fromDate && obsDate <= extendedTo) acc.push(obs);
+      }
+    }
+  }
+  return acc;
+}
+
 // ---------------------------------------------------------------------------
 // Public surface
 // ---------------------------------------------------------------------------
@@ -251,15 +378,26 @@ export async function research(
   const baseOpts: { signal?: AbortSignal } = {};
   if (opts.signal !== undefined) baseOpts.signal = opts.signal;
 
+  const cache = resolveCache(opts);
+  const cacheNow = opts.now ?? new Date();
+
   // --- IEM CLI climate (per-year) ---------------------------------------
+  // Cache strategy: read-through per (station code, year). Skip the current
+  // LST year (mutable) and never cache `.live` sources. `iem.cli` is
+  // archive → cacheable for completed years. Fetcher takes the ICAO
+  // (resolved.icao), cache key uses the 3-letter NWS code (resolved.code).
   let mergedClimate: ReadonlyArray<ClimateObservation> = [];
   try {
-    const cliOpts: { signal?: AbortSignal; politenessMs?: number } = {};
-    if (opts.signal !== undefined) cliOpts.signal = opts.signal;
-    if (opts.cliPolitenessMs !== undefined) cliOpts.politenessMs = opts.cliPolitenessMs;
-    const cliRaw = await downloadCliRange(resolved.icao, fromYear, toYear, cliOpts);
-    const cliParsed = parseCliResponse(cliRaw, resolved.code);
-    mergedClimate = mergeClimate(cliParsed);
+    const cliRows = await fetchCliWithCache(
+      resolved.icao,
+      resolved.code,
+      fromYear,
+      toYear,
+      opts,
+      cache,
+      cacheNow,
+    );
+    mergedClimate = mergeClimate(cliRows);
   } catch (err) {
     if (err instanceof DOMException && (err.name === "AbortError" || err.name === "TimeoutError")) {
       throw err;
@@ -281,38 +419,19 @@ export async function research(
   }
 
   // --- IEM ASOS archive observations (per-year × {METAR, SPECI}) --------
-  const iemRows: Observation[] = [];
-  for (let year = fromYear; year <= extendedToYear; year++) {
-    for (const reportType of [3, 4] as const) {
-      const iemOpts: {
-        reportType: 3 | 4;
-        politenessMs: number;
-        signal?: AbortSignal;
-      } = {
-        reportType,
-        politenessMs: opts.iemPolitenessMs ?? 1000,
-      };
-      if (opts.signal !== undefined) iemOpts.signal = opts.signal;
-      // IEM ASOS expects the 3-letter NWS station code (`station=NYC`),
-      // NOT the 4-letter ICAO. Python `_fetchers/iem_asos.py:119` uses
-      // `station={station.code}`. Use resolved.code, NOT resolved.icao.
-      const chunks = await downloadIemAsos(
-        resolved.code,
-        `${year}-01-01`,
-        `${year}-12-31`,
-        iemOpts,
-      );
-      for (const chunk of chunks) {
-        const parsed = parseIemCsv(chunk.csv, {
-          observationTypeOverride: reportType === 3 ? "METAR" : "SPECI",
-        });
-        for (const obs of parsed) {
-          const obsDate = obs.observed_at.slice(0, 10);
-          if (obsDate >= fromDate && obsDate <= extendedTo) iemRows.push(obs);
-        }
-      }
-    }
-  }
+  // IEM ASOS expects the 3-letter NWS station code (`station=NYC`),
+  // NOT the 4-letter ICAO. Python `_fetchers/iem_asos.py:119` uses
+  // `station={station.code}`. Use resolved.code, NOT resolved.icao.
+  const iemRows = await fetchIemAsosWithCache(
+    resolved.code,
+    fromYear,
+    extendedToYear,
+    fromDate,
+    extendedTo,
+    opts,
+    cache,
+    cacheNow,
+  );
 
   // --- GHCNh archive observations (US stations only) --------------------
   const ghcnhRows: Observation[] = [];
@@ -337,10 +456,14 @@ export async function research(
   const merged = mergeObservations(sorted);
 
   const observationsByDate: Record<string, PairsObservationLike[]> = {};
+  // dates is guaranteed non-empty by buildDateList contract (throws on
+  // fromDate > toDate; both validated above).
+  const dateLo = dates[0] ?? "";
+  const dateHi = dates[dates.length - 1] ?? "";
   for (const obs of merged) {
     const settleDate = observedSettlementDate(obs.observed_at, resolved.code);
     if (settleDate === null) continue;
-    if (settleDate < dates[0]! || settleDate > dates[dates.length - 1]!) continue;
+    if (settleDate < dateLo || settleDate > dateHi) continue;
     let bucket = observationsByDate[settleDate];
     if (bucket === undefined) {
       bucket = [];

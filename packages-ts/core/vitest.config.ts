@@ -15,7 +15,21 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "lcov"],
       include: ["src/**/*.ts"],
-      exclude: ["**/generated/**", "**/*.d.ts"],
+      exclude: [
+        "**/generated/**",
+        "**/*.d.ts",
+        // Generated ajv-standalone compiled JS — emitted by codegen, not
+        // hand-written; covered by the codegen smoke tests.
+        "src/schemas/validators/**",
+        // Data tables — pure constants, no branches to cover.
+        "src/data/**",
+      ],
+      thresholds: {
+        branches: 88,
+        functions: 95,
+        lines: 90,
+        statements: 90,
+      },
     },
   },
 });

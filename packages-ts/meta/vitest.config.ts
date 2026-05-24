@@ -4,6 +4,11 @@ import { defineConfig } from "vitest/config";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+// Per-worker FsStore root isolation lives in ./tests/setup-cache.ts —
+// each vitest worker gets its own tmp dir (so cross-file tests can't
+// share cached responses), AND beforeEach wipes the dir between tests
+// in the same worker.
+
 // Alias workspace siblings to their source files so vitest can resolve
 // @tradewinds/core, @tradewinds/weather, @tradewinds/markets without a
 // pre-build step. Build still uses dist via the consumers' exports map.
@@ -31,6 +36,18 @@ export default defineConfig({
         replacement: resolve(__dirname, "../core/src/internal/pairs.ts"),
       },
       {
+        find: "@tradewinds/core/internal/cache",
+        replacement: resolve(__dirname, "../core/src/internal/cache/index.ts"),
+      },
+      {
+        find: "@tradewinds/core/temporal",
+        replacement: resolve(__dirname, "../core/src/temporal/index.ts"),
+      },
+      {
+        find: "@tradewinds/core/formats",
+        replacement: resolve(__dirname, "../core/src/formats/index.ts"),
+      },
+      {
         find: "@tradewinds/core",
         replacement: resolve(__dirname, "../core/src/index.ts"),
       },
@@ -47,6 +64,7 @@ export default defineConfig({
   test: {
     include: ["tests/**/*.test.ts"],
     exclude: ["**/*.live.test.ts", "**/node_modules/**", "**/dist/**"],
+    setupFiles: ["./tests/setup-cache.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov"],
