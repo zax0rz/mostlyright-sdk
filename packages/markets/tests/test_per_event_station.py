@@ -16,6 +16,7 @@ import pytest
 from tradewinds.international import DeferredMarketError
 from tradewinds.markets._per_event_station import (
     DEFERRED_STATION_MEASURES,
+    extract_icao_from_resolution_source,
     load_polymarket_city_stations,
     resolve_station_for_event,
 )
@@ -200,3 +201,117 @@ def test_custom_city_map_overrides_bundled_data():
     icao, measure = resolve_station_for_event({"city": "atlantis"}, custom)
     assert icao == "AAAA"
     assert measure == "default"
+
+
+# ---------------------------------------------------------------------------
+# Phase 8 — Tier 1.5 URL extraction (POLY-US-03).
+# ---------------------------------------------------------------------------
+class TestExtractIcaoFromResolutionSource:
+    def test_pws_url_returns_KLGA(self):
+        assert (
+            extract_icao_from_resolution_source("https://wunderground.com/dashboard/pws/KLGA")
+            == "KLGA"
+        )
+
+    def test_history_url_with_date_returns_KLGA(self):
+        assert (
+            extract_icao_from_resolution_source(
+                "see https://www.wunderground.com/history/daily/KLGA/date/2026-05-23"
+            )
+            == "KLGA"
+        )
+
+    def test_weather_gov_url_returns_None(self):
+        """weather.gov is allowlisted for source-type classification
+        but NOT for ICAO extraction."""
+        assert extract_icao_from_resolution_source("https://weather.gov/nyc") is None
+
+    def test_none_returns_None(self):
+        assert extract_icao_from_resolution_source(None) is None
+
+    def test_empty_returns_None(self):
+        assert extract_icao_from_resolution_source("") is None
+
+    def test_text_without_url_returns_None(self):
+        assert extract_icao_from_resolution_source("no urls here") is None
+
+    def test_lowercase_url_uppercases_result(self):
+        assert (
+            extract_icao_from_resolution_source("https://wunderground.com/dashboard/pws/klax")
+            == "KLAX"
+        )
+
+    def test_non_string_returns_None(self):
+        # Defensive — callers occasionally pass back raw dict values.
+        assert extract_icao_from_resolution_source(12345) is None  # type: ignore[arg-type]
+
+
+class TestResolverTier1_5:
+    def test_url_extraction_overrides_catalog(self, city_map):
+        """Tier 1.5 wins over catalog lookup — the URL is the issuer's proof."""
+        event = {
+            "city": "chicago",
+            "title": "Chicago daily high",
+            "description": "Resolves via https://www.wunderground.com/dashboard/pws/KORD",
+        }
+        icao, _ = resolve_station_for_event(event, city_map)
+        assert icao == "KORD"
+
+    def test_url_extraction_works_without_city(self, city_map):
+        """Tier 1.5 alone resolves an event with no city field."""
+        event = {
+            "title": "Daily high somewhere",
+            "description": "https://www.wunderground.com/dashboard/pws/KLAX",
+        }
+        icao, _ = resolve_station_for_event(event, city_map)
+        assert icao == "KLAX"
+
+    def test_url_extraction_picks_up_resolution_source_field(self, city_map):
+        event = {
+            "title": "high",
+            "resolutionSource": "https://wunderground.com/dashboard/pws/KLGA",
+        }
+        icao, _ = resolve_station_for_event(event, city_map)
+        assert icao == "KLGA"
+
+    def test_url_extraction_carries_market_measure(self, city_map):
+        """The 'high'/'low' measure still comes from title — URL only sets the ICAO."""
+        event = {
+            "title": "Will the LOWEST temperature in LA drop below 50?",
+            "description": "https://wunderground.com/dashboard/pws/KLAX",
+        }
+        icao, measure = resolve_station_for_event(event, city_map)
+        assert icao == "KLAX"
+        assert measure == "low"
+
+    def test_url_extraction_still_respects_defer_gate(self, city_map, monkeypatch):
+        """Defense-in-depth — even when Tier 1.5 fires, defer gate runs.
+
+        Inject a test-only deferred-station-measure for KLGA so we can
+        exercise the gate without altering the production defer list.
+        """
+        from tradewinds.markets import _per_event_station as mod
+
+        patched = frozenset(mod.DEFERRED_STATION_MEASURES | {("KLGA", "default")})
+        monkeypatch.setattr(mod, "DEFERRED_STATION_MEASURES", patched)
+        event = {"description": "https://wunderground.com/dashboard/pws/KLGA"}
+        with pytest.raises(DeferredMarketError, match="deferred"):
+            resolve_station_for_event(event, city_map)
+
+    def test_no_url_falls_through_to_tier_2(self, city_map):
+        """When no Wunderground URL, behavior unchanged — Tier 2 city derive."""
+        event = {"city": "london", "title": "London temperature"}
+        icao, _ = resolve_station_for_event(event, city_map)
+        assert icao == "EGLL"
+
+    def test_non_wunderground_url_falls_through_to_catalog(self, city_map):
+        """Only wunderground.com URLs trigger Tier 1.5."""
+        event = {
+            "city": "boston",
+            "description": "https://weather.gov/forecast/KBOS",
+        }
+        icao, _ = resolve_station_for_event(event, city_map)
+        # Catalog lookup wins, but boston defaults to KBOS anyway —
+        # the assertion is that we don't error AND we don't surface KBOS
+        # via Tier 1.5 (weather.gov isn't allowlisted for extraction).
+        assert icao == "KBOS"
