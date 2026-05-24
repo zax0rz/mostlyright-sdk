@@ -58,11 +58,14 @@ research = [
 # (core/_narwhals_compat.py) converts polars↔pandas via `pl.from_pandas`
 # and `pl.DataFrame.to_pandas()` — codex iter-3 P2 fix; a clean
 # `pip install tradewinds[polars]` would otherwise fail at first
-# `transforms.lag(pl_df, ...)` call with ImportError.
+# `transforms.lag(pl_df, ...)` call with ImportError. pyarrow is
+# required by pl.from_pandas/to_pandas for non-trivial dtypes
+# (codex iter-5 P1 fix).
 polars = [
     "polars>=1.0,<2.0",
     "narwhals>=1.20,<2.0",
     "pandas>=2.2,<4.0",
+    "pyarrow>=17.0,<24.0",
 ]
 
 [build-system]
