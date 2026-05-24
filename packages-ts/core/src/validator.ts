@@ -30,15 +30,25 @@ const SAMPLE_CAP = 10;
 
 /**
  * Per-schema canonical source — mirrors Python `_registered_source` on
- * each Schema subclass. Populated for the schemas registered today.
- * Extend when a new canonical-schema producer ships.
+ * each Schema subclass (truth lives in
+ * `packages/core/src/tradewinds/core/schemas/*.py`).
+ *
+ * Drift in this map produces silent cross-language source-identity
+ * violations: a TS producer stamped `cli.archive` would falsely fail
+ * the validator under the previous `iem.cli` mapping. Every entry below
+ * MUST equal the `_registered_source: ClassVar[str]` on its Python peer.
+ *
+ * Iter-1 C2 fix: corrected `schema.settlement.cli.v1` (was `iem.cli`),
+ * corrected `schema.forecast.iem_mos.v1` (was `iem.mos`), and added the
+ * two catalog-internal schemas (`observation_ledger.v1`,
+ * `observation_qc.v1`) — Python registers `iem.archive` for both.
  */
 const SCHEMA_REGISTERED_SOURCE: Readonly<Record<string, string>> = Object.freeze({
   "schema.observation.v1": "iem.archive",
-  "schema.settlement.cli.v1": "iem.cli",
-  "schema.forecast.iem_mos.v1": "iem.mos",
-  // observation_ledger and observation_qc are catalog-internal — no
-  // canonical source pinned; validateRows accepts opts.source freely.
+  "schema.settlement.cli.v1": "cli.archive",
+  "schema.forecast.iem_mos.v1": "iem.archive",
+  "schema.observation_ledger.v1": "iem.archive",
+  "schema.observation_qc.v1": "iem.archive",
 });
 
 export interface ValidateOptions {

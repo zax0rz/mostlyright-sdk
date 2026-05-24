@@ -209,6 +209,41 @@ describe("validateRows — allowSourceDrift guards", () => {
   });
 });
 
+describe("validateRows — canonical source map parity with Python (iter-1 C2)", () => {
+  // Truth lives in `packages/core/src/tradewinds/core/schemas/*.py` —
+  // each Schema subclass's `_registered_source: ClassVar[str]`. Any
+  // drift here falsely fails Python-stamped frames in the TS validator
+  // (or vice versa). These tests pin the literal canonical source for
+  // every schema_id the codegen emits.
+  const CANONICAL_SOURCE: Readonly<Record<string, string>> = {
+    "schema.observation.v1": "iem.archive",
+    "schema.settlement.cli.v1": "cli.archive",
+    "schema.forecast.iem_mos.v1": "iem.archive",
+    "schema.observation_ledger.v1": "iem.archive",
+    "schema.observation_qc.v1": "iem.archive",
+  };
+
+  for (const [schemaId, expectedSource] of Object.entries(CANONICAL_SOURCE)) {
+    it(`${schemaId} canonical source is ${expectedSource} (Python parity)`, () => {
+      // Use an obviously-wrong source for this schema. The validator must
+      // throw SourceMismatchError citing the canonical (registered) source —
+      // confirming the map entry is what Python claims.
+      try {
+        validateRows([], schemaId, { source: "definitely.not.canonical" });
+        throw new Error(`expected SourceMismatchError for ${schemaId}`);
+      } catch (e) {
+        // Empty rows means we never get past the source-identity check
+        // because rows.length === 0 — but the per-row check is gated on
+        // rows.length > 0. So the mismatch IS the first error to fire.
+        expect(e).toBeInstanceOf(SourceMismatchError);
+        const err = e as SourceMismatchError;
+        expect(err.schemaSource).toBe(expectedSource);
+        expect(err.dataSource).toBe("definitely.not.canonical");
+      }
+    });
+  }
+});
+
 describe("validateRows — error wire shape (snake_case parity)", () => {
   it("SchemaValidationError.toDict() emits snake_case schema_id / violations / quarantine_count / sample_violations", () => {
     try {
