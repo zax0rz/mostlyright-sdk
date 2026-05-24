@@ -81,9 +81,15 @@ export async function fetchEvents(opts: FetchEventsOptions = {}): Promise<Polyma
       retryStatuses: RETRY_STATUSES,
     };
     if (opts.signal !== undefined) fetchOpts.signal = opts.signal;
+    // Codex iter-5 P3: forward `signal` to the custom fetchFn override too
+    // so callers can abort in-flight requests, not just inter-page sleeps.
+    const customInit: RequestInit = {
+      headers: { ...fetchOpts.headers, "User-Agent": DEFAULT_USER_AGENT },
+    };
+    if (opts.signal !== undefined) customInit.signal = opts.signal;
     const resp = await (opts.fetchFn !== undefined
       ? // Custom fetch override (tests). Bypass retry — caller mock-controls statuses.
-        opts.fetchFn(url, { headers: { ...fetchOpts.headers, "User-Agent": DEFAULT_USER_AGENT } })
+        opts.fetchFn(url, customInit)
       : fetchWithRetry(url, fetchOpts));
     if (!resp.ok) {
       throw new Error(`Gamma API returned ${resp.status} ${resp.statusText} for offset=${offset}`);
@@ -140,13 +146,16 @@ export async function fetchEventById(
   // not return a Response); the resp.status check below is unreachable
   // through the default path. Catch + convert to the documented null
   // return so polymarketSettleById can surface PolymarketSettlementError.
+  // Codex iter-5 P3: forward `signal` to custom fetchFn override too.
+  const customInit: RequestInit = {
+    headers: { ...fetchOpts.headers, "User-Agent": DEFAULT_USER_AGENT },
+  };
+  if (opts.signal !== undefined) customInit.signal = opts.signal;
   let resp: Response;
   try {
     resp =
       opts.fetchFn !== undefined
-        ? await opts.fetchFn(url, {
-            headers: { ...fetchOpts.headers, "User-Agent": DEFAULT_USER_AGENT },
-          })
+        ? await opts.fetchFn(url, customInit)
         : await fetchWithRetry(url, fetchOpts);
   } catch (err) {
     if (err instanceof NotFoundError) return null;

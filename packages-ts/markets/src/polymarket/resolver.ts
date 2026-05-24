@@ -63,11 +63,23 @@ export function deriveCity(event: PolymarketEventRaw): string | null {
       }
     }
   }
-  const haystack = parts.join(" ");
+  // Codex iter-5 P2: require word-boundary matches so cities don't false-
+  // positive inside ordinary words (e.g. "comparison" → "paris"). Build a
+  // regex per needle with non-word-character boundaries on both sides.
+  // Word characters are ASCII letters/digits + underscore; we treat "-",
+  // " ", "/", "(", ")" etc. as boundaries (covers the slug/title/tag forms
+  // we ingest).
+  const haystack = ` ${parts.join(" ")} `;
   for (const key of CITY_KEYS_SORTED) {
     const needles = [key, key.replace(/_/g, "-"), key.replace(/_/g, " ")];
     for (const n of needles) {
-      if (n.length > 0 && haystack.includes(n)) return key;
+      if (n.length === 0) continue;
+      // Escape any regex metacharacters in `n` (city keys are alphanum +
+      // underscore + hyphen + space; the latter two need no escaping but
+      // be defensive).
+      const escaped = n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const re = new RegExp(`(^|[^A-Za-z0-9])${escaped}(?=[^A-Za-z0-9]|$)`);
+      if (re.test(haystack)) return key;
     }
   }
   return null;

@@ -48,6 +48,18 @@ describe("deriveCity", () => {
   it("returns null on no match", () => {
     expect(deriveCity({ slug: "unknown-city-2025" })).toBeNull();
   });
+
+  it("requires token-delimited matches (codex iter-5 P2)", () => {
+    // "comparison" contains "paris" as a substring but is NOT a Paris
+    // weather event. Word-boundary match should reject this.
+    expect(deriveCity({ title: "comparison of two events" })).toBeNull();
+    // "milano" should NOT match "milan" — different city, substring
+    // would have matched previously. (Real Polymarket slugs use the
+    // city key form anyway: "milan".)
+    expect(deriveCity({ title: "milano vs roma" })).toBeNull();
+    // Hyphen/space separators still match as expected.
+    expect(deriveCity({ slug: "weather-london-2025" })).toBe("london");
+  });
 });
 
 describe("resolveStationForEvent", () => {
