@@ -21,7 +21,8 @@
     "test": "vitest",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist coverage .tsbuildinfo",
-    "codegen": "echo \"tradewinds (meta) — no codegen step at this layer\""
+    "codegen": "echo \"tradewinds (meta) — no codegen step at this layer\"",
+    "capture-parity": "tsx tests/parity/capture_recordings.ts"
   },
   "dependencies": {
     "@tradewinds/core": "workspace:*",
@@ -29,7 +30,9 @@
     "@tradewinds/weather": "workspace:*"
   },
   "devDependencies": {
+    "msw": "2.6.6",
     "tsup": "8.3.5",
+    "tsx": "4.19.2",
     "typescript": "5.6.3",
     "vitest": "2.1.9"
   },
