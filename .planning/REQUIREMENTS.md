@@ -517,6 +517,28 @@ Promotes deferred MARKETS-04 from Sprint 0.5+ into a first-class phase. Adds `tr
 
 **Phase 9 coverage:** 8 requirements, all mapped to Phase 9 (paired Python + TS per Dual-SDK Rule).
 
+## Phase 10: Composable `research()` — Multi-Contract Basis Trade (v0.2+)
+
+Evolves `research()` from station-only into the composable surface quants actually need: "give me Kalshi NYC paired with KNYC weather", "give me Polymarket NYC paired with KLGA weather", "give me BOTH and compute the basis spread in one call". Adds mutually-exclusive selectors (`station=` | `city=` | `contract=` | `contracts=`) + optional kwargs (`station_override=`, `sources=` / `source=`, `include_trades=`) + a `discover(city=...)` ergonomic surface that shows which station settles which issuer's market BEFORE the user picks.
+
+- [ ] **COMPOSE-01**: `research(station=, city=, contract=, contracts=)` selectors mutually-exclusive at the dispatch layer. Validation error on multiple selectors.
+- [ ] **COMPOSE-02**: `research(contract="kalshi:KXHIGHNY-25MAY26-T79")` auto-resolves to settlement station via Phase 8 catalog + Phase 9 trades, returns existing `research(station=...)` columns + market metadata (settlement_value, market_close_utc) per date.
+- [ ] **COMPOSE-03**: `research(contracts=[...], include_trades=True)` returns multi-issuer DataFrame with per-station weather columns + per-issuer trade columns + computed `basis_f` column (cross-issuer station difference) where applicable.
+- [ ] **COMPOSE-04**: `research(city="NYC")` returns multi-station DataFrame (KNYC + KLGA + KJFK + KEWR rows for that date range). `settles_for` annotation column lists which markets settle against each.
+- [ ] **COMPOSE-05**: `research(contract=..., station_override=...)` allows basis-research with explicit station mismatch. Emits `StationOverrideWarning` loudly. Output row carries `settlement_mismatch=True` flag.
+- [ ] **COMPOSE-06**: `sources=[...]` (plural — Mode 1 subset, dedupe within) and `source=...` (singular — Mode 2 pin, error on mismatch) — mutually exclusive. Inherits existing Mode 1 / Mode 2 semantics.
+- [ ] **COMPOSE-07**: `discover(city=...)` ergonomic surface (separate function, not a `research()` selector) — returns per-station table with `settles_for` annotations so cross-issuer station asymmetry visible before user picks.
+- [ ] **COMPOSE-08**: Paired TS evolution. Same surface shape via `research({ station, city, contract, contracts, ... })` options object. Mutual-exclusion enforced by TypeScript union types.
+- [ ] **COMPOSE-09**: Backwards compatibility: existing `research(station, from_date, to_date)` signature MUST still work unchanged. New surface is additive — no breaking change.
+
+### Phase 10 Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| COMPOSE-01..COMPOSE-09 | 10 | Pending |
+
+**Phase 10 coverage:** 9 requirements, all mapped to Phase 10 (paired Python + TS per Dual-SDK Rule).
+
 ---
-*Requirements defined: 2026-05-21; Phase 8 added 2026-05-24; Phase 9 added 2026-05-24*
+*Requirements defined: 2026-05-21; Phase 8 added 2026-05-24; Phase 9 added 2026-05-24; Phase 10 added 2026-05-25*
 *Last updated: 2026-05-23 — Phase 6 (pandas 3 readiness + optional polars backend) added; PANDAS3-01..06 and POLARS-01..08 promoted from deferred; 14 new IDs mapped to Phase 6*
