@@ -24,6 +24,10 @@ export class PolymarketSettlementError extends TradewindsError {
 /**
  * Settlement attempted before the resolution source's publication delay
  * has elapsed. Carries `waitHours` so the caller can schedule a retry.
+ *
+ * Codex iter-1 P2: overrides `payload()` so `toDict()` (and any MCP
+ * serializer downstream) includes the structured retry metadata. The
+ * fields are otherwise only readable via the live JS error object.
  */
 export class TooEarlyToSettleError extends TradewindsError {
   readonly waitHours: number;
@@ -35,6 +39,14 @@ export class TooEarlyToSettleError extends TradewindsError {
     this.resolutionSourceType = opts.resolutionSourceType;
   }
   static readonly defaultErrorCode = "POLYMARKET_TOO_EARLY";
+
+  protected override payload(): Record<string, unknown> {
+    return {
+      ...super.payload(),
+      wait_hours: this.waitHours,
+      resolution_source_type: this.resolutionSourceType,
+    };
+  }
 }
 
 /**

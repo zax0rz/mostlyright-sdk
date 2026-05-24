@@ -137,6 +137,22 @@ describe("polymarketSettle — settlement", () => {
     expect(result.dataQualityAlert).toMatch(/Δ/);
   });
 
+  it("refuses to settle ambiguous markets (codex iter-1 P2)", async () => {
+    const rows = denseRows("2026-05-23", new Array(12).fill(20));
+    await expect(
+      polymarketSettle({
+        event: {
+          id: "evt-abc",
+          slug: "will-london-on-2026-05-23",
+          title: "London weather event (no high/low keyword)",
+          description: "https://www.weather.gov/",
+        },
+        now: new Date("2026-05-25T12:00:00Z"),
+        loader: async () => rows,
+      }),
+    ).rejects.toThrow(PolymarketSettlementError);
+  });
+
   it("returns dataQualityAlert null when the values agree within 1°F", async () => {
     const rows = denseRows("2026-05-23", new Array(12).fill(30));
     const result = await polymarketSettle({

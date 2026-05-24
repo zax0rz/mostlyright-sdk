@@ -8,7 +8,7 @@
 import { DeferredMarketError } from "@tradewinds/core";
 import { type FetchEventsOptions, type PolymarketEventRaw, fetchEvents } from "./client.js";
 import { extractResolutionSourceType, validateDescription } from "./description.js";
-import { PolymarketEventError } from "./errors.js";
+import { PayloadTooLargeError, PolymarketEventError } from "./errors.js";
 import { detectMarketMeasure, resolveStationForEvent } from "./resolver.js";
 import type { PolymarketDiscoveryRow, PolymarketResolutionSourceType } from "./types.js";
 
@@ -73,8 +73,10 @@ export async function polymarketDiscover(
         resolutionSourceType = extractResolutionSourceType(description);
       } catch (err) {
         // Bad description on a single event shouldn't poison the whole
-        // discovery batch. Log via onSkip and continue with a null type.
-        if (err instanceof PolymarketEventError) {
+        // discovery batch. Codex iter-1 P2: catch both validation paths
+        // (PolymarketEventError AND PayloadTooLargeError, which is a
+        // sibling TradewindsError after the static-field flatten).
+        if (err instanceof PolymarketEventError || err instanceof PayloadTooLargeError) {
           opts.onSkip?.({ slug, reason: `description rejected: ${err.message}` });
           resolutionSourceType = null;
         } else {

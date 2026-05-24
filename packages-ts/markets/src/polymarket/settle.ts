@@ -154,16 +154,20 @@ export async function polymarketSettle(
     );
   }
 
-  // Pick the value per the market measure.
+  // Pick the value per the market measure. Codex iter-1 P2: ambiguous
+  // markets (default measure — title has both/neither high+low keywords)
+  // are NOT settled to tempMaxF blind; refuse and force the caller to
+  // disambiguate. Mirrors Python's stricter behavior on average / non-
+  // extreme wordings.
   let resolvedValue: number | null = null;
   if (marketMeasure === "low") {
     resolvedValue = day.tempMinF;
   } else if (marketMeasure === "high") {
     resolvedValue = day.tempMaxF;
   } else {
-    // default → market doesn't specify high/low (e.g. average). Surface
-    // mean if available, else fail explicitly.
-    resolvedValue = day.tempMaxF; // documented v0.1.0 fallback
+    throw new PolymarketSettlementError(
+      `event ${JSON.stringify(eventId)} (slug=${JSON.stringify(slug)}) has ambiguous measure ("default" — title carries neither high nor low keyword); refusing to settle silently. Disambiguate at the caller.`,
+    );
   }
   if (resolvedValue === null) {
     throw new PolymarketSettlementError(
@@ -244,20 +248,26 @@ function stationLocalEodUtcMs(localDate: string, tz: string): number {
     else if (p.type === "month") m = p.value;
     else if (p.type === "day") d = p.value;
   }
-  // Step 3: assume the station-local end-of-day is at most 14h east of UTC
-  // and at most 12h west. Brute-search over the day window (1-hour grid)
-  // for the instant whose local date is `y-m-d` and local time is 23:00 —
-  // accept the highest match, then add 59:59 in UTC.
-  // Simpler: compute as midnight-next-day local in tz minus 1s. We
-  // approximate by adding 1 day to localDate and converting that midnight
-  // to UTC via the same tz-format trick.
+  // Step 3: find the UTC instant that is the local-midnight of the day
+  // AFTER `localDate`. Iterate from the canonical UTC midnight of nextDay
+  // outward in 15-minute steps (the finest IANA offset granularity in
+  // common use — Nepal Asia/Kathmandu is +5:45). Codex iter-1 P3: a
+  // 1-hour step missed Asia/Kolkata (+5:30), Asia/Kathmandu (+5:45) and
+  // similar half/quarter-hour zones, returning end-of-day 30 min late.
   const nextDay = new Date(`${localDate}T00:00:00Z`);
   nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-  // Build a UTC instant that represents the local midnight of nextDay.
-  // We find the UTC ms that, when projected into tz, equals nextDay's
-  // calendar date at midnight. Iterate ±14 hourly steps from nextDay UTC.
-  for (let offsetH = -14; offsetH <= 14; offsetH += 1) {
-    const candidate = new Date(nextDay.getTime() + offsetH * 3600 * 1000);
+  const expectedDate = nextDayDate(localDate);
+  const minuteFmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  // Step size: 15 min. Range: ±15 hours of UTC for max IANA offset spread.
+  const STEP_MIN = 15;
+  const RANGE_MIN = 15 * 60;
+  for (let offsetMin = -RANGE_MIN; offsetMin <= RANGE_MIN; offsetMin += STEP_MIN) {
+    const candidate = new Date(nextDay.getTime() + offsetMin * 60 * 1000);
     const cParts = fmt.formatToParts(candidate);
     let cy = "";
     let cm = "";
@@ -267,19 +277,13 @@ function stationLocalEodUtcMs(localDate: string, tz: string): number {
       else if (p.type === "month") cm = p.value;
       else if (p.type === "day") cd = p.value;
     }
-    // Read the local hour as well.
-    const hourFmt = new Intl.DateTimeFormat("en-US", {
-      timeZone: tz,
-      hour: "2-digit",
-      hour12: false,
-    });
-    const hourParts = hourFmt.formatToParts(candidate);
-    const hourStr = hourParts.find((p) => p.type === "hour")?.value ?? "00";
-    // Some tz formatters use "24" for midnight; normalize.
+    if (`${cy}-${cm}-${cd}` !== expectedDate) continue;
+    const tParts = minuteFmt.formatToParts(candidate);
+    const hourStr = tParts.find((p) => p.type === "hour")?.value ?? "00";
+    const minStr = tParts.find((p) => p.type === "minute")?.value ?? "00";
     const hour = hourStr === "24" ? 0 : Number(hourStr);
-    if (`${cy}-${cm}-${cd}` === `${nextDayDate(localDate)}` && hour === 0) {
-      // candidate is exactly the next-day midnight LOCAL. Subtract 1s
-      // for end-of-day.
+    const minute = Number(minStr);
+    if (hour === 0 && minute === 0) {
       return candidate.getTime() - 1000;
     }
   }
