@@ -145,6 +145,64 @@ describe("validateRows — Python vocabulary violations", () => {
     }
   });
 
+  // iter-10 H20 regression: the row-level retrieved_at fallback now scans
+  // ALL rows and returns the column MAX (matching Python
+  // validator.py:394-396 — `df["retrieved_at"].dropna().max()`). Previous
+  // implementation only inspected `firstRow?.retrieved_at`, which:
+  //   (a) raised a false `retrieved_at_required` violation when row 0
+  //       lacked provenance but later rows had it, and
+  //   (b) silently returned stale provenance when row 0 carried an older
+  //       timestamp than the column max.
+  // Both modes corrupted amendment-window audits.
+  it("H20: row 0 missing retrieved_at but row 1 has it — no violation, resolves to row 1's value", () => {
+    const row0 = { ...VALID_OBS_ROW, event_time: "2025-01-15T11:00:00Z" };
+    (row0 as unknown as Record<string, unknown>).retrieved_at = undefined;
+    const row1 = { ...VALID_OBS_ROW, event_time: "2025-01-15T12:00:00Z" };
+    // row1 keeps its retrieved_at = "2025-01-15T12:30:00Z" (from VALID_OBS_ROW)
+    const result = validateRows([row0, row1], "schema.observation.v1");
+    expect(result.rowCount).toBe(2);
+    expect(result.retrievedAt).toBe("2025-01-15T12:30:00Z");
+  });
+
+  it("H20: multiple rows with different retrieved_at — resolves to MAX (column-wise)", () => {
+    const rowA = {
+      ...VALID_OBS_ROW,
+      event_time: "2025-01-15T10:00:00Z",
+      retrieved_at: "2025-01-15T10:30:00Z",
+    };
+    const rowB = {
+      ...VALID_OBS_ROW,
+      event_time: "2025-01-15T11:00:00Z",
+      retrieved_at: "2025-01-15T14:00:00Z", // MAX
+    };
+    const rowC = {
+      ...VALID_OBS_ROW,
+      event_time: "2025-01-15T12:00:00Z",
+      retrieved_at: "2025-01-15T12:30:00Z",
+    };
+    // Intentionally put the MAX in the middle (not row 0, not row N).
+    // Previous (first-row-only) impl would have returned rowA's value.
+    const result = validateRows([rowA, rowB, rowC], "schema.observation.v1");
+    expect(result.rowCount).toBe(3);
+    expect(result.retrievedAt).toBe("2025-01-15T14:00:00Z");
+  });
+
+  it("H20: all rows missing retrieved_at — surfaces retrieved_at_required (existing behavior preserved)", () => {
+    const row0 = { ...VALID_OBS_ROW, event_time: "2025-01-15T10:00:00Z" };
+    const row1 = { ...VALID_OBS_ROW, event_time: "2025-01-15T11:00:00Z" };
+    (row0 as unknown as Record<string, unknown>).retrieved_at = undefined;
+    (row1 as unknown as Record<string, unknown>).retrieved_at = undefined;
+    try {
+      validateRows([row0, row1], "schema.observation.v1");
+      throw new Error("expected SchemaValidationError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(SchemaValidationError);
+      const err = e as SchemaValidationError;
+      const violation = err.violations.find((v) => v.rule === "retrieved_at_required");
+      expect(violation).toBeDefined();
+    }
+  });
+
   it("required_column_missing when ajv flags a missing required prop", () => {
     const row = { ...VALID_OBS_ROW };
     (row as unknown as Record<string, unknown>).observation_type = undefined;

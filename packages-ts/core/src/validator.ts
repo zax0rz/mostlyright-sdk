@@ -409,11 +409,38 @@ export function validateRows<Row extends Record<string, unknown> = Record<string
   // required column must surface BOTH violations in the same error so
   // callers can fix everything in one pass. The previous standalone
   // throw masked any structural violation that ran first.
+  //
+  // iter-10 H20: row-level fallback now scans ALL rows for non-empty
+  // `retrieved_at` values and returns the maximum, matching Python
+  // `validator.py:394-396` (`df["retrieved_at"].dropna().max()`). The
+  // previous TS implementation read only `firstRow?.retrieved_at`, which:
+  //   (a) raised a false `retrieved_at_required` violation when row 0
+  //       lacked provenance but later rows had it, and
+  //   (b) silently returned stale provenance when row 0 carried an older
+  //       timestamp than the column max.
+  // Both modes corrupted amendment-window audits (the same risk the
+  // codex iter-2 HIGH fix addressed in Python). Comparing ISO 8601 UTC
+  // strings lexicographically is sound iff every value is well-formed
+  // (digits and `-`/`T`/`:`/`.`/`Z`/`+`/`-` only, fixed width). We
+  // additionally `Date.parse` each candidate to reject malformed values
+  // (return NaN → excluded from max), matching Python's pd.Timestamp(...)
+  // which raises on garbage.
   let resolvedRetrievedAt: string | undefined = opts.retrievedAt;
   if (resolvedRetrievedAt === undefined) {
-    // Fall back to first row's retrieved_at field.
-    const v = firstRow?.retrieved_at;
-    if (typeof v === "string" && v.length > 0) resolvedRetrievedAt = v;
+    // Scan every row, not just firstRow. Track the max non-empty value.
+    let maxInstantMs = Number.NEGATIVE_INFINITY;
+    let maxValue: string | undefined;
+    for (const r of rows) {
+      const v = (r as Record<string, unknown>).retrieved_at;
+      if (typeof v !== "string" || v.length === 0) continue;
+      const ms = Date.parse(v);
+      if (!Number.isFinite(ms)) continue;
+      if (ms > maxInstantMs) {
+        maxInstantMs = ms;
+        maxValue = v;
+      }
+    }
+    if (maxValue !== undefined) resolvedRetrievedAt = maxValue;
   }
   if (resolvedRetrievedAt === undefined) {
     violations.push({ rule: "retrieved_at_required" });
