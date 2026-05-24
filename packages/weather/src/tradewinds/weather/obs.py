@@ -294,11 +294,13 @@ def _resolve_strategy(
 
     Decision rules (applied in order; first match wins):
 
-    1. If ``env["TW_HOSTED_URL"]`` is set → ``"hosted"``.
-    2. If ``source`` is not None → ``"exact_window"`` (warm_cache rejects
-       source-filtered queries because post-merge filtering would corrupt
-       SOURCE_PRIORITY semantics; only the fetcher-boundary enforcement in
-       exact_window honors source filtering correctly — codex iter-2 HIGH).
+    1. If ``source`` is not None → ``"exact_window"``. No other strategy
+       honors source filtering today: warm_cache rejects source!=None
+       (post-merge filtering would corrupt SOURCE_PRIORITY); hosted is a
+       v0.2.x stub that raises NotImplementedError. This rule runs BEFORE
+       the env-var check so source-filtered callers still succeed even
+       with TW_HOSTED_URL set (codex iter-3 HIGH).
+    2. Else if ``env["TW_HOSTED_URL"]`` is set → ``"hosted"``.
     3. Else if window < 90 days AND no cached parquet for ANY year touching
        the window → ``"exact_window"``.
     4. Else if any cached parquet for ANY year touching the window exists →
@@ -339,14 +341,18 @@ def _resolve_strategy(
     """
     from tradewinds.weather.cache import _has_cached_year
 
-    if env.get("TW_HOSTED_URL"):
-        return "hosted"
-
-    # Source-filtered queries always go through exact_window because
-    # warm_cache (research()-style orchestration + merge) cannot honor
-    # source filtering at the fetcher boundary.
+    # Source-filtered queries always go through exact_window because no other
+    # strategy honors source filtering today (warm_cache rejects source!=None;
+    # hosted is a v0.2.x stub that raises NotImplementedError). Source check
+    # runs BEFORE the env-var check so source-filtered callers can still use
+    # exact_window even with TW_HOSTED_URL set in the environment — otherwise
+    # `obs(source="iem")` would fail loudly for users who have the env var
+    # set for other reasons (codex iter-3 HIGH).
     if source is not None:
         return "exact_window"
+
+    if env.get("TW_HOSTED_URL"):
+        return "hosted"
 
     window_days = (to_date - from_date).days + 1
     has_cache = any(

@@ -199,6 +199,27 @@ def test_resolver_source_filter_forces_exact_window_for_large_window(empty_cache
     assert result == "exact_window"
 
 
+def test_resolver_source_filter_beats_hosted_env_var(empty_cache):
+    """auto + source + TW_HOSTED_URL set: still exact_window (codex iter-3 HIGH).
+
+    Without this rule ordering, `obs(source="iem")` would raise hosted
+    NotImplementedError for users who have TW_HOSTED_URL set for other
+    reasons. Source filtering only works in exact_window today, so it
+    must take precedence over the hosted env var.
+    """
+    from tradewinds.weather.obs import _resolve_strategy
+
+    result = _resolve_strategy(
+        from_date=date(2024, 3, 1),
+        to_date=date(2024, 3, 31),
+        station="KNYC",
+        env={"TW_HOSTED_URL": "https://api.example.com"},
+        cache_root=empty_cache,
+        source="iem",
+    )
+    assert result == "exact_window"
+
+
 # --- _has_cached_year lives in cache.py (I-4) -------------------------------
 def test_has_cached_year_lives_in_cache_module(tmp_path):
     from tradewinds.weather.cache import _has_cached_year

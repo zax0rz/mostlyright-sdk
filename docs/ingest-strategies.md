@@ -21,28 +21,36 @@ df = obs("KNYC", "2024-03-01", "2024-03-31", strategy="hosted")  # v0.2.x
 ## Decision tree (`strategy="auto"`)
 
 ```
-                  TW_HOSTED_URL env var set?
+                       source != None?
                           /         \
                        yes           no
                         |             |
-                     hosted    window < 90 days?
+                  exact_window   TW_HOSTED_URL set?
                                   /         \
-                                yes           no
-                                 |             |
-                          cache hit for     warm_cache
-                          (station, year)?  (fallback)
-                              /     \
-                           yes       no
-                            |         |
-                       warm_cache  exact_window
+                               yes           no
+                                |             |
+                             hosted    window < 90 days?
+                                          /         \
+                                        yes           no
+                                         |             |
+                                 cache hit for     warm_cache
+                                 (station, year)?  (fallback)
+                                     /     \
+                                  yes       no
+                                   |         |
+                              warm_cache  exact_window
 ```
 
 Rules applied in order, first match wins:
 
-1. `TW_HOSTED_URL` set → `hosted` (raises `NotImplementedError` until v0.2.x).
-2. Window < 90 days AND no cached parquet for any year touching the window → `exact_window`.
-3. Any cached parquet for any year touching the window exists → `warm_cache`.
-4. Otherwise (large window, cold cache, no env) → `warm_cache` (fallback).
+1. `source != None` → `exact_window`. Only exact_window honors source filtering
+   today (warm_cache rejects `source!=None`; hosted is a v0.2.x stub). This
+   rule runs FIRST so source-filtered queries succeed even when `TW_HOSTED_URL`
+   is set in the environment.
+2. `TW_HOSTED_URL` set → `hosted` (raises `NotImplementedError` until v0.2.x).
+3. Window < 90 days AND no cached parquet for any year touching the window → `exact_window`.
+4. Any cached parquet for any year touching the window exists → `warm_cache`.
+5. Otherwise (large window, cold cache, no env) → `warm_cache` (fallback).
 
 The 90-day threshold is empirically derived: at 3 months a `warm_cache` query
 already pays the full ~13 MB year-aligned cost (because IEM serves yearly
