@@ -1,18 +1,29 @@
 # tradewinds
 
-Local-first Python SDK for quants researching prediction-market weather settlements.
+Local-first **Python + TypeScript** SDK for quants researching prediction-market weather settlements.
 
-`tradewinds.research(station, from_date, to_date)` returns observations × NWS CLI climate joined on settlement window. No hosted backend; calls AWC, IEM, GHCNh, NWS CLI directly. Local parquet cache.
-
-🚧 **Sprint 0 in progress.** v0.1.0 ships in ~3-4 calendar days (target: 2026-05-25). See [`roadmap/sprint0.md`](roadmap/sprint0.md) for status.
+`research(station, from_date, to_date)` returns observations × NWS CLI climate joined on settlement window. No hosted backend; calls AWC, IEM, GHCNh, NWS CLI directly. Local parquet/JSON cache.
 
 ## Packages
 
-| PyPI | Path | Sprint 0 status |
+### Python (PyPI)
+
+| PyPI | Path | v0.1.0 status |
 |---|---|---|
-| `tradewinds` | [packages/core/](packages/core/) | v0.1.0 — meta + `research()` |
-| `tradewinds-weather` | [packages/weather/](packages/weather/) | v0.1.0 — AWC/IEM/GHCNh/NWS CLI clients + cache |
-| `tradewinds-markets` | [packages/markets/](packages/markets/) | v0.0.1 placeholder; v0.1.0 in Sprint 0.5 (Kalshi metadata) |
+| `tradewinds` | [packages/core/](packages/core/) | rc1 ready (operator-gated PyPI publish) |
+| `tradewinds-weather` | [packages/weather/](packages/weather/) | rc1 ready |
+| `tradewinds-markets` | [packages/markets/](packages/markets/) | rc1 ready (Polymarket stubs; live engine in TS) |
+
+### TypeScript (npm)
+
+| npm | Path | v0.1.0 status |
+|---|---|---|
+| `@tradewinds/core` | [packages-ts/core/](packages-ts/core/) | TS-W6 shipped; npm publish operator-gated |
+| `@tradewinds/weather` | [packages-ts/weather/](packages-ts/weather/) | TS-W2 parity-gate passed |
+| `@tradewinds/markets` | [packages-ts/markets/](packages-ts/markets/) | TS-W5 shipped (Polymarket live + Kalshi resolver) |
+| `tradewinds` (meta) | [packages-ts/meta/](packages-ts/meta/) | re-exports the three scoped pkgs |
+
+See [`docs/ts-quickstart.md`](docs/ts-quickstart.md) for TS Node/browser quickstart and [`docs/browser-integration.md`](docs/browser-integration.md) for MV3 service-worker / content-script integration.
 
 ## Quickstart (alpha1) — <5 minutes
 

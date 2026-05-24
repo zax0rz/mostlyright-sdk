@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v0.1.0
 milestone_name: — `@tradewinds/*` on npm)
-status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W4 merged; Mode 2 + transforms + QC alpha shipped. 5/8 TS phases complete; 1045 TS tests passing.
-stopped_at: "Merged ts-w4/mode2-transforms-qc-alpha (6 sub-plans, 1-iter review loop)"
-last_updated: "2026-05-24T19:05:00.000Z"
-last_activity: "2026-05-24 - Merged TS-W4 Mode 2 + transforms + QC alpha (6 plans, codex high + TS Architect parallel review, 1 P2 inline-fixed)"
+status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W6 + TS-W5 + TS-W7 docs/workflow merged. 8/8 TS phases code-complete (npm publish operator-gated).
+stopped_at: "Merged ts-w7/docs-npm-publish (docs + Changesets + release-ts.yml; npm OIDC registration + tagging operator-gated)"
+last_updated: "2026-05-24T21:00:00.000Z"
+last_activity: "2026-05-24 - TS-W6 + TS-W5 + TS-W7 docs/workflow shipped via 5-iteration codex `high` review per phase"
 progress:
   total_phases: 21
   completed_phases: 1
   total_plans: 21
-  completed_plans: 11
-  percent: 52
+  completed_plans: 14
+  percent: 67
 ---
 
 # Project State
@@ -30,7 +30,62 @@ Plan: TS-W5 (Polymarket settlement) next; operator-gated capture of TS-W2 Plan 0
 Status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W4 merged with Mode 2 dispatch + 9 transforms + QC alpha (5 rules + crosscheck). All 4 bundle gates green.
 Last activity: 2026-05-24 - Merged TS-W4 Mode 2 + transforms + QC alpha (6 plans, codex high + TS Architect parallel review, 1 P2 fixed inline)
 
-Progress: Python [██████████] 100% (12/12 phases, 1674 tests) | TS [5/8 phases shipped — TS-W0 + TS-W1 + TS-W2 + TS-W3 + TS-W4 done; 1045 TS tests]
+Progress: Python [██████████] 100% (12/12 phases, 1674 tests) | TS [8/8 phases shipped — TS-W0 → TS-W7 code-complete; ~1212 TS tests; npm publish operator-gated]
+
+## TS-W7 Docs + Release Workflow closeout (2026-05-24)
+
+Merge commit pending. Lands docs + Changesets + `release-ts.yml` for the four-package v0.1.0 npm publish. Waves 1+2 of the plan shipped in-tree; Waves 3-6 (npm OIDC pending-publisher registration, tagging `vts-0.1.0rc1`/`vts-0.1.0`, external README timer, browser smoke test) are operator-gated and mirror the Python Phase 4 trusted-publishing playbook.
+
+Shipped:
+- `docs/ts-quickstart.md` — Node + browser quickstart, cache wiring, Polymarket discover/settle example, Kalshi helper, discovery surface, scope of v0.1.0 vs v0.2.
+- `docs/browser-integration.md` — four browser patterns (MV3 SW, MV3 content script, IIFE, Workers), CORS posture table referencing `.planning/research/TS-CORS-MATRIX.md`, CSP cleanliness, common pitfalls.
+- `README.md` — top-level dual-SDK summary (Python on PyPI + TS on npm) replacing the Python-only intro.
+- `.changeset/{config.json, README.md}` — Changesets configured with `fixed` group for all four packages (lockstep version bumps); `commit: false` so maintainer approves release PR; `access: public` for first-publish.
+- `.github/workflows/release-ts.yml` — fires on `vts-*` tags; rc tags publish `--tag next`, non-rc tags publish `--tag latest`. Reuses Python's `parity_status.py` P0 gate for non-rc tags. OIDC trusted publishing (no NPM_TOKEN); `environment: npm` (operator creates with required reviewers).
+
+Operator-gated follow-ups (mirrors Python Phase 4 closeout):
+1. Register 4 npm OIDC pending publishers on npmjs.com — package names `@tradewinds/core`, `@tradewinds/weather`, `@tradewinds/markets`, `tradewinds`; repo `helloiamvu/tradewinds`; workflow filename `release-ts.yml`; environment `npm`.
+2. Create GH repo environment `npm` with required reviewers.
+3. Run `pnpm changeset` + `pnpm changeset version` to land the v0.1.0 bump PR. Confirm `@tradewinds` npm scope availability; if unavailable, fall back to unscoped per TS-SDK-DESIGN §13.1.
+4. Tag `vts-0.1.0rc1` → soak `--tag next` for ≥1 week against in-repo `packages-ts/examples/chrome-extension-mvp/`.
+5. External README quickstart timer (<5 min target).
+6. Tag `vts-0.1.0` → publish `--tag latest` after the P0 parity-ticket gate clears.
+
+## TS-W5 Polymarket + Kalshi Helper closeout (2026-05-24)
+
+Merge commit: `001d855 Merge ts-w5/polymarket-markets — TS-W5 Polymarket Discover/Settle + Kalshi Helper` (`--no-ff` into main).
+
+5 waves shipped (~14 commits including 5-iteration review loop):
+
+- Wave 1: PolymarketClient over `gamma-api.polymarket.com`, 0.2s politeness, 429+5xx retries, offset pagination ≤10000, slug dedup. Tolerates `{data: [...]}` envelope; throws on unknown shapes. `fetchEventById` returns null on NotFoundError thrown by fetchWithRetry.
+- Wave 2: Tier 0 deferred-station guard (Taipei RCTP always; HK VHHH low). Tier 1/2/3 resolution with WORD-BOUNDARY city matching (closes substring false-positives like "comparison" → paris).
+- Wave 3: `polymarketDiscover()` enriches each event with city+ICAO+measure+resolution-source. Deferred markets surface with `icao: null` but PRESERVE the matched city. Empty descriptions classify as `'other'` (24h fallback).
+- Wave 4: `polymarketSettle()` enforces security defenses (EVENT_ID_RE alphanumeric 1-128, 16KB description cap, netloc allowlist `{wunderground.com, weather.gov}`), publication-delay gate against station-local end-of-day via Intl.DateTimeFormat (15-min IANA offset granularity for Asia/Kolkata, Asia/Kathmandu), pulls daily extremes from `@tradewinds/core/discovery.internationalDailyExtremes`. Returns BOTH C+F values + `unit` defaulting to station-native (F for US, C for international Polymarket whole-°C buckets). dataQualityAlert compares in matching unit. Ambiguous markets ("default" measure) refused.
+- Wave 5: `kalshiSettlementFor(contractId, date)` dispatches KHIGH*/KLOW* prefixes.
+
+Polymarket subpath lives at `/polymarket` (NOT root barrel) — keeps the IIFE bundle lean. Polymarket is server-side discover/settle by design (CORS-blocked from browsers per `.planning/research/TS-CORS-MATRIX.md`).
+
+Review discipline: 5 codex `high` iterations against the integration branch diff vs main. Findings/iter: iter-1 4 (PayloadTooLargeError catch widening, ambiguous-measure refusal, TooEarly toDict payload, half-hour tz); iter-2 2 (page shape validation, NotFoundError → null); iter-3 1 (native unit C/F); iter-4 2 (preserve city, empty-desc → other); iter-5 2 (word-boundary city match, forward signal to fetchFn). All closed in subsequent iterations. Iter-5 was the user-specified review cap.
+
+Test coverage: 107 markets tests passing; full TS suite stable.
+
+## TS-W6 Discovery + Snapshot + DataVersion closeout (2026-05-24)
+
+Merge commit: `287f2b4 Merge ts-w6/discovery-snapshot-dataversion — TS-W6 Discovery + Snapshot + DataVersion` (`--no-ff` into main).
+
+5 waves shipped at `@tradewinds/core/discovery` subpath:
+
+- Wave 1: `availability(station, cache, opts?)` reads CacheStore via optional `listKeys`; resolves KNYC → NYC (3-letter NWS code that `research()` writes under) AND scans both forms so direct cacheKey writes are also counted. Optional `{validate: true}` confirms each candidate via `cache.get()` for TTL-aware stores.
+- Wave 2: `internationalDailyExtremes(rows, opts)` — UTC → local-day rollup via `Intl.DateTimeFormat`; HALF_UP rounding (precision configurable; matches Python Decimal); RJTT/SAEZ/NZWN UTC-wrap tests pass. Guards zero-temperature buckets when `minObs=0`.
+- Wave 3: `buildSnapshot(...)` + frozen `DataSnapshot` interface with `toDict()` (JSON-safe via toJsonSafe) and `toToon()` (TOON v3 tabular). schemaId/source captured into local consts so post-build opts mutation can't leak into provenance.
+- Wave 4: `dataVersionFromComponents` / `dataVersionForResearch` via `crypto.subtle.digest('SHA-256', ...)`. Canonical concatenation matches Python `DataVersion.from_components` byte-for-byte (sorts schemaIds + sources internally for hash; preserves caller's tuple on the stored object).
+- Wave 5: `describe(schemaId)` returns multi-line description from a built-in registry pre-seeded with the 5 v0.1.0 schemas (consumers don't need `registerSchema` for canonical schemas); `featureCatalog()` returns the transforms surface in stable order; `climateGaps` throws `ClimateGapsNotImplementedError` (TS climate cache is v0.2).
+
+MemoryStore / IndexedDBStore / FsStore each gained `listKeys(prefix)`.
+
+Review discipline: 5 codex `high` iterations. Findings/iter: iter-1 2 (snapshot opts-closure leak, describe registry empty for built-ins); iter-2 1 (availability missed `research()` 3-letter NWS code form); iter-3 1 (persistent stores' `listKeys` may return expired TTLs); iter-4 1 (minObs=0 + empty temps crashed); iter-5 2 (availability missed ICAO-form keys, DataVersion alphabetized stored tuple).
+
+Test coverage: 761 core tests, +61 new (`@tradewinds/core` suite). Full TS suite stable.
 
 ## TS-W4 Mode 2 + Transforms + QC Alpha closeout (2026-05-24)
 

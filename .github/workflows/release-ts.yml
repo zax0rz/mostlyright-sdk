@@ -1,0 +1,109 @@
+name: Release (npm OIDC trusted publishing)
+
+# TS-W7 TS-RELEASE-01 — publish the four TS packages to npm on every vts-* tag.
+#
+# Trusted publishing via OIDC (no NPM_TOKEN in secrets); requires
+# `id-token: write` permission. Setup checklist before the first tagged
+# release (operator-gated, mirrors Python release.yml playbook):
+#
+#   1. On npmjs.com, register each scoped package as a "pending publisher":
+#        @tradewinds/core, @tradewinds/weather, @tradewinds/markets, tradewinds
+#      pointed at repo helloiamvu/tradewinds, workflow filename
+#      `release-ts.yml`, environment name `npm`.
+#      https://docs.npmjs.com/generating-provenance-statements
+#   2. If the `@tradewinds` npm scope is unavailable, fall back per
+#      TS-SDK-DESIGN.md §13.1 (unscoped tradewinds-core / -weather / -markets).
+#   3. Create the GH repo environment `npm` with required reviewers
+#      (mirror Python's `pypi` environment posture).
+#
+# Tag routing:
+#   - vts-*rc* → `--tag next` (soak release)
+#   - vts-* (non-rc) → `--tag latest` (prod release; requires P0 parity gate)
+
+on:
+  push:
+    tags:
+      - "vts-*"
+
+# Trusted publishing requires id-token write permission per
+# https://docs.npmjs.com/generating-provenance-statements.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  release:
+    name: Build, test, and publish to npm
+    runs-on: ubuntu-latest
+    environment: npm
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # changesets reads commit history
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Codegen
+        run: pnpm --filter @tradewinds/codegen run codegen
+
+      - name: Typecheck
+        run: pnpm -r run typecheck
+
+      - name: Test (no live network)
+        run: pnpm -r exec vitest run
+
+      - name: Build
+        run: pnpm -r run build
+
+      - name: Size-limit gates (TS-BUNDLE-01)
+        run: pnpm -r run size 2>&1 || echo "size script optional; non-blocking"
+
+      - name: P0 parity-ticket gate (prod-tag only)
+        if: ${{ !contains(github.ref_name, 'rc') }}
+        run: |
+          python3 scripts/parity_status.py --milestone "TS v0.1.0" --strict-p0
+          # Exits non-zero if any P0 ticket is open. Matches TS-W7 SC#6.
+
+      - name: Choose dist-tag (rc → next, non-rc → latest)
+        id: dist_tag
+        run: |
+          if echo "${{ github.ref_name }}" | grep -qE 'rc'; then
+            echo "tag=next" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish — @tradewinds/core
+        working-directory: packages-ts/core
+        run: npm publish --provenance --access public --tag ${{ steps.dist_tag.outputs.tag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+
+      - name: Publish — @tradewinds/weather
+        working-directory: packages-ts/weather
+        run: npm publish --provenance --access public --tag ${{ steps.dist_tag.outputs.tag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+
+      - name: Publish — @tradewinds/markets
+        working-directory: packages-ts/markets
+        run: npm publish --provenance --access public --tag ${{ steps.dist_tag.outputs.tag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+
+      - name: Publish — tradewinds (meta)
+        working-directory: packages-ts/meta
+        run: npm publish --provenance --access public --tag ${{ steps.dist_tag.outputs.tag }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}

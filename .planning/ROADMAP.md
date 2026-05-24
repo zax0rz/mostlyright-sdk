@@ -456,14 +456,14 @@ TS phases execute strictly serial after Python v0.1.0 final: **TS-W0** → **TS-
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| TS-W0. Foundations + Schema Codegen + CORS Matrix | 0/TBD | Planning — depends on Python v0.1.0 final | - |
-| TS-W1. Browser MVP slice (AWC + CLI subset of `research()`) | 0/TBD | Planning — smallest browser-runnable SDK slice | - |
-| TS-W2. Parity Gate | 0/TBD | Planning — HARD GATE against 5 Python parity fixtures | - |
-| TS-W3. Cache + Temporal Primitives + Validator | 0/TBD | Planning | - |
-| TS-W4. Mode 2 + Transforms + QC Alpha | 0/TBD | Planning | - |
-| TS-W6. Discovery + Snapshot + DataVersion | 0/TBD | Planning — runs after TS-W4; blocks TS-W5 (`internationalDailyExtremes` consumed by `polymarketSettle`) | - |
-| TS-W5. Markets (Polymarket Live + Kalshi Wiring) | 0/TBD | Planning — activates Python's `NotImplementedError` Polymarket stubs; strictly serial after TS-W6 | - |
-| TS-W7. Docs + npm Publish | 0/TBD | Planning — 4 npm OIDC pending publishers + Changesets | - |
+| TS-W0. Foundations + Schema Codegen + CORS Matrix | done/done | ✅ Merged | 2026-05-23 |
+| TS-W1. Browser MVP slice (AWC + CLI subset of `research()`) | done/done | ✅ Merged | 2026-05-24 |
+| TS-W2. Parity Gate | done/done | ✅ Merged | 2026-05-24 |
+| TS-W3. Cache + Temporal Primitives + Validator | done/done | ✅ Merged | 2026-05-24 |
+| TS-W4. Mode 2 + Transforms + QC Alpha | done/done | ✅ Merged | 2026-05-24 |
+| TS-W6. Discovery + Snapshot + DataVersion | done/done | ✅ Merged at 287f2b4 | 2026-05-24 |
+| TS-W5. Markets (Polymarket Live + Kalshi Wiring) | done/done | ✅ Merged at 001d855 | 2026-05-24 |
+| TS-W7. Docs + npm Publish | 2/6 | ✅ Waves 1+2 shipped (docs + Changesets + release-ts.yml). Waves 3-6 operator-gated (npm OIDC registration, tagging, external timer). | 2026-05-24 |
 
 ### Phase 7: Ingest Auto-Planner + `tw.weather.obs()` Public Surface
 
