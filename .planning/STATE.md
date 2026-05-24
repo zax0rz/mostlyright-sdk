@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v0.1.0
 milestone_name: — `@tradewinds/*` on npm)
-status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W3 merged with cache + temporal primitives + validator + formats. MV3-safe bundles confirmed clean of Node imports.
-stopped_at: "Completed ts-w4-06-PLAN.md (Wave 6: crosscheckIemGhcnh)"
-last_updated: "2026-05-24T16:45:25.543Z"
-last_activity: 2026-05-24 - Merged TS-W3 cache+temporal+validator (7 plans, 14-iter review loop, 16 CRITICAL + 21 HIGH closed)
+status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W4 merged; Mode 2 + transforms + QC alpha shipped. 5/8 TS phases complete; 1045 TS tests passing.
+stopped_at: "Merged ts-w4/mode2-transforms-qc-alpha (6 sub-plans, 1-iter review loop)"
+last_updated: "2026-05-24T19:05:00.000Z"
+last_activity: "2026-05-24 - Merged TS-W4 Mode 2 + transforms + QC alpha (6 plans, codex high + TS Architect parallel review, 1 P2 inline-fixed)"
 progress:
   total_phases: 21
   completed_phases: 1
   total_plans: 21
-  completed_plans: 10
-  percent: 48
+  completed_plans: 11
+  percent: 52
 ---
 
 # Project State
@@ -21,16 +21,57 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-21; STATE.md refreshed 2026-05-24)
 
 **Core value:** `research(contract, station, from_date, to_date)` returns clean, leakage-free, source-identified training pairs that backtest the same way they trade — and any train/infer source mismatch errors loudly instead of silently corrupting a model.
-**Current focus:** v0.1.0rc1 publish (operator-gated PyPI trusted-publisher setup) + TS-W4 (Mode 2 + transforms + QC alpha)
+**Current focus:** v0.1.0rc1 publish (operator-gated PyPI trusted-publisher setup) + TS-W5 (Polymarket settlement) next
 
 ## Current Position
 
-Phase: Python v0.1.0 (12/12 phases, 1674 tests, all REAL impls) COMPLETE + TS v0.1.0 milestone planning COMPLETE + **TS-W0 + TS-W1 + TS-W2 + TS-W3 COMPLETE**
-Plan: TS-W4 (Mode 2 + transforms + QC alpha) next; operator-gated capture of TS-W2 Plan 07 msw recordings still unblocks the parity test HARD GATE.
-Status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W3 merged with cache + temporal primitives + validator + formats. MV3-safe bundles confirmed clean of Node imports.
-Last activity: 2026-05-24 - Merged TS-W3 cache+temporal+validator (7 plans, 14-iter review loop, 16 CRITICAL + 21 HIGH closed)
+Phase: Python v0.1.0 (12/12 phases, 1674 tests, all REAL impls) COMPLETE + TS v0.1.0 milestone planning COMPLETE + **TS-W0 + TS-W1 + TS-W2 + TS-W3 + TS-W4 COMPLETE**
+Plan: TS-W5 (Polymarket settlement) next; operator-gated capture of TS-W2 Plan 07 msw recordings still unblocks the parity test HARD GATE.
+Status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W4 merged with Mode 2 dispatch + 9 transforms + QC alpha (5 rules + crosscheck). All 4 bundle gates green.
+Last activity: 2026-05-24 - Merged TS-W4 Mode 2 + transforms + QC alpha (6 plans, codex high + TS Architect parallel review, 1 P2 fixed inline)
 
-Progress: Python [██████████] 100% (12/12 phases, 1674 tests) | TS [4/8 phases shipped — TS-W0 + TS-W1 + TS-W2 + TS-W3 done; 766 TS tests]
+Progress: Python [██████████] 100% (12/12 phases, 1674 tests) | TS [5/8 phases shipped — TS-W0 + TS-W1 + TS-W2 + TS-W3 + TS-W4 done; 1045 TS tests]
+
+## TS-W4 Mode 2 + Transforms + QC Alpha closeout (2026-05-24)
+
+Merge commit: `0d541ec Merge ts-w4/mode2-transforms-qc-alpha — TS-W4 Mode 2 + Transforms + QC Alpha` (`--no-ff` into main).
+
+**6 sub-plans landed (25 commits = 21 feature/test commits + 3 plan-docs + 1 inline P2 fix; review loop terminated at iter 1):**
+
+- Plan 01 — Mode 2 dispatch at `@tradewinds/meta`: `researchBySource(station, source, fromDate, toDate)` + `Mode2Source` const-union (`'iem.archive' | 'iem.live' | 'awc.live' | 'ghcnh.archive'`) + `SOURCE_ALIASES` (canonical → bare parser-tag set) + `assertSourceIdentity(rows, expected, role?)`. Unknown source rejected BEFORE any HTTP call; `iem.live` throws v0.2 placeholder. Per-row `source` field NEVER rewritten (Python mode2.py:161-166 silent-rewrite warning preserved). Wave 1 placed Mode 2 in @tradewinds/meta (NOT @tradewinds/core) to avoid the core→weather dep cycle.
+- Plan 02 — `lag`/`diff`/`diff2`/`rolling` at NEW `@tradewinds/core/transforms` subpath. `{col}_{op}_{param}` column naming. `min_periods=1` semantics. Bessel-corrected sample std (`ddof=1`). Strict numeric coercion (string `'3.5'` → `null`). Pure row→row, no input mutation.
+- Plan 03 — `calendarFeatures(rows, dateCol, tz?)` with `Intl.DateTimeFormat.formatToParts` tz-aware extraction. 8 cyclical-pair columns (`month_sin/cos`, `dow_sin/cos`, `hour_sin/cos`, `day_of_year_sin/cos`). ISO Monday-first dow (`(getUTCDay() + 6) % 7`). day-of-year uses 365.0 denominator (Python transforms.py:98 parity). sin²+cos²≈1 invariant test.
+- Plan 04 — `spread`/`windChill` (NWS 2001)/`heatIndex` (NWS Rothfusz 9-term)/`clipOutliers` (with `PHYSICS_BOUNDS` table). **windChill/heatIndex return tempF UNCHANGED out-of-domain** (Python parity at transforms.py:114 + :126; NOT null as REQUIREMENTS.md text said — Parity-Ticket documented in plan). NWS reference table assertions: `windChill(20, 15) ≈ 6°F`, `heatIndex(90, 70) ≈ 106°F` within 1°F. `clipOutliers` Phase 3.5 review-iter fixes preserved: `opts.std <= 0` throws `RangeError`; `sigma === 0 || !Number.isFinite(sigma)` pass-through unchanged.
+- Plan 05 — `QCEngine` + 5 alpha rules at NEW `@tradewinds/core/qc` subpath. Bit positions + rule IDs CONSUMED from codegen `packages-ts/core/src/data/generated/qc-alpha-rules.ts` via `QC_ALPHA_RULES_BY_ID.get(ruleId)` — NEVER hand-coded. `obsQcStatus` Int 32-bit signed bitfield column. Defensive throw at module load if any rule's `bitPosition >= 32`. `codegen-parity.test.ts` regression-guard test asserts runtime ALPHA_RULES match codegen table byte-for-byte. obsQcStatus column uses camelCase (TS idiom); wire-format conversion to snake_case is jsonDumps' responsibility.
+- Plan 06 — `crosscheckIemGhcnh(iemRows, ghcnhRows, opts={tolC: 2.0})` returns disagreement rows with `{station, eventTime, tempCIem, tempCGhcnh, deltaC}` camelCase shape. **Strict `>` boundary** (NOT `>=`): `delta === tolC` exactly produces NO disagreement (Python qc.py:228 parity). Inner-join on composite `(station, eventTime)` key. Throws on missing required columns. Empty input on either side → empty array.
+
+**Key technical decisions:**
+
+- **Bundle discipline**: transforms + QC ship at SUBPATHS only (`@tradewinds/core/transforms`, `@tradewinds/core/qc`); root `@tradewinds/core` barrel does NOT re-export them. Same pattern TS-W3 iter-4 H8 established. `@tradewinds/core` root bundle stays at 6.02 KB / 25 KB; meta at 19.52 KB / 30 KB.
+- **Codegen-sourced QC rules**: Wave 5 imports `QC_ALPHA_RULES` and `QC_ALPHA_RULES_BY_ID` from `../data/generated/qc-alpha-rules.js`; predicates evaluate per-row and look up bit position via the codegen map. Future codegen drift (e.g., Phase 3.5 adds a 6th alpha rule) fires loud via the regression test.
+- **Parity-Tickets honored**: (1) windChill/heatIndex out-of-domain returns tempF unchanged (NOT null per REQUIREMENTS.md text), (2) `obsQcStatus` camelCase (Python snake_case), (3) crosscheck disagreement row camelCase (Python snake_case), (4) TS narrows source enum to 4 canonical dotted forms (Python widens to 7-value frozenset including bare tags), (5) per-row source field PRESERVED through Mode 2 dispatch (Python silent-rewrite warning preserved).
+- **`assertSourceIdentity` signature** accepts `string | ReadonlySet<string>` for `expected` so callers can pass `SOURCE_ALIASES.get(source)` to tolerate parser-emitted bare tags. `role` parameter defaults to `'observations'` (v0.2 will exercise `'forecasts'`/`'settlement'`).
+- **`SourceMismatchError` already exists** in `packages-ts/core/src/exceptions/index.ts` from TS-W2 with snake_case `.toDict()` wire shape (`{ name, message, role, schema_source, data_source, catalog_warning }`). NO changes to exceptions in TS-W4 — Wave 1 consumes the existing class.
+
+**Test coverage:** 1045 TS tests across 5 packages (was 766 at TS-W3 close; +279). codegen 6, core 694 (+232: 168 transforms + 95 qc + smoke + barrel coverage), markets 41 (unchanged), weather 218 (unchanged), meta 86 + 1 skipped + 6 todo (+35: Mode 2 + AWC date-filter regression test). All green via `CI=1 pnpm -r run test`. Typecheck clean. All four bundle artifacts under their size-limit gates.
+
+**Review discipline:** Single-iteration loop per `.planning/REVIEW-DISCIPLINE.md` (codex `high` + TS Architect, parallel dispatch). Closed at iter-1 PASS:
+
+- **TS Architect:** PASS clean. No CRITICAL or HIGH findings. All 15 critical parity points verified in source. All four mandated tsconfig flags hold (strict, noUncheckedIndexedAccess, exactOptionalPropertyTypes, verbatimModuleSyntax). No `as any`, no `@ts-expect-error`, no `enum`, no `import *` of heavy deps, no Node-only API in shared surface. Root barrel discipline preserved.
+- **Codex high:** 1 P2 finding only (below the CRITICAL/HIGH blocking threshold). AWC Mode 2 dispatch was returning every parsed METAR from `fetchAwcMetars` without filtering by `[fromDate, toDate]` — IEM/GHCNh branches already filtered. Closed inline at `a346fc4` with regression test before merge.
+
+**Deferred to follow-up phases (NOT blockers):**
+
+- Forecast QC (deferred to v0.2 in both Python and TS).
+- Climate QC.
+- Mode 2 source `'iem.live'` (v0.1.0 parity gap — currently throws; v0.2 will add the per-month live IEM endpoint).
+- Python `preprocessing.iem_crosscheck` flexible-column auto-derivation (TS narrows to `{station, eventTime, temp_c}` explicit input shape; callers normalize before calling).
+- Operator: run `pnpm run capture-recordings` to populate TS-W2 msw recordings; flip parity tests from `it.todo` → live assertions.
+
+**Outstanding for TS-W5:**
+
+- Polymarket settlement integration (`PolymarketClient`, `polymarketDiscover`, `polymarketSettle`).
+- `kalshiSettlementFor` higher-level ergonomic helper.
 
 ## TS-W3 Cache + Temporal + Validator closeout (2026-05-24)
 
