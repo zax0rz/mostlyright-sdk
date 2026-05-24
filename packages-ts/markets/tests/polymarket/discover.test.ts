@@ -84,6 +84,36 @@ describe("polymarketDiscover", () => {
     expect(skipped[0]?.reason).toMatch(/no city match/);
   });
 
+  it("unwraps the documented {data: [...]} envelope (codex iter-2 P2)", async () => {
+    let page = 0;
+    const fetchFn = async () => {
+      page += 1;
+      if (page === 1) {
+        return jsonResponse({
+          data: [
+            {
+              id: "40",
+              slug: "will-london-hottest-on-2026-06-01",
+              title: "London June 1",
+              description: "https://www.weather.gov/",
+            },
+          ],
+        });
+      }
+      return jsonResponse({ data: [] });
+    };
+    const rows = await polymarketDiscover({ fetchFn, sleepBetweenMs: 0 });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.icao).toBe("EGLL");
+  });
+
+  it("throws on unexpected page shape (codex iter-2 P2)", async () => {
+    const fetchFn = async () => jsonResponse({ unexpected: "wrapper" });
+    await expect(polymarketDiscover({ fetchFn, sleepBetweenMs: 0 })).rejects.toThrow(
+      /unexpected page shape/,
+    );
+  });
+
   it("dedups events that appear in multiple pages with the same slug", async () => {
     let page = 0;
     const fetchFn = async () => {

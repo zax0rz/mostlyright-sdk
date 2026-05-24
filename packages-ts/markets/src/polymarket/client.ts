@@ -5,7 +5,7 @@
 // discovery up to 10000 events. Gamma's Cloudfront edge 403s on blank
 // User-Agent, so we always set a tradewinds UA.
 
-import { fetchWithRetry } from "@tradewinds/core";
+import { NotFoundError, fetchWithRetry } from "@tradewinds/core";
 
 const GAMMA_BASE = "https://gamma-api.polymarket.com";
 const PAGE_SIZE = 100;
@@ -88,8 +88,28 @@ export async function fetchEvents(opts: FetchEventsOptions = {}): Promise<Polyma
     if (!resp.ok) {
       throw new Error(`Gamma API returned ${resp.status} ${resp.statusText} for offset=${offset}`);
     }
-    const page = (await resp.json()) as PolymarketEventRaw[];
-    if (!Array.isArray(page) || page.length === 0) break;
+    const raw = (await resp.json()) as unknown;
+    // Codex iter-2 P2: distinguish "Gamma changed shape" from "empty page".
+    // Empty list → natural pagination terminator. Non-list → upstream
+    // contract changed; surface loudly instead of returning {} as nothing.
+    let page: PolymarketEventRaw[];
+    if (Array.isArray(raw)) {
+      page = raw as PolymarketEventRaw[];
+    } else if (
+      raw !== null &&
+      typeof raw === "object" &&
+      Array.isArray((raw as { data?: unknown }).data)
+    ) {
+      // Tolerate the documented `{data: [...]}` envelope shape.
+      page = (raw as { data: PolymarketEventRaw[] }).data;
+    } else {
+      throw new Error(
+        `Gamma API returned an unexpected page shape at offset=${offset} (expected array or {data: array}, got ${
+          raw === null ? "null" : typeof raw
+        }). The upstream contract may have changed; check https://docs.polymarket.com/.`,
+      );
+    }
+    if (page.length === 0) break;
     for (const ev of page) {
       const slug = typeof ev.slug === "string" ? ev.slug : null;
       if (slug === null || seen.has(slug)) continue;
@@ -116,9 +136,22 @@ export async function fetchEventById(
     retryStatuses: RETRY_STATUSES,
   };
   if (opts.signal !== undefined) fetchOpts.signal = opts.signal;
-  const resp = await (opts.fetchFn !== undefined
-    ? opts.fetchFn(url, { headers: { ...fetchOpts.headers, "User-Agent": DEFAULT_USER_AGENT } })
-    : fetchWithRetry(url, fetchOpts));
+  // Codex iter-2 P2: fetchWithRetry THROWS NotFoundError on 404 (it does
+  // not return a Response); the resp.status check below is unreachable
+  // through the default path. Catch + convert to the documented null
+  // return so polymarketSettleById can surface PolymarketSettlementError.
+  let resp: Response;
+  try {
+    resp =
+      opts.fetchFn !== undefined
+        ? await opts.fetchFn(url, {
+            headers: { ...fetchOpts.headers, "User-Agent": DEFAULT_USER_AGENT },
+          })
+        : await fetchWithRetry(url, fetchOpts);
+  } catch (err) {
+    if (err instanceof NotFoundError) return null;
+    throw err;
+  }
   if (resp.status === 404) return null;
   if (!resp.ok) {
     throw new Error(`Gamma API returned ${resp.status} ${resp.statusText} for event=${eventId}`);
