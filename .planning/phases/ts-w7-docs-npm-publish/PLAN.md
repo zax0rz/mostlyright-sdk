@@ -16,26 +16,26 @@ Ship `@tradewinds/core` + `@tradewinds/weather` + `@tradewinds/markets` + `trade
 - TS-RELEASE-01 (Changesets + npm OIDC trusted publishing)
 - TS-DOCS-01 (typedoc API reference)
 - TS-DOCS-02 (README quickstart <5min external timer)
-- TS-DOCS-03 (`docs/chrome-extension-integration.md`)
+- TS-DOCS-03 (`docs/browser-integration.md`)
 - TS-CI-02 (`release-ts.yml` + `drift-rotate-ts.yml`)
 
 ## Success Criteria
 
-1. README quickstart (Node sample + browser sample) timed by an external person at < 5 minutes. Typedoc-generated API reference committed under `docs/ts-api/`. `docs/chrome-extension-integration.md` documents Rob's integration path end-to-end (manifest, service worker import, content-script ↔ service-worker `chrome.runtime.sendMessage`, IIFE alternative).
+1. README quickstart (Node sample + browser sample) timed by an external person at < 5 minutes. Typedoc-generated API reference committed under `docs/ts-api/`. `docs/browser-integration.md` documents the browser-consumer integration path end-to-end (MV3 `host_permissions` when applicable, service-worker import, content-script ↔ service-worker `chrome.runtime.sendMessage`, IIFE alternative); references in-repo `packages-ts/examples/chrome-extension-mvp/` as the worked example.
 2. Changesets configured (`@changesets/cli` + `.changeset/config.json`); `release-ts.yml` workflow fires on `vts-*` tag, builds + tests + publishes 4 packages to npm via OIDC trusted publishing.
-3. `vts-0.1.0rc1` tag → npm `--tag next` publish; soak for ≥1 week with internal Chrome-extension use; then `vts-0.1.0` tag → npm `--tag latest`.
+3. `vts-0.1.0rc1` tag → npm `--tag next` publish; soak for ≥1 week against the in-repo `examples/chrome-extension-mvp/` sample plus any internal browser-consumer pilots; then `vts-0.1.0` tag → npm `--tag latest`. Out-of-repo downstream consumers (e.g. Rob's separate extension repo) are NOT part of the soak gate.
 4. `npm install @tradewinds/core @tradewinds/weather @tradewinds/markets` in a clean directory works; `npm install tradewinds` (meta) works.
-5. Chrome-extension end-to-end smoke test (separate repo or `examples/chrome-extension-mvp/`) green against `latest` published packages. `size-limit` gates green for all 4 packages.
+5. Browser-consumer end-to-end smoke test: load the in-repo `examples/chrome-extension-mvp/` sample against the `latest` published packages and confirm `research()` returns live AWC + IEM CLI rows. `size-limit` gates green for all 4 packages. (Out-of-repo downstream extensions/dashboards are NOT a gate.)
 6. **Release-readiness gate via `scripts/parity_status.py`** (shipped TS-W0): `scripts/parity_status.py --milestone "TS v0.1.0"` reports zero open P0 parity tickets before the `vts-0.1.0` tag is cut. P1 tickets either resolved or explicitly deferred to `TS v0.1.x` per CROSS-SDK-SYNC §2.5. Release workflow refuses to publish on non-empty P0 list (hard gate).
 
 ## Waves
 
-- **Wave 1**: README + quickstart samples (Node + browser); typedoc config + generation; `docs/chrome-extension-integration.md`.
+- **Wave 1**: README + quickstart samples (Node + browser); typedoc config + generation; `docs/browser-integration.md`.
 - **Wave 2**: Changesets setup + `release-ts.yml` + `drift-rotate-ts.yml` workflows.
 - **Wave 3**: Register 4 npm OIDC pending publishers (operator-gated; user does this on npmjs.com).
 - **Wave 4**: Tag `vts-0.1.0rc1` → publish to `--tag next` → soak.
 - **Wave 5**: External README timer.
-- **Wave 6**: Tag `vts-0.1.0` → publish to `--tag latest` → Chrome-extension smoke test against published packages.
+- **Wave 6**: Tag `vts-0.1.0` → publish to `--tag latest` → browser-consumer smoke test (load in-repo `examples/chrome-extension-mvp/` against published packages and confirm live `research()` call).
 
 ## Outstanding follow-ups (operator-gated)
 

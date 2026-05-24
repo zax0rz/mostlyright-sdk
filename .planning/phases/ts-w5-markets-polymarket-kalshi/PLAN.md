@@ -7,7 +7,7 @@
 
 ## Goal
 
-Activate Polymarket discover/settle in TS (Python v0.1.0 ships only boundary stubs with `NotImplementedError`; the substantive engine lives in TS, not Python). Maintain Python's security defenses verbatim — UUID4 regex, 16 KB description cap, netloc allowlist. Wire Kalshi resolver into a higher-level helper for the Chrome extension's overlay use case.
+Activate Polymarket discover/settle in TS (Python v0.1.0 ships only boundary stubs with `NotImplementedError`; the substantive engine lives in TS, not Python). Maintain Python's security defenses verbatim — UUID4 regex, 16 KB description cap, netloc allowlist. Wire Kalshi resolver into a higher-level helper for downstream browser consumers (overlays, dashboards, Workers).
 
 ## Requirements
 
@@ -23,7 +23,7 @@ Activate Polymarket discover/settle in TS (Python v0.1.0 ships only boundary stu
 2. `polymarketDiscover()` against live Gamma API returns ≥ 50 active weather events end-to-end. Tier 0 deferred-station check raises `DeferredMarketError` for Taipei/HK-lowest. Tier 1 `resolutionSource` URL match on Wunderground/NOAA WRH. Tier 2 description URL match. Tier 3 catalog fallback via `resolveStationForEvent` using codegen `schemas/polymarket-city-stations.json`. Drops 11 US slugs already covered by US station registry.
 3. `polymarketSettle(eventId, opts?)` enforces UUID4 regex on `eventId` (rejects non-UUID), 16 KB description cap (`PayloadTooLargeError`), netloc allowlist (`wunderground.com`, `weather.gov` + `www.` variants).
 4. Settlement engine reads `internationalDailyExtremes()` (TS-INTL-01 / TS-W6) for the resolution source, applies half-up rounding to whole-degree-native. Verified against a **fixture set of ≥5 historically-resolved Polymarket weather events** with `{eventId, expectedBucket, expectedValue, polymarketPublishedValue}` — NOT against Python `polymarket_settle` (which is `NotImplementedError` in v0.1.0). ±1°F / 0.6°C diff vs `polymarketPublishedValue` emits `dataQualityAlert` (does NOT throw). `TooEarlyToSettleError` raised when source-specific finalization delay hasn't elapsed (Wunderground 6h, NOAA WRH 4h, default 24h).
-5. `kalshiSettlementFor(contractId, date)` (TS-MARKETS-02) higher-level helper returns `{settlementSource, settlementStation, cityTicker, contractDate}` — dispatch by prefix (`KHIGH*` → NHIGH resolver, `KLOW*` → NLOW resolver). Used by Chrome extension overlay.
+5. `kalshiSettlementFor(contractId, date)` (TS-MARKETS-02) higher-level helper returns `{settlementSource, settlementStation, cityTicker, contractDate}` — dispatch by prefix (`KHIGH*` → NHIGH resolver, `KLOW*` → NLOW resolver). Library helper; downstream consumers (overlays, dashboards, Workers) call it directly.
 
 ## Waves
 
@@ -31,7 +31,7 @@ Activate Polymarket discover/settle in TS (Python v0.1.0 ships only boundary stu
 - **Wave 2**: Tier 0/1/2/3 resolver chain + city catalog (`polymarket_city_stations.json` from codegen).
 - **Wave 3**: `polymarketDiscover()` end-to-end live test against Gamma API.
 - **Wave 4**: `polymarketSettle()` engine — UUID4/16KB/netloc allowlist defenses (negative tests), half-up rounding, finalization-delay logic.
-- **Wave 5**: `kalshiSettlementFor` higher-level helper + Chrome extension integration example.
+- **Wave 5**: `kalshiSettlementFor` higher-level helper + a usage snippet wired into `packages-ts/examples/chrome-extension-mvp/` (in-repo sample only; downstream consumer apps live in their own repos).
 
 ## Security review
 

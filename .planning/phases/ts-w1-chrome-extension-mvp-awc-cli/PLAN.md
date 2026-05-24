@@ -1,4 +1,4 @@
-# Phase TS-W1 — Chrome-extension MVP (AWC + CLI subset of `research()`)
+# Phase TS-W1 — Browser MVP slice (AWC + CLI subset of `research()`)
 
 **Status:** Stub (run `/gsd-plan-phase ts-w1` to expand).
 **Milestone:** TypeScript v0.1.0
@@ -8,7 +8,7 @@
 
 ## Goal
 
-Ship the smallest useful TS surface to unblock Rob's Chrome extension overlay on kalshi.com. Station lookup + Kalshi NHIGH/NLOW resolver + AWC live observations + IEM CLI settlement readings + a minimal `research()` that pulls AWC + CLI only (no IEM ASOS, no GHCNh, no cache yet). Bundle size must stay tight so the extension service worker loads fast.
+Ship the smallest useful TS surface that runs in a browser. Station lookup + Kalshi NHIGH/NLOW resolver + AWC live observations + IEM CLI settlement readings + a minimal `research()` that pulls AWC + CLI only (no IEM ASOS, no GHCNh, no cache yet). Bundle size must stay tight so an MV3 service worker (or any size-sensitive browser context) loads fast. The in-repo sample at `packages-ts/examples/chrome-extension-mvp/` is a usage example, not a deliverable — out-of-repo downstream consumers (e.g. Rob's extension) live in their own repos.
 
 ## Requirements
 
@@ -25,7 +25,7 @@ Ship the smallest useful TS surface to unblock Rob's Chrome extension overlay on
 1. `await research('NYC', '2025-01-01', '2025-01-07')` from a Node script returns `ResearchRow[]` with non-null `cliHighF`/`cliLowF` AND non-null `obsHighF`/`obsLowF`. Forecast + GHCNh-derived columns may be null.
 2. `kalshiNhighResolve('KHIGHNYC', new Date('2025-01-06'))` returns frozen `{settlementSource: 'cli.archive', settlementStation: 'KNYC', cityTicker: 'NYC', contractDate: '2025-01-06'}`. `KNOWN_WRONG_STATIONS` contract test passes.
 3. Exception hierarchy ships with `toDict()` matching Python `to_json_safe` on null/NaN/inf/cycle edge cases.
-4. Chrome-extension end-to-end smoke test (one-page test extension fetching `research()` from its service worker against AWC + IEM CLI live) passes. Smoke test lives in `packages-ts/examples/chrome-extension-mvp/`.
+4. Browser-consumer end-to-end smoke test: the in-repo `packages-ts/examples/chrome-extension-mvp/` sample (one-page MV3 extension fetching `research()` from its service worker against AWC + IEM CLI live) loads and returns rows. The sample is in-repo as the worked example; downstream extension repos are NOT a gate.
 5. `size-limit` reports W1 subset (`@tradewinds/core` + `@tradewinds/weather`'s W1 surface + `@tradewinds/markets`) ≤ 30 KB minified+gzipped.
 
 ## Waves (to be detailed)
@@ -36,7 +36,7 @@ Ship the smallest useful TS surface to unblock Rob's Chrome extension overlay on
 - **Wave 4**: `@tradewinds/weather/_fetchers/iem-cli` + range fetcher + CLI parser + `inferReportType` + `REPORT_TYPE_PRIORITY` from codegen.
 - **Wave 5**: `@tradewinds/core/snapshot` math (LST offset, `settlementDateFor`, `settlementWindowUtc`, `cliAvailableAt`, `marketCloseUtc`).
 - **Wave 6**: Minimal `research()` orchestrator — AWC + CLI only, in-memory, no cache. Returns `ResearchRow[]` with the 19 columns (some null).
-- **Wave 7**: Chrome-extension smoke test example app + size-limit gate verification.
+- **Wave 7**: Wire in-repo `packages-ts/examples/chrome-extension-mvp/` as the browser-consumer smoke test sample + size-limit gate verification.
 
 ## Out of Scope
 

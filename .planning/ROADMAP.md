@@ -2,7 +2,7 @@
 
 ## Overview
 
-tradewinds is now a **dual-SDK platform** (Python + TypeScript) for prediction-market weather contracts on Kalshi (US NHIGH/NLOW) and Polymarket (US + international daily-extremes). Both SDKs call the SAME public APIs (AWC, IEM, GHCNh, NWS CLI, NOAA BDP, Polymarket Gamma) directly with no backend, mirror the SAME canonical schemas (codegen-shared via JSON Schema), and return row-equivalent output. Python ships first; TypeScript follows the same v0.1.0 surface so a Chrome extension (Rob, kalshi.com overlay) and future web dashboards can consume tradewinds in-browser.
+tradewinds is now a **dual-SDK platform** (Python + TypeScript) for prediction-market weather contracts on Kalshi (US NHIGH/NLOW) and Polymarket (US + international daily-extremes). Both SDKs call the SAME public APIs (AWC, IEM, GHCNh, NWS CLI, NOAA BDP, Polymarket Gamma) directly with no backend, mirror the SAME canonical schemas (codegen-shared via JSON Schema), and return row-equivalent output. Python ships first; TypeScript follows the same v0.1.0 surface so browser-based consumers (Chrome extensions, web dashboards, Cloudflare Workers) plus Node / Bun / Deno scripts can use tradewinds without a Python dependency.
 
 **Status snapshot (2026-05-23):**
 - **Python v0.1.0** — 12/12 phases complete on `main`, 1453 tests passing, rc1 ready to tag (operator-gated PyPI trusted-publisher setup). Three PyPI distributions: `tradewinds` / `tradewinds-weather` / `tradewinds-markets`.
@@ -42,16 +42,16 @@ Decimal phases appear between their surrounding integers in numeric order. TS ph
 
 ### TypeScript SDK milestone (v0.1.0 — `@tradewinds/*` on npm)
 
-Mirrors the Python v0.1.0 public surface from the same repo (`packages-ts/`). Same APIs, same schemas (codegen-shared), row-equivalent output (no DataFrames; plain object arrays). Primary consumer: Rob's Chrome extension overlay on kalshi.com. See [`research/TS-SDK-DESIGN.md`](research/TS-SDK-DESIGN.md) for the design contract and [`research/PYTHON-SURFACE-INVENTORY.md`](research/PYTHON-SURFACE-INVENTORY.md) for the surface map the port works against. **Runs in parallel with Python v0.2 (Phase 5) work.**
+Mirrors the Python v0.1.0 public surface from the same repo (`packages-ts/`). Same APIs, same schemas (codegen-shared), row-equivalent output (no DataFrames; plain object arrays). Target consumers: in-browser apps (Chrome extensions overlaying Kalshi pages, web dashboards), Node scripts, Cloudflare Workers, Bun / Deno. The SDK is a general-purpose library; downstream Chrome extensions ship in separate repos. See [`research/TS-SDK-DESIGN.md`](research/TS-SDK-DESIGN.md) for the design contract and [`research/PYTHON-SURFACE-INVENTORY.md`](research/PYTHON-SURFACE-INVENTORY.md) for the surface map the port works against. **Runs in parallel with Python v0.2 (Phase 5) work.**
 
 - [ ] **Phase TS-W0: Foundations + Schema Codegen + CORS Matrix** - pnpm workspace under `packages-ts/`, tsup/vitest/biome scaffolds, `scripts/export_schemas.py` Python→JSON-Schema exporter, `@tradewinds/codegen` reads `schemas/json/` and emits typed station registry + Kalshi map + ajv-standalone validators, one-shot CORS empirical test against AWC/IEM/GHCNh/Polymarket endpoints written to `.planning/research/TS-CORS-MATRIX.md`, CI workflows `test-ts.yml` + `schema-drift.yml`.
-- [ ] **Phase TS-W1: Chrome-extension MVP (AWC + CLI subset of `research()`)** - Exception hierarchy, `_convert`/`_bounds` ports, retry wrapper around `fetch()`, station registry + Kalshi NHIGH/NLOW resolvers, AWC live-METAR fetcher+parser, IEM CLI fetcher+parser+range, `market_close_utc` + `settlement_*` math, minimal `research()` (AWC + CLI only, no cache). Unblocks Rob's extension overlay. Bundle ≤30KB minified+gzipped.
+- [ ] **Phase TS-W1: Browser MVP slice (AWC + CLI subset of `research()`)** - Exception hierarchy, `_convert`/`_bounds` ports, retry wrapper around `fetch()`, station registry + Kalshi NHIGH/NLOW resolvers, AWC live-METAR fetcher+parser, IEM CLI fetcher+parser+range, `market_close_utc` + `settlement_*` math, minimal `research()` (AWC + CLI only, no cache). Smallest browser-runnable SDK slice; in-repo `packages-ts/examples/chrome-extension-mvp/` is the sample consumer (not a deliverable). Bundle ≤30KB minified+gzipped.
 - [ ] **Phase TS-W2: Parity Gate** - IEM ASOS fetcher (yearly chunks, lifted from Python Phase 1.5), GHCNh fetcher (with CORS workaround), CSV/PSV parsers, `merge_observations` + `merge_climate` ports with strict-`>` priority and first-seen tiebreak, `build_pairs` join, 5 Python parity fixtures re-exported as JSON+msw recordings, parity test asserts row-equivalent output, drift cron `drift-rotate-ts.yml`.
 - [ ] **Phase TS-W3: Cache + Temporal Primitives + Validator** - `CacheStore` interface + `IndexedDBStore`/`FsStore`/`MemoryStore` implementations + `defaultCacheStore()` auto-detection, LST/`.live`/30-day-volatile cache-skip rules, Web Locks API (browser) + `proper-lockfile` (Node) for `withLock`, `TimePoint`/`KnowledgeView<T>`/`LeakageDetector`+`assertNoLeakage`, `validateRows(rows, schemaId, opts)` using ajv-standalone, fast-check property tests.
 - [ ] **Phase TS-W4: Mode 2 + Transforms + QC Alpha** - `researchBySource` dispatch + `assertSourceIdentity`, transforms (lag/diff/diff2/rolling/calendarFeatures/spread/windChill/heatIndex/clipOutliers) with NWS-reference-table tests, QC alpha rules (≥5: temp/dewpoint/wind/pressure bounds + METAR-corruption) populating `obsQcStatus` bitfield, `crosscheckIemGhcnh` disagreement output.
 - [ ] **Phase TS-W5: Markets (Polymarket Live + Kalshi Wiring)** - Polymarket Gamma API client (rate-limit 0.2s, retries, pagination, dedup), `polymarketDiscover()` + Tier 0/1/2/3 resolver, `polymarketSettle(eventId)` engine using `internationalDailyExtremes()` resolution + half-up whole-degree rounding + `TooEarlyToSettleError`, UUID4/16KB-cap/netloc-allowlist defenses tested.
 - [ ] **Phase TS-W6: Discovery + Snapshot + DataVersion** - `availability(station)` reads from `CacheStore`, `describe(schemaId)`/`featureCatalog()`, `internationalDailyExtremes(rows, {stationTz})` with UTC-wrap tests (RJTT/SAEZ/NZWN DST), `buildSnapshot(...)` + `DataSnapshot` interface + `toDict()`/`toToon()`, `DataVersion` (discovery v2 shape) via Web Crypto SHA-256, reproducibility round-trip property test.
-- [ ] **Phase TS-W7: Docs + npm Publish** - README quickstart (<5min external-timer), typedoc, `docs/chrome-extension-integration.md`, Changesets + npm OIDC trusted publishing (4 pending publishers: 3 scoped + 1 meta), `release-ts.yml` workflow, tag `vts-0.1.0rc1` → npm `--tag next` for soak, then `vts-0.1.0` → npm `latest`, Chrome-extension end-to-end smoke test on `latest`.
+- [ ] **Phase TS-W7: Docs + npm Publish** - README quickstart (<5min external-timer), typedoc, `docs/browser-integration.md`, Changesets + npm OIDC trusted publishing (4 pending publishers: 3 scoped + 1 meta), `release-ts.yml` workflow, tag `vts-0.1.0rc1` → npm `--tag next` for soak, then `vts-0.1.0` → npm `latest`, browser-consumer end-to-end smoke test (in-repo `examples/chrome-extension-mvp/` against `latest`).
 
 ## Phase Details
 
@@ -290,15 +290,15 @@ Mirrors the Python v0.1.0 public surface from the same repo (`packages-ts/`). Sa
   5. CI workflow `test-ts.yml` green: biome check + `tsc --noEmit` + vitest with `@vitest/coverage-v8` + `size-limit` bundle-size gate on all 5 TS packages.
 **Plans**: TBD (run `/gsd-plan-phase ts-w0` to break down — directory: `.planning/phases/ts-w0-foundations-schema-codegen-cors-matrix/`)
 
-### Phase TS-W1: Chrome-extension MVP (AWC + CLI subset of `research()`)
-**Goal**: Smallest useful TS surface to unblock Rob's Chrome extension overlay. Ship station lookup + Kalshi NHIGH/NLOW resolver + AWC live observations + IEM CLI settlement readings + a minimal `research()` (AWC + CLI only, no cache, no GHCNh, no IEM ASOS yet). Bundle size must stay tight so the extension service worker loads fast.
+### Phase TS-W1: Browser MVP slice (AWC + CLI subset of `research()`)
+**Goal**: Smallest useful TS surface that runs in a browser. Ship station lookup + Kalshi NHIGH/NLOW resolver + AWC live observations + IEM CLI settlement readings + a minimal `research()` (AWC + CLI only, no cache, no GHCNh, no IEM ASOS yet). Bundle size must stay tight so an MV3 service worker (or any size-sensitive browser context) loads fast. The in-repo sample at `packages-ts/examples/chrome-extension-mvp/` is a usage example, not a deliverable.
 **Depends on**: Phase TS-W0
 **Requirements**: TS-CORE-01, TS-CORE-02, TS-WEATHER-01, TS-WEATHER-02, TS-MARKETS-01, TS-RESEARCH-01
 **Success Criteria** (what must be TRUE):
   1. `await research('NYC', '2025-01-01', '2025-01-07')` from a Node script returns `ResearchRow[]` with non-null `cliHighF`/`cliLowF` AND non-null `obsHighF`/`obsLowF` (forecast + GHCNh-derived columns may be null in W1).
   2. `resolve('KHIGHNYC', new Date('2025-01-06'))` returns `{settlementSource: 'cli.archive', settlementStation: 'KNYC', cityTicker: 'NYC', contractDate: '2025-01-06'}`; `KNOWN_WRONG_STATIONS` contract test passes (no `KLGA`/`KJFK`/`KORD`/`KIAD`/`KBWI`/`KOAK`/`KHOU`/`KDAL` appears as a Kalshi-station value).
   3. Exception hierarchy (`TradewindsError` + 7 first-class subclasses) ships with `toDict()` matching Python `to_json_safe` shape on `null/NaN/inf/cycle` edge cases.
-  4. Chrome-extension end-to-end smoke test (one-page test extension fetching `research()` from its service worker against AWC + IEM CLI live) passes.
+  4. Browser-consumer end-to-end smoke test: the in-repo `packages-ts/examples/chrome-extension-mvp/` sample (MV3 service worker calling `research()` against AWC + IEM CLI live) loads and returns rows.
   5. `size-limit` reports W1 subset (`@tradewinds/core` + `@tradewinds/weather`'s W1 surface + `@tradewinds/markets`) ≤ 30 KB minified+gzipped.
 **Plans**: TBD (run `/gsd-plan-phase ts-w1` to break down — directory: `.planning/phases/ts-w1-chrome-extension-mvp-awc-cli/`)
 
@@ -367,11 +367,11 @@ Mirrors the Python v0.1.0 public surface from the same repo (`packages-ts/`). Sa
 **Depends on**: Phase TS-W6
 **Requirements**: TS-DOCS-01, TS-DOCS-02, TS-DOCS-03, TS-CI-02, TS-RELEASE-01
 **Success Criteria** (what must be TRUE):
-  1. README quickstart (Node sample + browser sample) timed by an external person at < 5 minutes; typedoc-generated API reference committed under `docs/ts-api/`; `docs/chrome-extension-integration.md` documents Rob's integration path end-to-end.
+  1. README quickstart (Node sample + browser sample) timed by an external person at < 5 minutes; typedoc-generated API reference committed under `docs/ts-api/`; `docs/browser-integration.md` documents the MV3 service-worker / content-script integration pattern end-to-end (Chrome extensions as one worked example among browser consumers).
   2. Changesets configured (`@changesets/cli` + `.changeset/config.json`); `release-ts.yml` workflow fires on `vts-*` tag, builds + tests + publishes the 4 packages to npm via OIDC trusted publishing.
-  3. `vts-0.1.0rc1` tag → npm `--tag next` publish; soak for a week with internal use; then `vts-0.1.0` tag → npm `--tag latest`.
+  3. `vts-0.1.0rc1` tag → npm `--tag next` publish; soak for a week of internal browser-consumer use (`examples/chrome-extension-mvp/` smoke run + any internal pilots — Rob's separate-repo extension is OUT of the gate since we don't own that repo); then `vts-0.1.0` tag → npm `--tag latest`.
   4. `npm install @tradewinds/core @tradewinds/weather @tradewinds/markets` in a clean directory works; `npm install tradewinds` (meta) works.
-  5. Chrome-extension end-to-end smoke test (separate repo or `examples/` subdir) green against `latest` published packages; bundle-size gate green for all 4 packages.
+  5. Browser-consumer end-to-end smoke test from `examples/chrome-extension-mvp/` (the in-repo usage example shipped in TS-W1 — service worker + IIFE bundles) green against `latest` published packages; bundle-size gate green for all 4 packages.
 **Plans**: TBD (run `/gsd-plan-phase ts-w7` to break down — directory: `.planning/phases/ts-w7-docs-npm-publish/`)
 
 ### Phase 5: MCP Data Platform
@@ -399,7 +399,7 @@ Mirrors the Python v0.1.0 public surface from the same repo (`packages-ts/`). Sa
 Phases executed in numeric order: 1 → **1.5** → 2 → **2.1** → 3 → **3.1** → **3.2** → **3.3** → **3.4** → **3.5** → **3.6** → 4 → **(v0.1.0rc1 ready to publish)** → 5 (decimal phases sequence between their surrounding integers per the numbering convention above; Phase 5 is post-v0.1 Python and starts the v0.2+ Python milestone).
 
 **Execution Order (TypeScript v0.1.0 — PLANNING):**
-TS phases execute strictly serial after Python v0.1.0 final: **TS-W0** → **TS-W1** → **TS-W2** (parity gate; HARD) → **TS-W3** → **TS-W4** → **TS-W6** → **TS-W5** → **TS-W7** (v0.1.0 ship). TS-W5 is strictly serial AFTER TS-W6, NOT parallel — `polymarketSettle` (TS-POLY-03) reads `internationalDailyExtremes` (TS-INTL-01 in TS-W6). TS-W1 unblocks Rob's Chrome extension overlay; TS-W2's parity gate is the load-bearing trust gate (without it, the TS port is unverified).
+TS phases execute strictly serial after Python v0.1.0 final: **TS-W0** → **TS-W1** → **TS-W2** (parity gate; HARD) → **TS-W3** → **TS-W4** → **TS-W6** → **TS-W5** → **TS-W7** (v0.1.0 ship). TS-W5 is strictly serial AFTER TS-W6, NOT parallel — `polymarketSettle` (TS-POLY-03) reads `internationalDailyExtremes` (TS-INTL-01 in TS-W6). TS-W1 is the smallest browser-runnable slice of the SDK; TS-W2's parity gate is the load-bearing trust gate (without it, the TS port is unverified).
 
 **Python timeline (historical):** v0.1.0rc1 ready on 2026-05-23 (12/12 phases complete on `main`, 1453 tests passing, operator-gated PyPI trusted publish).
 
@@ -434,7 +434,7 @@ TS phases execute strictly serial after Python v0.1.0 final: **TS-W0** → **TS-
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | TS-W0. Foundations + Schema Codegen + CORS Matrix | 0/TBD | Planning — depends on Python v0.1.0 final | - |
-| TS-W1. Chrome-extension MVP (AWC + CLI subset of `research()`) | 0/TBD | Planning — unblocks Rob's overlay | - |
+| TS-W1. Browser MVP slice (AWC + CLI subset of `research()`) | 0/TBD | Planning — smallest browser-runnable SDK slice | - |
 | TS-W2. Parity Gate | 0/TBD | Planning — HARD GATE against 5 Python parity fixtures | - |
 | TS-W3. Cache + Temporal Primitives + Validator | 0/TBD | Planning | - |
 | TS-W4. Mode 2 + Transforms + QC Alpha | 0/TBD | Planning | - |

@@ -3,7 +3,7 @@
 **Status:** Planning (no implementation yet)
 **Drafted:** 2026-05-23
 **Source of truth:** [`PYTHON-SURFACE-INVENTORY.md`](./PYTHON-SURFACE-INVENTORY.md)
-**Consumer-of-record:** Rob's Chrome extension (Kalshi-page weather overlay) + future web dashboards
+**Target consumers:** browser-based apps (Chrome extensions, web dashboards), Node scripts, Cloudflare Workers, Bun/Deno. The SDK itself is a library — it ships no extensions.
 **Naming:** `tradewinds-ts` is the colloquial name; npm publishes under the scope `@tradewinds/*` (see §2).
 
 ---
@@ -12,7 +12,7 @@
 
 `tradewinds-ts` is a TypeScript port of the `tradewinds` Python SDK. It calls the SAME public APIs (AWC, IEM ASOS, IEM CLI, GHCNh, NOAA BDP, Polymarket Gamma) from the SAME endpoints, mirrors the SAME schemas, and returns the SAME row shapes as the Python SDK — just as plain object arrays instead of pandas DataFrames. No backend, no proxy in the default path.
 
-Primary consumer: a Chrome extension that overlays settlement-station weather on Kalshi market pages. Secondary consumers: standalone web dashboards, Node scripts, Cloudflare Workers, Bun/Deno.
+Target consumers: in-browser apps (Chrome extensions, web dashboards), Node scripts, Cloudflare Workers, Bun/Deno. The SDK ships as a library — extensions and dashboards live in their own repos as downstream consumers.
 
 The Python SDK at v0.1.0 stays canonical. Schemas, station registry, Kalshi settlement map, source priorities, and merge logic are **exported from Python via codegen** and consumed by TS at build time — there is exactly one source of truth.
 
@@ -221,7 +221,7 @@ Generated files live under `src/.../generated/` directories, are committed (so c
 In MV3, fetch from the service worker bypasses CORS if `host_permissions` declares the domain:
 
 ```json
-// In Rob's extension manifest.json
+// Chrome extension consumer's manifest.json
 "host_permissions": [
   "https://aviationweather.gov/*",
   "https://mesonet.agron.iastate.edu/*",
@@ -230,7 +230,7 @@ In MV3, fetch from the service worker bypasses CORS if `host_permissions` declar
 ]
 ```
 
-Recommend Rob imports `@tradewinds/core` in the service worker (where fetch + IndexedDB + Web Locks all work). Content scripts talk to it via `chrome.runtime.sendMessage`. Don't ship the fetchers in content-script bundles — content scripts have CORS, no IndexedDB access pattern, and stricter CSP.
+Recommendation for Chrome extension consumers: import `@tradewinds/core` in the MV3 service worker (where fetch + IndexedDB + Web Locks all work). Content scripts talk to it via `chrome.runtime.sendMessage`. Don't ship the fetchers in content-script bundles — content scripts have CORS, no IndexedDB access pattern, and stricter CSP.
 
 ### 5.3 Non-extension web app
 
@@ -385,13 +385,13 @@ export class PolymarketEventError extends TradewindsError { /* ... */ }
 Detailed below in §11 and as stubs under `.planning/phases/ts-NN-*/`. Quick summary:
 
 - **TS-W0 (Foundations)** — repo scaffold, pnpm workspace, tsup/vitest/biome, Python schema-export script, codegen pipeline, CORS matrix.
-- **TS-W1 (Chrome-extension MVP)** — exceptions, station registry, Kalshi resolvers, AWC + IEM CLI fetchers, minimal `research()` (no GHCNh, no cache, in-memory only). Unblocks Rob's overlay.
+- **TS-W1 (MVP slice)** — exceptions, station registry, Kalshi resolvers, AWC + IEM CLI fetchers, minimal `research()` (no GHCNh, no cache, in-memory only). Smallest browser-runnable slice; sample consumer lives in `packages-ts/examples/chrome-extension-mvp/`.
 - **TS-W2 (Parity gate)** — IEM ASOS fetcher, GHCNh fetcher (with CORS workaround), full parsers + merge_observations + merge_climate ports, parity test against 5 Python fixtures.
 - **TS-W3 (Cache + temporal)** — `CacheStore` interface + IndexedDB/Fs/Memory impls, KnowledgeView/TimePoint/LeakageDetector, Validator with ajv-compiled standalone validators.
 - **TS-W4 (Mode 2 + transforms + QC)** — `researchBySource`, transforms (lag/diff/rolling/calendar/wind_chill/heat_index/spread), QC alpha rules, IEM/GHCNh crosscheck.
 - **TS-W5 (Markets)** — Kalshi NHIGH/NLOW resolvers wired to events; Polymarket discover/settle.
 - **TS-W6 (Discovery + Snapshot + DataVersion)** — availability/describe/feature_catalog, DataSnapshot equivalent, DataVersion token.
-- **TS-W7 (Docs + release)** — README, typedoc, parity write-up, Chrome-extension integration smoke test, npm publish via Changesets + GitHub OIDC.
+- **TS-W7 (Docs + release)** — README, typedoc, parity write-up, browser-integration smoke test against in-repo `examples/chrome-extension-mvp/`, npm publish via Changesets + GitHub OIDC.
 
 Naming: TS-W rather than TS-N to keep them visually distinct from Python phases 1-5.
 
@@ -566,9 +566,9 @@ Generated validators are ajv-standalone (no runtime ajv). Date math uses native 
 4. CORS matrix documents posture + workaround per endpoint.
 5. CI green: codegen drift check + biome + typecheck + vitest pass.
 
-### TS-W1 — Chrome-extension MVP
+### TS-W1 — Browser MVP slice
 
-**Goal:** Unblock Rob's extension. Ship the smallest useful surface — station lookup, Kalshi resolver, AWC live observations, IEM CLI settlement — wired into a minimal `research()` that does what Mode 1 does but only with AWC + CLI (no IEM ASOS, no GHCNh, no cache yet).
+**Goal:** Ship the smallest useful SDK surface that runs in a browser — station lookup, Kalshi resolver, AWC live observations, IEM CLI settlement — wired into a minimal `research()` that does what Mode 1 does but only with AWC + CLI (no IEM ASOS, no GHCNh, no cache yet). In-repo `packages-ts/examples/chrome-extension-mvp/` is the sample consumer; downstream extension/dashboard apps live in their own repos.
 
 **Tasks:**
 - Exception hierarchy (`@tradewinds/core/exceptions`).
@@ -684,7 +684,7 @@ Generated validators are ajv-standalone (no runtime ajv). Date math uses native 
 **Tasks:**
 - README quickstart (`<5min` for fresh installer, timed by external person).
 - Typedoc generation.
-- `docs/chrome-extension-integration.md` — guide for Rob.
+- `docs/browser-integration.md` — guide for browser consumers (Chrome extensions, web dashboards, Cloudflare Workers); references the in-repo `examples/chrome-extension-mvp/` as the worked example.
 - Changesets + npm OIDC trusted publishing setup.
 - `release-ts.yml` workflow.
 - Tag `vts-0.1.0rc1` → publish to npm under `--tag next` for soak.
@@ -693,7 +693,7 @@ Generated validators are ajv-standalone (no runtime ajv). Date math uses native 
 **Success criteria:**
 1. `npm install @tradewinds/core @tradewinds/weather @tradewinds/markets` works in a clean directory.
 2. `npm install tradewinds` (meta) works.
-3. Chrome-extension smoke test runs end-to-end on `latest` package.
+3. Browser-consumer smoke test (in-repo `examples/chrome-extension-mvp/` loaded against the published `latest` package) calls `research()` end-to-end against live AWC + IEM CLI. Out-of-repo downstream extensions (e.g. Rob's) are NOT part of this gate.
 4. Bundle-size gate green.
 5. Documentation passes external-reader timer.
 
@@ -710,7 +710,7 @@ Generated validators are ajv-standalone (no runtime ajv). Date math uses native 
 | Chrome-extension content-script CSP rejects ESM imports | Bundle to IIFE for content-script use case; service-worker bundle stays ESM; ship both via tsup |
 | Bundle size balloons past 60KB gate as features land | `size-limit` enforced in CI; tree-shake-friendly exports; avoid pulling in `papaparse`/`luxon` unless tiny manual parser doesn't suffice |
 | Schema drift between Python and TS goes undetected | `schema-drift.yml` CI workflow + version field check at validator-load time |
-| Rob's extension launches before TS-W1 is ready | Phase TS-W1 success criteria explicitly includes "Chrome-extension smoke test"; coordinate via STATE.md |
+| Downstream extension/dashboard consumers launch before TS-W1 is ready | Phase TS-W1 success criteria explicitly includes a browser-consumer smoke test against the in-repo `examples/chrome-extension-mvp/`; coordinate via STATE.md |
 | Two `DataVersion` shapes confuse consumers | Disambiguate in TS: `LegacyDataVersion` (from `@tradewinds/core/internal/versioning`) vs `DataVersion` (from `@tradewinds/core/discovery`); deprecate the legacy form in v0.2 if not needed |
 | `NotImplementedError`-style stubs for forecast_nwp confuse users who expect feature parity | README clearly states v0.1.0 scope per language; add a "Feature parity matrix" page |
 
