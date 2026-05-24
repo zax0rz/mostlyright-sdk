@@ -720,6 +720,11 @@ def _empty_dataframe(*, model: str, grid_kind: str) -> pd.DataFrame:
     """Return an empty DataFrame whose columns match ``schema.forecast_nwp.v1``."""
     import pandas as pd
 
+    # PANDAS3: explicit [ns, UTC] literal stays the parity-pinned
+    # construction shape on both pandas 2.x and 3.x; lossless promotion
+    # at construction time means callers see the same dtype regardless
+    # of the pandas major version. Use empty_utc_datetime_series helper
+    # if these grow to more sites.
     df = pd.DataFrame(
         {
             "station": pd.Series(dtype="object"),

@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
+from tradewinds._internal._pandas_compat import is_string_like_dtype
 from tradewinds.core.exceptions import (
     SchemaValidationError,
     SourceMismatchError,
@@ -82,7 +83,10 @@ def _lookup_schema(schema_id: str) -> type[Schema]:
 # Dtype dispatch
 # ---------------------------------------------------------------------------
 def _check_string(s: pd.Series) -> bool:
-    return pd.api.types.is_string_dtype(s) or s.dtype == "object"
+    # PANDAS3: under pandas 3.x the default string dtype shifts from
+    # object → PyArrow-backed string; `is_string_like_dtype` accepts
+    # both representations so the check stays consistent across versions.
+    return is_string_like_dtype(s)
 
 
 def _check_float64(s: pd.Series) -> bool:
@@ -96,6 +100,9 @@ def _check_int(s: pd.Series) -> bool:
 def _check_date(s: pd.Series) -> bool:
     # ``date`` columns may be stored as Python ``date`` objects (object dtype)
     # or as a naive datetime64; either is acceptable at this layer.
+    # PANDAS3: object-storage is still the canonical Python `date` carrier in
+    # both 2.x and 3.x — the string-default-dtype shift does NOT apply to
+    # `datetime.date` instances (they remain object-typed).
     if pd.api.types.is_datetime64_any_dtype(s):
         return True
     if s.dtype == "object":
@@ -116,11 +123,10 @@ def _check_timestamp_utc(s: pd.Series) -> bool:
 def _check_enum(s: pd.Series) -> bool:
     # Enum dtype is exercised by _check_enum_values; here we accept string
     # / object / categorical as the storage layer.
-    return (
-        pd.api.types.is_string_dtype(s)
-        or s.dtype == "object"
-        or isinstance(s.dtype, pd.CategoricalDtype)
-    )
+    # PANDAS3: same string-default-dtype concern as _check_string; route
+    # through is_string_like_dtype so PyArrow-backed strings (3.x default)
+    # are accepted alongside object and the legacy string extension dtype.
+    return is_string_like_dtype(s) or isinstance(s.dtype, pd.CategoricalDtype)
 
 
 _DTYPE_CHECKERS: dict[str, Any] = {

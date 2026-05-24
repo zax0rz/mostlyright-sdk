@@ -169,6 +169,10 @@ def add_overlay_columns(
             f"got naive {retrieved_at!r}. Attach a tzinfo before calling "
             "the catalog adapter."
         )
+    # PANDAS3: utc=True locks the conversion to tz-aware datetime64 on
+    # both pandas 2.x and 3.x; resolution may shift ns → us on 3.x but
+    # the timezone-aware shape stays Validator-compatible and the
+    # coerce_pd3 bridge documents the accepted shift.
     df["event_time"] = pd.to_datetime(df["event_time"], utc=True, errors="coerce")
     df = coerce_canonical_dtypes(df)
     df["source"] = source

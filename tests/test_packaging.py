@@ -1,18 +1,22 @@
 """PKG-02/03/05/06: pyproject.toml pin-bound + version assertions.
 
 These tests are the gate that prevents a future contributor from quietly
-floating ``pandas`` past 3.0 or ``pyarrow`` past 24.0 in any one of the
+floating ``pandas`` past 4.0 or ``pyarrow`` past 24.0 in any one of the
 three packages' runtime deps OR any one of their optional extras.
-The parity fixtures in ``tests/fixtures/parity/`` were captured against
-pandas 2.x; lifting the cap anywhere silently invalidates every historical
-Kalshi NHIGH/NLOW settlement.
+
+Phase 6 (PANDAS3-02): the cap was lifted from ``<3.0`` to ``<4.0``. Byte
+equivalence against pandas 3.x is enforced by the dual-pandas CI matrix
++ ``tests/fixtures/parity/coerce_pd3.py`` invertible bridge +
+``ulp_drift_pd3.json`` measurement artifact (PLAN.md W1-T4..W1-T5).
+The new upper bound still keeps a future pandas 4.x ABI break from
+silently invalidating the parity-pinned cache.
 
 Each location (runtime + each ``[project.optional-dependencies]`` extra) is
 asserted SEPARATELY. Collapsing them all into one list would let a cap
 loss in ``[research]`` slip through as long as ``[parquet]`` still has it.
 
 Sources of truth: CLAUDE.md "Data + parity rules" + PLAN.md Wave 4
-behavior contract + codex iter-1 REVISE on Wave 4.
+behavior contract (Phase 1 v0.1.0) + Phase 6 PLAN.md W1-T3 cap-lift.
 """
 
 from __future__ import annotations
@@ -23,7 +27,7 @@ from pathlib import Path
 ROOT = Path(__file__).parents[1]
 
 EXPECTED_BOUNDS = {
-    "pandas": "pandas>=2.2,<3.0",
+    "pandas": "pandas>=2.2,<4.0",
     "pyarrow": "pyarrow>=17.0,<24.0",
 }
 

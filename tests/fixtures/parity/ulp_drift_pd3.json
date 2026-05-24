@@ -1,0 +1,11 @@
+{
+  "_provenance": "Seeded with the empirically-measured pandas 2.x drift (see tests/test_parity.py:27-30 docstring). Re-measure with `uv run python tests/fixtures/parity/measure_ulp_drift.py` on a pandas-3.x venv before promoting Phase 6 to GA. The dual-pandas CI matrix (PLAN.md W1-T4) re-runs the measurement on every commit.",
+  "measured_at": "2026-05-24T00:00:00+00:00",
+  "pandas_version": "2.3.x-seeded",
+  "per_column_max_abs_drift": {
+    "obs_mean_dewpoint_f": 1.42e-14,
+    "obs_mean_f": 2.84e-14,
+    "obs_total_precip_in": 1e-15
+  },
+  "tolerance_used": 1e-12
+}

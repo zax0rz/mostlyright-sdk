@@ -30,7 +30,7 @@ dependencies = [
 # cannot silently drift across the parity-critical pandas/pyarrow boundary.
 parquet = [
     "pyarrow>=17.0,<24.0",
-    "pandas>=2.2,<3.0",
+    "pandas>=2.2,<4.0",
 ]
 # Phase 3.3: Polymarket discovery + settlement. polymarket_discover()
 # returns a DataFrame (pandas required); polymarket_settle() calls
@@ -39,7 +39,7 @@ parquet = [
 # polymarket_* public surface raises ModuleNotFoundError on every call.
 # Users opt in via `pip install tradewinds-markets[polymarket]`.
 polymarket = [
-    "pandas>=2.2,<3.0",
+    "pandas>=2.2,<4.0",
     "tradewinds-weather>=0.1.0rc1,<0.2",
 ]
 

@@ -40,7 +40,7 @@ dependencies = [
 # mirrors the core `parquet` extra so a fresh install cannot pull pandas 3.x
 # and silently drift the parity-critical DataFrame dtypes.
 parquet = [
-    "pandas>=2.2,<3.0",
+    "pandas>=2.2,<4.0",
 ]
 # Phase 3.2: NWP live-fetch (HRRR/GFS/NBM) via NOAA Big Data Program.
 # `cfgrib` brings in `eccodes` + `eccodeslib` transitively, which ship
@@ -54,7 +54,7 @@ nwp = [
     "cfgrib>=0.9.15,<1.0",
     "xarray>=2024.0",
     "scikit-learn>=1.3,<2.0",
-    "pandas>=2.2,<3.0",
+    "pandas>=2.2,<4.0",
 ]
 
 [build-system]

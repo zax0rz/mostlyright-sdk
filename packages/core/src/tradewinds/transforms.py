@@ -86,7 +86,15 @@ def calendar_features(df: pd.DataFrame, date_column: str) -> pd.DataFrame:
     import pandas as pd
 
     out = df.copy()
-    ts = pd.to_datetime(df[date_column])
+    # PANDAS3: caller-supplied column. Use format='ISO8601' so naive
+    # string parsing is locked to ISO semantics on both pandas 2.x and
+    # 3.x; without an explicit format, pandas 3.x default-resolution
+    # inference can shift ns → us at this boundary. Already-typed
+    # datetime columns pass through unchanged.
+    if pd.api.types.is_datetime64_any_dtype(df[date_column]):
+        ts = df[date_column]
+    else:
+        ts = pd.to_datetime(df[date_column], format="ISO8601")
     out["month_sin"] = np.sin(2 * np.pi * ts.dt.month / 12)
     out["month_cos"] = np.cos(2 * np.pi * ts.dt.month / 12)
     out["dow_sin"] = np.sin(2 * np.pi * ts.dt.dayofweek / 7)

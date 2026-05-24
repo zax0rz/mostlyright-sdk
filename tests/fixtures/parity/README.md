@@ -3,10 +3,34 @@
 **Captured from:** `mostlyright==0.14.1` on PyPI (via `api.mostlyright.md` hosted backend)
 **Capture date:** 2026-05-21
 **Capture script:** `capture_fixtures.py` (in this directory)
-**Pinned dep set:** `pandas>=2.2,<3.0`, `pyarrow>=18,<25`, Python 3.11+
+**Pinned dep set:** `pandas>=2.2,<4.0`, `pyarrow>=18,<25`, Python 3.11+
 
 > Do **NOT** regenerate these files in CI. They are settlement-grade
 > reference data; the bytes ARE the Day 3 hard-gate ground truth.
+
+## Phase 6 — pandas 3 compatibility
+
+The canonical parquet bytes stay 2.x-derived (immutable; the v0.1.0
+contract). The dual-pandas CI matrix accepts pandas 3.x output via:
+
+- **`coerce_pd3.py`** — an invertible bridge that documents the two
+  accepted shifts under pandas 3.x:
+  1. Datetime resolution `ns → us` (lossless at second resolution).
+  2. String dtype `object → string` (PyArrow-backed; metadata only).
+- **`ulp_drift_pd3.json`** — committed measurement artifact carrying the
+  empirically-measured per-column max-abs drift on float aggregates
+  (`obs_mean_f`, `obs_mean_dewpoint_f`, `obs_total_precip_in`). The
+  parity test reads `tolerance_used` from this file; CI's
+  `pandas-resolution: highest` job re-runs `measure_ulp_drift.py` to
+  refresh the artifact on every pandas-3 commit.
+- **`measure_ulp_drift.py`** — measurement script. Promotes
+  `tolerance_used: 1e-12 → 1e-10` if any measured drift exceeds the
+  default tolerance; the promotion is captured in this README on the
+  next regen.
+
+The current artifact carries the v0.1.0 measured pandas-2.x drift
+(worst case ~2.84e-14, well under 1e-12). The first pandas-3 CI run on
+this branch will overwrite with empirical 3.x numbers.
 
 ## STATUS: CAPTURED — 5/5 fixtures present
 
