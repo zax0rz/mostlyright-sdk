@@ -25,6 +25,11 @@ export * from "./temporal/index.js";
 // `@tradewinds/core/formats`. Parquet + DataFrame omitted (see plan 07).
 export * from "./formats/index.js";
 
+// TS-W3 Plan 05: validateRows — schema validation with Python-vocabulary
+// violations + source-identity invariant.
+export { validateRows } from "./validator.js";
+export type { ValidateOptions, ValidateResult } from "./validator.js";
+
 // Internal modules — re-export selected helpers only. `internal/convert` and
 // `internal/bounds` stay deep imports for fetchers + parsers in later waves.
 export { fetchWithRetry } from "./internal/http.js";
