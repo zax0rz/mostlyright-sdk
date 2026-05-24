@@ -43,7 +43,14 @@ def dumps(df: pd.DataFrame) -> str:
     Empty frames are encoded as a ``{"columns": [...], "data": []}``
     envelope so column names roundtrip — ``orient='records'`` on a
     zero-row frame would otherwise collapse to ``"[]"``.
+
+    Phase 6 W2-T6: accepts pandas OR polars input; polars frames are
+    converted to pandas before serialization (output bytes are identical
+    for the same row content).
     """
+    from tradewinds.core._narwhals_compat import to_pandas_if_polars
+
+    df, _ = to_pandas_if_polars(df)
     if len(df) == 0:
         # Envelope form: columns survive the roundtrip even with zero rows.
         return _json.dumps({"columns": list(map(str, df.columns)), "data": []})

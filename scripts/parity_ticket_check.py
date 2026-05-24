@@ -70,6 +70,7 @@ def _strip_inert_regions(body: str) -> str:
     body = _FENCED_CODE_BLOCK_RE.sub("", body)
     return body
 
+
 # Labels that satisfy the gate.
 _LABEL_PYTHON_ONLY: Final[str] = "python_only"
 _LABEL_TYPESCRIPT_ONLY: Final[str] = "typescript_only"
@@ -227,9 +228,7 @@ def _render_failure_comment(py_hits: list[str], ts_hits: list[str], direction: s
         canonical_label = "`python_only: true`"
         paired_label = "TypeScript"
         sample = (
-            "Parity-Ticket: #123\n"
-            "or\n"
-            "python_only: true — interim shim for mostly-light migration"
+            "Parity-Ticket: #123\nor\npython_only: true — interim shim for mostly-light migration"
         )
         hits = py_hits
     else:
@@ -293,7 +292,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # No trigger-surface touched → gate does not apply.
     if not py_hits and not ts_hits:
-        print("parity-ticket-check: PR does not touch parity-trigger surface; " "gate skipped.")
+        print("parity-ticket-check: PR does not touch parity-trigger surface; gate skipped.")
         return 0
 
     # Paired-language diff present → gate satisfied irrespective of body.

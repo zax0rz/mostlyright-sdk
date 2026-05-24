@@ -30,7 +30,7 @@ dependencies = [
 # cannot silently drift across the parity-critical pandas/pyarrow boundary.
 parquet = [
     "pyarrow>=17.0,<24.0",
-    "pandas>=2.2,<3.0",
+    "pandas>=2.2,<4.0",
 ]
 # Phase 3.3: Polymarket discovery + settlement. polymarket_discover()
 # returns a DataFrame (pandas required); polymarket_settle() calls
@@ -39,7 +39,7 @@ parquet = [
 # polymarket_* public surface raises ModuleNotFoundError on every call.
 # Users opt in via `pip install tradewinds-markets[polymarket]`.
 polymarket = [
-    "pandas>=2.2,<3.0",
+    "pandas>=2.2,<4.0",
     "tradewinds-weather>=0.1.0rc1,<0.2",
 ]
 # Phase 9: trade-history surface. kalshi_trades + polymarket_trades return
@@ -53,10 +53,22 @@ polymarket = [
 # and a clean install would still raise `ModuleNotFoundError: filelock`
 # the first time the cache is hit. Pinned to the same parity-critical
 # pandas/pyarrow boundaries as `[parquet]`/`[polymarket]` (PKG-05/06).
+# NB: pandas pinned to <4.0 to match Phase 6's pandas-3 broadening.
 trades = [
-    "pandas>=2.2,<3.0",
+    "pandas>=2.2,<4.0",
     "pyarrow>=17.0,<24.0",
     "filelock>=3.20,<4",
+]
+# Phase 6 (POLARS-05): mirror tradewinds[polars] so polymarket_discover
+# can return polars frames via the `backend="polars"` kwarg.
+# pandas required for the boundary shim's polars↔pandas conversion
+# (codex iter-3 P2 fix). pyarrow required by pl.from_pandas/to_pandas
+# for non-trivial dtypes (codex iter-5 P1 fix).
+polars = [
+    "polars>=1.0,<2.0",
+    "narwhals>=1.20,<2.0",
+    "pandas>=2.2,<4.0",
+    "pyarrow>=17.0,<24.0",
 ]
 
 [build-system]

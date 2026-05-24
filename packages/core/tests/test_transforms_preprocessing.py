@@ -287,5 +287,5 @@ class TestCalendarFeaturesProperty:
             s = float(out[f"{prefix}_sin"].iloc[0])
             c = float(out[f"{prefix}_cos"].iloc[0])
             assert abs(s * s + c * c - 1.0) < 1e-9, (
-                f"{prefix} pair fails sin²+cos²=1 for {ts}: " f"s={s}, c={c}, sum={s * s + c * c}"
+                f"{prefix} pair fails sin²+cos²=1 for {ts}: s={s}, c={c}, sum={s * s + c * c}"
             )

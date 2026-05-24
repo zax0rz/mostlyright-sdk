@@ -34,60 +34,46 @@ POLYMARKET_CITY_CITATIONS: Final[dict[str, str]] = {
         "(resolves via wunderground.com/.../KLAX)"
     ),
     "miami": (
-        "https://polymarket.com/event/highest-temperature-in-miami "
-        "(wunderground.com/.../KMIA)"
+        "https://polymarket.com/event/highest-temperature-in-miami (wunderground.com/.../KMIA)"
     ),
     "denver": (
-        "https://polymarket.com/event/highest-temperature-in-denver "
-        "(wunderground.com/.../KDEN)"
+        "https://polymarket.com/event/highest-temperature-in-denver (wunderground.com/.../KDEN)"
     ),
     "boston": (
-        "https://polymarket.com/event/highest-temperature-in-boston "
-        "(wunderground.com/.../KBOS)"
+        "https://polymarket.com/event/highest-temperature-in-boston (wunderground.com/.../KBOS)"
     ),
     "austin": (
-        "https://polymarket.com/event/highest-temperature-in-austin "
-        "(wunderground.com/.../KAUS)"
+        "https://polymarket.com/event/highest-temperature-in-austin (wunderground.com/.../KAUS)"
     ),
     "washington_dc": (
-        "https://polymarket.com/event/highest-temperature-in-dc "
-        "(wunderground.com/.../KDCA)"
+        "https://polymarket.com/event/highest-temperature-in-dc (wunderground.com/.../KDCA)"
     ),
     "philadelphia": (
-        "https://polymarket.com/event/highest-temperature-in-philly "
-        "(wunderground.com/.../KPHL)"
+        "https://polymarket.com/event/highest-temperature-in-philly (wunderground.com/.../KPHL)"
     ),
     "san_francisco": (
-        "https://polymarket.com/event/highest-temperature-in-sf "
-        "(wunderground.com/.../KSFO)"
+        "https://polymarket.com/event/highest-temperature-in-sf (wunderground.com/.../KSFO)"
     ),
     "seattle": (
-        "https://polymarket.com/event/highest-temperature-in-seattle "
-        "(wunderground.com/.../KSEA)"
+        "https://polymarket.com/event/highest-temperature-in-seattle (wunderground.com/.../KSEA)"
     ),
     "atlanta": (
-        "https://polymarket.com/event/highest-temperature-in-atlanta "
-        "(wunderground.com/.../KATL)"
+        "https://polymarket.com/event/highest-temperature-in-atlanta (wunderground.com/.../KATL)"
     ),
     "houston": (
-        "https://polymarket.com/event/highest-temperature-in-houston "
-        "(wunderground.com/.../KIAH)"
+        "https://polymarket.com/event/highest-temperature-in-houston (wunderground.com/.../KIAH)"
     ),
     "dallas": (
-        "https://polymarket.com/event/highest-temperature-in-dallas "
-        "(wunderground.com/.../KDFW)"
+        "https://polymarket.com/event/highest-temperature-in-dallas (wunderground.com/.../KDFW)"
     ),
     "phoenix": (
-        "https://polymarket.com/event/highest-temperature-in-phoenix "
-        "(wunderground.com/.../KPHX)"
+        "https://polymarket.com/event/highest-temperature-in-phoenix (wunderground.com/.../KPHX)"
     ),
     "minneapolis": (
-        "https://polymarket.com/event/highest-temperature-in-msp "
-        "(wunderground.com/.../KMSP)"
+        "https://polymarket.com/event/highest-temperature-in-msp (wunderground.com/.../KMSP)"
     ),
     "detroit": (
-        "https://polymarket.com/event/highest-temperature-in-detroit "
-        "(wunderground.com/.../KDTW)"
+        "https://polymarket.com/event/highest-temperature-in-detroit (wunderground.com/.../KDTW)"
     ),
 }
 

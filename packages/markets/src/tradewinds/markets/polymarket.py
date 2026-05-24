@@ -437,6 +437,8 @@ def polymarket_discover(
     *,
     client: httpx.Client | None = None,
     sleep_between: float | None = None,
+    backend: str = "pandas",
+    return_type: str = "dataframe",
 ) -> pd.DataFrame:
     """Discover active Polymarket weather markets via the Gamma API.
 
@@ -469,6 +471,13 @@ def polymarket_discover(
         httpx.HTTPStatusError: Gamma API returned non-2xx.
         SourceUnavailableError: ``[polymarket]`` extra not installed.
     """
+    # Codex iter-4 P2 fix: validate backend/return_type BEFORE the Gamma
+    # API pagination + sleep cycles so a typo doesn't trigger any HTTP
+    # work before raising ValueError.
+    from tradewinds.core._backend_dispatch import validate_backend_kwargs
+
+    validate_backend_kwargs(backend, return_type)  # type: ignore[arg-type]
+
     pd = _require_pandas()
 
     sleep_arg = sleep_between if sleep_between is not None else 0.2
@@ -554,9 +563,26 @@ def polymarket_discover(
             "source",
         ],
     )
+    retrieved_at = datetime.now(UTC)
     df.attrs["source"] = "polymarket_gamma"
-    df.attrs["retrieved_at"] = datetime.now(UTC)
-    return df
+    df.attrs["retrieved_at"] = retrieved_at
+
+    # Phase 6 W3-T2: backend / return_type dispatch.
+    from tradewinds.core._backend_dispatch import (
+        validate_backend_kwargs,
+        wrap_result,
+    )
+
+    validate_backend_kwargs(backend, return_type)  # type: ignore[arg-type]
+    if backend == "pandas" and return_type == "dataframe":
+        return df
+    return wrap_result(
+        df,
+        backend=backend,  # type: ignore[arg-type]
+        return_type=return_type,  # type: ignore[arg-type]
+        source="polymarket_gamma",
+        retrieved_at=retrieved_at,
+    )
 
 
 def polymarket_settle(

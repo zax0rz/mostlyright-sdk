@@ -427,9 +427,31 @@ def invalidate_climate(station: str, year: int) -> bool:
         return False
 
 
+def _has_cached_year(
+    station: str,
+    year: int,
+    cache_root: Path | None = None,
+) -> bool:
+    """True iff any monthly observation parquet exists for ``(station, year)``.
+
+    Looks under ``$TRADEWINDS_CACHE_DIR/v1/observations/{STATION}/{year}/*.parquet``.
+    Used by the Phase 7 ``obs(strategy="auto")`` resolver in
+    ``tradewinds.weather.obs`` to decide whether to dispatch to ``warm_cache``
+    or ``exact_window``. Placed here (not in obs.py) so the parquet-layout
+    contract has a single source of truth (I-4).
+    """
+    if cache_root is None:
+        cache_root = _cache_root()
+    year_dir = cache_root / CACHE_VERSION / "observations" / station.upper() / str(year)
+    if not year_dir.is_dir():
+        return False
+    return any(year_dir.glob("*.parquet"))
+
+
 __all__ = [
     "CACHE_VERSION",
     "DEFAULT_ROOT",
+    "_has_cached_year",
     "cache_path",
     "climate_cache_path",
     "invalidate",

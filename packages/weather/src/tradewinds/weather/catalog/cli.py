@@ -19,6 +19,7 @@ from typing import ClassVar
 from zoneinfo import ZoneInfo
 
 import pandas as pd
+from tradewinds._internal._pandas_compat import empty_utc_datetime_series
 from tradewinds.weather._climate import (
     REPORT_TYPE_PRIORITY,
     parse_cli_record,
@@ -155,7 +156,10 @@ class CLIAdapter:
             # product_release_time is tz-aware datetime64 so Validator's date /
             # timestamp_utc checks succeed.
             df["observation_date"] = pd.Series([], dtype="object")
-            df["product_release_time"] = pd.Series([], dtype="datetime64[ns, UTC]")
+            # PANDAS3: route through _pandas_compat so the explicit
+            # [ns, UTC] literal stays the parity-pinned construction shape
+            # on both pandas 2.x and 3.x.
+            df["product_release_time"] = empty_utc_datetime_series()
 
         # codex iter-5 HIGH fix: parse_cli_record emits int temps; the
         # canonical settlement schema declares float64. Coerce here so
@@ -213,7 +217,8 @@ def _empty_settlement_df() -> pd.DataFrame:
 def _event_time_from_date(date_series: pd.Series, tz: str) -> pd.Series:
     """Convert observation_date (local date) to UTC midnight timestamp."""
     if date_series.empty:
-        return pd.Series([], dtype="datetime64[ns, UTC]")
+        # PANDAS3: parity-pinned [ns, UTC] resolution via helper.
+        return empty_utc_datetime_series()
     zone = ZoneInfo(tz)
     out = []
     for d in date_series:

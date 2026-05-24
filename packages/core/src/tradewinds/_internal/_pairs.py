@@ -394,7 +394,14 @@ def pairs_to_dataframe(rows: list[dict[str, Any]]) -> Any:
 
     df = pd.DataFrame(rows)
     if "date" in df.columns:
-        df["date"] = pd.to_datetime(df["date"])
+        # PANDAS3: input is always ISO YYYY-MM-DD strings produced by
+        # date_range. Explicit format= locks parsing semantics across
+        # pandas 2.x/3.x and avoids the inference-shift risk documented
+        # in the pandas 3.0 whatsnew §"Datetime resolution inference".
+        # Parity impact: zero — the 5 v0.1.0 fixtures use the same
+        # YYYY-MM-DD shape, so format='%Y-%m-%d' is a precision tightening,
+        # not a behaviour change.
+        df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
         df = df.set_index("date").sort_index()
     return df
 

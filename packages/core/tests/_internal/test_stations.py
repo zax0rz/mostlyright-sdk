@@ -143,9 +143,9 @@ def test_stations_us_ghcnh_ids_start_with_usw() -> None:
     for code, s in STATIONS.items():
         if s.country != "US":
             continue
-        assert s.ghcnh_id.startswith(
-            "USW"
-        ), f"{code} ghcnh_id={s.ghcnh_id!r} should start with 'USW'"
+        assert s.ghcnh_id.startswith("USW"), (
+            f"{code} ghcnh_id={s.ghcnh_id!r} should start with 'USW'"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -168,9 +168,9 @@ def test_international_stations_have_empty_ghcnh_id() -> None:
     for s in STATIONS.values():
         if s.country == "US":
             continue
-        assert (
-            s.ghcnh_id == ""
-        ), f"{s.icao}: intl station must have empty ghcnh_id, got {s.ghcnh_id!r}"
+        assert s.ghcnh_id == "", (
+            f"{s.icao}: intl station must have empty ghcnh_id, got {s.ghcnh_id!r}"
+        )
 
 
 def test_paris_has_lfpg_and_lfpb() -> None:

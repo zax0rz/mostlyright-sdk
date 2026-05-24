@@ -25,10 +25,12 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
+from tradewinds._internal._pandas_compat import is_string_like_dtype
 from tradewinds.core.exceptions import (
     SchemaValidationError,
     SourceMismatchError,
 )
+from tradewinds.core.result import TradewindsResult
 from tradewinds.core.schema import Schema, SchemaRegistration
 
 if TYPE_CHECKING:
@@ -81,7 +83,10 @@ def _lookup_schema(schema_id: str) -> type[Schema]:
 # Dtype dispatch
 # ---------------------------------------------------------------------------
 def _check_string(s: pd.Series) -> bool:
-    return pd.api.types.is_string_dtype(s) or s.dtype == "object"
+    # PANDAS3: under pandas 3.x the default string dtype shifts from
+    # object → PyArrow-backed string; `is_string_like_dtype` accepts
+    # both representations so the check stays consistent across versions.
+    return is_string_like_dtype(s)
 
 
 def _check_float64(s: pd.Series) -> bool:
@@ -95,6 +100,9 @@ def _check_int(s: pd.Series) -> bool:
 def _check_date(s: pd.Series) -> bool:
     # ``date`` columns may be stored as Python ``date`` objects (object dtype)
     # or as a naive datetime64; either is acceptable at this layer.
+    # PANDAS3: object-storage is still the canonical Python `date` carrier in
+    # both 2.x and 3.x — the string-default-dtype shift does NOT apply to
+    # `datetime.date` instances (they remain object-typed).
     if pd.api.types.is_datetime64_any_dtype(s):
         return True
     if s.dtype == "object":
@@ -115,11 +123,10 @@ def _check_timestamp_utc(s: pd.Series) -> bool:
 def _check_enum(s: pd.Series) -> bool:
     # Enum dtype is exercised by _check_enum_values; here we accept string
     # / object / categorical as the storage layer.
-    return (
-        pd.api.types.is_string_dtype(s)
-        or s.dtype == "object"
-        or isinstance(s.dtype, pd.CategoricalDtype)
-    )
+    # PANDAS3: same string-default-dtype concern as _check_string; route
+    # through is_string_like_dtype so PyArrow-backed strings (3.x default)
+    # are accepted alongside object and the legacy string extension dtype.
+    return is_string_like_dtype(s) or isinstance(s.dtype, pd.CategoricalDtype)
 
 
 _DTYPE_CHECKERS: dict[str, Any] = {
@@ -165,12 +172,20 @@ def _has_mixed_null_sentinels(s: pd.Series) -> bool:
 # Public API
 # ---------------------------------------------------------------------------
 def validate_dataframe(
-    df: pd.DataFrame,
+    df: pd.DataFrame | TradewindsResult,
     schema_id: str,
     *,
     allow_source_drift: str | None = None,
 ) -> SchemaRegistration:
     """Validate a DataFrame against the named canonical schema.
+
+    Phase 6 W0-T4: accepts either a raw ``pd.DataFrame`` (legacy v0.1.0
+    contract — must carry ``df.attrs["source"]`` / ``df.attrs["retrieved_at"]``)
+    or a :class:`TradewindsResult` wrapper (v0.2+ contract — provenance
+    travels on the wrapper). When passed a wrapper, the validator
+    unwraps to pandas via :meth:`TradewindsResult.legacy_df_with_attrs`
+    and proceeds with the same logic so the four checks below run
+    byte-identically for both shapes.
 
     The Validator runs four checks, in order:
 
@@ -186,7 +201,9 @@ def validate_dataframe(
        in ``ColumnSpec.enum_values``. Sample of violating values capped at 10.
 
     Args:
-        df: The DataFrame to validate. Must carry ``df.attrs["source"]``.
+        df: The DataFrame to validate. Must carry ``df.attrs["source"]``,
+            OR a :class:`TradewindsResult` wrapper whose ``source`` /
+            ``retrieved_at`` populate the equivalent attrs on unwrap.
         schema_id: Canonical schema ID (e.g. ``"schema.observation.v1"``).
         allow_source_drift: Reason string. If supplied, source mismatch is
             allowed; audit log records the reason.
@@ -219,6 +236,31 @@ def validate_dataframe(
     A full passing example requires the canonical column set; see
     ``packages/core/tests/core/test_validator.py`` for end-to-end fixtures.
     """
+    # Phase 6 W0-T4 + codex iter-1 P2 fix: unwrap TradewindsResult →
+    # pandas DataFrame with legacy attrs populated. For pandas-backed
+    # frames the cheap legacy_df_with_attrs() path applies; for
+    # polars-backed frames it would raise TypeError (the legacy shape
+    # is pandas-only), so route them through frame_as_pandas() first
+    # and re-stamp attrs from the wrapper's provenance fields. Either
+    # way, the downstream checks see the v0.1.0 attrs-stamped shape.
+    if isinstance(df, TradewindsResult):
+        import pandas as _pd
+
+        if isinstance(df.frame, _pd.DataFrame):
+            df = df.legacy_df_with_attrs()
+        else:
+            wrapper = df
+            pdf = wrapper.frame_as_pandas().copy()
+            pdf.attrs["source"] = wrapper.source
+            pdf.attrs["retrieved_at"] = wrapper.retrieved_at
+            if wrapper.qc is not None:
+                pdf.attrs["qc"] = wrapper.qc
+            if wrapper.data_version is not None:
+                pdf.attrs["data_version"] = wrapper.data_version.token
+            if wrapper.schema_id is not None:
+                pdf.attrs["schema_id"] = wrapper.schema_id
+            df = pdf
+
     schema_cls = _lookup_schema(schema_id)
 
     # codex iter-7 HIGH fix: validate allow_source_drift type explicitly.

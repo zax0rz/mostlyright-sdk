@@ -40,7 +40,7 @@ dependencies = [
 # mirrors the core `parquet` extra so a fresh install cannot pull pandas 3.x
 # and silently drift the parity-critical DataFrame dtypes.
 parquet = [
-    "pandas>=2.2,<3.0",
+    "pandas>=2.2,<4.0",
 ]
 # Phase 3.2: NWP live-fetch (HRRR/GFS/NBM) via NOAA Big Data Program.
 # `cfgrib` brings in `eccodes` + `eccodeslib` transitively, which ship
@@ -54,7 +54,20 @@ nwp = [
     "cfgrib>=0.9.15,<1.0",
     "xarray>=2024.0",
     "scikit-learn>=1.3,<2.0",
-    "pandas>=2.2,<3.0",
+    "pandas>=2.2,<4.0",
+]
+# Phase 6 (POLARS-05): mirror tradewinds[polars] so weather adapters
+# can return polars frames via the `backend="polars"` kwarg.
+# pandas required for the boundary shim's polars↔pandas conversion
+# (codex iter-3 P2 fix). pyarrow required by pl.from_pandas/to_pandas
+# for non-trivial dtypes (codex iter-5 P1 fix). pyarrow is already in
+# tradewinds-weather runtime deps so this is a no-op for the install
+# resolver but keeps the extra's contract explicit.
+polars = [
+    "polars>=1.0,<2.0",
+    "narwhals>=1.20,<2.0",
+    "pandas>=2.2,<4.0",
+    "pyarrow>=17.0,<24.0",
 ]
 
 [build-system]

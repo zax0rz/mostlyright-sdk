@@ -22,6 +22,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from tradewinds.core.exceptions import SchemaValidationError
+from tradewinds.core.result import TradewindsResult
 from tradewinds.core.temporal.timepoint import TimePoint
 
 if TYPE_CHECKING:
@@ -60,8 +61,14 @@ class KnowledgeView:
 
     __slots__ = ("_as_of", "_df")
 
-    def __init__(self, df: pd.DataFrame, as_of: TimePoint) -> None:
+    def __init__(self, df: pd.DataFrame | TradewindsResult, as_of: TimePoint) -> None:
         import pandas as pd
+
+        # Phase 6 W0-T5: accept TradewindsResult; unwrap to pandas.
+        # Polars-mode callers flow through frame_as_pandas() because the
+        # KnowledgeView body uses pd.api.types and df.loc[mask].copy().
+        if isinstance(df, TradewindsResult):
+            df = df.frame_as_pandas()
 
         if "knowledge_time" not in df.columns:
             raise SchemaValidationError(

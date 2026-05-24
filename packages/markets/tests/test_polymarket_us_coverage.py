@@ -94,9 +94,9 @@ class TestCitations:
 
     def test_each_citation_references_wunderground(self):
         for city, citation in POLYMARKET_CITY_CITATIONS.items():
-            assert (
-                "wunderground.com" in citation
-            ), f"{city!r}: weak citation — must reference wunderground.com"
+            assert "wunderground.com" in citation, (
+                f"{city!r}: weak citation — must reference wunderground.com"
+            )
 
     def test_citation_count_matches_us_cities(self):
         assert len(POLYMARKET_CITY_CITATIONS) == len(US_CITIES_PHASE_8)

@@ -117,9 +117,9 @@ def test_only_core_ships_namespace_root(built_wheels: dict[str, Path]) -> None:
     weather_names = _names(built_wheels["weather"])
     markets_names = _names(built_wheels["markets"])
 
-    assert (
-        "tradewinds/__init__.py" in core_names
-    ), "core wheel MUST ship tradewinds/__init__.py (it owns the namespace root)"
+    assert "tradewinds/__init__.py" in core_names, (
+        "core wheel MUST ship tradewinds/__init__.py (it owns the namespace root)"
+    )
     assert "tradewinds/__init__.py" not in weather_names, (
         "weather wheel must NOT ship tradewinds/__init__.py — install-order "
         "shadowing would break `import tradewinds.weather` (PEP 420; PKG-02)"
@@ -133,9 +133,9 @@ def test_only_core_ships_namespace_root(built_wheels: dict[str, Path]) -> None:
 def test_sibling_subpackages_present(built_wheels: dict[str, Path]) -> None:
     weather_names = _names(built_wheels["weather"])
     markets_names = _names(built_wheels["markets"])
-    assert (
-        "tradewinds/weather/__init__.py" in weather_names
-    ), "weather wheel must ship tradewinds/weather/__init__.py (the subpackage marker)"
-    assert (
-        "tradewinds/markets/__init__.py" in markets_names
-    ), "markets wheel must ship tradewinds/markets/__init__.py"
+    assert "tradewinds/weather/__init__.py" in weather_names, (
+        "weather wheel must ship tradewinds/weather/__init__.py (the subpackage marker)"
+    )
+    assert "tradewinds/markets/__init__.py" in markets_names, (
+        "markets wheel must ship tradewinds/markets/__init__.py"
+    )

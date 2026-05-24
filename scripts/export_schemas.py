@@ -184,7 +184,7 @@ def _column_to_property(column: Any) -> dict[str, Any]:
         # ``None`` after the (already sorted) string values for a
         # deterministic, human-readable ordering.
         if dtype == "enum":
-            prop["enum"] = list(prop["enum"]) + [None]
+            prop["enum"] = [*list(prop["enum"]), None]
 
     return prop
 

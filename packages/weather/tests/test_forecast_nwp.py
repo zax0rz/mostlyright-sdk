@@ -524,9 +524,9 @@ class TestCodexP2Followups:
             "pressure_pa_surface",
             "pressure_pa_mslp",
         ):
-            assert (
-                str(df[col].dtype) == "float64"
-            ), f"{col} dtype must be float64, got {df[col].dtype}"
+            assert str(df[col].dtype) == "float64", (
+                f"{col} dtype must be float64, got {df[col].dtype}"
+            )
 
     def test_unknown_station_dataframe_has_source_attr(self) -> None:
         """The early-return path on unknown stations also stamps attrs."""
