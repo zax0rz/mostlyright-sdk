@@ -19,8 +19,17 @@
 //   2. allowSourceDrift type guard (TypeError / RangeError; loud)
 //   3. Source attribute resolution (source_attr_required)
 //   4. Per-row source-column check (SourceMismatchError)
-//   5. retrievedAt resolution (retrieved_at_required)
-//   6. Per-row ajv validation + mixed_null_sentinels scan
+//   5. Per-row ajv validation + mixed_null_sentinels scan
+//   6. retrievedAt resolution (retrieved_at_required) — appended to the
+//      same violations list as step 5 so a row missing BOTH a required
+//      column AND retrieved_at surfaces both violations in one error.
+//
+// iter-6 H11: steps 5 and 6 were previously inverted — retrievedAt
+// resolution threw standalone before ajv validation ran, masking any
+// structural violation a row might also have had. Python collects
+// violations and raises once; we now mirror that semantic, with the
+// additional improvement of folding `retrieved_at_required` into the
+// same violations array so callers see the FULL set of issues at once.
 
 import { SchemaValidationError, SourceMismatchError } from "./exceptions/index.js";
 import type { AjvErrorObject } from "./schemas/validators/index.js";
@@ -318,23 +327,15 @@ export function validateRows<Row extends Record<string, unknown> = Record<string
     }
   }
 
-  // 5. retrievedAt resolution
-  let resolvedRetrievedAt: string | undefined = opts.retrievedAt;
-  if (resolvedRetrievedAt === undefined) {
-    // Fall back to first row's retrieved_at field.
-    const v = firstRow?.retrieved_at;
-    if (typeof v === "string" && v.length > 0) resolvedRetrievedAt = v;
-  }
-  if (resolvedRetrievedAt === undefined) {
-    throw new SchemaValidationError("Missing retrieved_at; cannot register validation", {
-      schemaId,
-      violations: [{ rule: "retrieved_at_required" }],
-      quarantineCount: rows.length,
-      sampleViolations: [],
-    });
-  }
-
-  // 6. Per-row ajv validation + mixed_null_sentinels scan
+  // 5. Per-row ajv validation + mixed_null_sentinels scan
+  //
+  // iter-6 H11: ajv validation now runs BEFORE retrievedAt resolution.
+  // The previous order threw `retrieved_at_required` standalone when
+  // provenance was missing, masking any structural violation the same
+  // row might have had (e.g. a row missing both `retrieved_at` AND a
+  // required column would only surface `retrieved_at_required`). Now
+  // we collect ajv violations first, then APPEND `retrieved_at_required`
+  // to the same array (step 7), and raise once with the full list.
   const violations: Violation[] = [];
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
@@ -403,6 +404,21 @@ export function validateRows<Row extends Record<string, unknown> = Record<string
     violations.push({ rule: "mixed_null_sentinels", column: col });
   }
 
+  // 6. retrievedAt resolution — APPEND to violations (do not throw
+  // standalone). iter-6 H11: a row missing both `retrieved_at` AND a
+  // required column must surface BOTH violations in the same error so
+  // callers can fix everything in one pass. The previous standalone
+  // throw masked any structural violation that ran first.
+  let resolvedRetrievedAt: string | undefined = opts.retrievedAt;
+  if (resolvedRetrievedAt === undefined) {
+    // Fall back to first row's retrieved_at field.
+    const v = firstRow?.retrieved_at;
+    if (typeof v === "string" && v.length > 0) resolvedRetrievedAt = v;
+  }
+  if (resolvedRetrievedAt === undefined) {
+    violations.push({ rule: "retrieved_at_required" });
+  }
+
   if (violations.length > 0) {
     throw new SchemaValidationError(
       `Schema validation failed with ${violations.length} violation(s) under ${schemaId}`,
@@ -414,6 +430,17 @@ export function validateRows<Row extends Record<string, unknown> = Record<string
           Record<string, unknown>
         >,
       },
+    );
+  }
+
+  // Narrow for TS: violations.length === 0 guarantees the
+  // `retrieved_at_required` violation didn't fire, so resolvedRetrievedAt
+  // is defined. The runtime check above guarantees this; the assertion
+  // is only for the compiler.
+  if (resolvedRetrievedAt === undefined) {
+    // Unreachable — the violation would have been raised above.
+    throw new Error(
+      "internal invariant: resolvedRetrievedAt is undefined but violations array was empty",
     );
   }
 

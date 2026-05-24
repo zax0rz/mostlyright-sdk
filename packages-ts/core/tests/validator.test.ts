@@ -105,7 +105,43 @@ describe("validateRows — Python vocabulary violations", () => {
     } catch (e) {
       expect(e).toBeInstanceOf(SchemaValidationError);
       const err = e as SchemaValidationError;
-      expect(err.violations[0]).toMatchObject({ rule: "retrieved_at_required" });
+      const violation = err.violations.find((v) => v.rule === "retrieved_at_required");
+      expect(violation).toBeDefined();
+    }
+  });
+
+  // iter-6 H11 regression: a row missing BOTH `retrieved_at` AND a
+  // required schema column must surface BOTH violations in the same
+  // SchemaValidationError. The previous implementation threw
+  // `retrieved_at_required` standalone BEFORE ajv ran, masking the
+  // structural violation. Python collects violations then raises once;
+  // we now mirror that with `retrieved_at_required` folded into the
+  // same array so callers see the full picture.
+  it("H11: row missing both retrieved_at AND a required column surfaces BOTH violations", () => {
+    const row = { ...VALID_OBS_ROW };
+    (row as unknown as Record<string, unknown>).retrieved_at = undefined;
+    (row as unknown as Record<string, unknown>).observation_type = undefined;
+    try {
+      validateRows([row], "schema.observation.v1");
+      throw new Error("expected SchemaValidationError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(SchemaValidationError);
+      const err = e as SchemaValidationError;
+      // BOTH violations must be present — the previous behavior would
+      // have raised only `retrieved_at_required` because it threw before
+      // ajv ran.
+      const structural = err.violations.find(
+        (v) => v.rule === "required_column_missing" || v.rule === "non_nullable_has_nulls",
+      );
+      const provenance = err.violations.find((v) => v.rule === "retrieved_at_required");
+      expect(
+        structural,
+        `expected structural violation but got: ${JSON.stringify(err.violations)}`,
+      ).toBeDefined();
+      expect(
+        provenance,
+        `expected retrieved_at_required but got: ${JSON.stringify(err.violations)}`,
+      ).toBeDefined();
     }
   });
 
