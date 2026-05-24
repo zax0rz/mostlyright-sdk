@@ -199,4 +199,76 @@ describe("research() cache integration (TS-W3 Plan 06)", () => {
       research("NYC", "2023-01-15", "2023-01-15", { cache: store }),
     ).resolves.toBeDefined();
   });
+
+  // iter-7 H13: IEM ASOS cache now uses per-month keys (mirrors Python
+  // TS-CACHE-02 contract `(station, year, month)`), not a year-sentinel
+  // `:01:rt=N` shape. This regression guard asserts:
+  //   1. IEM writes carry a key matching the canonical per-month shape
+  //      `tradewinds:v1:observations:STATION:YYYY:MM:iem`.
+  //   2. The legacy `:rt=N` suffix is NEVER emitted.
+  //   3. A query spanning multiple months produces a separate cache.set
+  //      per month (3 months → 3 IEM-source writes).
+  it("H13: IEM ASOS writes per-month keys, never the year-sentinel :01:rt=N shape", async () => {
+    installFetchMock({
+      cli: [
+        { valid: "2023-01-15", high: 50, low: 30, product: "test-cli" },
+        { valid: "2023-02-15", high: 55, low: 35, product: "test-cli" },
+        { valid: "2023-03-15", high: 60, low: 40, product: "test-cli" },
+      ],
+      awc: [],
+    });
+    const store = new MemoryStore();
+    const setSpy = vi.spyOn(store, "set");
+    await research("NYC", "2023-01-15", "2023-03-15", { cache: store });
+    const writtenKeys = setSpy.mock.calls.map((c) => String(c[0]));
+
+    // No legacy year-sentinel or report-type suffix.
+    for (const k of writtenKeys) {
+      expect(k, `legacy :rt=N suffix in key=${k}`).not.toMatch(/:rt=\d/);
+    }
+
+    // Per-month IEM writes for each of {Jan, Feb, Mar} 2023. We assert each
+    // canonical key shape is present somewhere in the write stream.
+    const expected = [
+      "tradewinds:v1:observations:NYC:2023:01:iem",
+      "tradewinds:v1:observations:NYC:2023:02:iem",
+      "tradewinds:v1:observations:NYC:2023:03:iem",
+    ];
+    for (const want of expected) {
+      expect(writtenKeys, `missing expected IEM per-month key=${want}`).toContain(want);
+    }
+  });
+
+  // iter-7 H13 follow-up: only the CURRENT LST month is skipped — months
+  // adjacent to it in the same year MUST still be written. Previously the
+  // helper skipped the whole year via `shouldSkipCacheForCurrentLstYear`,
+  // silently dropping cacheable per-month writes for everything else in
+  // that year. This guard pins the per-month skip semantics.
+  it("H13: only the current LST month is skip-gated; sibling months in same year ARE cached", async () => {
+    installFetchMock({
+      cli: [
+        { valid: "2025-01-15", high: 50, low: 30, product: "test-cli" },
+        { valid: "2025-02-15", high: 55, low: 35, product: "test-cli" },
+        { valid: "2025-03-15", high: 60, low: 40, product: "test-cli" },
+      ],
+      awc: [],
+    });
+    const store = new MemoryStore();
+    const setSpy = vi.spyOn(store, "set");
+    // now = March 15, 2025 → current LST month is 2025-03. 2025-01 + 2025-02
+    // are cacheable (past months in current year, well past volatile window
+    // since 2025-01-31 is 43 days back; 2025-02-28 is 15 days back → IN
+    // the 30-day volatile window). So the writeable IEM months are 2025-01
+    // (only). 2025-02 is volatile, 2025-03 is current LST month.
+    const now = new Date("2025-03-15T12:00:00Z");
+    await research("NYC", "2025-01-15", "2025-03-15", { cache: store, now });
+    const writtenKeys = setSpy.mock.calls.map((c) => String(c[0]));
+
+    // 2025-01 IEM key written (NOT skipped — past month, outside volatile window).
+    expect(writtenKeys).toContain("tradewinds:v1:observations:NYC:2025:01:iem");
+    // 2025-02 IEM key NOT written — inside 30-day volatile window relative to now.
+    expect(writtenKeys).not.toContain("tradewinds:v1:observations:NYC:2025:02:iem");
+    // 2025-03 IEM key NOT written — current LST month.
+    expect(writtenKeys).not.toContain("tradewinds:v1:observations:NYC:2025:03:iem");
+  });
 });

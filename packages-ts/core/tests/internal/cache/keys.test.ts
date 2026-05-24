@@ -39,6 +39,34 @@ describe("cacheKeyForObservations", () => {
     expect(() => cacheKeyForObservations("KNYC", Number.NaN, 1)).toThrow(RangeError);
     expect(() => cacheKeyForObservations("KNYC", 2025.5, 1)).toThrow(RangeError);
   });
+
+  // iter-7 H13/H14: optional `source` segment namespaces per-source
+  // pre-merge chunks so IEM ASOS (`"iem"`) and GHCNh (`"ghcnh"`) writes
+  // for the same `(station, year, month)` triplet do not collide.
+  it("appends optional source segment when provided", () => {
+    expect(cacheKeyForObservations("KNYC", 2025, 1, "iem")).toBe(
+      "tradewinds:v1:observations:KNYC:2025:01:iem",
+    );
+    expect(cacheKeyForObservations("KNYC", 2025, 12, "ghcnh")).toBe(
+      "tradewinds:v1:observations:KNYC:2025:12:ghcnh",
+    );
+  });
+
+  it("omitting source preserves the legacy 3-arg key shape (back-compat)", () => {
+    expect(cacheKeyForObservations("KNYC", 2025, 1)).toBe(
+      "tradewinds:v1:observations:KNYC:2025:01",
+    );
+  });
+
+  it("rejects malformed source segments", () => {
+    // Whitespace, uppercase, special chars, separators all blocked at the
+    // key boundary — defense-in-depth against accidental cache poisoning
+    // from a future caller that passes user input as source.
+    expect(() => cacheKeyForObservations("KNYC", 2025, 1, "IEM")).toThrow(RangeError);
+    expect(() => cacheKeyForObservations("KNYC", 2025, 1, "iem asos")).toThrow(RangeError);
+    expect(() => cacheKeyForObservations("KNYC", 2025, 1, "iem:asos")).toThrow(RangeError);
+    expect(() => cacheKeyForObservations("KNYC", 2025, 1, "")).toThrow(RangeError);
+  });
 });
 
 describe("cacheKeyForClimate", () => {

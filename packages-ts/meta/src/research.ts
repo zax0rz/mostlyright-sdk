@@ -262,6 +262,61 @@ function isYearVolatile(year: number, now: Date): boolean {
 }
 
 /**
+ * Last calendar day of `(year, month)`. Used as archive-as-of for the
+ * per-month volatile-window gate (iter-7 H13). Returns YYYY-MM-DD.
+ */
+function lastDayOfMonth(year: number, month: number): string {
+  // UTC math: day 0 of (month+1) === last day of (month).
+  const d = new Date(Date.UTC(year, month, 0));
+  return formatDate(d);
+}
+
+/**
+ * True iff the end-of-month ISO date for `(year, month)` falls inside the
+ * 30-day volatile amendment window relative to `now`. Per-month analog of
+ * `isYearVolatile`, used to gate the per-month observations cache
+ * (iter-7 H13). Rationale: rows from a month whose final day is within
+ * 30 days of "now" may still be amended upstream; caching them would
+ * persist soon-to-be-stale values. The window only fires for the
+ * immediate-post-month window — exactly the case where freshly-archived
+ * rows are most likely to be revised.
+ */
+function isMonthVolatile(year: number, month: number, now: Date): boolean {
+  return isWithinVolatileWindow(lastDayOfMonth(year, month), formatDate(now), 30);
+}
+
+/**
+ * Enumerate `[year, month]` pairs that overlap `[fromIsoDate, toIsoDate]`
+ * (inclusive on both ends). Used by the per-month observations cache
+ * (iter-7 H13). Returns pairs in chronological order. Validates the
+ * range; throws on inverted input.
+ */
+function monthsInRange(
+  fromIsoDate: string,
+  toIsoDate: string,
+): ReadonlyArray<readonly [number, number]> {
+  const from = parseIsoDate(fromIsoDate);
+  const to = parseIsoDate(toIsoDate);
+  if (from.getTime() > to.getTime()) {
+    throw new Error(`fromDate (${fromIsoDate}) must be <= toDate (${toIsoDate})`);
+  }
+  const pairs: Array<readonly [number, number]> = [];
+  let y = from.getUTCFullYear();
+  let m = from.getUTCMonth() + 1; // 1-12
+  const endY = to.getUTCFullYear();
+  const endM = to.getUTCMonth() + 1;
+  while (y < endY || (y === endY && m <= endM)) {
+    pairs.push([y, m]);
+    m += 1;
+    if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+  }
+  return pairs;
+}
+
+/**
  * Fetch CLI climate per-year with read-through cache. Yearly chunks are
  * cached at `cacheKeyForClimate(code, year)`. Skip rules:
  *   - Current LST year — mutable, never cached.
@@ -357,7 +412,38 @@ async function fetchCliWithCache(
 }
 
 /**
- * Fetch IEM ASOS observations per-year with read-through cache.
+ * Fetch IEM ASOS observations per-month with read-through cache.
+ *
+ * iter-7 H13: this previously cached at YEAR granularity using a sentinel
+ * `:01:rt=N` key, violating the Python TS-CACHE-02 per-month contract.
+ * The Python `read_cache(station, year, month)` / `write_cache(...)`
+ * surface uses `(station, year, month)` triplets — one parquet per month
+ * containing the merged METAR+SPECI slice. This helper now matches that
+ * contract:
+ *
+ *   1. Enumerate `(year, month)` pairs overlapping the queried range.
+ *   2. For each pair, attempt a per-month cache read using the
+ *      source-namespaced key `cacheKeyForObservations(station, year,
+ *      month, "iem")`.
+ *   3. On cache miss, fetch the full year (single IEM HTTP request for
+ *      `report_type=3` + one for `=4`) — IEM ASOS is yearly-chunked at
+ *      the source — then partition parsed rows by `(year, month)` and
+ *      filter back to the requested month (mirrors Python research.py
+ *      L267-269 month-boundary filter).
+ *   4. Apply per-MONTH skip rules:
+ *        - `shouldSkipCacheForCurrentLstMonth(station, year, month, now)` —
+ *          mutable current month; never written.
+ *        - `isMonthVolatile(year, month, now)` — 30-day amendment window
+ *          gate (iter-5 H9 / iter-7 H13). Within the window, both read
+ *          AND write are skipped (IEM may publish late-arriving METARs
+ *          or corrections).
+ *   5. Write-through fires only when neither skip rule trips; otherwise
+ *      the month's rows are returned in-memory but never persisted.
+ *
+ * Per-year fetch results are cached in a local `yearCache` Map so multiple
+ * months within the same year share one HTTP round-trip — this is the
+ * critical perf invariant from the previous implementation, preserved
+ * across the granularity change.
  *
  * iter-6 C12: mirrors `fetchCliWithCache`'s split-try pattern — cache
  * `get` / `set` failures are logged but never discard the in-memory
@@ -366,94 +452,116 @@ async function fetchCliWithCache(
  */
 async function fetchIemAsosWithCache(
   stationCode: string,
-  fromYear: number,
-  extendedToYear: number,
+  _fromYear: number,
+  _extendedToYear: number,
   fromDate: string,
   extendedTo: string,
   opts: ResearchOptions,
   cache: CacheStore | null,
   now: Date,
 ): Promise<Observation[]> {
+  void _fromYear;
+  void _extendedToYear;
   const acc: Observation[] = [];
-  for (let year = fromYear; year <= extendedToYear; year++) {
-    for (const reportType of [3, 4] as const) {
-      // Year-granularity cache key (we don't have a yearly key generator;
-      // re-use the observations key with month=01 as the year-sentinel and
-      // a report-type-specific suffix encoded into the station).
-      const cacheKey = `${cacheKeyForObservations(stationCode, year, 1)}:rt=${reportType}`;
-      // Skip when the year contains the current LST year (annual granularity
-      // for the year-grained cache — conservative; the per-month rule fires
-      // at the cache-key level where Python's per-month observations cache
-      // lives).
-      const skipCurrentMonth = shouldSkipCacheForCurrentLstYear(stationCode, year, now);
-      // iter-5 H9: 30-day volatile amendment window gate. When the
-      // chunk's year-end is within 30 days of `now`, neither read nor
-      // write the cache for this year — IEM may publish amendments
-      // (corrections, late-arriving METARs) in that window and a cache
-      // hit would re-serve stale data.
-      const skipVolatile = isYearVolatile(year, now);
-      const skipCache = skipCurrentMonth || skipVolatile;
 
-      // --- Cache read (best-effort) -------------------------------------
-      // iter-6 C12: a `cache.get` failure must not abort the per-year
-      // chunk — fall through to the live fetch.
-      let yearRows: Observation[] | null = null;
-      if (cache !== null && !skipCache) {
+  // Per-call memoization: avoid re-fetching the same (year, reportType)
+  // when multiple months in the same year miss the cache.
+  const yearByReportType = new Map<string, Observation[]>();
+
+  async function fetchYearOnce(year: number, reportType: 3 | 4): Promise<Observation[]> {
+    const memoKey = `${year}:${reportType}`;
+    const cached = yearByReportType.get(memoKey);
+    if (cached !== undefined) return cached;
+    const iemOpts: { reportType: 3 | 4; politenessMs: number; signal?: AbortSignal } = {
+      reportType,
+      politenessMs: opts.iemPolitenessMs ?? 1000,
+    };
+    if (opts.signal !== undefined) iemOpts.signal = opts.signal;
+    const chunks = await downloadIemAsos(stationCode, `${year}-01-01`, `${year}-12-31`, iemOpts);
+    const fetched: Observation[] = [];
+    for (const chunk of chunks) {
+      const parsed = parseIemCsv(chunk.csv, {
+        observationTypeOverride: reportType === 3 ? "METAR" : "SPECI",
+      });
+      fetched.push(...parsed);
+    }
+    yearByReportType.set(memoKey, fetched);
+    return fetched;
+  }
+
+  function filterMonth(
+    rows: ReadonlyArray<Observation>,
+    year: number,
+    month: number,
+  ): Observation[] {
+    const yyyy = String(year).padStart(4, "0");
+    const mm = String(month).padStart(2, "0");
+    const prefix = `${yyyy}-${mm}-`;
+    const out: Observation[] = [];
+    for (const r of rows) {
+      if (r.observed_at.startsWith(prefix)) out.push(r);
+    }
+    return out;
+  }
+
+  const pairs = monthsInRange(fromDate, extendedTo);
+  for (const [year, month] of pairs) {
+    const cacheKey = cacheKeyForObservations(stationCode, year, month, "iem");
+    const skipCurrentMonth = shouldSkipCacheForCurrentLstMonth(stationCode, year, month, now);
+    const skipVolatile = isMonthVolatile(year, month, now);
+    const skipCache = skipCurrentMonth || skipVolatile;
+
+    // --- Cache read (best-effort) -------------------------------------
+    // iter-6 C12: a `cache.get` failure must not abort the month — fall
+    // through to the live fetch. The cached value combines METAR+SPECI
+    // (single per-month entry), so a hit yields both report types.
+    let monthRows: Observation[] | null = null;
+    if (cache !== null && !skipCache) {
+      try {
+        const cached = await cache.get<Observation[]>(cacheKey);
+        if (cached !== null) monthRows = cached;
+      } catch (cacheErr) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[tradewinds] IEM ASOS cache.get failed for key=${cacheKey}; falling back to live fetch:`,
+          cacheErr,
+        );
+      }
+    }
+
+    if (monthRows === null) {
+      // --- Live fetch + parse (errors here propagate to the caller) ---
+      // Fetch both report types for the year (memoized) and partition
+      // to this month. Combining METAR+SPECI matches the Python contract
+      // (write_cache receives one merged list per month).
+      const metar = await fetchYearOnce(year, 3);
+      const speci = await fetchYearOnce(year, 4);
+      const monthMetar = filterMonth(metar, year, month);
+      const monthSpeci = filterMonth(speci, year, month);
+      monthRows = [...monthMetar, ...monthSpeci];
+
+      // --- Cache write (best-effort, AFTER rows are accumulated) ------
+      // iter-6 C12: `cache.set` failures MUST NOT propagate — a
+      // transient write failure cannot be allowed to discard rows that
+      // were just successfully fetched + parsed. Log and continue; the
+      // in-memory `monthRows` is appended to `acc` below regardless.
+      const sample = monthRows[0]?.source;
+      if (cache !== null && !skipCache && !isLiveSource(sample)) {
         try {
-          const cached = await cache.get<Observation[]>(cacheKey);
-          if (cached !== null) yearRows = cached;
+          await cache.set(cacheKey, monthRows);
         } catch (cacheErr) {
           // eslint-disable-next-line no-console
           console.warn(
-            `[tradewinds] IEM ASOS cache.get failed for key=${cacheKey}; falling back to live fetch:`,
+            `[tradewinds] IEM ASOS cache.set failed for key=${cacheKey}; in-memory rows preserved:`,
             cacheErr,
           );
         }
       }
-      if (yearRows === null) {
-        // --- Live fetch + parse (errors here propagate to the caller) ---
-        const iemOpts: { reportType: 3 | 4; politenessMs: number; signal?: AbortSignal } = {
-          reportType,
-          politenessMs: opts.iemPolitenessMs ?? 1000,
-        };
-        if (opts.signal !== undefined) iemOpts.signal = opts.signal;
-        const chunks = await downloadIemAsos(
-          stationCode,
-          `${year}-01-01`,
-          `${year}-12-31`,
-          iemOpts,
-        );
-        const fetched: Observation[] = [];
-        for (const chunk of chunks) {
-          const parsed = parseIemCsv(chunk.csv, {
-            observationTypeOverride: reportType === 3 ? "METAR" : "SPECI",
-          });
-          fetched.push(...parsed);
-        }
-        yearRows = fetched;
+    }
 
-        // --- Cache write (best-effort, AFTER rows are accumulated) ------
-        // iter-6 C12: `cache.set` failures MUST NOT propagate — a
-        // transient write failure cannot be allowed to discard rows that
-        // were just successfully fetched + parsed. Log and continue; the
-        // in-memory `yearRows` is appended to `acc` below regardless.
-        const sample = fetched[0]?.source;
-        if (cache !== null && !skipCache && !isLiveSource(sample)) {
-          try {
-            await cache.set(cacheKey, fetched);
-          } catch (cacheErr) {
-            // eslint-disable-next-line no-console
-            console.warn(
-              `[tradewinds] IEM ASOS cache.set failed for key=${cacheKey}; in-memory rows preserved:`,
-              cacheErr,
-            );
-          }
-        }
-      }
-      for (const obs of yearRows) {
-        const obsDate = obs.observed_at.slice(0, 10);
-        if (obsDate >= fromDate && obsDate <= extendedTo) acc.push(obs);
-      }
+    for (const obs of monthRows) {
+      const obsDate = obs.observed_at.slice(0, 10);
+      if (obsDate >= fromDate && obsDate <= extendedTo) acc.push(obs);
     }
   }
   return acc;
