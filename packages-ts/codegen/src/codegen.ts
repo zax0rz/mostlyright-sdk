@@ -14,6 +14,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import Ajv from "ajv/dist/2020.js";
+import standaloneCode from "ajv/dist/standalone/index.js";
 import { compile } from "json-schema-to-typescript";
 
 // -------------------------------------------------------------------------
@@ -182,19 +185,164 @@ async function emitSchemas(out: FileMap): Promise<void> {
   }
   emit(out, join(generatedDir, "index.ts"), barrelLines.join("\n"));
 
-  // Validators placeholder (deferred to TS-W3 / TS-VALIDATOR-01).
+  // ajv-standalone validator emission (TS-W3 / TS-VALIDATOR-01).
+  // Each Group A schema compiles to a standalone validator function with no
+  // runtime ajv dependency — MV3-CSP-safe (no eval, no Function ctor).
+  emitValidators(out);
+}
+
+function emitValidators(out: FileMap): void {
   const validatorsDir = join(PACKAGES_TS, "core", "src", "schemas", "validators");
-  const placeholder =
-    "// AUTO-GENERATED placeholder by @tradewinds/codegen (TS-W0 Wave 3).\n" +
-    "// DO NOT EDIT — regenerate with: pnpm codegen\n" +
-    "//\n" +
-    "// ajv-standalone validator emission is DEFERRED to TS-W3 (TS-VALIDATOR-01).\n" +
-    "// Until then, runtime validation falls back to schema-shape checks performed\n" +
-    "// in @tradewinds/core directly. See .planning/REQUIREMENTS.md TS-VALIDATOR-01\n" +
-    "// for the ajv-standalone wiring spec.\n" +
-    "\n" +
-    'export const VALIDATORS_DEFERRED_TO = "TS-W3 / TS-VALIDATOR-01";\n';
-  emit(out, join(validatorsDir, "index.ts"), placeholder);
+  const ajv = new Ajv.default({
+    code: { source: true, esm: true, lines: true },
+    allErrors: true,
+    strict: false,
+    // Do NOT addFormats — ajv-formats compiles a `require("ajv-formats/dist/
+    // formats")` runtime reference into the standalone output, defeating
+    // the MV3-CSP guarantee. Format keywords are silently ignored under
+    // strict: false; format-style validation (e.g. ISO date-time) lives in
+    // the validateRows wrapper post-pass (see format-map.ts), which walks
+    // the schema's `format: "date" | "date-time"` fields and applies regex
+    // checks (CSP-safe, no eval / no Function ctor).
+  });
+  const registered: Array<{ id: string; safeName: string }> = [];
+  // Per-schema map of { propertyName: "date" | "date-time" } extracted from
+  // top-level `properties` at codegen time. Shipped alongside validators so
+  // the validateRows wrapper can run a format post-pass without re-parsing
+  // schema JSON at runtime (and without bundling jsonschema/ajv-formats).
+  const formatMaps: Array<{ id: string; formats: Record<string, "date" | "date-time"> }> = [];
+  for (const fname of SCHEMA_FILES) {
+    const absSchema = join(SCHEMAS_DIR, "json", fname);
+    if (!existsSync(absSchema)) continue;
+    const schema = JSON.parse(readFileSync(absSchema, "utf8")) as Record<string, unknown>;
+    const id = typeof schema.title === "string" ? schema.title : fname.replace(/\.json$/, "");
+    const safe = id.replace(/[^a-zA-Z0-9_]/g, "_");
+    // Compile under the schema's $id (or fallback) so ajv can resolve refs.
+    const compileKey = `gen-${safe}`;
+    ajv.addSchema(schema, compileKey);
+    // ESM mode requires a JS-identifier export name; use `safe` (e.g.
+    // `schema_observation_v1`) instead of the dotted schema id. The barrel
+    // imports under the safe name AND maps it back to the canonical id.
+    const code = standaloneCode.default(ajv, { [safe]: compileKey });
+    const jsHeader = header(`json/${fname}`);
+    // Strip the AGPL/MIT preamble ajv prepends since we already document
+    // generation in our header banner.
+    emit(out, join(validatorsDir, `${safe}.js`), `${jsHeader}\n${code}`);
+    // .d.ts shim: named export matching the safe name (matches the ESM
+    // standalone shape — `export { validate as <safe> }`).
+    emit(
+      out,
+      join(validatorsDir, `${safe}.d.ts`),
+      `${jsHeader}\ndeclare const ${safe}: ((data: unknown) => boolean) & { errors?: Array<{ instancePath: string; schemaPath: string; keyword: string; params: Record<string, unknown>; message?: string }> | null };\nexport { ${safe} };\n`,
+    );
+    registered.push({ id, safeName: safe });
+
+    // Extract date / date-time formats from top-level `properties`. We do
+    // NOT recurse into nested objects (no canonical Group A schema uses
+    // nested object properties; if Group B introduces them, extend here).
+    const props = schema.properties as Record<string, unknown> | undefined;
+    const formats: Record<string, "date" | "date-time"> = {};
+    if (props !== undefined && typeof props === "object" && props !== null) {
+      for (const propName of Object.keys(props).sort()) {
+        const spec = props[propName] as Record<string, unknown> | undefined;
+        if (spec === undefined || spec === null || typeof spec !== "object") continue;
+        const fmt = spec.format;
+        if (fmt === "date" || fmt === "date-time") {
+          formats[propName] = fmt;
+        }
+      }
+    }
+    formatMaps.push({ id, formats });
+  }
+
+  // Sort for determinism — must NOT depend on schema iteration order.
+  registered.sort((a, b) => a.id.localeCompare(b.id));
+  formatMaps.sort((a, b) => a.id.localeCompare(b.id));
+
+  // Emit format-map.ts: { schemaId: { propertyName: "date" | "date-time" } }
+  const formatMapLines: string[] = [
+    header("(generated)"),
+    "",
+    '// Per-schema map of { propertyName: "date" | "date-time" } extracted',
+    "// from `schemas/json/*.json` `properties[*].format` at codegen time.",
+    "// Consumed by validateRows() to run a post-pass format check (CSP-safe",
+    "// regex, no jsonschema / ajv-formats runtime dependency).",
+    "",
+    'export type FormatKind = "date" | "date-time";',
+    "",
+    "export type SchemaFormatMap = Readonly<Record<string, FormatKind>>;",
+    "",
+    "const FORMAT_MAPS: Readonly<Record<string, SchemaFormatMap>> = Object.freeze({",
+  ];
+  for (const m of formatMaps) {
+    const entries = Object.keys(m.formats)
+      .sort()
+      .map((k) => `    ${JSON.stringify(k)}: ${JSON.stringify(m.formats[k])},`)
+      .join("\n");
+    if (entries.length === 0) {
+      formatMapLines.push(`  ${JSON.stringify(m.id)}: Object.freeze({}),`);
+    } else {
+      formatMapLines.push(`  ${JSON.stringify(m.id)}: Object.freeze({`);
+      formatMapLines.push(entries);
+      formatMapLines.push("  }),");
+    }
+  }
+  formatMapLines.push("});");
+  formatMapLines.push("");
+  formatMapLines.push(
+    "/** Return the per-property format map for `schemaId`, or null if unknown. */",
+  );
+  formatMapLines.push("export function getFormatMap(schemaId: string): SchemaFormatMap | null {");
+  formatMapLines.push("  return FORMAT_MAPS[schemaId] ?? null;");
+  formatMapLines.push("}");
+  emit(out, join(validatorsDir, "format-map.ts"), formatMapLines.join("\n"));
+
+  const barrelLines: string[] = [
+    header("(generated)"),
+    "",
+    "// ajv-standalone validators compiled by @tradewinds/codegen at build time.",
+    "// No runtime ajv dependency — MV3-CSP-safe (no eval, no Function ctor).",
+    "// Group A schemas always compile; Group B schemas (when added) fall through",
+    "// to the null-return path in `getValidator`.",
+    "",
+  ];
+  for (const r of registered) {
+    barrelLines.push(
+      `import { ${r.safeName} as validate_${r.safeName} } from "./${r.safeName}.js";`,
+    );
+  }
+  barrelLines.push("");
+  barrelLines.push("export type AjvErrorObject = {");
+  barrelLines.push("  readonly instancePath: string;");
+  barrelLines.push("  readonly schemaPath: string;");
+  barrelLines.push("  readonly keyword: string;");
+  barrelLines.push("  readonly params: Record<string, unknown>;");
+  barrelLines.push("  readonly message?: string;");
+  barrelLines.push("};");
+  barrelLines.push("");
+  barrelLines.push("export type AjvValidator = ((data: unknown) => boolean) & {");
+  barrelLines.push("  errors?: AjvErrorObject[] | null;");
+  barrelLines.push("};");
+  barrelLines.push("");
+  barrelLines.push("const VALIDATORS: Record<string, AjvValidator> = {");
+  for (const r of registered) {
+    barrelLines.push(
+      `  ${JSON.stringify(r.id)}: validate_${r.safeName} as unknown as AjvValidator,`,
+    );
+  }
+  barrelLines.push("};");
+  barrelLines.push("");
+  barrelLines.push("export function getValidator(schemaId: string): AjvValidator | null {");
+  barrelLines.push("  return VALIDATORS[schemaId] ?? null;");
+  barrelLines.push("}");
+  barrelLines.push("");
+  barrelLines.push("export function listValidators(): readonly string[] {");
+  barrelLines.push("  return Object.freeze(Object.keys(VALIDATORS));");
+  barrelLines.push("}");
+  barrelLines.push("");
+  barrelLines.push('export { getFormatMap } from "./format-map.js";');
+  barrelLines.push('export type { FormatKind, SchemaFormatMap } from "./format-map.js";');
+  emit(out, join(validatorsDir, "index.ts"), barrelLines.join("\n"));
 }
 
 // -------------------------------------------------------------------------

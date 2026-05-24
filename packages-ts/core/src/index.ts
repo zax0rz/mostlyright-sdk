@@ -16,6 +16,21 @@ export * from "./data/generated/index.js";
 export * from "./exceptions/index.js";
 export * from "./snapshot.js";
 
+// TS-W3 Plan 04 / 05 / 07: temporal primitives, formats, and validator.
+//
+// These surfaces are intentionally NOT re-exported from the main barrel —
+// they ship via dedicated subpath exports to keep `@tradewinds/core`'s
+// main bundle under its 25 KB size-limit gate (TS-BUNDLE-01). Iter-4 H8
+// dropped the root re-exports after Codex caught the bundle at 25,725 B
+// (≈125 B over the gate) because TS-W3 piled temporal + formats + cache +
+// validator + new error classes onto the main entry.
+//
+// Use the subpath imports instead:
+//   import { TimePoint, KnowledgeView, assertNoLeakage } from "@tradewinds/core/temporal";
+//   import { jsonDumps, csvDumps, toonDumps }            from "@tradewinds/core/formats";
+//   import { validateRows }                              from "@tradewinds/core/validator";
+//   import type { ValidateOptions, ValidateResult }      from "@tradewinds/core/validator";
+
 // Internal modules — re-export selected helpers only. `internal/convert` and
 // `internal/bounds` stay deep imports for fetchers + parsers in later waves.
 export { fetchWithRetry } from "./internal/http.js";

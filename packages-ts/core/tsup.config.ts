@@ -50,4 +50,97 @@ export default defineConfig([
       return { js: ".cjs" };
     },
   },
+  {
+    // TS-W3 Plan 04 — temporal primitives (TimePoint, KnowledgeView,
+    // LeakageDetector, assertNoLeakage). Emitted at @tradewinds/core/temporal.
+    entry: { index: "src/temporal/index.ts" },
+    format: ["esm", "cjs"],
+    dts: true,
+    sourcemap: true,
+    clean: false,
+    target: "es2022",
+    outDir: "dist/temporal",
+    outExtension({ format }) {
+      if (format === "esm") return { js: ".mjs" };
+      return { js: ".cjs" };
+    },
+  },
+  {
+    // TS-W3 Plan 07 — JSON/CSV/TOON serializers. Emitted at
+    // @tradewinds/core/formats. Parquet + DataFrame deferred (no stubs).
+    entry: { index: "src/formats/index.ts" },
+    format: ["esm", "cjs"],
+    dts: true,
+    sourcemap: true,
+    clean: false,
+    target: "es2022",
+    outDir: "dist/formats",
+    outExtension({ format }) {
+      if (format === "esm") return { js: ".mjs" };
+      return { js: ".cjs" };
+    },
+  },
+  {
+    // Iter-4 H8 — validateRows moved out of the main barrel to keep
+    // @tradewinds/core's main bundle under its 25 KB size-limit gate
+    // (TS-BUNDLE-01). Emitted at @tradewinds/core/validator.
+    entry: { validator: "src/validator.ts" },
+    format: ["esm", "cjs"],
+    dts: true,
+    sourcemap: true,
+    clean: false,
+    target: "es2022",
+    outDir: "dist",
+    outExtension({ format }) {
+      if (format === "esm") return { js: ".mjs" };
+      return { js: ".cjs" };
+    },
+  },
+  {
+    // TS-W3 Plan 01-03 — cache subsystem (CacheStore, MemoryStore, FsStore,
+    // IndexedDBStore [plan 02], defaultCacheStore [plan 02], skip-rules + keys
+    // [plan 03]). Emitted at @tradewinds/core/internal/cache.
+    //
+    // Iter-8 H15: TWO entries — Node (`index.ts`, keeps the dynamic
+    // FsStore import) and browser (`index.browser.ts`, NO reference to
+    // FsStore via any mechanism). package.json conditional exports route
+    // Node consumers to `index.mjs` and browser/MV3 consumers to
+    // `index.browser.mjs`, eliminating the Node-only-deps edge that
+    // breaks `pnpm size` for the meta bundle.
+    entry: {
+      "cache/index": "src/internal/cache/index.ts",
+      "cache/index.browser": "src/internal/cache/index.browser.ts",
+    },
+    format: ["esm", "cjs"],
+    dts: true,
+    sourcemap: true,
+    clean: false,
+    target: "es2022",
+    outDir: "dist/internal",
+    outExtension({ format }) {
+      if (format === "esm") return { js: ".mjs" };
+      return { js: ".cjs" };
+    },
+  },
+  {
+    // Iter-2 H5: dedicated Node-only subpath for FsStore. The cache
+    // barrel (above) intentionally does NOT re-export FsStore /
+    // defaultFsRoot because tsup hoists them into a sibling chunk
+    // that the browser-facing subbundle then top-level-imports
+    // (pulling node:fs/promises, node:os, node:path, node:crypto,
+    // proper-lockfile into MV3 bundles). FsStore consumers must
+    // import from this subpath, NOT from `@tradewinds/core/internal/
+    // cache`. Emitted at `@tradewinds/core/internal/cache/fs`.
+    entry: { "cache/fs": "src/internal/cache/fs-entry.ts" },
+    format: ["esm", "cjs"],
+    dts: true,
+    sourcemap: true,
+    clean: false,
+    target: "es2022",
+    outDir: "dist/internal",
+    outExtension({ format }) {
+      if (format === "esm") return { js: ".mjs" };
+      return { js: ".cjs" };
+    },
+  },
 ]);

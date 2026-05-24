@@ -1,0 +1,76 @@
+// TS-W3 Plan 02 Task 2 — defaultCacheStore() runtime auto-detection tests.
+// Routed through jsdom so the IndexedDB branch is exercisable.
+//
+// Iter-1 H3: defaultCacheStore is now async — FsStore is loaded via
+// dynamic `import('./fs.js')` behind a `process.versions?.node` guard to
+// keep `node:fs/promises` & friends out of browser / MV3 bundles. Tests
+// now `await` the call.
+
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+// Iter-2 H5: FsStore no longer re-exported from the cache barrel
+// (the re-export pulled node:fs/promises etc. into the browser
+// subbundle). Import directly from the fs module — production Node
+// callers should use the dedicated subpath
+// `@tradewinds/core/internal/cache/fs`.
+import { FsStore } from "../../../src/internal/cache/fs.js";
+import {
+  IndexedDBStore,
+  MemoryStore,
+  defaultCacheStore,
+} from "../../../src/internal/cache/index.js";
+
+describe("defaultCacheStore()", () => {
+  it("returns IndexedDBStore when indexedDB is present (jsdom + fake-indexeddb)", async () => {
+    expect(await defaultCacheStore()).toBeInstanceOf(IndexedDBStore);
+  });
+
+  describe("FsStore fallback (no indexedDB, Node process present)", () => {
+    let originalIdb: unknown;
+    beforeEach(() => {
+      originalIdb = (globalThis as Record<string, unknown>).indexedDB;
+      (globalThis as Record<string, unknown>).indexedDB = undefined as unknown;
+      // Use `delete` semantics — assigning undefined keeps `typeof X !== "undefined"` true.
+      (globalThis as Record<string, unknown>).indexedDB = undefined;
+    });
+    afterEach(() => {
+      if (originalIdb !== undefined) {
+        (globalThis as Record<string, unknown>).indexedDB = originalIdb;
+      }
+    });
+
+    it("returns FsStore when indexedDB is absent and process.versions.node is present", async () => {
+      expect(await defaultCacheStore()).toBeInstanceOf(FsStore);
+    });
+  });
+
+  describe("MemoryStore fallback (neither indexedDB nor Node)", () => {
+    let originalIdb: unknown;
+    let originalProcess: unknown;
+    beforeEach(() => {
+      originalIdb = (globalThis as Record<string, unknown>).indexedDB;
+      originalProcess = (globalThis as Record<string, unknown>).process;
+      (globalThis as Record<string, unknown>).indexedDB = undefined;
+      (globalThis as Record<string, unknown>).process = undefined;
+    });
+    afterEach(() => {
+      // Restore — vitest itself uses process; leaving it deleted breaks teardown.
+      if (originalProcess !== undefined) {
+        (globalThis as Record<string, unknown>).process = originalProcess;
+      }
+      if (originalIdb !== undefined) {
+        (globalThis as Record<string, unknown>).indexedDB = originalIdb;
+      }
+    });
+
+    it("returns MemoryStore when no runtime markers are present", async () => {
+      expect(await defaultCacheStore()).toBeInstanceOf(MemoryStore);
+    });
+  });
+
+  it("each call returns a NEW instance (not a singleton)", async () => {
+    const a = await defaultCacheStore();
+    const b = await defaultCacheStore();
+    expect(a).not.toBe(b);
+  });
+});

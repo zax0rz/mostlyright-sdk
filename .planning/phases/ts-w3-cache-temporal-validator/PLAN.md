@@ -1,6 +1,6 @@
 # Phase TS-W3 — Cache + Temporal Primitives + Validator
 
-**Status:** Stub (run `/gsd-plan-phase ts-w3`).
+**Status:** Planning complete (7 sub-plans). Run `/gsd-execute-phase ts-w3` to execute.
 **Milestone:** TypeScript v0.1.0
 **Lane:** Rob
 **Depends on:** Phase TS-W2
@@ -25,18 +25,60 @@ Persistence layer + temporal safety + structural validation. After this phase: r
 4. `assertNoLeakage(rows, asOf)` throws `LeakageError` whose `toDict()` includes `as_of`/`violating_count`/`sample_violations` with the same shape Python emits.
 5. `validateRows(rows, schemaId, opts)` throws `SchemaValidationError` with Python-vocabulary `violations` array (`source_attr_required`/`source_column_required`/`retrieved_at_required`/`required_column_missing`/`non_nullable_has_nulls`/`mixed_null_sentinels`/`dtype_mismatch`/`enum_value_violation`/`unknown_schema_id`). ≥ 90% branch coverage on `@tradewinds/core`.
 
-## Waves
+## Sub-plans
 
-- **Wave 1**: `CacheStore` interface + `MemoryStore` + `FsStore` (Node-first; testable without browser).
-- **Wave 2**: `IndexedDBStore` + Web Locks integration; jsdom-based vitest tests.
-- **Wave 3**: Cache-skip rules (LST + `.live` + 30-day volatile) + 5-case behavior fixture.
-- **Wave 4**: `TimePoint` + `KnowledgeView<T>` + `LeakageDetector` + `assertNoLeakage` (property-tested with fast-check).
-- **Wave 5**: `validateRows` consuming ajv-standalone validators (compiled by codegen in TS-W0); Python-vocabulary violation classes.
-- **Wave 6**: Wire cache into `research()` (read-through); confirm 5-case skip behavior; coverage report ≥ 90% branch on core.
-- **Wave 7**: JSON + CSV + TOON serializers (`jsonDumps/jsonLoads`, `csvDumps/csvLoads`, `toonDumps/toonLoads`).
+Seven sub-plans, organized into 7 waves. Plans 04 and 07 are independent of cache/orchestrator wiring and can execute in parallel with the cache stack (01-03) if scheduling allows.
 
-## Out of Scope
+| Wave | Plan | Objective | Requirements | Autonomous |
+|------|------|-----------|--------------|------------|
+| 1 | [ts-w3-01](./ts-w3-01-PLAN.md) | `CacheStore` interface + `MemoryStore` + `FsStore` at `@tradewinds/core/internal/cache` | TS-CACHE-01, TS-CACHE-02 | yes |
+| 2 | [ts-w3-02](./ts-w3-02-PLAN.md) | `IndexedDBStore` (idb + Web Locks API, jsdom-tested) + `defaultCacheStore()` runtime detection | TS-CACHE-01 | yes |
+| 3 | [ts-w3-03](./ts-w3-03-PLAN.md) | Cache-skip rules (LST + `.live` + 30-day volatile) + cache key generators + 5-case behavior fixture | TS-CACHE-02 | yes |
+| 4 | [ts-w3-04](./ts-w3-04-PLAN.md) | `TimePoint` + `KnowledgeView<T>` + `LeakageDetector` + `assertNoLeakage` at `@tradewinds/core/temporal` (fast-check property tests) | TS-TEMPORAL-01, TS-TEMPORAL-02 | yes |
+| 5 | [ts-w3-05](./ts-w3-05-PLAN.md) | `validateRows` consuming ajv-standalone validators (compiled by codegen; Python-vocabulary violations) | TS-VALIDATOR-01 | yes |
+| 6 | [ts-w3-06](./ts-w3-06-PLAN.md) | Wire cache into `research()` (read-through); 5-case skip behavior replay; ≥ 90% branch coverage on `@tradewinds/core` | TS-CACHE-01, TS-CACHE-02 | yes |
+| 7 | [ts-w3-07](./ts-w3-07-PLAN.md) | JSON + CSV + TOON serializers (`jsonDumps/jsonLoads`, `csvDumps/csvLoads`, `toonDumps/toonLoads`) at `@tradewinds/core/formats` | TS-FORMAT-01 | yes |
+
+### Wave dependency graph
+
+```
+Wave 1 (cache plumbing)               Wave 4 (temporal primitives — independent)
+  └─→ Wave 2 (browser-side + default) Wave 7 (formats — independent)
+        └─→ Wave 3 (skip rules + keys + fixture)
+              └─→ Wave 6 (research() wiring + coverage gate)
+
+Wave 5 (validator) depends only on Wave 4 (LeakageError shape comes from TS-W1
+exceptions, which are already in place — Wave 4 confirms TimePoint/KnowledgeView
+contract that Wave 5 doesn't actually consume; sequenced here for context
+locality, not a hard data dependency).
+```
+
+Plans 04, 05, and 07 share no `files_modified` with the cache stack and can execute in any order relative to each other or to the cache stack. Wave 6 is the only plan with cross-cutting integration — it depends on plans 01-03 landing first.
+
+## Out of Scope (deferred)
 
 - Mode 2 dispatch (TS-W4).
 - Parquet I/O (deferred to v0.2 via `parquet-wasm` if pursued).
 - DataFrame serializer (TS doesn't have DataFrames).
+- `availability()` + `DataSnapshot` + `DataVersion` (TS-W6 consumers — but they read `CacheStore` shipped here).
+- Polymarket / Kalshi (TS-W5).
+- Chrome extension (decoupled per `chore/ts-decouple-chrome` merge — extension lives in its own repo).
+
+## Critical Parity Notes
+
+- **Cache root:** `process.env.TRADEWINDS_CACHE_DIR ?? path.join(os.homedir(), '.tradewinds', 'cache-ts')` (Node-side). DISTINCT from Python (`.tradewinds/cache`). No cross-language compat in v0.1.
+- **IndexedDB DB name:** `tradewinds-cache-v1` (frozen constant; matches TS-CACHE-02).
+- **`LeakageError.toDict()` shape:** snake_case `{ as_of, violating_count, sample_violations }` — matches Python wire format byte-for-byte.
+- **`SchemaValidationError.violations` vocabulary:** uses Python rule strings exactly — `source_attr_required`, `source_column_required`, `retrieved_at_required`, `required_column_missing`, `non_nullable_has_nulls`, `mixed_null_sentinels`, `dtype_mismatch`, `enum_value_violation`, `unknown_schema_id`.
+- **ajv-standalone:** validators MUST be precompiled at codegen time. NO runtime ajv dependency in `@tradewinds/core` (breaks MV3 CSP via `unsafe-eval`).
+- **TimePoint rejection:** naive ISO strings (no `Z` / `±HH:MM` offset) + date-only ISO strings (no `T` separator) + `NaN`/`Infinity` underlying Date values.
+- **KnowledgeView property test:** fast-check over `[2018-01-01, 2027-12-31]` UTC date range; 200 iterations minimum.
+- **Coverage gate:** ≥ 90% branch on `@tradewinds/core` enforced via vitest `thresholds` block — failing coverage exits non-zero.
+- **Bundle size (TS-BUNDLE-01):** `@tradewinds/core` ≤ 25 KB. TS-W3 adds cache + temporal + validator + formats. Plans 05 and 07 flag bundle risk — mitigation paths documented.
+- **Cache wired into research():** 2nd call on same `(station, fromDate, toDate)` ≤ 10% wall time of 1st call on cached-month data (TS-W3 SC#2; measured via vitest test-time stamps with msw deterministic delays).
+
+## Review discipline
+
+Every sub-plan ends with a `<review_discipline>` block. Summary: TypeScript-only PRs route to **codex `high` + TypeScript Architect** (parallel dispatch) per `.planning/REVIEW-DISCIPLINE.md`. Loop on CRITICAL/HIGH only; cap at 3 iterations; escalate at 3.
+
+Mixed PRs (e.g. plan 05 touches `packages-ts/codegen/**` Python-callable scripts + TS-side validator integration — but `packages-ts/codegen/src/codegen.ts` is TS, not Python — so routing stays TS-only) follow the same gate.

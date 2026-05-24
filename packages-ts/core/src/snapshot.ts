@@ -116,6 +116,15 @@ export const _STATION_TZ: Readonly<Record<string, string>> = Object.freeze({
   HNL: "Pacific/Honolulu",
   OGG: "Pacific/Honolulu",
   KOA: "Pacific/Honolulu",
+  // International (iter-6 H12): minimal set required to un-skip the
+  // case-5 RJTT year-wrap cache behavior test. Python's
+  // `tradewinds.snapshot._resolve_tz` falls back to the broader STATIONS
+  // registry for intl ICAOs; the TS port hasn't ported that fallback
+  // yet (tracked as TS-W6 — exhaustive intl-station tz coverage). This
+  // entry closes H12 cleanly without pulling the whole STATIONS map in.
+  // ICAO key (RJTT) — international stations have no 3-letter NWS code.
+  // Tokyo Haneda — UTC+9 LST, no DST.
+  RJTT: "Asia/Tokyo",
 });
 
 /** Reference UTC moment in January (no DST in Northern Hemisphere US). */
