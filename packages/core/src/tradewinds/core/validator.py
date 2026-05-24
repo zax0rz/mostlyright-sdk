@@ -29,6 +29,7 @@ from tradewinds.core.exceptions import (
     SchemaValidationError,
     SourceMismatchError,
 )
+from tradewinds.core.result import TradewindsResult
 from tradewinds.core.schema import Schema, SchemaRegistration
 
 if TYPE_CHECKING:
@@ -165,12 +166,20 @@ def _has_mixed_null_sentinels(s: pd.Series) -> bool:
 # Public API
 # ---------------------------------------------------------------------------
 def validate_dataframe(
-    df: pd.DataFrame,
+    df: pd.DataFrame | TradewindsResult,
     schema_id: str,
     *,
     allow_source_drift: str | None = None,
 ) -> SchemaRegistration:
     """Validate a DataFrame against the named canonical schema.
+
+    Phase 6 W0-T4: accepts either a raw ``pd.DataFrame`` (legacy v0.1.0
+    contract — must carry ``df.attrs["source"]`` / ``df.attrs["retrieved_at"]``)
+    or a :class:`TradewindsResult` wrapper (v0.2+ contract — provenance
+    travels on the wrapper). When passed a wrapper, the validator
+    unwraps to pandas via :meth:`TradewindsResult.legacy_df_with_attrs`
+    and proceeds with the same logic so the four checks below run
+    byte-identically for both shapes.
 
     The Validator runs four checks, in order:
 
@@ -186,7 +195,9 @@ def validate_dataframe(
        in ``ColumnSpec.enum_values``. Sample of violating values capped at 10.
 
     Args:
-        df: The DataFrame to validate. Must carry ``df.attrs["source"]``.
+        df: The DataFrame to validate. Must carry ``df.attrs["source"]``,
+            OR a :class:`TradewindsResult` wrapper whose ``source`` /
+            ``retrieved_at`` populate the equivalent attrs on unwrap.
         schema_id: Canonical schema ID (e.g. ``"schema.observation.v1"``).
         allow_source_drift: Reason string. If supplied, source mismatch is
             allowed; audit log records the reason.
@@ -219,6 +230,11 @@ def validate_dataframe(
     A full passing example requires the canonical column set; see
     ``packages/core/tests/core/test_validator.py`` for end-to-end fixtures.
     """
+    # Phase 6 W0-T4: unwrap TradewindsResult → pandas DataFrame with
+    # legacy attrs populated so the downstream checks see the v0.1.0 shape.
+    if isinstance(df, TradewindsResult):
+        df = df.legacy_df_with_attrs()
+
     schema_cls = _lookup_schema(schema_id)
 
     # codex iter-7 HIGH fix: validate allow_source_drift type explicitly.

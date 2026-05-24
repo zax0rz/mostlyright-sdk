@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 from tradewinds.core.exceptions import LeakageError, SchemaValidationError
+from tradewinds.core.result import TradewindsResult
 from tradewinds.core.temporal.timepoint import TimePoint
 
 if TYPE_CHECKING:
@@ -33,11 +34,17 @@ __all__ = ["LeakageDetector", "assert_no_leakage"]
 _SAMPLE_CAP = 10
 
 
-def assert_no_leakage(df: pd.DataFrame, as_of: TimePoint) -> None:
+def assert_no_leakage(df: pd.DataFrame | TradewindsResult, as_of: TimePoint) -> None:
     """Raise :class:`LeakageError` if any row's ``knowledge_time > as_of``.
 
+    Phase 6 W0-T6: accepts either a raw DataFrame or a
+    :class:`TradewindsResult`; wrapped polars frames are converted to
+    pandas via :meth:`TradewindsResult.frame_as_pandas` because the body
+    of this function uses ``pd.Timestamp`` + ``iterrows`` semantics.
+
     Args:
-        df: DataFrame with a tz-aware UTC ``knowledge_time`` column.
+        df: DataFrame with a tz-aware UTC ``knowledge_time`` column, OR
+            a :class:`TradewindsResult` wrapping such a frame.
         as_of: The as-of cutoff. Rows with strictly greater ``knowledge_time``
             count as leakage.
 
@@ -72,6 +79,8 @@ def assert_no_leakage(df: pd.DataFrame, as_of: TimePoint) -> None:
     ...     print(err.violating_count)
     1
     """
+    if isinstance(df, TradewindsResult):
+        df = df.frame_as_pandas()
     if "knowledge_time" not in df.columns:
         raise SchemaValidationError(
             "assert_no_leakage requires 'knowledge_time' column",
@@ -129,6 +138,10 @@ class LeakageDetector:
     def as_of(self) -> TimePoint:
         return self._as_of
 
-    def check(self, df: pd.DataFrame) -> None:
-        """Run :func:`assert_no_leakage` against the bound ``as_of``."""
+    def check(self, df: pd.DataFrame | TradewindsResult) -> None:
+        """Run :func:`assert_no_leakage` against the bound ``as_of``.
+
+        Accepts either a raw DataFrame or a :class:`TradewindsResult`
+        wrapper (unwrapped inside :func:`assert_no_leakage`).
+        """
         assert_no_leakage(df, self._as_of)
