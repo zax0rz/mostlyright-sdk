@@ -119,40 +119,63 @@ def obs(
     from tradewinds.research import _resolve_station
     info = _resolve_station(station)
 
-    # Dispatch. PLAN-02 wires ONLY exact_window. PLAN-03 fills in warm_cache;
-    # PLAN-04 fills in the "auto" branch body (signature stays "auto").
-    if strategy == "exact_window":
-        from tradewinds._exact_fetch import _exact_fetch_observations
-        rows = _exact_fetch_observations(
-            info,
-            start,
-            end,
-            source=source,
-        )
-    elif strategy == "warm_cache":
-        rows = _warm_cache_fetch(
-            info,
-            start,
-            end,
-            source=source,
-        )
-    elif strategy == "auto":
-        raise NotImplementedError(
-            "strategy='auto' dispatch wired in PLAN-07-04 — "
-            "pass strategy='exact_window' or 'warm_cache' explicitly until then."
-        )
-    elif strategy == "hosted":
-        raise NotImplementedError(
-            "hosted strategy deferred to v0.2.x — "
-            "set TW_HOSTED_URL to enable once client lands"
+    # Resolve "auto" to a concrete strategy first; never recurse (W-5).
+    if strategy == "auto":
+        import os
+
+        resolved = _resolve_strategy(
+            from_date=date.fromisoformat(start),
+            to_date=date.fromisoformat(end),
+            station=station,
+            env=os.environ,
         )
     else:
-        raise ValueError(f"Unknown strategy: {strategy!r}")
+        resolved = strategy
+
+    rows = _dispatch_strategy(
+        info,
+        start,
+        end,
+        source=source,
+        strategy=resolved,
+    )
 
     if as_dataframe:
         import pandas as pd
         return pd.DataFrame(rows)
     return rows
+
+
+def _dispatch_strategy(
+    info,
+    from_date_iso: str,
+    to_date_iso: str,
+    *,
+    source: "Source | None",
+    strategy: Literal["exact_window", "warm_cache", "hosted"],
+) -> list[dict]:
+    """Single dispatch path for the three concrete strategies. NEVER recurses (W-5).
+
+    Future kwargs added to ``obs()`` need to be threaded ONCE through this
+    helper, not re-marshalled into a recursive ``obs(...)`` call where every
+    new param risks being forgotten.
+    """
+    if strategy == "exact_window":
+        from tradewinds._exact_fetch import _exact_fetch_observations
+
+        return _exact_fetch_observations(
+            info, from_date_iso, to_date_iso, source=source
+        )
+    if strategy == "warm_cache":
+        return _warm_cache_fetch(
+            info, from_date_iso, to_date_iso, source=source
+        )
+    if strategy == "hosted":
+        raise NotImplementedError(
+            "hosted strategy deferred to v0.2.x — "
+            "set TW_HOSTED_URL to enable once client lands"
+        )
+    raise ValueError(f"Unknown concrete strategy: {strategy!r}")
 
 
 def _warm_cache_fetch(
@@ -214,6 +237,70 @@ def _warm_cache_fetch(
         extended_to_iso,
         prefetched_awc_rows=awc_rows,
     )
+
+
+def _resolve_strategy(
+    from_date: date,
+    to_date: date,
+    station: str,
+    env,
+    *,
+    cache_root=None,
+) -> Literal["exact_window", "warm_cache", "hosted"]:
+    """Decide which ingest strategy ``auto`` should dispatch to.
+
+    Decision rules (applied in order; first match wins):
+
+    1. If ``env["TW_HOSTED_URL"]`` is set → ``"hosted"``.
+    2. Else if window < 90 days AND no cached parquet for ANY year touching
+       the window → ``"exact_window"``.
+    3. Else if any cached parquet for ANY year touching the window exists →
+       ``"warm_cache"``.
+    4. Else (large window, no cache, no env) → ``"warm_cache"`` (fallback;
+       long windows benefit from year-aligned caching even cold because
+       multiple months hit the same yearly IEM CSV).
+
+    W-2: cache-warmth check spans every year from ``from_date.year`` through
+    ``to_date.year`` inclusive. A window crossing Dec→Jan would otherwise
+    miss any warm cache in the second year.
+
+    The 90-day threshold matches the empirical finding in
+    ``.planning/research/INGEST-PLANNER-RESEARCH.md``: at 3 months a
+    warm_cache query already pays the full ~13 MB year-aligned cost, so
+    under that bucket exact_window wins decisively when the cache is cold.
+
+    Parameters
+    ----------
+    from_date, to_date : date
+        Window bounds (inclusive).
+    station : str
+        Station identifier (used to probe the cache).
+    env : Mapping[str, str]
+        Environment mapping. Pass ``os.environ`` in production; pass a dict
+        for tests.
+    cache_root : Path | None
+        Override cache root for tests. Defaults to ``$TRADEWINDS_CACHE_DIR``
+        or ``~/.tradewinds/cache`` via ``_cache_root()``.
+
+    Returns
+    -------
+    {"exact_window", "warm_cache", "hosted"}
+    """
+    from tradewinds.weather.cache import _has_cached_year
+
+    if env.get("TW_HOSTED_URL"):
+        return "hosted"
+
+    window_days = (to_date - from_date).days + 1
+    has_cache = any(
+        _has_cached_year(station, y, cache_root=cache_root)
+        for y in range(from_date.year, to_date.year + 1)
+    )
+
+    if window_days < 90 and not has_cache:
+        return "exact_window"
+
+    return "warm_cache"
 
 
 __all__ = ["Source", "Strategy", "obs"]

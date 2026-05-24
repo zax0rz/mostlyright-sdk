@@ -80,11 +80,21 @@ def test_obs_warm_cache_with_source_raises_value_error():
             source="iem", strategy="warm_cache")
 
 
-def test_obs_auto_raises_not_implemented_pending_plan_04():
+def test_obs_auto_dispatches_to_resolved_strategy(monkeypatch, tmp_path):
+    """PLAN-07-04: auto routes through _resolve_strategy then dispatches once."""
     from tradewinds.weather.obs import obs
 
-    with pytest.raises(NotImplementedError, match="PLAN-07-04"):
-        obs("KNYC", "2024-03-01", "2024-03-31", strategy="auto")
+    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+    monkeypatch.delenv("TW_HOSTED_URL", raising=False)
+
+    with patch(
+        "tradewinds.weather.obs._resolve_strategy", return_value="exact_window"
+    ) as mock_resolve, patch(
+        "tradewinds._exact_fetch._exact_fetch_observations", return_value=[]
+    ):
+        result = obs("KNYC", "2024-03-01", "2024-03-31", strategy="auto")
+    assert mock_resolve.called
+    assert result is not None
 
 
 def test_obs_source_iem_skips_awc_and_ghcnh_fetchers():
