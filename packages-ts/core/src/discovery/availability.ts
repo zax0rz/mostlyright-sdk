@@ -146,13 +146,21 @@ export async function availability(
     return empty;
   }
 
-  const obsPrefix = `tradewinds:v1:observations:${stationCode}:`;
-  const climatePrefix = `tradewinds:v1:climate:${stationCode}:`;
+  // Scan both the canonical cache-key form AND the original upper-cased
+  // input (when they differ — e.g. user passed "KNYC" → normalized "NYC";
+  // scan ":NYC:" AND ":KNYC:"). Codex iter-5 P2: a caller using the
+  // documented `cacheKeyForObservations("KNYC", ...)` helper writes under
+  // :KNYC:, which the normalized prefix would miss.
+  const upperInput = station.toUpperCase();
+  const scanCodes = upperInput === stationCode ? [stationCode] : [stationCode, upperInput];
 
-  const [obsKeys, climateKeys] = await Promise.all([
-    cache.listKeys(obsPrefix),
-    cache.listKeys(climatePrefix),
-  ]);
+  const obsPrefixes = scanCodes.map((c) => `tradewinds:v1:observations:${c}:`);
+  const climatePrefixes = scanCodes.map((c) => `tradewinds:v1:climate:${c}:`);
+
+  const obsKeySets = await Promise.all(obsPrefixes.map((p) => cache.listKeys(p)));
+  const climateKeySets = await Promise.all(climatePrefixes.map((p) => cache.listKeys(p)));
+  const obsKeys = obsKeySets.flat();
+  const climateKeys = climateKeySets.flat();
 
   // Collect the matching keys grouped by (year-month) / year so we can both
   // dedupe (e.g. per-source observation keys for the same month) and run a
@@ -160,23 +168,25 @@ export async function availability(
   const monthCandidates = new Map<string, string[]>();
   for (const key of obsKeys) {
     const m = OBS_KEY_RE.exec(key);
-    if (m && m[1] === stationCode) {
-      const ym = `${m[2]}-${m[3]}`;
-      const arr = monthCandidates.get(ym) ?? [];
-      arr.push(key);
-      monthCandidates.set(ym, arr);
-    }
+    if (m === null) continue;
+    const keyStation = m[1] as string;
+    if (!scanCodes.includes(keyStation)) continue;
+    const ym = `${m[2]}-${m[3]}`;
+    const arr = monthCandidates.get(ym) ?? [];
+    arr.push(key);
+    monthCandidates.set(ym, arr);
   }
 
   const yearCandidates = new Map<string, string[]>();
   for (const key of climateKeys) {
     const m = CLIMATE_KEY_RE.exec(key);
-    if (m && m[1] === stationCode) {
-      const y = m[2] as string;
-      const arr = yearCandidates.get(y) ?? [];
-      arr.push(key);
-      yearCandidates.set(y, arr);
-    }
+    if (m === null) continue;
+    const keyStation = m[1] as string;
+    if (!scanCodes.includes(keyStation)) continue;
+    const y = m[2] as string;
+    const arr = yearCandidates.get(y) ?? [];
+    arr.push(key);
+    yearCandidates.set(y, arr);
   }
 
   let months: string[];

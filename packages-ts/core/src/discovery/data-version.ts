@@ -40,8 +40,14 @@ function bytesToHex(bytes: Uint8Array): string {
 /**
  * Build a frozen DataVersion from explicit components.
  *
- * Mirrors Python `DataVersion.from_components`: sorts schemaIds + sources before
- * canonical concatenation so input order does not affect the token.
+ * Mirrors Python `DataVersion.from_components`: sorts schemaIds + sources
+ * INTERNALLY before the canonical hash so input order does not affect the
+ * token, but preserves the caller's order on the returned object's
+ * `schemaIds` and `sources` arrays. Codex iter-5 P2: prior version sorted
+ * the stored arrays alphabetically too, which masked source-priority order
+ * (e.g. `awc.live, ghcnh, iem.archive, ...` instead of the canonical
+ * `iem.archive, iem.live, awc.live, ghcnh, nws.cli` precedence Python
+ * preserves on the tuple).
  */
 export async function dataVersionFromComponents(
   components: DataVersionComponents,
@@ -62,8 +68,8 @@ export async function dataVersionFromComponents(
 
   return Object.freeze({
     sdkVersion: components.sdkVersion,
-    schemaIds: Object.freeze(sortedSchemaIds),
-    sources: Object.freeze(sortedSources),
+    schemaIds: Object.freeze([...components.schemaIds]),
+    sources: Object.freeze([...components.sources]),
     codeSha: components.codeSha,
     dataSha: components.dataSha,
     token,

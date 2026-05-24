@@ -120,6 +120,21 @@ describe("availability", () => {
     expect(fromCode).toEqual(fromIcao);
   });
 
+  it("counts entries written under the original ICAO form too (codex iter-5 P2)", async () => {
+    // Some callers populate the cache directly via cacheKeyForObservations
+    // with the ICAO (e.g. KNYC) rather than the resolved NWS code. The scan
+    // must find both forms so availability doesn't undercount.
+    await store.set(cacheKeyForObservations("KNYC", 2025, 4, "iem"), { v: 1 });
+    await store.set(cacheKeyForObservations("NYC", 2025, 5, "iem"), { v: 2 });
+    await store.set(cacheKeyForClimate("KNYC", 2024), { v: 3 });
+
+    const r = await availability("KNYC", store);
+    expect(r.monthsCached).toBe(2);
+    expect(r.firstMonth).toBe("2025-04");
+    expect(r.lastMonth).toBe("2025-05");
+    expect(r.climateYears).toBe(1);
+  });
+
   it("resolves international stations by ICAO (no NWS code → ICAO is the cache form)", async () => {
     // International stations have null `code`; research() uses ICAO as the
     // cache form. availability should return ICAO for those.

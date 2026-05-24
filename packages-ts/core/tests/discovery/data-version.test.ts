@@ -36,7 +36,7 @@ describe("dataVersionFromComponents", () => {
     expect(v.token).toBe(reference);
   });
 
-  it("sorts schemaIds and sources before hashing (order-independent)", async () => {
+  it("sorts schemaIds and sources before hashing (order-independent) but preserves the input on the object", async () => {
     const a = await dataVersionFromComponents({
       sdkVersion: "0.1.0",
       schemaIds: ["schema.b", "schema.a"],
@@ -51,9 +51,14 @@ describe("dataVersionFromComponents", () => {
       codeSha: "c",
       dataSha: "d",
     });
+    // Token: order-independent (sorted internally for hashing).
     expect(a.token).toBe(b.token);
-    expect(a.schemaIds).toEqual(["schema.a", "schema.b"]);
-    expect(a.sources).toEqual(["src.a", "src.z"]);
+    // Stored arrays: preserve the caller's order. Mirrors Python contract
+    // where DataVersion.from_components sorts ONLY for the hash inputs.
+    expect(a.schemaIds).toEqual(["schema.b", "schema.a"]);
+    expect(a.sources).toEqual(["src.z", "src.a"]);
+    expect(b.schemaIds).toEqual(["schema.a", "schema.b"]);
+    expect(b.sources).toEqual(["src.a", "src.z"]);
   });
 
   it("round-trips: same inputs → same token", async () => {
@@ -111,6 +116,22 @@ describe("dataVersionForResearch", () => {
     const t1 = (await dataVersionForResearch(args)).token;
     const t2 = (await dataVersionForResearch(args)).token;
     expect(t1).toBe(t2);
+  });
+
+  it("preserves source-priority order on the returned tuple (codex iter-5 P2)", async () => {
+    // dataVersionForResearch passes sources in priority order
+    // (iem.archive, iem.live, awc.live, ghcnh, nws.cli). The stored
+    // metadata must NOT be alphabetized; only the canonical hash inputs are
+    // sorted. Python contract: from_components sorts ONLY for the hash and
+    // keeps the original tuple on the DataVersion.
+    const v = await dataVersionForResearch({
+      sdkVersion: "0.1.0",
+      station: "KNYC",
+      fromDate: "2025-01-01",
+      toDate: "2025-01-07",
+      dataSha: "abc",
+    });
+    expect(v.sources).toEqual(["iem.archive", "iem.live", "awc.live", "ghcnh", "nws.cli"]);
   });
 });
 
