@@ -99,10 +99,10 @@ describe("heatIndex — NWS reference table (load-bearing, ≤1°F tolerance)", 
     expect(closeTo(num(v), 106)).toBe(true);
   });
 
-  it("heatIndex(80, 50) ≈ 82 °F", () => {
+  it("heatIndex(80, 50) ≈ 81 °F (NWS table; Python ~80.8)", () => {
     const v = heatIndex(80, 50);
     expect(v).not.toBeNull();
-    expect(closeTo(num(v), 82)).toBe(true);
+    expect(closeTo(num(v), 81)).toBe(true);
   });
 
   it("heatIndex(100, 60) ≈ 129 °F", () => {
