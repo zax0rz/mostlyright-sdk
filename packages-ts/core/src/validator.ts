@@ -81,8 +81,11 @@ function isIsoDateTime(v: unknown): boolean {
   const litDay = Number(dateMatch[3]);
   let offsetMin = 0;
   const tzMatch = /(Z|[+-]\d{2}:?\d{2})$/.exec(trimmed);
-  if (tzMatch !== null && tzMatch[1] !== "Z") {
-    const tz = tzMatch[1];
+  // Mirror the timepoint.ts narrowing (iter-4 C10): noUncheckedIndexedAccess
+  // makes RegExpExecArray indexing yield `string | undefined`, so we must
+  // narrow the capture explicitly even after the `null` guard on `exec`.
+  const tz = tzMatch === null ? undefined : tzMatch[1];
+  if (tz !== undefined && tz !== "Z") {
     const sign = tz.startsWith("-") ? -1 : 1;
     const body = tz.slice(1).replace(":", "");
     const hh = Number(body.slice(0, 2));
