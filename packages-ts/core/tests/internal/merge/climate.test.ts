@@ -20,7 +20,7 @@ describe("mergeClimate — strict-> + first-seen tiebreak", () => {
   it("final (priority 3.0) replaces preliminary (1.0) at same (station, date)", () => {
     const prelim = row("NYC", "2025-01-08", 1.0, "prelim");
     const final = row("NYC", "2025-01-08", 3.0, "final");
-    const merged = mergeClimate([prelim, final]) as Array<{ marker?: string }>;
+    const merged = mergeClimate([prelim, final]) as unknown as ReadonlyArray<{ marker?: string }>;
     expect(merged).toHaveLength(1);
     expect(merged[0]?.marker).toBe("final");
   });
@@ -28,7 +28,7 @@ describe("mergeClimate — strict-> + first-seen tiebreak", () => {
   it("final → preliminary does NOT replace (strict >, not >=)", () => {
     const final = row("NYC", "2025-01-08", 3.0, "final");
     const prelim = row("NYC", "2025-01-08", 1.0, "prelim");
-    const merged = mergeClimate([final, prelim]) as Array<{ marker?: string }>;
+    const merged = mergeClimate([final, prelim]) as unknown as ReadonlyArray<{ marker?: string }>;
     expect(merged).toHaveLength(1);
     expect(merged[0]?.marker).toBe("final");
   });
@@ -36,7 +36,7 @@ describe("mergeClimate — strict-> + first-seen tiebreak", () => {
   it("two finals at same (station, date): first-seen wins on equal priority", () => {
     const f1 = row("NYC", "2025-01-08", 3.0, "first-final");
     const f2 = row("NYC", "2025-01-08", 3.0, "second-final");
-    const merged = mergeClimate([f1, f2]) as Array<{ marker?: string }>;
+    const merged = mergeClimate([f1, f2]) as unknown as ReadonlyArray<{ marker?: string }>;
     expect(merged).toHaveLength(1);
     expect(merged[0]?.marker).toBe("first-final");
   });
@@ -48,7 +48,9 @@ describe("mergeClimate — strict-> + first-seen tiebreak", () => {
       report_type_priority: 0,
     };
     const prelim = row("NYC", "2025-01-08", 1.0, "prelim");
-    const merged = mergeClimate([noPriority, prelim]) as Array<{ marker?: string }>;
+    const merged = mergeClimate([noPriority, prelim]) as unknown as ReadonlyArray<{
+      marker?: string;
+    }>;
     expect(merged[0]?.marker).toBe("prelim");
   });
 });

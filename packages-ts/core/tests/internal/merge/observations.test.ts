@@ -68,7 +68,10 @@ describe("mergeObservations — equal-priority first-seen tiebreak", () => {
   it("two IEM rows at same key: first-seen wins", () => {
     const a = row("NYC", "2025-01-08T14:51:00Z", "METAR", "iem", "first");
     const b = row("NYC", "2025-01-08T14:51:00Z", "METAR", "iem", "second");
-    const merged = mergeObservations([a, b]) as Array<{ marker?: string }>;
+    const merged = mergeObservations([a, b]) as unknown as ReadonlyArray<{
+      marker?: string;
+      source: string;
+    }>;
     expect(merged).toHaveLength(1);
     expect(merged[0]?.marker).toBe("first");
   });
@@ -76,7 +79,10 @@ describe("mergeObservations — equal-priority first-seen tiebreak", () => {
   it("reversed input order produces DIFFERENT survivor (Python-faithful order-dependence)", () => {
     const a = row("NYC", "2025-01-08T14:51:00Z", "METAR", "iem", "first");
     const b = row("NYC", "2025-01-08T14:51:00Z", "METAR", "iem", "second");
-    const merged = mergeObservations([b, a]) as Array<{ marker?: string }>;
+    const merged = mergeObservations([b, a]) as unknown as ReadonlyArray<{
+      marker?: string;
+      source: string;
+    }>;
     expect(merged[0]?.marker).toBe("second");
   });
 });
@@ -92,7 +98,10 @@ describe("mergeObservations — unknown source priority", () => {
   it("two unknown sources at same key: first-seen wins (priority 0 tie)", () => {
     const a = row("NYC", "2025-01-08T14:51:00Z", "METAR", "foo", "first");
     const b = row("NYC", "2025-01-08T14:51:00Z", "METAR", "bar", "second");
-    const merged = mergeObservations([a, b]) as Array<{ marker?: string }>;
+    const merged = mergeObservations([a, b]) as unknown as ReadonlyArray<{
+      marker?: string;
+      source: string;
+    }>;
     expect(merged[0]?.marker).toBe("first");
     expect(merged[0]?.source).toBe("foo");
   });

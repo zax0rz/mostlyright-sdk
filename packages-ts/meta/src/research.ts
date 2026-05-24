@@ -1,31 +1,43 @@
-// `research()` orchestrator — TS-W1 Wave 6 MVP.
+// `research()` orchestrator — TS-W2 multi-source Mode 1 join.
 //
-// Joins AWC live observations (last 168h) + IEM CLI climate reports into
-// daily rows, mirroring (a subset of) Python `tradewinds.research()` Mode 1.
+// Wires all four observation sources (AWC live, IEM ASOS archive, GHCNh
+// archive, IEM CLI climate) into the canonical `PairsRow` shape via
+// mergeObservations + mergeClimate + buildPairs. Mode 1 only — all
+// `fcst_*` columns are unconditionally null in this phase.
 //
-// Lives in `packages-ts/meta/` (NOT in @tradewinds/core) so the core
-// package can stay dep-free; this orchestrator depends on both
-// @tradewinds/core (snapshot math + station table) and @tradewinds/weather
-// (AWC + CLI fetchers/parsers). See TS-W1 PLAN §Wave 6.
+// Lives in `packages-ts/meta/` so `@tradewinds/core` stays dep-free; this
+// orchestrator imports from both core (snapshot math + station table +
+// merge + pairs) and weather (4 fetchers + 4 parsers).
 //
-// W1 scope: AWC + CLI only. NO IEM ASOS, GHCNh, forecast, or cache —
-// those land in later waves. All `fcst_*` columns are unconditionally null.
+// W2 scope: AWC + IEM ASOS + GHCNh + CLI; no cache (TS-W3), no Mode 2
+// (TS-W4), no forecast (TS-W5+), no parallel prefetch (TS-W3+). Fetches
+// are sequential — fine for the parity gate; performance work is later.
 
+import { STATION_BY_CODE, STATION_BY_ICAO, settlementDateFor } from "@tradewinds/core";
+import { mergeClimate, mergeObservations } from "@tradewinds/core/internal/merge";
 import {
-  STATION_BY_CODE,
-  STATION_BY_ICAO,
-  marketCloseUtc,
-  settlementDateFor,
-} from "@tradewinds/core";
-import { mergeClimate } from "@tradewinds/core/internal/merge";
+  type PairsClimateLike,
+  type PairsObservationLike,
+  type PairsRow,
+  buildPairs,
+} from "@tradewinds/core/internal/pairs";
 import {
   type ClimateObservation,
   type Observation,
   awcToObservation,
   downloadCliRange,
+  downloadGhcnhRange,
+  downloadIemAsos,
   fetchAwcMetars,
   parseCliResponse,
+  parseGhcnhPsv,
+  parseIemCsv,
 } from "@tradewinds/weather";
+
+// Re-export PairsRow so callers can `import { research, type PairsRow } from "tradewinds"`.
+export type { PairsRow } from "@tradewinds/core/internal/pairs";
+
+const AWC_MAX_HOURS = 168;
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -36,37 +48,18 @@ export interface ResearchOptions {
   signal?: AbortSignal;
   /** AWC lookback window in hours. Default 168 (AWC max). Clamped by the fetcher. */
   awcHours?: number;
-}
-
-/**
- * A single date-keyed research row — one per calendar day in the
- * requested range, in the station's local standard time.
- *
- * All `fcst_*` columns are unconditionally null in W1 (forecast support
- * is reserved for a later wave). The column names are present so the
- * shape is forward-compatible with the Python `pairs()` schema.
- */
-export interface ResearchRow {
-  readonly date: string;
-  readonly station: string;
-  readonly cli_high_f: number | null;
-  readonly cli_low_f: number | null;
-  readonly cli_report_type: string | null;
-  readonly obs_high_f: number | null;
-  readonly obs_low_f: number | null;
-  readonly obs_mean_f: number | null;
-  readonly obs_mean_dewpoint_f: number | null;
-  readonly obs_max_wind_kt: number | null;
-  readonly obs_max_gust_kt: number | null;
-  readonly obs_total_precip_in: number | null;
-  readonly obs_count: number;
-  readonly fcst_high_f: null;
-  readonly fcst_low_f: null;
-  readonly fcst_model: null;
-  readonly fcst_issued_at: null;
-  readonly fcst_pop_6hr_pct: null;
-  readonly fcst_qpf_6hr_in: null;
-  readonly market_close_utc: string;
+  /** Polite-delay (ms) between successive IEM ASOS year chunks. Default 1000. */
+  iemPolitenessMs?: number;
+  /** Polite-delay (ms) between successive GHCNh year requests. Default 1000. */
+  ghcnhPolitenessMs?: number;
+  /** Polite-delay (ms) between successive CLI year requests. Default 1000. */
+  cliPolitenessMs?: number;
+  /**
+   * Reference clock for the AWC-window overlap check (test-only seam).
+   * Defaults to `new Date()`. Pass an override to force-include AWC for
+   * historical date ranges in unit tests.
+   */
+  now?: Date;
 }
 
 // ---------------------------------------------------------------------------
@@ -75,33 +68,56 @@ export interface ResearchRow {
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-function normalizeStation(input: string): { code: string; icao: string; tz: string } {
+interface ResolvedStation {
+  readonly code: string;
+  readonly icao: string;
+  readonly tz: string;
+  readonly country: string | null;
+  readonly ghcnhId: string | null;
+}
+
+function normalizeStation(input: string): ResolvedStation {
   const raw = input.trim().toUpperCase();
   if (raw.length === 0) {
     throw new Error("station must be a non-empty string");
   }
-  // Try ICAO form first (4-letter, may match KNYC etc.), then 3-letter code.
   const byIcao = STATION_BY_ICAO.get(raw);
   if (byIcao !== undefined) {
     if (byIcao.code === null) {
       throw new Error(`station ${JSON.stringify(raw)} has no 3-letter NWS code`);
     }
-    return { code: byIcao.code, icao: byIcao.icao, tz: byIcao.tz };
+    return {
+      code: byIcao.code,
+      icao: byIcao.icao,
+      tz: byIcao.tz,
+      country: byIcao.country,
+      ghcnhId: byIcao.ghcnh_id,
+    };
   }
   const byCode = STATION_BY_CODE.get(raw);
   if (byCode !== undefined) {
     if (byCode.code === null) {
       throw new Error(`station ${JSON.stringify(raw)} has no 3-letter NWS code`);
     }
-    return { code: byCode.code, icao: byCode.icao, tz: byCode.tz };
+    return {
+      code: byCode.code,
+      icao: byCode.icao,
+      tz: byCode.tz,
+      country: byCode.country,
+      ghcnhId: byCode.ghcnh_id,
+    };
   }
-  // Strip leading K and retry (`KNYC` already handled above, but legacy
-  // 5-letter inputs like `KKNYC` shouldn't sneak through).
   if (raw.startsWith("K") && raw.length === 4) {
     const stripped = raw.slice(1);
     const retry = STATION_BY_CODE.get(stripped);
     if (retry !== undefined && retry.code !== null) {
-      return { code: retry.code, icao: retry.icao, tz: retry.tz };
+      return {
+        code: retry.code,
+        icao: retry.icao,
+        tz: retry.tz,
+        country: retry.country,
+        ghcnhId: retry.ghcnh_id,
+      };
     }
   }
   throw new Error(
@@ -147,76 +163,52 @@ function buildDateList(fromDate: string, toDate: string): ReadonlyArray<string> 
   return dates;
 }
 
-/**
- * Given an ISO-UTC observed_at string ("YYYY-MM-DDTHH:MM:SSZ") and the
- * station code, return the LOCAL STANDARD TIME calendar date (YYYY-MM-DD)
- * that the observation belongs to.
- *
- * Uses `settlementDateFor()` from @tradewinds/core — which applies the
- * station's STANDARD UTC offset (DST-ignored). Kalshi NHIGH/NLOW
- * settlement windows are midnight–midnight LST year-round; observations
- * MUST group by LST date, not by wall-clock local date, otherwise the
- * spring/fall DST edges produce wrong daily aggregates.
- */
+/** Plus-one-day in UTC. Used to extend the upper bound so the final LST
+ *  settlement window's pre-midnight UTC tail observations are captured. */
+function plusOneDay(isoDate: string): string {
+  const d = parseIsoDate(isoDate);
+  return formatDate(new Date(d.getTime() + 24 * 3_600_000));
+}
+
+/** US stations only — GHCNh PSV archive is US-only. International stations
+ *  have `ghcnh_id: null` AND `country !== "US"` in the TS codegen. */
+function isUsStation(station: ResolvedStation): boolean {
+  return station.country === "US";
+}
+
+/** Returns true if any date in `[fromDate, toDate]` is within `hours` of `now`.
+ *  Mirrors Python `_month_overlaps_awc_window` semantics — defensive
+ *  short-circuit so we don't hit AWC for purely historical windows. */
+function anyDateOverlapsAwc(toDate: string, hours: number, now: Date): boolean {
+  const to = parseIsoDate(toDate);
+  // Window includes the END of toDate (LST close), so add 24h to the upper bound.
+  const toEndMs = to.getTime() + 24 * 3_600_000;
+  const nowMs = now.getTime();
+  const cutoffMs = nowMs - hours * 3_600_000;
+  return toEndMs >= cutoffMs;
+}
+
 function observedSettlementDate(observedAt: string, station: string): string | null {
   const ms = Date.parse(observedAt);
   if (!Number.isFinite(ms)) return null;
   try {
     return settlementDateFor(new Date(ms), station);
   } catch {
-    // settlementDateFor throws on unknown station tz; the caller has
-    // already validated the station code, so this shouldn't fire in
-    // practice. Defensive fallthrough to null preserves the bucket
-    // skip the original implementation used on parse failure.
     return null;
   }
 }
 
-function average(values: ReadonlyArray<number>): number | null {
-  if (values.length === 0) return null;
-  let sum = 0;
-  for (const v of values) sum += v;
-  return sum / values.length;
-}
-
-function maxOf(values: ReadonlyArray<number>): number | null {
-  if (values.length === 0) return null;
-  let best = values[0] as number;
-  for (let i = 1; i < values.length; i++) {
-    const v = values[i] as number;
-    if (v > best) best = v;
-  }
-  return best;
-}
-
-function minOf(values: ReadonlyArray<number>): number | null {
-  if (values.length === 0) return null;
-  let best = values[0] as number;
-  for (let i = 1; i < values.length; i++) {
-    const v = values[i] as number;
-    if (v < best) best = v;
-  }
-  return best;
-}
-
-function sumOf(values: ReadonlyArray<number>): number {
-  let s = 0;
-  for (const v of values) s += v;
-  return s;
-}
-
-function nonNullField<T extends keyof Observation>(
-  obs: ReadonlyArray<Observation>,
-  field: T,
-): ReadonlyArray<number> {
-  const out: number[] = [];
-  for (const o of obs) {
-    const v = o[field];
-    if (typeof v === "number" && Number.isFinite(v)) {
-      out.push(v);
-    }
-  }
-  return out;
+/** Lexicographic-on-`observed_at` sort, stable in `source`. Ensures
+ *  byte-equivalent float aggregation in `_obsAggregates` (mean is
+ *  non-associative for floats). */
+function sortByObservedAtThenSource(rows: ReadonlyArray<Observation>): Observation[] {
+  return [...rows].sort((a, b) => {
+    if (a.observed_at < b.observed_at) return -1;
+    if (a.observed_at > b.observed_at) return 1;
+    if (a.source < b.source) return -1;
+    if (a.source > b.source) return 1;
+    return 0;
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -227,118 +219,139 @@ function nonNullField<T extends keyof Observation>(
  * Build daily research rows for a station + date window.
  *
  * @param station NWS 3-letter code (e.g. "NYC") OR 4-letter ICAO (e.g. "KNYC").
- * @param fromDate Inclusive start date, ISO YYYY-MM-DD.
- * @param toDate Inclusive end date, ISO YYYY-MM-DD.
+ * @param fromDate Inclusive start date, ISO YYYY-MM-DD (LST).
+ * @param toDate Inclusive end date, ISO YYYY-MM-DD (LST).
  * @param opts See {@link ResearchOptions}.
  *
- * Returns an immutable array of frozen {@link ResearchRow}s — one per day
+ * Returns an immutable array of frozen {@link PairsRow}s — one per LST day
  * in `[fromDate, toDate]`. Each row carries:
- *  - `cli_*` fields populated from IEM CLI when available, null otherwise.
- *  - `obs_*` daily aggregates over AWC live METARs grouped by local date.
- *    Note: AWC only serves ~168 hours; dates older than that have null obs.
- *  - `fcst_*` fields unconditionally null (W1 reserves the columns).
- *  - `market_close_utc` from `marketCloseUtc(date, station)`.
+ *  - `cli_*` populated from IEM CLI (final preferred per `mergeClimate`).
+ *  - `obs_*` daily aggregates over the 3-source merged observations
+ *    (AWC > IEM > GHCNh per `mergeObservations`).
+ *  - `fcst_*` unconditionally null (Mode 1).
+ *  - `market_close_utc` formatted `YYYY-MM-DDTHH:MM:SSZ`.
  *
- * Throws:
- *  - When the station can't be resolved.
- *  - When dates are malformed or `fromDate > toDate`.
- *  - When AbortSignal is triggered (propagates from fetchers).
+ * Throws on unknown station, malformed dates, or fromDate > toDate.
+ * AbortSignal propagates from underlying fetchers.
  */
 export async function research(
   station: string,
   fromDate: string,
   toDate: string,
   opts: ResearchOptions = {},
-): Promise<ReadonlyArray<ResearchRow>> {
+): Promise<ReadonlyArray<PairsRow>> {
   const resolved = normalizeStation(station);
   const dates = buildDateList(fromDate, toDate);
+  const extendedTo = plusOneDay(toDate);
 
-  // --- CLI fetch (year range) -------------------------------------------
-  // IEM CLI is per-station-year — we ask for the inclusive year span and
-  // filter to the date range below.
   const fromYear = Number(fromDate.slice(0, 4));
   const toYear = Number(toDate.slice(0, 4));
-  // `exactOptionalPropertyTypes` rejects `signal: undefined`; build the opts
-  // object conditionally so the key is omitted when no signal is provided.
+  const extendedToYear = Number(extendedTo.slice(0, 4));
+
   const baseOpts: { signal?: AbortSignal } = {};
   if (opts.signal !== undefined) baseOpts.signal = opts.signal;
 
-  let cliMap: Map<string, ClimateObservation>;
+  // --- IEM CLI climate (per-year) ---------------------------------------
+  let mergedClimate: ReadonlyArray<ClimateObservation> = [];
   try {
-    const cliRaw = await downloadCliRange(resolved.icao, fromYear, toYear, baseOpts);
+    const cliOpts: { signal?: AbortSignal; politenessMs?: number } = {};
+    if (opts.signal !== undefined) cliOpts.signal = opts.signal;
+    if (opts.cliPolitenessMs !== undefined) cliOpts.politenessMs = opts.cliPolitenessMs;
+    const cliRaw = await downloadCliRange(resolved.icao, fromYear, toYear, cliOpts);
     const cliParsed = parseCliResponse(cliRaw, resolved.code);
-    // Use mergeClimate() (byte-faithful port of Python merge_climate /
-    // _dedup_climate_rows): keep the row with highest
-    // `report_type_priority` per `(station_code, observation_date)` with
-    // strict `>`. This ensures a later `final` replaces an earlier
-    // `preliminary`, but a second `final` never overwrites the first.
-    const cliDeduped = mergeClimate(cliParsed);
-    cliMap = new Map<string, ClimateObservation>();
-    for (const row of cliDeduped) {
-      cliMap.set(row.observation_date, row);
-    }
+    mergedClimate = mergeClimate(cliParsed);
   } catch (err) {
-    // Surface aborts to the caller; on other errors degrade to no CLI data.
     if (err instanceof DOMException && (err.name === "AbortError" || err.name === "TimeoutError")) {
       throw err;
     }
-    cliMap = new Map();
+    // Degrade to no CLI data — buildPairs emits null cli_* for affected dates.
   }
 
-  // --- AWC fetch (live window) ------------------------------------------
-  const awcOpts: { hours: number; signal?: AbortSignal } = {
-    hours: opts.awcHours ?? 168,
-  };
-  if (opts.signal !== undefined) awcOpts.signal = opts.signal;
-  const awcRaw = await fetchAwcMetars([resolved.icao], awcOpts);
-  const obsByDate = new Map<string, Observation[]>();
-  for (const m of awcRaw) {
-    const obs = awcToObservation(m);
-    if (obs === null) continue;
-    const localDate = observedSettlementDate(obs.observed_at, resolved.code);
-    if (localDate === null) continue;
-    let bucket = obsByDate.get(localDate);
+  // --- AWC live observations (short-circuit on stale windows) -----------
+  const awcHours = opts.awcHours ?? AWC_MAX_HOURS;
+  const awcRows: Observation[] = [];
+  if (anyDateOverlapsAwc(toDate, awcHours, opts.now ?? new Date())) {
+    const awcOpts: { hours: number; signal?: AbortSignal } = { hours: awcHours };
+    if (opts.signal !== undefined) awcOpts.signal = opts.signal;
+    const awcRaw = await fetchAwcMetars([resolved.icao], awcOpts);
+    for (const m of awcRaw) {
+      const obs = awcToObservation(m);
+      if (obs !== null) awcRows.push(obs);
+    }
+  }
+
+  // --- IEM ASOS archive observations (per-year × {METAR, SPECI}) --------
+  const iemRows: Observation[] = [];
+  for (let year = fromYear; year <= extendedToYear; year++) {
+    for (const reportType of [3, 4] as const) {
+      const iemOpts: {
+        reportType: 3 | 4;
+        politenessMs: number;
+        signal?: AbortSignal;
+      } = {
+        reportType,
+        politenessMs: opts.iemPolitenessMs ?? 1000,
+      };
+      if (opts.signal !== undefined) iemOpts.signal = opts.signal;
+      const chunks = await downloadIemAsos(
+        resolved.icao,
+        `${year}-01-01`,
+        `${year}-12-31`,
+        iemOpts,
+      );
+      for (const chunk of chunks) {
+        const parsed = parseIemCsv(chunk.csv, {
+          observationTypeOverride: reportType === 3 ? "METAR" : "SPECI",
+        });
+        for (const obs of parsed) {
+          const obsDate = obs.observed_at.slice(0, 10);
+          if (obsDate >= fromDate && obsDate <= extendedTo) iemRows.push(obs);
+        }
+      }
+    }
+  }
+
+  // --- GHCNh archive observations (US stations only) --------------------
+  const ghcnhRows: Observation[] = [];
+  if (isUsStation(resolved) && resolved.ghcnhId !== null && resolved.ghcnhId.length > 0) {
+    const ghcnhOpts: { politenessMs: number; signal?: AbortSignal } = {
+      politenessMs: opts.ghcnhPolitenessMs ?? 1000,
+    };
+    if (opts.signal !== undefined) ghcnhOpts.signal = opts.signal;
+    const years = await downloadGhcnhRange(resolved.ghcnhId, fromYear, extendedToYear, ghcnhOpts);
+    for (const yr of years) {
+      const parsed = parseGhcnhPsv(yr.psv);
+      for (const obs of parsed) {
+        const obsDate = obs.observed_at.slice(0, 10);
+        if (obsDate >= fromDate && obsDate <= extendedTo) ghcnhRows.push(obs);
+      }
+    }
+  }
+
+  // --- Merge observations + bucket by settlement date -------------------
+  const combinedRaw = [...awcRows, ...iemRows, ...ghcnhRows];
+  const sorted = sortByObservedAtThenSource(combinedRaw);
+  const merged = mergeObservations(sorted);
+
+  const observationsByDate: Record<string, PairsObservationLike[]> = {};
+  for (const obs of merged) {
+    const settleDate = observedSettlementDate(obs.observed_at, resolved.code);
+    if (settleDate === null) continue;
+    if (settleDate < dates[0]! || settleDate > dates[dates.length - 1]!) continue;
+    let bucket = observationsByDate[settleDate];
     if (bucket === undefined) {
       bucket = [];
-      obsByDate.set(localDate, bucket);
+      observationsByDate[settleDate] = bucket;
     }
     bucket.push(obs);
   }
 
-  // --- Assemble rows ----------------------------------------------------
-  const rows: ResearchRow[] = [];
-  for (const date of dates) {
-    const cli = cliMap.get(date) ?? null;
-    const obs = obsByDate.get(date) ?? [];
-    const tempsF = nonNullField(obs, "temp_f");
-    const dewpsF = nonNullField(obs, "dewpoint_f");
-    const winds = nonNullField(obs, "wind_speed_kt");
-    const gusts = nonNullField(obs, "wind_gust_kt");
-    const precips = nonNullField(obs, "precip_1hr_inches");
-
-    const row: ResearchRow = Object.freeze({
-      date,
-      station: resolved.code,
-      cli_high_f: cli ? cli.high_temp_f : null,
-      cli_low_f: cli ? cli.low_temp_f : null,
-      cli_report_type: cli ? cli.report_type : null,
-      obs_high_f: maxOf(tempsF),
-      obs_low_f: minOf(tempsF),
-      obs_mean_f: average(tempsF),
-      obs_mean_dewpoint_f: average(dewpsF),
-      obs_max_wind_kt: maxOf(winds),
-      obs_max_gust_kt: maxOf(gusts),
-      obs_total_precip_in: precips.length === 0 ? null : sumOf(precips),
-      obs_count: obs.length,
-      fcst_high_f: null,
-      fcst_low_f: null,
-      fcst_model: null,
-      fcst_issued_at: null,
-      fcst_pop_6hr_pct: null,
-      fcst_qpf_6hr_in: null,
-      market_close_utc: marketCloseUtc(date, resolved.code).toISOString(),
-    });
-    rows.push(row);
+  // --- Bucket climate by date (mergeClimate already deduped) ------------
+  const climateByDate: Record<string, PairsClimateLike | null> = {};
+  for (const cli of mergedClimate) {
+    climateByDate[cli.observation_date] = cli;
   }
-  return Object.freeze(rows);
+
+  // --- buildPairs join + return -----------------------------------------
+  return buildPairs(resolved.code, dates, observationsByDate, climateByDate);
 }

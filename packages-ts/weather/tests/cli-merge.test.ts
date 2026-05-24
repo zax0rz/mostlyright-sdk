@@ -5,7 +5,9 @@
 import { describe, expect, it } from "vitest";
 
 import { mergeClimate as fromCore } from "@tradewinds/core/internal/merge";
-import { mergeClimate as fromWeather } from "@tradewinds/weather";
+// Self-import via the package barrel. Vitest's `@tradewinds/weather` alias
+// (vitest.config.ts) points at ./src/index.ts so this resolves at test time.
+import { mergeClimate as fromWeather } from "../src/index.js";
 
 describe("mergeClimate — backward-compat re-export", () => {
   it("@tradewinds/weather's mergeClimate is the same function as @tradewinds/core/internal/merge's", () => {
