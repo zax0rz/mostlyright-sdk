@@ -2,35 +2,115 @@
 gsd_state_version: 1.0
 milestone: v0.1.0
 milestone_name: — `@tradewinds/*` on npm)
-status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W6 + TS-W5 + TS-W7 docs/workflow merged. 8/8 TS phases code-complete (npm publish operator-gated).
-stopped_at: "Merged ts-w7/docs-npm-publish (docs + Changesets + release-ts.yml; npm OIDC registration + tagging operator-gated)"
-last_updated: "2026-05-24T21:00:00.000Z"
-last_activity: "2026-05-24 - TS-W6 + TS-W5 + TS-W7 docs/workflow shipped via 5-iteration codex `high` review per phase"
+status: Phase 7 (Ingest Auto-Planner) merged. Python v0.1.0rc1 ready to publish (operator-gated). 8/8 TS phases code-complete.
+stopped_at: "Merged Phase 7 (Ingest Auto-Planner) — 5 plans, codex high + Python Architect review (iter-3 close), 1720 passed (+41 Phase 7 tests)"
+last_updated: "2026-05-25T00:00:00.000Z"
+last_activity: "2026-05-25 - Phase 7 Ingest Auto-Planner shipped: tw.weather.obs() + exact_window/warm_cache/auto/hosted strategies"
 progress:
-  total_phases: 21
-  completed_phases: 1
-  total_plans: 21
-  completed_plans: 14
-  percent: 67
+  total_phases: 22
+  completed_phases: 2
+  total_plans: 26
+  completed_plans: 19
+  percent: 73
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-21; STATE.md refreshed 2026-05-24)
+See: .planning/PROJECT.md (updated 2026-05-21; STATE.md refreshed 2026-05-25)
 
 **Core value:** `research(contract, station, from_date, to_date)` returns clean, leakage-free, source-identified training pairs that backtest the same way they trade — and any train/infer source mismatch errors loudly instead of silently corrupting a model.
-**Current focus:** v0.1.0rc1 publish (operator-gated PyPI trusted-publisher setup) + TS-W5 (Polymarket settlement) next
+**Current focus:** Phase 7 (Ingest Auto-Planner) merged. v0.1.0rc1 publish remains operator-gated. TS-W5 (Polymarket settlement) next on the TS side.
 
 ## Current Position
 
-Phase: Python v0.1.0 (12/12 phases, 1674 tests, all REAL impls) COMPLETE + TS v0.1.0 milestone planning COMPLETE + **TS-W0 + TS-W1 + TS-W2 + TS-W3 + TS-W4 COMPLETE**
-Plan: TS-W5 (Polymarket settlement) next; operator-gated capture of TS-W2 Plan 07 msw recordings still unblocks the parity test HARD GATE.
-Status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W4 merged with Mode 2 dispatch + 9 transforms + QC alpha (5 rules + crosscheck). All 4 bundle gates green.
-Last activity: 2026-05-24 - Merged TS-W4 Mode 2 + transforms + QC alpha (6 plans, codex high + TS Architect parallel review, 1 P2 fixed inline)
+Phase: Python v0.1.0 (12/12 phases COMPLETE) + Phase 7 Ingest Auto-Planner COMPLETE + TS v0.1.0 milestone planning COMPLETE + **TS-W0 → TS-W7 COMPLETE**
+Plan: TS-W5 follow-ups (already shipped) + Phase 8/9/10 Markets composability (PLAN docs only; not yet executed).
+Status: Phase 7 merged with 5 sub-plans + Codex iter-3 close + Python Architect PASS. 1720 Python tests passing (+41 net Phase 7 tests since pre-Phase-7 1679 baseline).
+Last activity: 2026-05-25 - Phase 7 merged (5 plans, Codex high iter-1→iter-4 close, Python Architect PASS)
 
-Progress: Python [██████████] 100% (12/12 phases, 1674 tests) | TS [8/8 phases shipped — TS-W0 → TS-W7 code-complete; ~1212 TS tests; npm publish operator-gated]
+Progress: Python [██████████] 100% (12/12 phases + Phase 7, 1720 tests) | TS [8/8 phases shipped — TS-W0 → TS-W7 code-complete; ~1212 TS tests; npm publish operator-gated]
+
+## Phase 7 Ingest Auto-Planner closeout (2026-05-25)
+
+Merged to main. Ships smart ingest strategy resolution at the new
+`tradewinds.weather.obs(station, from, to, *, source, strategy, as_dataframe)`
+public surface. 5 sub-plans, 4-iteration codex review loop (closed at iter-3
+PASS; iter-4 ran clean confirming no follow-up bugs), Python Architect PASS.
+
+5 plans shipped:
+
+- **PLAN-01** — `exact_window` kwarg on `download_iem_asos` (bypasses year-
+  normalization at iem_asos.py:204-209; day-granular URL params); new
+  `tradewinds._exact_fetch._exact_fetch_observations` orchestrator (IEM + AWC
+  168h + GHCNh per-year). B-5 directory-level namespace separation:
+  exact-window CSVs land in `sources/iem_asos_exact/`, never the canonical
+  `sources/iem_asos/`. Perf harness at `tests/perf/test_ingest_obs.py`
+  (live-only) gating ≤ 2 MB cold for 1mo KNYC. Mutable-period invariant tests.
+- **PLAN-02** — `tw.weather.obs(...)` public surface + re-export from
+  `tradewinds.weather`. Source / Strategy `Literal` type aliases.
+  Eager ISO validation + Literal-set ValueError. B-6: default `strategy="auto"`
+  ships from this plan onward and never churns.
+- **PLAN-03** — `warm_cache` strategy as a thin wrapper around research.py
+  internals (NO modifications to research.py — verified by `git diff`).
+  `_warm_cache_fetch` calls `_fetch_observations_range` directly (drops the
+  `_all_caches_warm` + `_prefetch_sources` CLI-prefetch gate per iter-2 HIGH).
+  B-3: `source != None` raises ValueError (post-merge filtering would corrupt
+  SOURCE_PRIORITY). 5-fixture parity test against research() Mode-1 obs
+  aggregates (live-only).
+- **PLAN-04** — `strategy="auto"` decision tree + hosted seam. New
+  `_resolve_strategy` in obs.py and `_has_cached_year` in cache.py (I-4: path-
+  layout helper lives with the cache module). W-2: cache-warmth scan iterates
+  every year touching the window. W-5: dispatch funnels through a single
+  `_dispatch_strategy` helper — `obs()` resolves "auto" then dispatches ONCE,
+  no recursion. Rule ordering: source-filter > TW_HOSTED_URL > window+cache.
+- **PLAN-05** — REQUIREMENTS.md Phase 7 section (INGEST-01..08, all complete),
+  cross-strategy mutable-invariant audit tests (`test_obs_mutable_invariants.py`)
+  reusing `_is_writable_month` / `_is_current_lst_month` / `_is_current_lst_year`,
+  `docs/ingest-strategies.md` (decision-tree ASCII + per-strategy cost table),
+  README "Ingest strategies" section linking to the docs page.
+
+**Key invariants honored:**
+
+- `research.py` UNTOUCHED throughout — verified by `git diff main..HEAD -- packages/core/src/tradewinds/research.py` returning empty.
+- `_exact_fetch_observations` never writes the canonical
+  `v1/observations/{STATION}/{YYYY}/{MM}.parquet` cache.
+- Source filtering enforced at the FETCHER BOUNDARY (not post-merge), preserving
+  merge-priority semantics across all callers.
+- Aggregator (`_aggregate_daily_rows`) buckets raw rows by LST settlement date
+  via `settlement_date_for`, then `_obs_aggregates` produces daily summary
+  rows. Captures the post-midnight UTC tail of the last LST settlement day
+  correctly (fix for iter-1 CRITICAL #2).
+- Mutable-period helpers reused; never reinvented.
+
+**Review discipline:** 4-iteration codex `high` loop + final Python Architect
+sweep per `.planning/REVIEW-DISCIPLINE.md` (cap was 5). Findings/iter:
+
+- iter-1: 2 CRITICAL + 4 HIGH legitimate findings. CRITICAL #1 (obs() raw
+  rows instead of daily aggregates), CRITICAL #2 (per-row UTC-date filter
+  dropped LST settlement tail), HIGH (resolver used raw station instead of
+  ICAO), HIGH (GHCNh stale current-year PSV), HIGH (test coverage gap),
+  P2 (URL-test day2 boundary). All 4 of the HIGH/CRITICAL fixed in `c0d9d82`.
+- iter-2: 3 HIGH. #1 (auto+source ValueError), #3 (warm_cache CLI prefetch).
+  Both fixed in `a6c3057`. #2 (`_has_cached_year` coarse) acknowledged as
+  plan-approved suboptimality; tracked for follow-up.
+- iter-3: 1 HIGH (TW_HOSTED_URL precedence over source). Fixed in `d3188d4`:
+  source check now runs BEFORE the env-var check.
+- iter-4: "No CRITICAL or HIGH findings." Verified `git diff` empty against
+  research.py; targeted Phase 7 test suite (41 tests) all green.
+- Python Architect: PASS. Verified all 7 stated invariants line-by-line.
+
+**Test coverage:** 1720 passed, 8 skipped (was 1679 pre-Phase-7 baseline; +41
+net Phase 7 tests — 8 _exact_fetch unit tests, 4 iem_asos exact_window URL
+tests, 12 obs() surface tests, 13 _resolve_strategy decision-matrix tests, 4
+cross-strategy mutable invariant tests). Live tests gated behind
+`@pytest.mark.live` (5 warm_cache parity fixtures + 2 exact_window mutable-
+period tests + 2 perf-harness budget tests; all run pre-publish only).
+
+**TS Parity:** Phase 7 paired TS work tracked separately (Phase 8/9/10
+Markets composability initiative already drafted; obs() TS parity is a P2
+follow-up — not blocking v0.1.0rc1).
 
 ## TS-W7 Docs + Release Workflow closeout (2026-05-24)
 
