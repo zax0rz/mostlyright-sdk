@@ -785,12 +785,17 @@ def _maybe_wrap_forecast(
 
     from tradewinds.core._backend_dispatch import wrap_result
 
+    # Codex iter-3 P2 fix: pass through the captured retrieved_at from
+    # df.attrs (set at line ~670 / ~752) instead of defaulting to
+    # datetime.now() in wrap_result. The adapter timestamp is what the
+    # row-level `retrieved_at` column carries; the wrapper must match
+    # so provenance is consistent across the wrap boundary.
     return wrap_result(
         df,
         backend=backend,  # type: ignore[arg-type]
         return_type=return_type,  # type: ignore[arg-type]
         source=str(df.attrs.get("source", "noaa_bdp")),
-        retrieved_at=None,
+        retrieved_at=df.attrs.get("retrieved_at"),
         schema_id="schema.forecast_nwp.v1",
     )
 

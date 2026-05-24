@@ -1267,13 +1267,19 @@ def research(
 
     # Wrapper / polars conversion path. result.attrs carries source +
     # retrieved_at populated by mode2/upstream adapters; the wrapper
-    # surfaces them as explicit fields.
+    # surfaces them as explicit fields. Codex iter-3 P2 fix: pass
+    # through retrieved_at from attrs (if the pipeline stamped one)
+    # so the wrapper provenance matches what the adapters captured,
+    # not datetime.now() at wrap time. research() doesn't currently
+    # stamp this (pairs are heterogeneous), so the fallback to now()
+    # is acceptable here — but future pairs-level provenance work
+    # should populate result.attrs["retrieved_at"] for consistency.
     return wrap_result(
         result,
         backend=backend,  # type: ignore[arg-type]
         return_type=return_type,  # type: ignore[arg-type]
         source=str(result.attrs.get("source", "tradewinds.research")),
-        retrieved_at=None,  # default to now() — research() is pairs-level, not adapter-level
+        retrieved_at=result.attrs.get("retrieved_at"),
         schema_id=None,  # research() returns heterogeneous pairs, not a single schema
         qc=qc_summary,
     )

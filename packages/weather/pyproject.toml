@@ -58,9 +58,12 @@ nwp = [
 ]
 # Phase 6 (POLARS-05): mirror tradewinds[polars] so weather adapters
 # can return polars frames via the `backend="polars"` kwarg.
+# pandas required for the boundary shim's polars↔pandas conversion
+# (codex iter-3 P2 fix).
 polars = [
     "polars>=1.0,<2.0",
     "narwhals>=1.20,<2.0",
+    "pandas>=2.2,<4.0",
 ]
 
 [build-system]

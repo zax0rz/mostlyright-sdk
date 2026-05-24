@@ -15,6 +15,7 @@ to_date)`` + ``DeferredMarketError`` for sources we can't ship until v0.2
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 from datetime import date as _date
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
@@ -402,11 +403,21 @@ def daily_extremes(
     import pandas as pd
 
     df = pd.DataFrame(out)
+    # Codex iter-3 P2 fix: stamp df.attrs BEFORE wrap_result so the
+    # return_type='dataframe' path (which returns df unchanged) still
+    # carries the v0.1.0 provenance contract that the other 4 public
+    # entry points preserve. wrap_result with return_type='dataframe'
+    # is a no-op, so attrs must be stamped here.
+    src = f"daily_extremes.{merge}"
+    retrieved_at = datetime.now(UTC)
+    df.attrs["source"] = src
+    df.attrs["retrieved_at"] = retrieved_at
+    df.attrs["schema_id"] = "schema.daily_extreme.v1"
     return wrap_result(
         df,
         backend=backend,  # type: ignore[arg-type]
         return_type=return_type,  # type: ignore[arg-type]
-        source=f"daily_extremes.{merge}",
-        retrieved_at=None,
+        source=src,
+        retrieved_at=retrieved_at,
         schema_id="schema.daily_extreme.v1",
     )

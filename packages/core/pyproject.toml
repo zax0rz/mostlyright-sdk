@@ -54,10 +54,15 @@ research = [
 # pulls polars; calling `backend="polars"` without the extra raises
 # SourceUnavailableError with an install hint (mirrors the [nwp] pattern).
 # narwhals is the cross-backend abstraction layer the cleanly-portable
-# modules go through.
+# modules go through. pandas is required because the boundary shim
+# (core/_narwhals_compat.py) converts polars↔pandas via `pl.from_pandas`
+# and `pl.DataFrame.to_pandas()` — codex iter-3 P2 fix; a clean
+# `pip install tradewinds[polars]` would otherwise fail at first
+# `transforms.lag(pl_df, ...)` call with ImportError.
 polars = [
     "polars>=1.0,<2.0",
     "narwhals>=1.20,<2.0",
+    "pandas>=2.2,<4.0",
 ]
 
 [build-system]
