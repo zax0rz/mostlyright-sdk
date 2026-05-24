@@ -1,0 +1,155 @@
+name: Release (npm OIDC trusted publishing)
+
+# TS-W7 TS-RELEASE-01 — publish the four TS packages to npm on every vts-* tag.
+#
+# Trusted publishing via OIDC (no NPM_TOKEN in secrets); requires
+# `id-token: write` permission. Setup checklist before the first tagged
+# release (operator-gated, mirrors Python release.yml playbook):
+#
+#   1. On npmjs.com, register each scoped package as a "pending publisher":
+#        @tradewinds/core, @tradewinds/weather, @tradewinds/markets, tradewinds
+#      pointed at repo helloiamvu/tradewinds, workflow filename
+#      `release-ts.yml`, environment name `npm`.
+#      https://docs.npmjs.com/generating-provenance-statements
+#   2. If the `@tradewinds` npm scope is unavailable, fall back per
+#      TS-SDK-DESIGN.md §13.1 (unscoped tradewinds-core / -weather / -markets).
+#   3. Create the GH repo environment `npm` with required reviewers
+#      (mirror Python's `pypi` environment posture).
+#
+# Tag routing:
+#   - vts-*rc* → `--tag next` (soak release)
+#   - vts-* (non-rc) → `--tag latest` (prod release; requires P0 parity gate)
+
+on:
+  push:
+    tags:
+      - "vts-*"
+
+# Trusted publishing requires id-token write permission per
+# https://docs.npmjs.com/generating-provenance-statements.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  release:
+    name: Build, test, and publish to npm
+    runs-on: ubuntu-latest
+    environment: npm
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # changesets reads commit history
+
+      - uses: pnpm/action-setup@v4
+        with:
+          # pnpm 10 ships improved npm OIDC trusted-publishing support.
+          # The repo lockfile currently records pnpm@9.12.0 in package.json;
+          # the CI lane runs 10 anyway for releases because `pnpm publish
+          # --provenance` requires the newer npm-CLI delegation path. If
+          # the OIDC exchange fails despite this pin, fall back to the
+          # `NODE_AUTH_TOKEN` secret path (operator-gated).
+          # Codex iter-3 P1.
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Codegen
+        run: pnpm --filter @tradewinds/codegen run codegen
+
+      - name: Typecheck
+        run: pnpm -r run typecheck
+
+      - name: Test (no live network)
+        run: pnpm -r exec vitest run
+
+      - name: Build
+        run: pnpm -r run build
+
+      - name: Size-limit gates (TS-BUNDLE-01)
+        # The `size` npm script lives on the workspace ROOT (size-limit
+        # config in `package.json` enumerates per-package built artifacts),
+        # NOT on the workspace member packages. `pnpm -r run size` would
+        # select only the members and silently no-op. Codex iter-2 P2.
+        run: pnpm run size
+
+      - name: P0 parity-ticket gate (prod-tag only)
+        if: ${{ !contains(github.ref_name, 'rc') }}
+        # parity_status.py exits non-zero when there are open P0 parity
+        # tickets for the requested milestone — that IS the strict-P0
+        # gate. (Earlier draft passed `--strict-p0` which the script
+        # doesn't accept; codex iter-2 P1.)
+        run: |
+          python3 scripts/parity_status.py --milestone "TS v0.1.0"
+
+      - name: Preflight — normalize tag + verify versions + rewrite peerDeps
+        # Codex iter-5 P1 (×2):
+        # 1. Verify every package.json matches the version implied by the tag
+        #    (normalize vts-0.1.0rc1 → 0.1.0-rc.1). A stale-commit tag would
+        #    otherwise publish whatever's in the files, leaving a partial
+        #    release that can't be redone (npm versions are immutable).
+        # 2. Rewrite weather/markets peerDependencies['@tradewinds/core']
+        #    from the workspace-time ^0.0.0 placeholder to ^<expected>.
+        #    pnpm publish rewrites `workspace:*` but leaves plain
+        #    peerDependencies untouched.
+        run: node scripts/release-ts-preflight.mjs "${{ github.ref_name }}"
+
+      - name: Choose dist-tag (rc → next, non-rc → latest)
+        id: dist_tag
+        run: |
+          if echo "${{ github.ref_name }}" | grep -qE 'rc'; then
+            echo "tag=next" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish — @tradewinds/core
+        working-directory: packages-ts/core
+        # Use `pnpm publish` (NOT `npm publish`) because the meta package
+        # depends on the scoped packages via `workspace:*`. `pnpm publish`
+        # rewrites those to the actual versions at pack time; `npm publish`
+        # would emit the literal `workspace:*` token and EUNSUPPORTEDPROTOCOL
+        # any consumer. Also covers the scoped packages with a uniform path.
+        run: pnpm publish --provenance --access public --tag ${{ steps.dist_tag.outputs.tag }} --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+
+      - name: Publish — @tradewinds/weather
+        working-directory: packages-ts/weather
+        # Use `pnpm publish` (NOT `npm publish`) because the meta package
+        # depends on the scoped packages via `workspace:*`. `pnpm publish`
+        # rewrites those to the actual versions at pack time; `npm publish`
+        # would emit the literal `workspace:*` token and EUNSUPPORTEDPROTOCOL
+        # any consumer. Also covers the scoped packages with a uniform path.
+        run: pnpm publish --provenance --access public --tag ${{ steps.dist_tag.outputs.tag }} --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+
+      - name: Publish — @tradewinds/markets
+        working-directory: packages-ts/markets
+        # Use `pnpm publish` (NOT `npm publish`) because the meta package
+        # depends on the scoped packages via `workspace:*`. `pnpm publish`
+        # rewrites those to the actual versions at pack time; `npm publish`
+        # would emit the literal `workspace:*` token and EUNSUPPORTEDPROTOCOL
+        # any consumer. Also covers the scoped packages with a uniform path.
+        run: pnpm publish --provenance --access public --tag ${{ steps.dist_tag.outputs.tag }} --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+
+      - name: Publish — tradewinds (meta)
+        working-directory: packages-ts/meta
+        # Use `pnpm publish` (NOT `npm publish`) because the meta package
+        # depends on the scoped packages via `workspace:*`. `pnpm publish`
+        # rewrites those to the actual versions at pack time; `npm publish`
+        # would emit the literal `workspace:*` token and EUNSUPPORTEDPROTOCOL
+        # any consumer. Also covers the scoped packages with a uniform path.
+        run: pnpm publish --provenance --access public --tag ${{ steps.dist_tag.outputs.tag }} --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
