@@ -49,6 +49,11 @@
       "import": "./dist/transforms/index.mjs",
       "require": "./dist/transforms/index.cjs"
     },
+    "./qc": {
+      "types": "./dist/qc/index.d.ts",
+      "import": "./dist/qc/index.mjs",
+      "require": "./dist/qc/index.cjs"
+    },
     "./validator": {
       "types": "./dist/validator.d.ts",
       "import": "./dist/validator.mjs",

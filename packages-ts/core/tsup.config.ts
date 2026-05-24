@@ -100,6 +100,24 @@ export default defineConfig([
     },
   },
   {
+    // TS-W4 Plan 05 — QC engine + 5 alpha rules. Bit positions sourced
+    // from data/generated/qc-alpha-rules.ts (codegen). Emitted at
+    // @tradewinds/core/qc. Lives at subpath (NOT root barrel) to keep the
+    // @tradewinds/core main bundle under its 25 KB size-limit gate
+    // (TS-BUNDLE-01); same pattern as transforms / temporal / formats.
+    entry: { index: "src/qc/index.ts" },
+    format: ["esm", "cjs"],
+    dts: true,
+    sourcemap: true,
+    clean: false,
+    target: "es2022",
+    outDir: "dist/qc",
+    outExtension({ format }) {
+      if (format === "esm") return { js: ".mjs" };
+      return { js: ".cjs" };
+    },
+  },
+  {
     // Iter-4 H8 — validateRows moved out of the main barrel to keep
     // @tradewinds/core's main bundle under its 25 KB size-limit gate
     // (TS-BUNDLE-01). Emitted at @tradewinds/core/validator.
