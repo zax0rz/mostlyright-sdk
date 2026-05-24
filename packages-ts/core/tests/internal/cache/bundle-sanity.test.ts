@@ -67,6 +67,17 @@ const CACHE_BUNDLE_BROWSER = join(__dirname, "../../../dist/internal/cache/index
 // (`packages-ts/core/tests/internal/cache/bundle-sanity.test.ts`):
 // go up 4 levels to `packages-ts/`, then into `meta/dist/`.
 const META_BUNDLE_MV3 = join(__dirname, "../../../../meta/dist/index.bundle.mjs");
+// Iter-10 H19: the IIFE bundle (`index.global.js`) is the artifact loaded
+// via `<script>` tags in plain HTML pages. tsup's first defineConfig entry
+// used to emit ESM + CJS + IIFE together with no `platform: "browser"`
+// directive. ESM/CJS kept workspace deps external (consumers resolve via
+// node_modules), but IIFE auto-inlines via `globalName` — and without
+// browser conditions esbuild resolves the "node" branch of
+// @tradewinds/core/internal/cache, inlining FsStore + proper-lockfile +
+// node:fs/promises into the global bundle. Any browser <script> consumer
+// throws at evaluation. This assertion scans the actual emitted IIFE and
+// guards against the regression returning.
+const META_BUNDLE_IIFE = join(__dirname, "../../../../meta/dist/index.global.js");
 
 const NODE_ONLY_PATTERNS = [
   // Bare Node built-ins — static imports.
@@ -178,6 +189,45 @@ describe("cache subbundle browser-safety (iter-1 H3 + iter-2 H6 + iter-8 H15/H16
     // regressed and the walker is back to missing dynamic imports.
     const reachedFs = reachable.some((p) => /\/(fs|fs-[A-Z0-9]+)\.mjs$/.test(p) && existsSync(p));
     expect(reachedFs, "walker must follow `await import(...)` into the FsStore chunk").toBe(true);
+  });
+
+  it("the META IIFE bundle (packages-ts/meta/dist/index.global.js) must be free of Node-only modules — this is the <script>-deployed artifact", () => {
+    // Iter-10 H19: the IIFE bundle is what plain HTML pages load via
+    // `<script src="index.global.js">`. tsup's first defineConfig entry
+    // historically emitted ESM + CJS + IIFE together. ESM/CJS keep
+    // `@tradewinds/*` external, so consumers resolve them via node_modules.
+    // IIFE auto-inlines workspace deps for `<script>` consumption — but
+    // without `platform: "browser"`, esbuild defaults to node conditions
+    // and resolves the "node" branch of `@tradewinds/core/internal/cache`,
+    // hoisting FsStore + proper-lockfile + node:fs/promises straight into
+    // `index.global.js`. Any browser that evaluates that script throws on
+    // `__require("node:fs/promises")` / `__require("node:crypto")` /
+    // FsStore initialization.
+    //
+    // The iter-10 H19 fix splits IIFE into its own tsup entry with
+    // `platform: "browser"` (esbuild then picks the browser conditional
+    // export and routes the cache import to the FsStore-free
+    // `index.browser.ts`). This assertion scans the actual emitted IIFE
+    // — unlike the H18 MV3 bundle check above, the IIFE doesn't emit
+    // sibling chunks (single-file by design), so the walker scan would
+    // collapse to a one-file string-grep regardless; we still go through
+    // the walker for consistency and to catch any future regression that
+    // produces multi-file IIFE output.
+    if (!existsSync(META_BUNDLE_IIFE)) {
+      console.warn(
+        `[bundle-sanity] skipped meta IIFE bundle check: ${META_BUNDLE_IIFE} not built yet. Run \`pnpm --filter tradewinds run build\` to materialize it.`,
+      );
+      return;
+    }
+    const reachable = collectReachableChunks(META_BUNDLE_IIFE);
+    expect(reachable).toContain(META_BUNDLE_IIFE);
+    const violations = findViolations(reachable);
+    if (violations.length > 0) {
+      const detail = violations.map((v) => `  - ${v.pattern} in ${v.file}`).join("\n");
+      throw new Error(
+        `Meta IIFE bundle (packages-ts/meta/dist/index.global.js + any reachable chunks) must not import Node-only modules. This is the artifact <script>-tag consumers load.\nFound ${violations.length} violation(s):\n${detail}\n\nFix: ensure the IIFE entry in packages-ts/meta/tsup.config.ts has \`platform: "browser"\`. Without it, esbuild defaults to node conditions and resolves the "node" branch of @tradewinds/core/internal/cache, inlining FsStore + proper-lockfile + node:fs/promises into the IIFE.`,
+      );
+    }
   });
 
   it("the META MV3 bundle (packages-ts/meta/dist/index.bundle.mjs) and every reachable chunk must be free of Node-only modules — this is the ACTUAL MV3-deployed artifact", () => {

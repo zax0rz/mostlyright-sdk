@@ -1,24 +1,52 @@
 import { defineConfig } from "tsup";
 
-// Two builds:
-//   - Standard: external workspace deps (consumers resolve via node_modules).
-//   - Bundled: single-file ESM with workspace deps inlined — for environments
-//     that can't resolve bare specifiers (Chrome MV3 service workers, plain
-//     <script type="module"> with no import-map, etc.). See TS-W1 iter-1 HIGH 5.
+// Three builds:
+//   - Standard ESM/CJS: external workspace deps (consumers resolve via node_modules).
+//   - IIFE (index.global.js): inlines workspace deps for <script> consumption;
+//     MUST target browser so esbuild picks the browser conditional-export of
+//     @tradewinds/core/internal/cache (else FsStore + proper-lockfile +
+//     node:fs/promises get hoisted in via the "node" condition).
+//   - Bundled (index.bundle.mjs): single-file ESM with workspace deps inlined
+//     for Chrome MV3 service workers / plain <script type="module"> with no
+//     import-map. See TS-W1 iter-1 HIGH 5.
+//
+// Iter-10 H19: the IIFE format used to share an entry with ESM/CJS, but
+// IIFE auto-inlines workspace deps while ESM/CJS keep them external.
+// Without an explicit `platform: "browser"` directive, esbuild defaults to
+// node conditions for the IIFE inline-resolution and pulls FsStore + Node
+// builtins into `index.global.js`, breaking any browser <script> consumer.
+// Splitting IIFE into its own entry with `platform: "browser"` isolates the
+// browser-condition resolution from the ESM/CJS Node-consumer path.
 export default defineConfig([
   {
     entry: ["src/index.ts"],
-    format: ["esm", "cjs", "iife"],
-    globalName: "tradewinds",
+    format: ["esm", "cjs"],
     dts: true,
     sourcemap: true,
     clean: true,
     target: "es2022",
     outExtension({ format }) {
       if (format === "esm") return { js: ".mjs" };
-      if (format === "cjs") return { js: ".cjs" };
-      return { js: ".global.js" };
+      return { js: ".cjs" };
     },
+  },
+  {
+    entry: ["src/index.ts"],
+    format: ["iife"],
+    globalName: "tradewinds",
+    // IIFE auto-inlines workspace deps for <script> consumption. Without
+    // `platform: "browser"`, esbuild defaults to node conditions and
+    // resolves the "node" branch of @tradewinds/core/internal/cache,
+    // hoisting FsStore + proper-lockfile + node:fs/promises into the
+    // bundle. Browser platform routes the cache import to the browser
+    // entry (no FsStore reference, static OR dynamic). Verified by the
+    // iter-10 H19 bundle-sanity assertion that scans index.global.js.
+    platform: "browser",
+    dts: false,
+    sourcemap: true,
+    clean: false,
+    target: "es2022",
+    outExtension: () => ({ js: ".global.js" }),
   },
   {
     entry: { "index.bundle": "src/index.ts" },
