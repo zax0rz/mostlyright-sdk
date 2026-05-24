@@ -1,0 +1,104 @@
+import { describe, expect, it } from "vitest";
+
+import { polymarketDiscover } from "../../src/polymarket/index.js";
+
+function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+    ...init,
+  });
+}
+
+describe("polymarketDiscover", () => {
+  it("paginates by 100, dedups by slug, terminates on a short page", async () => {
+    let calls = 0;
+    const fetchFn = async (url: RequestInfo | URL) => {
+      calls += 1;
+      const u = url.toString();
+      if (u.includes("offset=0")) {
+        return jsonResponse([
+          {
+            id: "1",
+            slug: "will-london-hottest-on-2026-05-23",
+            title: "Will London be hottest?",
+            description: "https://www.weather.gov/",
+            endDate: "2026-05-23T23:59:59Z",
+          },
+          {
+            id: "2",
+            slug: "will-paris-coldest-on-2026-05-23",
+            title: "Will Paris be coldest?",
+            description: "https://www.wunderground.com/",
+            endDate: "2026-05-23T23:59:59Z",
+          },
+        ]);
+      }
+      // Empty page → terminates.
+      return jsonResponse([]);
+    };
+    const rows = await polymarketDiscover({ fetchFn, sleepBetweenMs: 0 });
+    expect(rows).toHaveLength(2);
+    expect(rows.map((r) => r.icao)).toEqual(["EGLL", "LFPB"]); // London EGLL, Paris coldest → LFPB
+    expect(rows.map((r) => r.measure)).toEqual(["high", "low"]);
+    // We should not have looped forever — at most 2 page fetches (page 1 + terminating empty page).
+    expect(calls).toBeLessThanOrEqual(2);
+  });
+
+  it("surfaces deferred markets with icao: null", async () => {
+    const fetchFn = async () =>
+      jsonResponse([
+        {
+          id: "10",
+          slug: "will-taipei-be-hot-2026-05-23",
+          title: "Will Taipei be hot?",
+          description: "",
+          endDate: "2026-05-23T23:59:59Z",
+        },
+      ]);
+    const rows = await polymarketDiscover({ fetchFn, sleepBetweenMs: 0 });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.icao).toBeNull();
+    expect(rows[0]?.measure).toBeNull();
+    expect(rows[0]?.slug).toBe("will-taipei-be-hot-2026-05-23");
+  });
+
+  it("drops unresolvable events via the onSkip callback", async () => {
+    const skipped: Array<{ slug: string | null; reason: string }> = [];
+    const fetchFn = async () =>
+      jsonResponse([
+        {
+          id: "20",
+          slug: "will-pluto-be-cold-2099-01-01",
+          title: "Unknown city",
+          description: "",
+        },
+      ]);
+    const rows = await polymarketDiscover({
+      fetchFn,
+      sleepBetweenMs: 0,
+      onSkip: (info) => skipped.push(info),
+    });
+    expect(rows).toEqual([]);
+    expect(skipped).toHaveLength(1);
+    expect(skipped[0]?.reason).toMatch(/no city match/);
+  });
+
+  it("dedups events that appear in multiple pages with the same slug", async () => {
+    let page = 0;
+    const fetchFn = async () => {
+      page += 1;
+      if (page > 2) return jsonResponse([]);
+      return jsonResponse([
+        {
+          id: "30",
+          slug: "will-london-hottest-on-2026-05-23",
+          title: "Dup",
+          description: "https://www.weather.gov/",
+        },
+      ]);
+    };
+    const rows = await polymarketDiscover({ fetchFn, sleepBetweenMs: 0 });
+    expect(rows).toHaveLength(1);
+  });
+});

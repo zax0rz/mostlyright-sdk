@@ -13,3 +13,15 @@ export * from "./data/generated/index.js";
 
 // Kalshi NHIGH/NLOW resolvers (TS-W1 Wave 2).
 export * from "./resolvers/index.js";
+
+// Kalshi settlement helper (TS-W5 Wave 5) — higher-level dispatch by
+// prefix (KHIGH* vs KLOW*).
+export { kalshiSettlementFor } from "./kalshi-settlement.js";
+export type { KalshiSettlement } from "./kalshi-settlement.js";
+
+// NOTE: Polymarket discover/settle (TS-W5 Waves 1-4) live at the
+// `./polymarket` subpath, NOT the root barrel — keeps the IIFE bundle
+// lean (Polymarket is server-side by design; CORS-blocked from
+// browsers per .planning/research/TS-CORS-MATRIX.md). Import with:
+//
+//   import { polymarketDiscover, polymarketSettle } from "@tradewinds/markets/polymarket";
