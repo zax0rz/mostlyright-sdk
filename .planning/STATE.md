@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v0.1.0
 milestone_name: — `@tradewinds/*` on npm)
 status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W3 merged with cache + temporal primitives + validator + formats. MV3-safe bundles confirmed clean of Node imports.
-stopped_at: Completed ts-w4-mode2-transforms-qc-alpha/ts-w4-05-PLAN.md
-last_updated: "2026-05-24T16:35:33.291Z"
+stopped_at: "Completed ts-w4-06-PLAN.md (Wave 6: crosscheckIemGhcnh)"
+last_updated: "2026-05-24T16:45:25.543Z"
 last_activity: 2026-05-24 - Merged TS-W3 cache+temporal+validator (7 plans, 14-iter review loop, 16 CRITICAL + 21 HIGH closed)
 progress:
   total_phases: 21
   completed_phases: 1
   total_plans: 21
-  completed_plans: 9
-  percent: 43
+  completed_plans: 10
+  percent: 48
 ---
 
 # Project State
@@ -546,6 +546,7 @@ Validation:
 *Updated after each plan completion*
 | Phase ts-w2-parity-gate P01 | 11 | 3 tasks | 8 files |
 | Phase ts-w4-mode2-transforms-qc-alpha P05 | 5min | 3 tasks | 8 files |
+| Phase ts-w4-mode2-transforms-qc-alpha P06 | 7min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -580,6 +581,8 @@ Recent decisions affecting current work:
 - [Phase ts-w4-mode2-transforms-qc-alpha]: obsQcStatus camelCase TS-side; Python uses snake_case obs_qc_status; conversion at jsonDumps wire boundary
 - [Phase ts-w4-mode2-transforms-qc-alpha]: Module-load drift guard throws if QC_ALPHA_RULES.length !== ALPHA_RULES.length — Phase 3.5+ additions caught loud
 - [Phase ts-w4-mode2-transforms-qc-alpha]: QC at @tradewinds/core/qc subpath only; root @tradewinds/core barrel unchanged (size 6.02 kB / 25 kB gate intact)
+- [Phase ts-w4-mode2-transforms-qc-alpha]: Wave 6: crosscheckIemGhcnh uses STRICT > (NOT >=) boundary — Python qc.py:228 parity. delta === tolC produces NO disagreement.
+- [Phase ts-w4-mode2-transforms-qc-alpha]: Wave 6: deltaC is ABSOLUTE (Math.abs); camelCase output keys (eventTime, tempCIem, tempCGhcnh, deltaC); Python snake_case Parity-Ticket lives at jsonDumps boundary.
 
 ### Pending Todos
 
@@ -623,7 +626,7 @@ Open decisions to resolve during execution (per research SUMMARY.md):
 
 ## Session Continuity
 
-Last session: 2026-05-24T16:35:22.099Z
-Stopped at: Completed ts-w4-mode2-transforms-qc-alpha/ts-w4-05-PLAN.md
+Last session: 2026-05-24T16:45:18.169Z
+Stopped at: Completed ts-w4-06-PLAN.md (Wave 6: crosscheckIemGhcnh)
 Resume file: None
 Branch state: Working on `planning/v01-intl-nwp-polymarket` off `merged-vision@d698886`. Commits not yet made — user decides when to commit. Suggested commit sequence: (a) ROADMAP + STATE updates as one commit; (b) REQUIREMENTS.md additions as separate commit; (c) PROJECT.md update as separate commit; (d) per-phase PLAN.md files in subsequent commits via `/gsd-plan-phase`.
