@@ -92,4 +92,80 @@ describe("extractIcaoFromResolutionSource", () => {
       "and mirror https://www.wunderground.com/history/daily/KLAX/date/2026-05-23";
     expect(extractIcaoFromResolutionSource(text)).toBe("KLAX");
   });
+
+  // ---------------------------------------------------------------------
+  // Iter-2 architect CRITICAL: real Polymarket URL shapes carry
+  // country/state/city slugs between the anchor and the ICAO.
+  // ---------------------------------------------------------------------
+  it("captures KLGA from real Polymarket NYC URL with /us/ny/new-york-city/ slugs", () => {
+    expect(
+      extractIcaoFromResolutionSource(
+        "https://www.wunderground.com/history/daily/us/ny/new-york-city/KLGA",
+      ),
+    ).toBe("KLGA");
+  });
+
+  it("captures KORD from real Polymarket Chicago URL with /us/il/chicago/ slugs", () => {
+    expect(
+      extractIcaoFromResolutionSource(
+        "https://www.wunderground.com/history/daily/us/il/chicago/KORD",
+      ),
+    ).toBe("KORD");
+  });
+
+  it("captures KLAX from real Polymarket LA URL", () => {
+    expect(
+      extractIcaoFromResolutionSource(
+        "https://www.wunderground.com/history/daily/us/ca/los-angeles/KLAX",
+      ),
+    ).toBe("KLAX");
+  });
+
+  it("captures KLGA from /cat/forecasts/ URL with state slugs", () => {
+    expect(
+      extractIcaoFromResolutionSource(
+        "https://www.wunderground.com/cat/forecasts/us/ny/new-york/KLGA",
+      ),
+    ).toBe("KLGA");
+  });
+
+  // ---------------------------------------------------------------------
+  // Iter-2 codex CRITICAL: URL terminators in Markdown / prose.
+  // ---------------------------------------------------------------------
+  it("captures URL with trailing Markdown paren", () => {
+    expect(
+      extractIcaoFromResolutionSource(
+        "see [station](https://www.wunderground.com/dashboard/pws/KLGA)",
+      ),
+    ).toBe("KLGA");
+  });
+
+  it("captures URL followed by period", () => {
+    expect(
+      extractIcaoFromResolutionSource(
+        "Settles via https://www.wunderground.com/dashboard/pws/KLGA.",
+      ),
+    ).toBe("KLGA");
+  });
+
+  it("captures URL followed by comma", () => {
+    expect(
+      extractIcaoFromResolutionSource(
+        "Sources: https://www.wunderground.com/dashboard/pws/KLGA, plus others",
+      ),
+    ).toBe("KLGA");
+  });
+
+  // ---------------------------------------------------------------------
+  // Regression guards — negative-lookahead rejects K-prefix continuations.
+  // ---------------------------------------------------------------------
+  it("does NOT extract from /pws/KIDS-summer-2024 (hyphen-continuation)", () => {
+    expect(
+      extractIcaoFromResolutionSource("https://wunderground.com/pws/KIDS-summer-2024"),
+    ).toBeNull();
+  });
+
+  it("does NOT extract from /pws/KORDX (longer uppercase ID)", () => {
+    expect(extractIcaoFromResolutionSource("https://wunderground.com/pws/KORDX")).toBeNull();
+  });
 });

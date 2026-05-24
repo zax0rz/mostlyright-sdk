@@ -86,19 +86,24 @@ export function deriveCity(event: PolymarketEventRaw): string | null {
 }
 
 // Phase 8 — Tier 1.5 URL extraction (POLY-US-03).
-// Wunderground PWS / airport / weather-station URL pattern; captures K-prefix
-// ICAO from CANONICAL settlement paths only — not arbitrary Wunderground URL
-// paths. Matches: /pws/{ICAO}, /dashboard/pws/{ICAO}, /history/daily/{ICAO},
-// /history/airport/{ICAO}, /weather-station/{ICAO}.
+// Wunderground PWS / airport / history URL pattern; captures K-prefix ICAO
+// from CANONICAL settlement paths only — anchor allowlist: /pws/,
+// /dashboard/pws/, /history/daily/, /history/airport/, /weather-station/,
+// /cat/forecasts/. Real Polymarket settlement URLs carry country / state /
+// city slugs between the anchor and the ICAO (e.g.
+// /history/daily/us/ny/new-york-city/KLGA); the `(?:[a-z0-9-]+/)*` segment
+// captures zero or more such intermediate slugs (codex iter-2 +
+// python-architect iter-2 CRITICAL — prior tighter version that required
+// the ICAO to abut the anchor missed every real Polymarket URL).
 //
-// Iter-1 architect HIGH: the original loose pattern matched any K-prefix
-// token anywhere in a Wunderground URL, allowing incidental words inside
-// slugs (e.g., news/KIDS-summer-2024 → "KIDS") to silently swap the
-// settlement station. The tightened pattern eliminates the silent-corruption
-// window. US-only constraint (international URLs use lat/lng or alternate
-// IDs and fall back to Tier 2 city-derive).
+// The trailing negative-lookahead `(?![A-Za-z0-9_-])` rejects any
+// alphanumeric / underscore / hyphen follower so we accept common URL
+// terminators (`/`, `?`, `#`, `)`, `.`, `,`, whitespace, EOF) but reject
+// extensions like `KIDS-summer` where `-` would otherwise pass `\b`
+// (codex iter-2 CRITICAL — original `(?=[/?#\s]|$)` lookahead missed
+// Markdown-embedded URLs that end with `)`, `.`, etc.).
 const WUNDERGROUND_ICAO_RE =
-  /https?:\/\/(?:www\.)?wunderground\.com\/(?:dashboard\/)?(?:pws|history\/daily|history\/airport|weather-station)\/(K[A-Z]{3})(?=[/?#\s]|$)/gi;
+  /https?:\/\/(?:www\.)?wunderground\.com\/(?:dashboard\/)?(?:pws|history\/daily|history\/airport|weather-station|cat\/forecasts)\/(?:[a-z0-9-]+\/)*(K[A-Z]{3})(?![A-Za-z0-9_-])/gi;
 
 /**
  * Extract the canonical Wunderground PWS / airport ICAO from `text`.
@@ -190,8 +195,14 @@ export function resolveStationForEvent(
     // This mirrors Python `polymarket_discover`'s ordering — `_derive_city`
     // populates `event.city` BEFORE `resolve_station_for_event` runs, so the
     // explicit-or-derived city is always the `city` column emitted on the row.
+    // discover.ts normalizes empty string back to null at the row boundary
+    // to mirror Python's `(ev.get("city") or "").lower() or None` semantics.
     const cityForRow = cityKey ?? deriveCity(event) ?? "";
-    return { city: cityForRow, icao: extractedIcao, stationMeasure: "default" };
+    // stationMeasure mirrors Python's _detect_measure(text) result (passed
+    // in by the caller as marketMeasure via detectMarketMeasure). Hardcoding
+    // "default" here would drift from Python for URL-sourced low/high
+    // markets (codex iter-2 HIGH).
+    return { city: cityForRow, icao: extractedIcao, stationMeasure: marketMeasure };
   }
 
   // Tier 2: scan slug + title + tags.

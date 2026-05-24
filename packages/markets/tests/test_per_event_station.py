@@ -287,6 +287,59 @@ class TestExtractIcaoFromResolutionSource:
         )
         assert extract_icao_from_resolution_source(text) == "KLAX"
 
+    # ---------------------------------------------------------------------
+    # Iter-2 architect CRITICAL: real Polymarket URL shapes carry
+    # country/state/city slugs between the anchor and the ICAO.
+    # ---------------------------------------------------------------------
+    def test_real_polymarket_nyc_url(self):
+        """Real Polymarket NYC settlement URL with /us/ny/new-york-city/ slugs."""
+        url = "https://www.wunderground.com/history/daily/us/ny/new-york-city/KLGA"
+        assert extract_icao_from_resolution_source(url) == "KLGA"
+
+    def test_real_polymarket_chicago_url(self):
+        """Real Polymarket Chicago settlement URL with /us/il/chicago/ slugs."""
+        url = "https://www.wunderground.com/history/daily/us/il/chicago/KORD"
+        assert extract_icao_from_resolution_source(url) == "KORD"
+
+    def test_real_polymarket_la_url(self):
+        url = "https://www.wunderground.com/history/daily/us/ca/los-angeles/KLAX"
+        assert extract_icao_from_resolution_source(url) == "KLAX"
+
+    def test_cat_forecasts_url_with_state_slugs(self):
+        url = "https://www.wunderground.com/cat/forecasts/us/ny/new-york/KLGA"
+        assert extract_icao_from_resolution_source(url) == "KLGA"
+
+    # ---------------------------------------------------------------------
+    # Iter-2 codex CRITICAL: URL terminators in prose / Markdown.
+    # ---------------------------------------------------------------------
+    def test_markdown_url_with_trailing_paren(self):
+        text = "see [station](https://www.wunderground.com/dashboard/pws/KLGA)"
+        assert extract_icao_from_resolution_source(text) == "KLGA"
+
+    def test_url_followed_by_period(self):
+        text = "Settles via https://www.wunderground.com/dashboard/pws/KLGA."
+        assert extract_icao_from_resolution_source(text) == "KLGA"
+
+    def test_url_followed_by_comma(self):
+        text = "Sources: https://www.wunderground.com/dashboard/pws/KLGA, plus others"
+        assert extract_icao_from_resolution_source(text) == "KLGA"
+
+    # ---------------------------------------------------------------------
+    # Regression guard for the architect HIGH on incidental tokens.
+    # ---------------------------------------------------------------------
+    def test_pws_with_hyphenated_id_does_not_extract_prefix(self):
+        """`/pws/KIDS-summer-2024` MUST NOT extract `KIDS`. The negative
+        lookahead `(?![A-Za-z0-9_-])` rejects `K[A-Z]{3}-` continuations
+        so a non-ICAO PWS ID with a K-prefix-like start is not silently
+        truncated to a 4-char extraction."""
+        url = "https://wunderground.com/pws/KIDS-summer-2024"
+        assert extract_icao_from_resolution_source(url) is None
+
+    def test_pws_with_longer_uppercase_id_does_not_extract_prefix(self):
+        """`/pws/KORDX` MUST NOT extract `KORD`."""
+        url = "https://wunderground.com/pws/KORDX"
+        assert extract_icao_from_resolution_source(url) is None
+
 
 class TestResolverTier1_5:
     def test_url_extraction_overrides_catalog(self, city_map):

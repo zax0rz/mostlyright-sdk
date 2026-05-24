@@ -124,6 +124,22 @@ describe("resolveStationForEvent — Tier 1.5 URL extraction", () => {
     // CRITICAL parity invariant: `city` is the slug/explicit value, NOT a
     // reverse-lookup from the URL ICAO. Mirrors Python `polymarket_discover`.
     expect(r?.city).toBe("chicago");
+    // Iter-2 codex HIGH: stationMeasure mirrors the market measure (high
+    // here, from "Chicago daily high" title), not a hardcoded "default".
+    expect(r?.stationMeasure).toBe("high");
+  });
+
+  it("Tier 1.5 stationMeasure mirrors detected low marketMeasure", () => {
+    const r = resolveStationForEvent(
+      {
+        slug: "la-low",
+        title: "Will LA's lowest temp drop below 50?",
+        description: "https://www.wunderground.com/dashboard/pws/KLAX",
+      } as { slug: string; title: string; description: string },
+      "low",
+    );
+    expect(r?.icao).toBe("KLAX");
+    expect(r?.stationMeasure).toBe("low");
   });
 
   it("URL alone resolves an event with no city field", () => {

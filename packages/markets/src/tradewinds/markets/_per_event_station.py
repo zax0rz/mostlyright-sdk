@@ -63,21 +63,31 @@ _HIGH_RE = re.compile(r"\b(highest|high|hottest|warmest|max(?:imum)?)\b", re.IGN
 #: Regex selecting tokens that signal a "low" (daily-min) market.
 _LOW_RE = re.compile(r"\b(lowest|low|coldest|coolest|min(?:imum)?)\b", re.IGNORECASE)
 
-#: Wunderground PWS / airport URL pattern. Matches ONLY canonical settlement
-#: URL paths (`/pws/{ICAO}`, `/dashboard/pws/{ICAO}`, `/history/daily/{ICAO}`,
-#: `/history/airport/{ICAO}`, `/weather-station/{ICAO}`) — not arbitrary
-#: Wunderground URL paths. ICAO is exactly 4 chars starting with K (US-only
-#: constraint — international Wunderground URLs use lat/lng or alternate IDs).
+#: Wunderground PWS / airport / history URL pattern. Matches canonical
+#: settlement URL anchor paths (`/pws/`, `/dashboard/pws/`, `/history/daily/`,
+#: `/history/airport/`, `/weather-station/`, `/cat/forecasts/`), with zero or
+#: more lowercase-slug segments before the trailing ICAO. Real Polymarket
+#: settlement URLs carry country / state / city slugs between the anchor and
+#: the ICAO (e.g. `/history/daily/us/ny/new-york-city/KLGA`); the prior
+#: tighter version that required the ICAO to abut the anchor missed every
+#: real Polymarket URL (codex iter-2 + python-architect iter-2 CRITICAL).
 #:
-#: Codex iter-1 + python-architect iter-1 HIGH: the original loose pattern
-#: (`wunderground\.com/[^\s<>"')]*?\b(K[A-Z]{3})\b`) matched any K-prefix token
-#: anywhere in a Wunderground URL, including incidental words inside slugs
-#: (e.g., `news/KIDS-summer-2024` would match "KIDS"). Tightening to the
-#: canonical settlement paths eliminates the silent-corruption window.
+#: ICAO is exactly 4 chars starting with K (US-only constraint — international
+#: Wunderground URLs use lat/lng or alternate IDs and fall back to Tier 2).
+#: The trailing ``\b`` (word boundary) allows the URL to end at common
+#: Markdown / prose terminators (`)`, `.`, `,`, ` `, EOF, etc.) so embedded
+#: URLs in event descriptions are not missed (codex iter-2 CRITICAL).
+#:
+#: Defense-in-depth against incidental K-prefix tokens: the anchor allowlist
+#: (`/pws/`, `/history/daily/`, etc.) rejects arbitrary paths like
+#: `/news/2024-summer-KIDS-overview`. The intermediate `[a-z0-9-]+/`
+#: segments are LOWERCASE only — the uppercase ICAO can never collide with
+#: a slug segment.
 _WUNDERGROUND_ICAO_RE = re.compile(
     r"https?://(?:www\.)?wunderground\.com/"
-    r"(?:dashboard/)?(?:pws|history/daily|history/airport|weather-station)/"
-    r"(K[A-Z]{3})(?=[/?#\s]|$)",
+    r"(?:dashboard/)?(?:pws|history/daily|history/airport|weather-station|cat/forecasts)/"
+    r"(?:[a-z0-9-]+/)*"
+    r"(K[A-Z]{3})(?![A-Za-z0-9_-])",
     re.IGNORECASE,
 )
 

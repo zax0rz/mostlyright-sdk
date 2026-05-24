@@ -52,7 +52,13 @@ export async function polymarketDiscover(
         continue;
       }
       icao = resolved.icao;
-      cityKey = resolved.city;
+      // Phase 8 ts-architect iter-2 HIGH: normalize empty string → null at
+      // the row boundary to mirror Python's
+      // `(ev_enriched.get("city") or "").lower() or None` semantics in
+      // `polymarket_discover`. Tier 1.5 returns `""` when no explicit nor
+      // slug-derived city accompanies a URL-only resolution; emitting
+      // `city: ""` on the row would drift from Python's `city: None`.
+      cityKey = resolved.city === "" ? null : resolved.city;
       measureOut = marketMeasure;
     } catch (err) {
       if (err instanceof DeferredMarketError) {
