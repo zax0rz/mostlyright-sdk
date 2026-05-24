@@ -26,6 +26,17 @@ export default defineConfig([
     // Inline the three @tradewinds/* siblings so the output is loadable
     // from environments that don't support bare specifiers.
     noExternal: ["@tradewinds/core", "@tradewinds/weather", "@tradewinds/markets"],
+    // Iter-9 H17: target Chrome MV3 service workers explicitly. tsup's
+    // default `platform: "node"` makes esbuild resolve the "node" branch
+    // of @tradewinds/core/internal/cache (via its conditional exports
+    // map), pulling FsStore + proper-lockfile + node:fs/promises into a
+    // sibling chunk that the bundle dynamic-imports. With
+    // `platform: "browser"`, esbuild uses ["browser", "import",
+    // "default"] conditions — routes the cache import to the browser
+    // entry (which contains no FsStore reference, static OR dynamic) —
+    // and the FsStore chunk is never emitted. Verified by the iter-9
+    // H18 bundle-sanity assertion that scans the produced bundle.
+    platform: "browser",
     outExtension: () => ({ js: ".mjs" }),
     sourcemap: true,
     clean: false,
