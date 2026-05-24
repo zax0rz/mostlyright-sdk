@@ -70,3 +70,20 @@ export {
   type IemObservationTypeOverride,
   type IemToObservationOptions,
 } from "./_parsers/iem.js";
+
+// TS-W2 Plan 02 — GHCNh PSV fetcher + parser + station-id translator.
+export {
+  downloadGhcnh,
+  downloadGhcnhRange,
+  GHCNH_BASE_URL,
+  NCEI_POLITE_DELAY_MS,
+  type DownloadGhcnhRangeOptions,
+  type GhcnhYearResult,
+} from "./_fetchers/ghcnh.js";
+export {
+  parseGhcnhPsv,
+  parseGhcnhRow,
+  ghcnhStationToCode,
+  extractStationCode,
+  SSID_COLUMNS,
+} from "./_parsers/ghcnh.js";
