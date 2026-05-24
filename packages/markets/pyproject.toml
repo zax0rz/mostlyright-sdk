@@ -42,6 +42,22 @@ polymarket = [
     "pandas>=2.2,<3.0",
     "tradewinds-weather>=0.1.0rc1,<0.2",
 ]
+# Phase 9: trade-history surface. kalshi_trades + polymarket_trades return
+# DataFrames (pandas required); _trades_cache writes parquet (pyarrow
+# required) with FileLock-guarded atomic writes (filelock required).
+# Phase 9 iter-5 codex HIGH: the install hints in kalshi_trades.py /
+# polymarket_trades.py / _trades_cache.py reference this extra by name;
+# the extra was missing from pyproject.toml, so the advertised
+# `pip install tradewinds-markets[trades]` would fail with
+# `WARNING: tradewinds-markets X does not provide the extra 'trades'`
+# and a clean install would still raise `ModuleNotFoundError: filelock`
+# the first time the cache is hit. Pinned to the same parity-critical
+# pandas/pyarrow boundaries as `[parquet]`/`[polymarket]` (PKG-05/06).
+trades = [
+    "pandas>=2.2,<3.0",
+    "pyarrow>=17.0,<24.0",
+    "filelock>=3.20,<4",
+]
 
 [build-system]
 requires = ["hatchling"]
