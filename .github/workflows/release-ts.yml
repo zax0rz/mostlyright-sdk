@@ -86,24 +86,44 @@ jobs:
 
       - name: Publish — @tradewinds/core
         working-directory: packages-ts/core
-        run: npm publish --provenance --access public --tag ${{ steps.dist_tag.outputs.tag }}
+        # Use `pnpm publish` (NOT `npm publish`) because the meta package
+        # depends on the scoped packages via `workspace:*`. `pnpm publish`
+        # rewrites those to the actual versions at pack time; `npm publish`
+        # would emit the literal `workspace:*` token and EUNSUPPORTEDPROTOCOL
+        # any consumer. Also covers the scoped packages with a uniform path.
+        run: pnpm publish --provenance --access public --tag ${{ steps.dist_tag.outputs.tag }} --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
 
       - name: Publish — @tradewinds/weather
         working-directory: packages-ts/weather
-        run: npm publish --provenance --access public --tag ${{ steps.dist_tag.outputs.tag }}
+        # Use `pnpm publish` (NOT `npm publish`) because the meta package
+        # depends on the scoped packages via `workspace:*`. `pnpm publish`
+        # rewrites those to the actual versions at pack time; `npm publish`
+        # would emit the literal `workspace:*` token and EUNSUPPORTEDPROTOCOL
+        # any consumer. Also covers the scoped packages with a uniform path.
+        run: pnpm publish --provenance --access public --tag ${{ steps.dist_tag.outputs.tag }} --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
 
       - name: Publish — @tradewinds/markets
         working-directory: packages-ts/markets
-        run: npm publish --provenance --access public --tag ${{ steps.dist_tag.outputs.tag }}
+        # Use `pnpm publish` (NOT `npm publish`) because the meta package
+        # depends on the scoped packages via `workspace:*`. `pnpm publish`
+        # rewrites those to the actual versions at pack time; `npm publish`
+        # would emit the literal `workspace:*` token and EUNSUPPORTEDPROTOCOL
+        # any consumer. Also covers the scoped packages with a uniform path.
+        run: pnpm publish --provenance --access public --tag ${{ steps.dist_tag.outputs.tag }} --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
 
       - name: Publish — tradewinds (meta)
         working-directory: packages-ts/meta
-        run: npm publish --provenance --access public --tag ${{ steps.dist_tag.outputs.tag }}
+        # Use `pnpm publish` (NOT `npm publish`) because the meta package
+        # depends on the scoped packages via `workspace:*`. `pnpm publish`
+        # rewrites those to the actual versions at pack time; `npm publish`
+        # would emit the literal `workspace:*` token and EUNSUPPORTEDPROTOCOL
+        # any consumer. Also covers the scoped packages with a uniform path.
+        run: pnpm publish --provenance --access public --tag ${{ steps.dist_tag.outputs.tag }} --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}

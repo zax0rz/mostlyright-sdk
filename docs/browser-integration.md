@@ -92,16 +92,16 @@ if (resp.ok) {
 
 ## Pattern 3 — IIFE for vanilla web apps
 
-The IIFE bundle exposes `globalThis.tradewindsCore`, `tradewindsWeather`, `tradewindsMarkets`. Limited to AWC + IEM CLI (the only CORS-allowed endpoints):
+The meta IIFE bundle (`tradewinds`) INLINES the three scoped packages, so a single `<script>` tag is enough. It exposes `globalThis.tradewinds` with `research()` and the rest of the meta surface. Limited to AWC + IEM CLI in-browser (the only CORS-allowed endpoints):
 
 ```html
-<script src="https://unpkg.com/@tradewinds/core/dist/index.global.js"></script>
-<script src="https://unpkg.com/@tradewinds/weather/dist/index.global.js"></script>
+<script src="https://unpkg.com/tradewinds/dist/index.global.js"></script>
 <script>
-  // research lives on the meta package; for IIFE callers that's the global below:
-  tradewindsWeather.research("KNYC", "2025-01-06", "2025-01-12").then(console.log);
+  tradewinds.research("KNYC", "2025-01-06", "2025-01-12").then(console.log);
 </script>
 ```
+
+If you only need one scoped surface (e.g. just `@tradewinds/core` for temporal primitives), the scoped IIFEs are available as `tradewindsCore`, `tradewindsWeather`, `tradewindsMarkets` globals at `https://unpkg.com/@tradewinds/<pkg>/dist/index.global.js` — but `research()` itself only ships from the meta global.
 
 For SDK-style use, ESM via a bundler (vite/esbuild/webpack) is preferred. The IIFE is for quick scratch pages and Kalshi-page overlays that can't run a build step.
 

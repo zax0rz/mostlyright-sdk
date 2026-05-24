@@ -14,10 +14,11 @@ Five-minute path: **Node** + **browser** below. The browser path is for service 
 ## Node (and Bun / Deno) — Mode 1 parity
 
 ```bash
-npm install @tradewinds/core @tradewinds/weather @tradewinds/markets
-# OR
-npm install tradewinds   # meta convenience: re-exports the three scoped packages
+# research() ships from the meta package only — install that.
+npm install tradewinds
 ```
+
+`tradewinds` re-exports the three scoped packages (`@tradewinds/core`, `@tradewinds/weather`, `@tradewinds/markets`) so importing `tradewinds` is enough. Install the scoped packages separately only if you want a single subpath (e.g. `@tradewinds/markets/polymarket`) without pulling the meta surface.
 
 ```ts
 import { research } from "tradewinds";
