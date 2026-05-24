@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v0.1.0
 milestone_name: — `@tradewinds/*` on npm)
-status: Phases 6 + 7 + 8 all merged to main. Phase 6 (pandas 3 + opt-in polars backend) shipped via 5-iter review loop. Phase 7 (Ingest Auto-Planner) + Phase 8 (Polymarket US Coverage) already on main pre-merge. Python v0.1.0rc1 publish remains operator-gated.
-stopped_at: "Phase 6 merged to main on top of Phase 7 + 8 — 5-iter codex high + python-architect review cycle PASS; full suite green post-merge"
-last_updated: "2026-05-25T08:00:00.000Z"
-last_activity: "2026-05-25 - Phase 6 (TradewindsResult wrapper + pandas 3 dual-lock + opt-in polars backend) merged on top of Phase 7 + 8"
+status: Phase 9 (Markets Trade History — Kalshi + Polymarket) code-complete + review-clean. Phases 6 + 7 + 8 already on main. Python v0.1.0rc1 publish remains operator-gated. 8/8 TS phases code-complete (npm publish operator-gated).
+stopped_at: "Phase 9 ready to merge to main on top of 6+7+8 (5 review iterations; codex + python-architect + ts-architect all PASS)"
+last_updated: "2026-05-25T09:00:00.000Z"
+last_activity: "2026-05-25 - Phase 9 Markets Trade History code-complete (5-iter review; real Kalshi _dollars/_fp shapes + CLOB host for Polymarket prices-history + Retry-After cap + polite-floor inherit + [trades] extra)"
 progress:
   total_phases: 22
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 27
-  completed_plans: 21
-  percent: 78
+  completed_plans: 22
+  percent: 81
 ---
 
 # Project State
@@ -136,6 +136,53 @@ period tests + 2 perf-harness budget tests; all run pre-publish only).
 **TS Parity:** Phase 7 paired TS work tracked separately (Phase 8/9/10
 Markets composability initiative already drafted; obs() TS parity is a P2
 follow-up — not blocking v0.1.0rc1).
+
+## Phase 9 closeout (2026-05-25) — Markets Trade History (Kalshi + Polymarket)
+
+Merge commit pending. Promotes the deferred MARKETS-04 line item into a first-class phase. Adds Kalshi candles/fills/orderbook + Polymarket history/snapshot under flat-module names (`tradewinds.markets.{kalshi_trades, polymarket_trades}`) with paired TS subpath at `@tradewinds/markets/trades`. Per-issuer trade-month parquet cache at `~/.tradewinds/cache/v1/trades/{issuer}/{ticker}/{YYYY-MM}.parquet`.
+
+**Requirements shipped (8/8):**
+- TRADES-01: `kalshi_trades.candles(ticker, interval, from_, to)` — OHLCV with `source="kalshi"` per row. Real Kalshi `_dollars`/`_fp` wire format (post-March-2026 migration); converts to cents [0–100] per canonical specs/candle.json.
+- TRADES-02: `kalshi_trades.fills(ticker, since, until)` — cursor-paginated trades with 10k-page safety cap.
+- TRADES-03: `kalshi_trades.orderbook(ticker, depth)` — current snapshot; reads `orderbook_fp.{yes_dollars,no_dollars}` with legacy fallback.
+- TRADES-04: `polymarket_trades.history(token_id, from_, to)` — Polymarket **CLOB** (`clob.polymarket.com/prices-history`), `market` param is the CLOB token id (NOT Gamma market/condition/event id; architect iter-1 CRITICAL fix).
+- TRADES-05: `polymarket_trades.snapshot(event_id)` — current state from Gamma `/events/{id}`. Source split: history=`polymarket.clob`, snapshot=`polymarket.gamma`.
+- TRADES-06: `_trades_cache.py` — per-issuer per-ticker per-month parquet. Current-UTC-month + future-month no-op rules; FileLock-guarded atomic writes; path-traversal defense (issuer/ticker regex allowlists rejecting all-dot strings + resolve+relative_to).
+- TRADES-07: Paired TS at `@tradewinds/markets/trades` subpath (tsup entry + package.json export). 3 new test files (kalshi, polymarket, cache) + CacheStore adapter using existing `@tradewinds/core/internal/cache` interface.
+- TRADES-08: `.planning/research/MARKETS-RATE-LIMITS.md` documents per-issuer politeness floors (Kalshi 100ms = 10 req/sec ceiling; Polymarket Gamma + CLOB 200ms each).
+
+**Review discipline:** Mixed Python+TS PR per REVIEW-DISCIPLINE.md routing. **5-iteration loop** (the user-authorized cap) with codex `high` + python-architect + ts-architect dispatched in parallel:
+- iter-1: 3 CRITICAL closed — wrong Kalshi field names (`_dollars`/`_fp` migration), wrong Polymarket /prices-history host (CLOB not Gamma), Python Retry-After not honored. Also: ticker regex `.`/`..` silent misplacement (HIGH).
+- iter-2: 3 HIGH closed — TS cache regex parity gap with Python, Python Retry-After unbounded (added `_MAX_RETRY_AFTER_S = 120.0` cap), MARKETS-RATE-LIMITS.md doc drift (split Gamma + CLOB).
+- iter-3: 2 HIGH closed — Python polite-floor bypass (history forced sleep_between=0 when caller omitted), TS `fetchWithRetry` Retry-After unbounded (added `MAX_RETRY_AFTER_MS = 120_000` cap in @tradewinds/core; mirrors Python).
+- iter-4: 1 HIGH closed — Python snapshot bypassed Gamma polite floor via `fetch_event_by_id` (which has no sleep path); routed snapshot through `get_json` so default 0.2s sleep applies.
+- iter-5: 1 HIGH closed — `[trades]` extra missing from `tradewinds-markets` pyproject.toml (advertised in install hints but never declared). Added with pandas + pyarrow + filelock pins.
+
+Architect verdicts at iter-5: Python Architect PASS, TS Architect PASS. Final commit `4487ac0` clears the loop.
+
+**Test coverage delta:**
+- Python: 1743 → **1805** (+62 new). Markets-suite: 196 → 199.
+- TS: 1228 → **1275** (+47 new). Markets: 199 → 202; @tradewinds/core: 761 → 762 (Retry-After cap test).
+
+**Files modified (Python + TS, paired):**
+- packages/markets/src/tradewinds/markets/_kalshi_client.py (new) — public REST client, no auth, 10 req/sec polite floor, Retry-After cap.
+- packages/markets/src/tradewinds/markets/kalshi_trades.py (new) — public surface with `_dollars`/`_fp` parsers + legacy fallback.
+- packages/markets/src/tradewinds/markets/polymarket_trades.py (new) — history (CLOB) + snapshot (Gamma, both route through get_json for polite-floor).
+- packages/markets/src/tradewinds/markets/_polymarket_client.py — added `CLOB_API_BASE` + `get_json(base_url=)` parameterization.
+- packages/markets/src/tradewinds/markets/_trades_cache.py (new) — per-month parquet cache.
+- packages/markets/pyproject.toml — added `[trades]` extra.
+- packages/markets/tests/test_{kalshi_trades,polymarket_trades,trades_cache}.py (new, 67 tests).
+- packages-ts/markets/src/trades/{types,kalshi-client,kalshi,polymarket,cache,index}.ts (new TS subpath).
+- packages-ts/markets/tsup.config.ts — new third entry for trades subpath.
+- packages-ts/markets/package.json — `./trades` subpath export.
+- packages-ts/markets/tests/trades/{kalshi,polymarket,cache}.test.ts (new, 46 tests).
+- packages-ts/core/src/internal/http.ts — added `MAX_RETRY_AFTER_MS = 120_000` Retry-After cap.
+- packages-ts/core/tests/internal/http.test.ts — new cap regression test.
+- .planning/research/MARKETS-RATE-LIMITS.md (new) — per-issuer politeness floors + CLOB documentation.
+- .planning/phases/09-markets-trade-history-kalshi-polymarket/PLAN.md (new).
+- .planning/REQUIREMENTS.md — TRADES-01..08 added to Phase 9 section.
+
+**Unblocks:** Phase 10 (Composable `research()` with `include_trades=True` kwarg).
 
 ## Phase 8 closeout (2026-05-24) — Polymarket US Coverage + Per-Issuer Settlement Invariants
 

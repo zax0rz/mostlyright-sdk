@@ -31,7 +31,16 @@ log = logging.getLogger(__name__)
 
 
 #: Polymarket Gamma API base URL — read-only public REST endpoint.
+#: Hosts: ``/events``, ``/events/{id}``, ``/markets``.
 GAMMA_API_BASE: str = "https://gamma-api.polymarket.com"
+
+
+#: Polymarket CLOB API base URL — read-only public REST endpoint hosting
+#: ``/prices-history``. Separate hostname from Gamma (Phase 9 architect
+#: iter-1 CRITICAL: the prices-history endpoint moved from Gamma to CLOB
+#: at some point and the `market` query parameter on this endpoint is the
+#: CLOB token id (ERC-1155 asset id), NOT the Gamma market/condition id).
+CLOB_API_BASE: str = "https://clob.polymarket.com"
 
 
 #: Politeness sleep between requests (~300 req/min ceiling). Polymarket
@@ -53,6 +62,55 @@ _EVENTS_MAX: int = 10_000
 
 #: Required user-agent header. Cloudfront returns 403 on a blank UA.
 _USER_AGENT: str = "tradewinds-sdk/0.1 (+https://github.com/Tarabcak/tradewinds)"
+
+
+def get_json(
+    path: str,
+    *,
+    params: dict[str, Any] | None = None,
+    client: httpx.Client | None = None,
+    timeout: float = HTTP_TIMEOUT,
+    sleep_between: float = _REQUEST_DELAY_S,
+    base_url: str = GAMMA_API_BASE,
+) -> Any:
+    """Generic ``GET`` against a Polymarket public endpoint; returns parsed JSON.
+
+    Phase 9 addition (TRADES-04..05): exposes the shared HTTP path so
+    the trades surface can reuse the User-Agent + politeness + timeout
+    discipline already established for events / event-by-id fetchers.
+
+    Args:
+        path: Path under ``base_url`` (must start with ``/``).
+        params: Optional query parameters.
+        client: Optional shared ``httpx.Client``.
+        timeout: Per-request timeout in seconds.
+        sleep_between: Per-request polite sleep (tests pass ``0``).
+        base_url: Polymarket host base. Defaults to :data:`GAMMA_API_BASE`;
+            callers needing the CLOB endpoint (``/prices-history``) pass
+            :data:`CLOB_API_BASE` explicitly.
+
+    Returns:
+        Parsed JSON payload (``dict`` / ``list``).
+
+    Raises:
+        httpx.HTTPStatusError: Non-2xx response.
+        httpx.RequestError: Connection failure.
+    """
+    owns_client = client is None
+    if owns_client:
+        client = httpx.Client(
+            timeout=timeout,
+            headers={"User-Agent": _USER_AGENT, "Accept": "application/json"},
+        )
+    try:
+        response = client.get(f"{base_url}{path}", params=params)
+        response.raise_for_status()
+        if sleep_between > 0:
+            time.sleep(sleep_between)
+        return response.json()
+    finally:
+        if owns_client and client is not None:
+            client.close()
 
 
 def fetch_events(

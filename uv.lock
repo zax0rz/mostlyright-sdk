@@ -1267,22 +1267,30 @@ polymarket = [
     { name = "pandas" },
     { name = "tradewinds-weather" },
 ]
+trades = [
+    { name = "filelock" },
+    { name = "pandas" },
+    { name = "pyarrow" },
+]
 
 [package.metadata]
 requires-dist = [
+    { name = "filelock", marker = "extra == 'trades'", specifier = ">=3.20,<4" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "jsonschema", specifier = ">=4.21" },
     { name = "narwhals", marker = "extra == 'polars'", specifier = ">=1.20,<2.0" },
     { name = "pandas", marker = "extra == 'parquet'", specifier = ">=2.2,<4.0" },
     { name = "pandas", marker = "extra == 'polars'", specifier = ">=2.2,<4.0" },
     { name = "pandas", marker = "extra == 'polymarket'", specifier = ">=2.2,<4.0" },
+    { name = "pandas", marker = "extra == 'trades'", specifier = ">=2.2,<4.0" },
     { name = "polars", marker = "extra == 'polars'", specifier = ">=1.0,<2.0" },
     { name = "pyarrow", marker = "extra == 'parquet'", specifier = ">=17.0,<24.0" },
     { name = "pyarrow", marker = "extra == 'polars'", specifier = ">=17.0,<24.0" },
+    { name = "pyarrow", marker = "extra == 'trades'", specifier = ">=17.0,<24.0" },
     { name = "tradewinds", editable = "packages/core" },
     { name = "tradewinds-weather", marker = "extra == 'polymarket'", editable = "packages/weather" },
 ]
-provides-extras = ["parquet", "polymarket", "polars"]
+provides-extras = ["parquet", "polymarket", "trades", "polars"]
 
 [[package]]
 name = "tradewinds-weather"

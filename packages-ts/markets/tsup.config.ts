@@ -32,4 +32,22 @@ export default defineConfig([
       return { js: ".cjs" };
     },
   },
+  {
+    // Phase 9 — trade-history surface at @tradewinds/markets/trades.
+    // Same subpath rationale as Polymarket: trades endpoints (Kalshi
+    // /trade-api/v2 + Polymarket Gamma) are server-side by design for
+    // Node + Workers, kept out of the IIFE root bundle to preserve
+    // browser-bundle size targets.
+    entry: { index: "src/trades/index.ts" },
+    format: ["esm", "cjs"],
+    dts: true,
+    sourcemap: true,
+    clean: false,
+    target: "es2022",
+    outDir: "dist/trades",
+    outExtension({ format }) {
+      if (format === "esm") return { js: ".mjs" };
+      return { js: ".cjs" };
+    },
+  },
 ]);
