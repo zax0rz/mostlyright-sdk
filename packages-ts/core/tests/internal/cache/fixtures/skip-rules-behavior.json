@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "description": "TS-CACHE-02 5-case behavior fixture (per TS-W3 SC#2). Pins cache-skip semantics for cross-language regression. Python equivalent fixture: TODO (CROSS-SDK-SYNC parity ticket — back-port to packages/weather/tests/cache/fixtures/ when Python adopts the 30-day volatile rule). Case-5 uses RJTT (Tokyo Haneda, UTC+9 LST) — confirmed present in packages-ts/core/src/data/generated/stations.ts.",
+  "cases": [
+    {
+      "id": "case-1-knyc-current-lst-month",
+      "station": "KNYC",
+      "year": 2025,
+      "month": 1,
+      "source": "iem.archive",
+      "eventDate": "2025-01-15",
+      "asOf": "2025-01-15",
+      "now": "2025-01-15T12:00:00Z",
+      "expected": { "skipCurrentMonth": true, "skipLive": false, "skipVolatile": true }
+    },
+    {
+      "id": "case-2-knyc-last-month-cacheable",
+      "station": "KNYC",
+      "year": 2024,
+      "month": 12,
+      "source": "iem.archive",
+      "eventDate": "2024-11-15",
+      "asOf": "2025-01-15",
+      "now": "2025-01-15T12:00:00Z",
+      "expected": { "skipCurrentMonth": false, "skipLive": false, "skipVolatile": false }
+    },
+    {
+      "id": "case-3-live-source-never-cached",
+      "station": "KNYC",
+      "year": 2024,
+      "month": 11,
+      "source": "awc.live",
+      "eventDate": "2024-11-15",
+      "asOf": "2025-01-15",
+      "now": "2025-01-15T12:00:00Z",
+      "expected": { "skipCurrentMonth": false, "skipLive": true, "skipVolatile": false }
+    },
+    {
+      "id": "case-4-volatile-window-10-days-ago",
+      "station": "KNYC",
+      "year": 2024,
+      "month": 12,
+      "source": "iem.archive",
+      "eventDate": "2025-01-05",
+      "asOf": "2025-01-15",
+      "now": "2025-01-15T12:00:00Z",
+      "expected": { "skipCurrentMonth": false, "skipLive": false, "skipVolatile": true }
+    },
+    {
+      "id": "case-5-rjtt-utc-plus-9-year-wrap",
+      "station": "RJTT",
+      "year": 2026,
+      "month": 1,
+      "source": "iem.archive",
+      "eventDate": "2026-01-01",
+      "asOf": "2026-01-01",
+      "now": "2025-12-31T20:00:00Z",
+      "expected": { "skipCurrentMonth": true, "skipLive": false, "skipVolatile": true }
+    }
+  ]
+}
