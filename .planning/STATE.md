@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v0.1.0
 milestone_name: — `@tradewinds/*` on npm)
-status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W1 merged; 271 TS tests green; Chrome-extension MVP shipped.
-stopped_at: Completed ts-w2-parity-gate/ts-w2-01-PLAN.md
-last_updated: "2026-05-24T05:47:00.819Z"
-last_activity: "2026-05-24 - Completed quick task 260524-9pq: Update REVIEW-DISCIPLINE.md to add a TypeScript Architect reviewer"
+status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W2 merged; multi-source parity-gate harness shipped (recordings operator-pending).
+stopped_at: Completed ts-w2-parity-gate (all 8 plans merged)
+last_updated: "2026-05-24T10:00:00.000Z"
+last_activity: "2026-05-24 - Merged TS-W2 parity-gate (8 plans, 3-iter review loop, Codex + TS Architect both clean at CRITICAL/HIGH)"
 progress:
   total_phases: 21
   completed_phases: 1
@@ -25,12 +25,52 @@ See: .planning/PROJECT.md (updated 2026-05-21; STATE.md refreshed 2026-05-23)
 
 ## Current Position
 
-Phase: Python v0.1.0 (12/12 phases, 1674 tests, all REAL impls) COMPLETE + TS v0.1.0 milestone planning COMPLETE + **TS-W0 + TS-W1 COMPLETE**
-Plan: TS-W2 (parity gate; HARD) next — adds IEM ASOS + GHCNh fetchers, merge_observations port, 5-fixture byte-equivalent parity test
-Status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W1 merged; 271 TS tests green; Chrome-extension MVP shipped.
-Last activity: 2026-05-24 - Completed quick task 260524-9pq: Update REVIEW-DISCIPLINE.md to add a TypeScript Architect reviewer
+Phase: Python v0.1.0 (12/12 phases, 1674 tests, all REAL impls) COMPLETE + TS v0.1.0 milestone planning COMPLETE + **TS-W0 + TS-W1 + TS-W2 COMPLETE**
+Plan: TS-W3 (disk cache + temporal validator) next; operator-gated capture of Plan 07 msw recordings unblocks the parity test HARD GATE.
+Status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W2 merged with multi-source parity-gate harness (recordings operator-pending).
+Last activity: 2026-05-24 - Merged TS-W2 parity-gate (8 plans, 3-iter review loop, Codex + TS Architect both clean at CRITICAL/HIGH)
 
-Progress: Python [██████████] 100% (12/12 phases, 1674 tests) | TS [2/8 phases shipped — TS-W0 + TS-W1 done; 271 TS tests]
+Progress: Python [██████████] 100% (12/12 phases, 1674 tests) | TS [3/8 phases shipped — TS-W0 + TS-W1 + TS-W2 done; 470 TS tests (27 active + 6 todo for operator-pending parity)]
+
+## TS-W2 Parity Gate closeout (2026-05-24)
+
+Merge commit: `9d9ada0 Merge ts-w2/parity-gate — TS-W2 Parity Gate (8 plans)` (`--no-ff` into main).
+
+**8 sub-plans landed (15 commits on the branch + 3 review-loop fix commits):**
+
+- Plan 01 — IEM ASOS yearly-chunk fetcher + chunker + CSV parser (96 tests)
+- Plan 02 — GHCNh PSV fetcher + parser + station-id translator (73 tests)
+- Plan 03 — Python→JSON parity fixture exporter (5 fixtures + manifest + 5 pytests)
+- Plan 04 — mergeObservations + mergeClimate canonical home at `@tradewinds/core/internal/merge` (31 tests inc. fast-check property + canonical-fetch-order replay)
+- Plan 05 — buildPairs + _obsAggregates + pairsToRows at `@tradewinds/core/internal/pairs` (26 tests, 20-field PairsRow byte-shape-equivalent to Python)
+- Plan 06 — research() full rewrite: all 4 sources (AWC + IEM ASOS + GHCNh + CLI) merged + buildPairs; W1 ResearchRow + null-placeholder obs_* aggregation removed (8 new integration tests)
+- Plan 07 — msw recording-capture script + README (operator-gated via `TRADEWINDS_TS_LIVE=1 pnpm --filter tradewinds capture-parity`)
+- Plan 08 — HARD parity test + drift-rotate-ts.yml weekly soft-fail cron
+
+**Review discipline (per .planning/REVIEW-DISCIPLINE.md, 3-iter loop):**
+
+- iter-1: TS Architect 2 CRITICAL (parity.test.ts forced AWC fetch via `now` override that broke msw replay; drift_capture.ts violated SC#5 SOFT-FAIL contract with outer `process.exit(2)`); Codex 1 P1 (test-ts.yml typecheck failed because subpath imports need `dist/`). Fixed: 41e6913 + b3be533.
+- iter-2: TS Architect PASS; Codex 1 P1 (research.ts passed `resolved.icao` to IEM ASOS but Python uses `station.code` — would have produced empty/mismatched archive rows for cases 1+5). Fixed: d6bef33.
+- iter-3: TS Architect PASS; Codex 1 P2 backwards-compat (ResearchRow type removal) — below CRITICAL/HIGH gate, deferred to TS-W3.
+
+**Test status (post-merge, on main):**
+- core: 181 tests (incl. 16 merge + 8 climate + 1 fast-check property + 6 canonical-replay + 26 pairs)
+- weather: 218 tests (incl. 15 station-translator + 15 GHCNh fetcher + 43 GHCNh parser + 18 IEM ASOS fetcher + 9 IEM chunks + 34 IEM parser + 1 cli-merge re-export)
+- markets: 41 tests
+- meta: 27 passing + 6 todo (1 intl-station GHCNh skip blocked on TS-W6; 5 parity-test cases waiting on operator-gated Plan 07 recordings)
+- codegen: 11 tests
+
+**Operator next step:**
+```bash
+TRADEWINDS_TS_LIVE=1 pnpm --filter tradewinds capture-parity
+git add packages-ts/meta/tests/parity/recordings/
+git commit -m "ts-w2-07: capture parity recordings (5 cases)"
+git push
+```
+
+Once recordings land, the parity test transitions from `todo` to HARD GATE (any case failing → CI red).
+
+**CI change:** test-ts.yml now runs `pnpm -r run build` between `pnpm codegen` and `pnpm -r run typecheck` — required for subpath imports to resolve via `dist/`.
 
 ## TS-W1 Chrome-extension MVP closeout (2026-05-24)
 
