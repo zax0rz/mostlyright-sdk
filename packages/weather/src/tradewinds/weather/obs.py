@@ -28,9 +28,7 @@ Source = Literal["iem", "ghcnh", "awc"]
 Strategy = Literal["auto", "exact_window", "warm_cache", "hosted"]
 
 _VALID_SOURCES: frozenset[str] = frozenset({"iem", "ghcnh", "awc"})
-_VALID_STRATEGIES: frozenset[str] = frozenset(
-    {"auto", "exact_window", "warm_cache", "hosted"}
-)
+_VALID_STRATEGIES: frozenset[str] = frozenset({"auto", "exact_window", "warm_cache", "hosted"})
 
 
 def obs(
@@ -41,7 +39,7 @@ def obs(
     source: Source | None = None,
     strategy: Strategy = "auto",
     as_dataframe: bool = True,
-) -> "pd.DataFrame | list[dict]":
+) -> pd.DataFrame | list[dict]:
     """Return observation aggregates for ``station`` over ``[start, end]``.
 
     Parameters
@@ -103,13 +101,9 @@ def obs(
     ...          strategy="exact_window")  # doctest: +SKIP
     """
     if source is not None and source not in _VALID_SOURCES:
-        raise ValueError(
-            f"source must be one of {sorted(_VALID_SOURCES)} or None; got {source!r}"
-        )
+        raise ValueError(f"source must be one of {sorted(_VALID_SOURCES)} or None; got {source!r}")
     if strategy not in _VALID_STRATEGIES:
-        raise ValueError(
-            f"strategy must be one of {sorted(_VALID_STRATEGIES)}; got {strategy!r}"
-        )
+        raise ValueError(f"strategy must be one of {sorted(_VALID_STRATEGIES)}; got {strategy!r}")
 
     # Eager ISO validation — fail fast for malformed dates before any network.
     date.fromisoformat(start)
@@ -117,6 +111,7 @@ def obs(
 
     # Resolve station via the existing research.py helper (single source of truth).
     from tradewinds.research import _resolve_station
+
     info = _resolve_station(station)
 
     # Resolve "auto" to a concrete strategy first; never recurse (W-5).
@@ -142,6 +137,7 @@ def obs(
 
     if as_dataframe:
         import pandas as pd
+
         return pd.DataFrame(rows)
     return rows
 
@@ -151,7 +147,7 @@ def _dispatch_strategy(
     from_date_iso: str,
     to_date_iso: str,
     *,
-    source: "Source | None",
+    source: Source | None,
     strategy: Literal["exact_window", "warm_cache", "hosted"],
 ) -> list[dict]:
     """Single dispatch path for the three concrete strategies. NEVER recurses (W-5).
@@ -163,17 +159,12 @@ def _dispatch_strategy(
     if strategy == "exact_window":
         from tradewinds._exact_fetch import _exact_fetch_observations
 
-        return _exact_fetch_observations(
-            info, from_date_iso, to_date_iso, source=source
-        )
+        return _exact_fetch_observations(info, from_date_iso, to_date_iso, source=source)
     if strategy == "warm_cache":
-        return _warm_cache_fetch(
-            info, from_date_iso, to_date_iso, source=source
-        )
+        return _warm_cache_fetch(info, from_date_iso, to_date_iso, source=source)
     if strategy == "hosted":
         raise NotImplementedError(
-            "hosted strategy deferred to v0.2.x — "
-            "set TW_HOSTED_URL to enable once client lands"
+            "hosted strategy deferred to v0.2.x — set TW_HOSTED_URL to enable once client lands"
         )
     raise ValueError(f"Unknown concrete strategy: {strategy!r}")
 
@@ -220,9 +211,7 @@ def _warm_cache_fetch(
         )
 
     # Mirror research.py:1167 — extend by 1 day for the LST-pre-midnight tail.
-    extended_to_iso = (
-        date.fromisoformat(to_date_iso) + timedelta(days=1)
-    ).isoformat()
+    extended_to_iso = (date.fromisoformat(to_date_iso) + timedelta(days=1)).isoformat()
 
     # _all_caches_warm gate (preserves the zero-network invariant for fully
     # cached re-runs; see research.py:1183-1185).

@@ -37,7 +37,7 @@ Source = Literal["iem", "ghcnh", "awc"]
 
 
 def _exact_fetch_observations(
-    info: "StationInfo",
+    info: StationInfo,
     from_date_iso: str,
     to_date_iso: str,
     *,

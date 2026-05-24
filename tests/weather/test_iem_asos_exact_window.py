@@ -63,10 +63,13 @@ def test_exact_window_url_uses_day_granular_params(tmp_path, frozen_today_utc):
 
     dest_dir = tmp_path / "iem_asos_exact"
 
-    with patch(
-        "tradewinds.weather._fetchers.iem_asos.download_with_retry",
-        side_effect=_fake_download,
-    ), patch("tradewinds.weather._fetchers.iem_asos.time.sleep"):
+    with (
+        patch(
+            "tradewinds.weather._fetchers.iem_asos.download_with_retry",
+            side_effect=_fake_download,
+        ),
+        patch("tradewinds.weather._fetchers.iem_asos.time.sleep"),
+    ):
         paths = download_iem_asos(
             station,
             date(2024, 3, 5),
@@ -102,10 +105,13 @@ def test_exact_window_false_preserves_year_normalization(tmp_path, frozen_today_
 
     dest_dir = tmp_path / "iem_asos"
 
-    with patch(
-        "tradewinds.weather._fetchers.iem_asos.download_with_retry",
-        side_effect=_fake_download,
-    ), patch("tradewinds.weather._fetchers.iem_asos.time.sleep"):
+    with (
+        patch(
+            "tradewinds.weather._fetchers.iem_asos.download_with_retry",
+            side_effect=_fake_download,
+        ),
+        patch("tradewinds.weather._fetchers.iem_asos.time.sleep"),
+    ):
         download_iem_asos(
             station,
             date(2024, 3, 5),
@@ -131,10 +137,13 @@ def test_exact_window_paths_under_caller_dest_dir(tmp_path, frozen_today_utc):
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text("station,valid\n", encoding="utf-8")
 
-    with patch(
-        "tradewinds.weather._fetchers.iem_asos.download_with_retry",
-        side_effect=_fake_download,
-    ), patch("tradewinds.weather._fetchers.iem_asos.time.sleep"):
+    with (
+        patch(
+            "tradewinds.weather._fetchers.iem_asos.download_with_retry",
+            side_effect=_fake_download,
+        ),
+        patch("tradewinds.weather._fetchers.iem_asos.time.sleep"),
+    ):
         paths = download_iem_asos(
             station,
             date(2024, 3, 5),
@@ -158,10 +167,13 @@ def test_exact_window_returns_list_of_csv_paths(tmp_path, frozen_today_utc):
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text("station,valid\n", encoding="utf-8")
 
-    with patch(
-        "tradewinds.weather._fetchers.iem_asos.download_with_retry",
-        side_effect=_fake_download,
-    ), patch("tradewinds.weather._fetchers.iem_asos.time.sleep"):
+    with (
+        patch(
+            "tradewinds.weather._fetchers.iem_asos.download_with_retry",
+            side_effect=_fake_download,
+        ),
+        patch("tradewinds.weather._fetchers.iem_asos.time.sleep"),
+    ):
         paths = download_iem_asos(
             station,
             date(2024, 3, 5),

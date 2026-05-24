@@ -51,8 +51,11 @@ def test_exact_window_1mo_knyc_iem_under_2mb(isolated_cache):
     before = _dir_size_bytes(isolated_cache)
     t0 = time.perf_counter()
     df_cold = obs(
-        "KNYC", "2024-03-01", "2024-03-31",
-        source="iem", strategy="exact_window",
+        "KNYC",
+        "2024-03-01",
+        "2024-03-31",
+        source="iem",
+        strategy="exact_window",
     )
     cold_s = time.perf_counter() - t0
     after_cold = _dir_size_bytes(isolated_cache)
@@ -60,8 +63,11 @@ def test_exact_window_1mo_knyc_iem_under_2mb(isolated_cache):
 
     t1 = time.perf_counter()
     _ = obs(
-        "KNYC", "2024-03-01", "2024-03-31",
-        source="iem", strategy="exact_window",
+        "KNYC",
+        "2024-03-01",
+        "2024-03-31",
+        source="iem",
+        strategy="exact_window",
     )
     warm_s = time.perf_counter() - t1
 
@@ -88,16 +94,16 @@ def test_warm_cache_1mo_knyc_control_baseline(isolated_cache):
 
     before = _dir_size_bytes(isolated_cache)
     df_cold = obs(
-        "KNYC", "2024-03-01", "2024-03-31",
-        source=None, strategy="warm_cache",
+        "KNYC",
+        "2024-03-01",
+        "2024-03-31",
+        source=None,
+        strategy="warm_cache",
     )
     after_cold = _dir_size_bytes(isolated_cache)
     cold_bytes = after_cold - before
 
-    print(
-        f"\n[warm_cache 1mo KNYC] bytes={cold_bytes / 1024 / 1024:.2f}MB "
-        f"rows={len(df_cold)}"
-    )
+    print(f"\n[warm_cache 1mo KNYC] bytes={cold_bytes / 1024 / 1024:.2f}MB rows={len(df_cold)}")
 
     assert cold_bytes >= 10 * 1024 * 1024, (
         f"warm_cache 1mo cold dropped below 10 MB ({cold_bytes / 1024 / 1024:.2f} MB) — "

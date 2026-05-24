@@ -37,9 +37,7 @@ def _canonical_iem_paths(cache_dir: Path) -> list[Path]:
 
 
 @pytest.mark.live
-def test_exact_window_crossing_current_lst_month_does_not_write_canonical(
-    tmp_path, monkeypatch
-):
+def test_exact_window_crossing_current_lst_month_does_not_write_canonical(tmp_path, monkeypatch):
     """exact_window across the current LST month must not pollute canonical cache."""
     cache_dir = tmp_path / "tw_cache"
     cache_dir.mkdir()
@@ -54,8 +52,11 @@ def test_exact_window_crossing_current_lst_month_does_not_write_canonical(
     end = today
 
     _ = obs(
-        "KNYC", start.isoformat(), end.isoformat(),
-        source="iem", strategy="exact_window",
+        "KNYC",
+        start.isoformat(),
+        end.isoformat(),
+        source="iem",
+        strategy="exact_window",
     )
 
     canonical = _canonical_parquet_paths(cache_dir)
@@ -94,8 +95,11 @@ def test_exact_window_partial_infix_for_mutable_month(tmp_path, monkeypatch):
     end = today + timedelta(days=1)
 
     _ = obs(
-        "KNYC", start.isoformat(), end.isoformat(),
-        source="iem", strategy="exact_window",
+        "KNYC",
+        start.isoformat(),
+        end.isoformat(),
+        source="iem",
+        strategy="exact_window",
     )
 
     # Any IEM CSVs written for this query must (a) live under

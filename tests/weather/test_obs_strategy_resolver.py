@@ -156,7 +156,7 @@ def test_obs_auto_with_env_set_raises_hosted_not_implemented(monkeypatch, empty_
 
     monkeypatch.setenv("TW_HOSTED_URL", "https://api.example.com")
     monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(empty_cache))
-    with pytest.raises(NotImplementedError, match="hosted strategy deferred to v0.2.x"):
+    with pytest.raises(NotImplementedError, match=r"hosted strategy deferred to v0\.2\.x"):
         obs("KNYC", "2024-03-01", "2024-03-31", strategy="auto")
 
 

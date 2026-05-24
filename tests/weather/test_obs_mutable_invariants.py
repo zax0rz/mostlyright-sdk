@@ -16,7 +16,7 @@ Never reinvent.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -34,7 +34,7 @@ def test_is_writable_month_helper_exists_and_returns_bool():
     """Sanity: the canonical mutable-period gate is still named the same."""
     from tradewinds.research import _is_writable_month
 
-    today_utc = datetime.now(timezone.utc).date()
+    today_utc = datetime.now(UTC).date()
     # Last completed month — strictly past UTC — must be writable.
     if today_utc.month == 1:
         last_year, last_month = today_utc.year - 1, 12
@@ -60,9 +60,7 @@ def test_is_current_lst_year_helper_exists():
 
 # --- (a) warm_cache + current LST month: uses _partial predicate -------------
 @pytest.mark.live
-def test_warm_cache_current_lst_month_does_not_write_final_canonical(
-    tmp_path, monkeypatch
-):
+def test_warm_cache_current_lst_month_does_not_write_final_canonical(tmp_path, monkeypatch):
     """A warm_cache query for the current LST month must not write a final
     canonical parquet (current month is mutable).
     """
@@ -75,13 +73,15 @@ def test_warm_cache_current_lst_month_does_not_write_final_canonical(
     today = date.today()
     first_of_month = date(today.year, today.month, 1)
     _ = obs(
-        "KNYC", first_of_month.isoformat(), today.isoformat(),
-        source=None, strategy="warm_cache",
+        "KNYC",
+        first_of_month.isoformat(),
+        today.isoformat(),
+        source=None,
+        strategy="warm_cache",
     )
 
     current_month_parquet = (
-        cache_root / "v1" / "observations" / "KNYC"
-        / str(today.year) / f"{today.month:02d}.parquet"
+        cache_root / "v1" / "observations" / "KNYC" / str(today.year) / f"{today.month:02d}.parquet"
     )
     assert not current_month_parquet.exists(), (
         f"warm_cache wrote a final canonical parquet for the current LST month: "
@@ -91,9 +91,7 @@ def test_warm_cache_current_lst_month_does_not_write_final_canonical(
 
 # --- (b) auto + small window crossing current month → exact_window dispatch -
 @pytest.mark.live
-def test_auto_small_window_crossing_current_month_routes_to_exact_window(
-    tmp_path, monkeypatch
-):
+def test_auto_small_window_crossing_current_month_routes_to_exact_window(tmp_path, monkeypatch):
     """A small window (<90d) that crosses the current LST month routes to
     exact_window (per the decision tree) and therefore writes no canonical
     parquet at all.
@@ -115,7 +113,9 @@ def test_auto_small_window_crossing_current_month_routes_to_exact_window(
     )
 
     _ = obs(
-        "KNYC", start.isoformat(), end.isoformat(),
+        "KNYC",
+        start.isoformat(),
+        end.isoformat(),
         source="iem",  # default "auto" but exercise source=iem path
     )
 
@@ -126,9 +126,7 @@ def test_auto_small_window_crossing_current_month_routes_to_exact_window(
 
 
 # --- (c) auto + large window + warm cache → warm_cache dispatch -------------
-def test_auto_large_window_warm_cache_routes_to_warm_cache(
-    tmp_path, monkeypatch
-):
+def test_auto_large_window_warm_cache_routes_to_warm_cache(tmp_path, monkeypatch):
     """When cache has a year hit for the requested year, auto routes to
     warm_cache regardless of window size. Sanity check via resolver in isolation.
     """
