@@ -152,6 +152,28 @@ class TestHistory:
         # ≥1 sleep call with the documented 0.2s polite floor.
         assert any(s >= 0.2 for s in captured_sleep), captured_sleep
 
+    def test_snapshot_default_polite_floor_applied(self):
+        """Iter-4 codex HIGH: snapshot used to call fetch_event_by_id which
+        has no sleep path — snapshot in a loop bypassed the polite floor.
+        The fix routes snapshot through get_json so the default 0.2s sleep
+        applies."""
+        import tradewinds.markets._polymarket_client as pmc
+
+        captured_sleep: list[float] = []
+        orig_sleep = pmc.time.sleep
+        pmc.time.sleep = lambda s: captured_sleep.append(s)
+        try:
+            with respx.mock(assert_all_called=False) as router:
+                router.get(f"{GAMMA_API_BASE}/events/E1").mock(
+                    return_value=httpx.Response(200, json={"id": "E1", "markets": []})
+                )
+                # NB: no `sleep_between` — exercise default-inherit path.
+                snapshot("E1")
+        finally:
+            pmc.time.sleep = orig_sleep
+        # ≥1 sleep call with the documented 0.2s polite floor.
+        assert any(s >= 0.2 for s in captured_sleep), captured_sleep
+
 
 # ---------------------------------------------------------------------------
 # snapshot

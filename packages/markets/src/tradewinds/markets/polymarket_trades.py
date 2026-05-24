@@ -26,7 +26,6 @@ from typing import TYPE_CHECKING, Any
 
 from tradewinds.markets._polymarket_client import (
     CLOB_API_BASE,
-    fetch_event_by_id,
     get_json,
 )
 
@@ -181,12 +180,20 @@ def snapshot(
     event_id: str,
     *,
     client: httpx.Client | None = None,
+    sleep_between: float | None = None,
 ) -> pd.DataFrame:
     """Current state for ``event_id`` from Gamma ``/events/{id}``.
 
     Args:
         event_id: Polymarket event id.
         client: Optional shared ``httpx.Client``.
+        sleep_between: Per-request polite-sleep override. Default applies
+            ``get_json``'s 0.2s floor (the Gamma rate-limit-floor
+            documented in ``.planning/research/MARKETS-RATE-LIMITS.md``).
+            Iter-4 codex HIGH: the previous implementation routed through
+            ``fetch_event_by_id`` which has no sleep path — snapshot in a
+            loop bypassed the polite floor entirely. Now routes through
+            ``get_json`` so the default sleep applies.
 
     Returns:
         DataFrame, one row per outcome (across all markets in the event):
@@ -207,7 +214,14 @@ def snapshot(
     pd = _require_pandas()
     if not isinstance(event_id, str) or not event_id:
         raise ValueError(f"event_id must be a non-empty str; got {event_id!r}")
-    event = fetch_event_by_id(event_id, client=client)
+    get_kwargs: dict[str, Any] = {
+        "params": None,
+        "client": client,
+        # base_url defaults to GAMMA_API_BASE in get_json.
+    }
+    if sleep_between is not None:
+        get_kwargs["sleep_between"] = sleep_between
+    event = get_json(f"/events/{event_id}", **get_kwargs)
     if not isinstance(event, dict):
         raise ValueError(
             f"polymarket snapshot: bad event payload type for {event_id!r}; "
