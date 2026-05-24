@@ -16,6 +16,11 @@ export * from "./data/generated/index.js";
 export * from "./exceptions/index.js";
 export * from "./snapshot.js";
 
+// TS-W3 Plan 04: temporal-safety primitives (TimePoint, KnowledgeView,
+// LeakageDetector, assertNoLeakage). Also available via the subpath
+// `@tradewinds/core/temporal` for callers who want tighter tree-shaking.
+export * from "./temporal/index.js";
+
 // Internal modules — re-export selected helpers only. `internal/convert` and
 // `internal/bounds` stay deep imports for fetchers + parsers in later waves.
 export { fetchWithRetry } from "./internal/http.js";

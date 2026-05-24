@@ -50,4 +50,19 @@ export default defineConfig([
       return { js: ".cjs" };
     },
   },
+  {
+    // TS-W3 Plan 04 — temporal primitives (TimePoint, KnowledgeView,
+    // LeakageDetector, assertNoLeakage). Emitted at @tradewinds/core/temporal.
+    entry: { index: "src/temporal/index.ts" },
+    format: ["esm", "cjs"],
+    dts: true,
+    sourcemap: true,
+    clean: false,
+    target: "es2022",
+    outDir: "dist/temporal",
+    outExtension({ format }) {
+      if (format === "esm") return { js: ".mjs" };
+      return { js: ".cjs" };
+    },
+  },
 ]);

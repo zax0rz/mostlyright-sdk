@@ -32,6 +32,11 @@
       "types": "./dist/internal/pairs.d.ts",
       "import": "./dist/internal/pairs.mjs",
       "require": "./dist/internal/pairs.cjs"
+    },
+    "./temporal": {
+      "types": "./dist/temporal/index.d.ts",
+      "import": "./dist/temporal/index.mjs",
+      "require": "./dist/temporal/index.cjs"
     }
   },
   "files": ["dist"],
