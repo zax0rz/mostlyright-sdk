@@ -85,6 +85,44 @@ export function deriveCity(event: PolymarketEventRaw): string | null {
   return null;
 }
 
+// Phase 8 — Tier 1.5 URL extraction (POLY-US-03).
+// Wunderground PWS URL pattern; captures K-prefix ICAO. US-only by design —
+// international Wunderground URLs use lat/lng or alternate IDs and fall back
+// to Tier 2 city-derive.
+const WUNDERGROUND_ICAO_RE = /https?:\/\/(?:www\.)?wunderground\.com\/[^\s<>"')]*?\b(K[A-Z]{3})\b/i;
+
+/**
+ * Extract the first ICAO from a Wunderground URL in `text`.
+ *
+ * Tier 1.5 of the resolver chain — runs between explicit `event.city`
+ * and slug-derive. When a Polymarket event embeds a Wunderground URL
+ * pointing at a specific PWS station, the URL IS the source of truth;
+ * no catalog lookup needed.
+ *
+ * Returns uppercase ICAO (4 chars, leading K) if a Wunderground URL with
+ * an ICAO is found; null otherwise. Tolerates null/undefined/empty/non-
+ * string for caller convenience.
+ */
+export function extractIcaoFromResolutionSource(text: string | null | undefined): string | null {
+  if (typeof text !== "string" || text.length === 0) return null;
+  const m = text.match(WUNDERGROUND_ICAO_RE);
+  if (m === null || m[1] === undefined) return null;
+  return m[1].toUpperCase();
+}
+
+// Reverse-lookup the canonical city for a given ICAO. Linear scan over the
+// small catalog (≤60 entries) — no perf concern. Returns null when the ICAO
+// is not represented in any catalog entry (e.g. a private PWS).
+function findCityForIcao(icao: string): string | null {
+  for (const [city, entry] of Object.entries(POLYMARKET_CITY_STATIONS)) {
+    if (entry === undefined) continue;
+    if (entry.default === icao || entry.high === icao || entry.low === icao) {
+      return city;
+    }
+  }
+  return null;
+}
+
 /**
  * Resolve an event to `{icao, stationMeasure}` using the city catalog.
  *
@@ -105,6 +143,41 @@ export function resolveStationForEvent(
       cityKey = low;
     }
   }
+
+  // Tier 1.5: URL extraction from description / resolutionSource.
+  // The Wunderground URL is the issuer's canonical proof — beats catalog
+  // lookup. Defer gate still applies so a URL injection cannot silently
+  // route an RCTP / HK-low market.
+  const desc = typeof event.description === "string" ? event.description : "";
+  const resSrc =
+    typeof (event as { resolutionSource?: unknown }).resolutionSource === "string"
+      ? (event as { resolutionSource: string }).resolutionSource
+      : "";
+  const urlText = `${desc} ${resSrc}`;
+  const extractedIcao = extractIcaoFromResolutionSource(urlText);
+  if (extractedIcao !== null) {
+    if (extractedIcao === "RCTP") {
+      throw new DeferredMarketError(
+        `Polymarket market for station ${extractedIcao} is deferred until the v0.2 CWA client lands`,
+      );
+    }
+    if (extractedIcao === "VHHH" && marketMeasure === "low") {
+      throw new DeferredMarketError(
+        `Polymarket low-extreme market for station ${extractedIcao} is deferred until the v0.2 HKO client lands`,
+      );
+    }
+    if (DEFERRED_STATIONS.has(extractedIcao) && marketMeasure === "default") {
+      throw new DeferredMarketError(
+        `Polymarket market for deferred station ${extractedIcao} (measure=default) requires v0.2 client`,
+      );
+    }
+    // Reverse-lookup the city for the extracted ICAO; fall back to explicit
+    // city (if set) or empty string when neither resolves (the ICAO is the
+    // authoritative resolution target — discovery can still attribute it).
+    const fallbackCity = findCityForIcao(extractedIcao) ?? cityKey ?? "";
+    return { city: fallbackCity, icao: extractedIcao, stationMeasure: "default" };
+  }
+
   // Tier 2: scan slug + title + tags.
   if (cityKey === null) {
     cityKey = deriveCity(event);

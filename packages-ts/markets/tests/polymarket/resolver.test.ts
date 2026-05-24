@@ -30,8 +30,9 @@ describe("detectMarketMeasure", () => {
 
 describe("deriveCity", () => {
   it("matches city in the slug", () => {
-    expect(deriveCity({ slug: "will-nyc-something-2025" })).toBeNull();
-    // NYC is in the US registry, not Polymarket city catalog. Use london.
+    // Phase 8 added nyc to the Polymarket city catalog (KLGA, not KNYC).
+    // The slug-derive now correctly surfaces it.
+    expect(deriveCity({ slug: "will-nyc-something-2025" })).toBe("nyc");
     expect(deriveCity({ slug: "will-london-be-above-25c-on-2025-07-04" })).toBe("london");
   });
 

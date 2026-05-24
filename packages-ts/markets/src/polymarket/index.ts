@@ -15,9 +15,12 @@ export {
 export { polymarketDiscover } from "./discover.js";
 export type { PolymarketDiscoverOptions } from "./discover.js";
 
+export { POLYMARKET_KNOWN_WRONG_STATIONS } from "./known-wrong-stations.js";
+
 export {
   detectMarketMeasure,
   deriveCity,
+  extractIcaoFromResolutionSource,
   resolveStationForEvent,
   settlementDateFromSlug,
 } from "./resolver.js";
