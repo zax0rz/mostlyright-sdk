@@ -65,4 +65,19 @@ export default defineConfig([
       return { js: ".cjs" };
     },
   },
+  {
+    // TS-W3 Plan 07 — JSON/CSV/TOON serializers. Emitted at
+    // @tradewinds/core/formats. Parquet + DataFrame deferred (no stubs).
+    entry: { index: "src/formats/index.ts" },
+    format: ["esm", "cjs"],
+    dts: true,
+    sourcemap: true,
+    clean: false,
+    target: "es2022",
+    outDir: "dist/formats",
+    outExtension({ format }) {
+      if (format === "esm") return { js: ".mjs" };
+      return { js: ".cjs" };
+    },
+  },
 ]);

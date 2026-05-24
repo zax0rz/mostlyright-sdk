@@ -21,6 +21,10 @@ export * from "./snapshot.js";
 // `@tradewinds/core/temporal` for callers who want tighter tree-shaking.
 export * from "./temporal/index.js";
 
+// TS-W3 Plan 07: JSON/CSV/TOON serializers. Also available via the subpath
+// `@tradewinds/core/formats`. Parquet + DataFrame omitted (see plan 07).
+export * from "./formats/index.js";
+
 // Internal modules — re-export selected helpers only. `internal/convert` and
 // `internal/bounds` stay deep imports for fetchers + parsers in later waves.
 export { fetchWithRetry } from "./internal/http.js";

@@ -37,6 +37,11 @@
       "types": "./dist/temporal/index.d.ts",
       "import": "./dist/temporal/index.mjs",
       "require": "./dist/temporal/index.cjs"
+    },
+    "./formats": {
+      "types": "./dist/formats/index.d.ts",
+      "import": "./dist/formats/index.mjs",
+      "require": "./dist/formats/index.cjs"
     }
   },
   "files": ["dist"],

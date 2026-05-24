@@ -1,0 +1,4 @@
+rows[3]{a,b,c}:
+  1,"two,three",null
+  4,five,true
+  6,"",false
