@@ -11,6 +11,10 @@
 //    is the `>` comparison only.
 //  - Unparseable ISO strings are likewise skipped (Date.parse → NaN).
 //  - Sample cap = 10.
+//  - Wire format for `as_of` AND `sample_violations[].knowledge_time` uses
+//    the Python `datetime.isoformat()` shape (`"...T12:00:00+00:00"`) via
+//    `TimePoint.toPythonIso()` — iter-1 H1 fix. MCP clients comparing
+//    these strings across Python and TS see byte-equivalent values.
 
 import { LeakageError } from "../exceptions/index.js";
 import { TimePoint } from "./timepoint.js";
@@ -39,12 +43,24 @@ export function assertNoLeakage<Row extends { knowledge_time: string }>(
     }
     const t = Date.parse(r.knowledge_time);
     if (Number.isFinite(t) && t > asOfMs) {
-      violations.push({ row_idx: i, knowledge_time: r.knowledge_time });
+      // Re-emit knowledge_time in the Python isoformat shape so cross-
+      // language MCP consumers see byte-equivalent strings. The input
+      // could be `"...Z"` (JS toISOString output) or `"...+00:00"`
+      // (Python output) — normalize both via TimePoint.
+      let knowledgeTime = r.knowledge_time;
+      try {
+        knowledgeTime = new TimePoint(r.knowledge_time).toPythonIso();
+      } catch {
+        // The Date.parse succeeded above so TimePoint should accept it;
+        // if it doesn't (e.g. trailing whitespace differences), fall
+        // back to the original string rather than dropping the row.
+      }
+      violations.push({ row_idx: i, knowledge_time: knowledgeTime });
     }
   }
   if (violations.length === 0) return;
   throw new LeakageError(`Found ${violations.length} row(s) with knowledge_time > asOf`, {
-    asOf: asOf.toISOString(),
+    asOf: asOf.toPythonIso(),
     violatingCount: violations.length,
     sampleViolations: violations.slice(0, SAMPLE_CAP),
   });

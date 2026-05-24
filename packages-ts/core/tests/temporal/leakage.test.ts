@@ -34,7 +34,9 @@ describe("assertNoLeakage", () => {
       const err = e as LeakageError;
       expect(err.violatingCount).toBe(1);
       expect(err.sampleViolations[0]).toHaveProperty("row_idx", 1);
-      expect(err.sampleViolations[0]).toHaveProperty("knowledge_time", "2025-01-03T00:00:00Z");
+      // H1: knowledge_time is re-emitted in Python isoformat shape
+      // (`+00:00` suffix, no `.000` ms padding) for cross-SDK parity.
+      expect(err.sampleViolations[0]).toHaveProperty("knowledge_time", "2025-01-03T00:00:00+00:00");
     }
   });
 
@@ -55,7 +57,7 @@ describe("assertNoLeakage", () => {
     }
   });
 
-  it("LeakageError.toDict() emits snake_case wire shape (Python parity)", () => {
+  it("LeakageError.toDict() emits snake_case wire shape with Python isoformat (H1 parity)", () => {
     const rows = [{ knowledge_time: "2025-01-03T00:00:00Z" }];
     try {
       assertNoLeakage(rows, asOf);
@@ -71,9 +73,22 @@ describe("assertNoLeakage", () => {
       expect(Object.hasOwn(dict, "asOf")).toBe(false);
       expect(Object.hasOwn(dict, "violatingCount")).toBe(false);
       expect(Object.hasOwn(dict, "sampleViolations")).toBe(false);
-      // Values match asOf
-      expect(dict.as_of).toBe(asOf.toISOString());
+      // H1: as_of is the Python `datetime.isoformat()` shape, NOT
+      // JS `Date.toISOString()`. Asserted as a LITERAL string so any
+      // future drift (back to `Z` suffix, or `.000` ms padding) fails
+      // loudly. Python emits `"2025-01-02T12:00:00+00:00"` for a UTC
+      // tz-aware datetime with zero microseconds.
+      expect(dict.as_of).toBe("2025-01-02T12:00:00+00:00");
+      // The Date.toISOString() form (with Z suffix + ms padding) MUST
+      // NOT appear in the wire payload — that was the H1 divergence.
+      expect(dict.as_of).not.toBe(asOf.toISOString());
       expect(dict.violating_count).toBe(1);
+      // sample_violations[].knowledge_time also uses Python isoformat.
+      const sv = dict.sample_violations as Array<Record<string, unknown>>;
+      expect(sv[0]).toMatchObject({
+        row_idx: 0,
+        knowledge_time: "2025-01-03T00:00:00+00:00",
+      });
     }
   });
 

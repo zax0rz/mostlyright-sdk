@@ -147,6 +147,31 @@ describe("TimePoint — accessors", () => {
   });
 });
 
+describe("TimePoint.toPythonIso (iter-1 H1)", () => {
+  it("zero-millisecond instant: matches Python datetime.isoformat shape", () => {
+    // Python: datetime(2025,1,2,12,0,0,tzinfo=UTC).isoformat()
+    //         → "2025-01-02T12:00:00+00:00"
+    const tp = new TimePoint("2025-01-02T12:00:00Z");
+    expect(tp.toPythonIso()).toBe("2025-01-02T12:00:00+00:00");
+  });
+
+  it("non-zero millisecond instant: pads to 6-digit microseconds", () => {
+    // JS only carries ms precision; pad with trailing zeros for parity
+    // with Python `pd.Timestamp(...).isoformat()` against a
+    // millisecond-resolution column.
+    const tp = new TimePoint("2025-01-02T12:00:00.123Z");
+    expect(tp.toPythonIso()).toBe("2025-01-02T12:00:00.123000+00:00");
+  });
+
+  it("differs from toISOString (the H1 divergence shape)", () => {
+    const tp = new TimePoint("2025-01-02T12:00:00Z");
+    // toISOString emits the JS-native shape; toPythonIso emits Python's.
+    expect(tp.toISOString()).toBe("2025-01-02T12:00:00.000Z");
+    expect(tp.toPythonIso()).toBe("2025-01-02T12:00:00+00:00");
+    expect(tp.toISOString()).not.toBe(tp.toPythonIso());
+  });
+});
+
 describe("TimePoint.now()", () => {
   it("returns a TimePoint within 1 second of Date.now()", () => {
     const before = Date.now();

@@ -101,6 +101,46 @@ export class TimePoint {
   }
 
   /**
+   * Return the Python-compatible ISO 8601 UTC string.
+   *
+   * Where {@link toISOString} emits the JS-native `"...Z"` suffix and
+   * forces `.000` millisecond padding, this method matches Python's
+   * `datetime.isoformat()` output for a UTC-tz-aware datetime:
+   *
+   *   - tz suffix is `+00:00`, never `Z`
+   *   - subsecond portion is omitted when zero (`"...T12:00:00+00:00"`)
+   *   - microsecond portion appears as 6 digits when non-zero
+   *     (`"...T12:00:00.123456+00:00"`); JS Dates only carry millisecond
+   *     precision so we 3-pad-then-zero-pad to 6 digits for parity with
+   *     `pd.Timestamp(...).isoformat()` against a `datetime64[ms]`.
+   *
+   * Used by error payloads (LeakageError.toDict, sample violations) so
+   * MCP clients comparing the on-wire string across the Python and TS
+   * SDKs see byte-equivalent values. Iter-1 H1 fix.
+   */
+  toPythonIso(): string {
+    const utcMs = this.#utc.getTime();
+    const year = this.#utc.getUTCFullYear();
+    const month = String(this.#utc.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(this.#utc.getUTCDate()).padStart(2, "0");
+    const hour = String(this.#utc.getUTCHours()).padStart(2, "0");
+    const minute = String(this.#utc.getUTCMinutes()).padStart(2, "0");
+    const second = String(this.#utc.getUTCSeconds()).padStart(2, "0");
+    const ms = this.#utc.getUTCMilliseconds();
+    const head = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+    if (ms === 0) {
+      return `${head}+00:00`;
+    }
+    // JS only carries ms precision (3 digits); pad to 6 for parity with
+    // Python's microsecond-precision isoformat.
+    const micros = `${String(ms).padStart(3, "0")}000`;
+    // Reference utcMs to keep the linter happy (we computed but didn't
+    // need it once the breakdown is in hand).
+    void utcMs;
+    return `${head}.${micros}+00:00`;
+  }
+
+  /**
    * Format this instant in an IANA timezone via Intl.DateTimeFormat.
    * Display helper only — canonical storage stays UTC.
    *
