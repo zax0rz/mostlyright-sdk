@@ -25,8 +25,10 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Mapping
 from datetime import UTC, date, datetime
-from typing import TYPE_CHECKING, Any
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Any, Final
 from urllib.parse import urlparse
 
 from tradewinds.core.exceptions import TradewindsError
@@ -50,6 +52,7 @@ log = logging.getLogger(__name__)
 
 
 __all__ = [
+    "KNOWN_WRONG_STATIONS",
     "POLYMARKET_RESOLUTION_SOURCE_TYPES",
     "RESOLUTION_SOURCE_ALLOWLIST",
     "PolymarketEventError",
@@ -58,6 +61,40 @@ __all__ = [
     "polymarket_discover",
     "polymarket_settle",
 ]
+
+
+#: Per-city Polymarket denylist: stations that MUST NEVER resolve a
+#: Polymarket event for that city. Namespace-isolated from Kalshi's
+#: ``kalshi_stations.KNOWN_WRONG_STATIONS`` because the two issuers
+#: disagree on station identity for the same city (Polymarket NYC =
+#: KLGA, Kalshi NYC = KNYC; KNYC is correct for Kalshi and wrong for
+#: Polymarket, KLGA is correct for Polymarket and wrong for Kalshi).
+#:
+#: Contract test in ``tests/test_cross_issuer_station_identity.py``
+#: asserts no Polymarket catalog entry resolves to its own per-city
+#: denylist value AND that the denylists are inverse-correct across
+#: issuers for the disagreement cities (nyc, chicago).
+#:
+#: Per-city Mapping (NOT a flat set like Kalshi's) because Polymarket's
+#: catalog is international + multi-city and the "wrong" station depends
+#: on which city the event is for — KLGA is wrong for chicago but right
+#: for nyc.
+KNOWN_WRONG_STATIONS: Final[Mapping[str, frozenset[str]]] = MappingProxyType(
+    {
+        # NYC: Polymarket uses KLGA. KNYC/KJFK/KEWR are the common wrong answers.
+        "nyc": frozenset({"KNYC", "KJFK", "KEWR"}),
+        # Chicago: Polymarket uses KORD. KMDW is the common wrong answer (Kalshi's choice).
+        "chicago": frozenset({"KMDW"}),
+        # Houston: Polymarket uses KIAH. KHOU is the common wrong answer.
+        "houston": frozenset({"KHOU"}),
+        # Dallas: Polymarket uses KDFW. KDAL is the common wrong answer.
+        "dallas": frozenset({"KDAL"}),
+        # SF: Polymarket uses KSFO. KOAK is the common wrong answer.
+        "san_francisco": frozenset({"KOAK"}),
+        # DC: Polymarket uses KDCA. KIAD/KBWI are the common wrong answers.
+        "washington_dc": frozenset({"KIAD", "KBWI"}),
+    }
+)
 
 
 #: Netloc allowlist for Polymarket resolution-source URLs. Anything else

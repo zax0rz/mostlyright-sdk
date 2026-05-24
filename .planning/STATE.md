@@ -2,39 +2,39 @@
 gsd_state_version: 1.0
 milestone: v0.1.0
 milestone_name: — `@tradewinds/*` on npm)
-status: Phase 6 (pandas 3 + optional polars backend) shipped on `claude/silly-jennings-6c9cfa`; 5-iter review loop clean; merging to main. Python v0.1.0rc1 still operator-gated publish.
-stopped_at: "Phase 6 complete — 5-iter codex high + python-architect review cycle PASS; 1737 tests passing; merged to main"
-last_updated: "2026-05-25T07:00:00.000Z"
-last_activity: "2026-05-25 - Phase 6 (TradewindsResult wrapper + pandas 3 dual-lock + opt-in polars backend) shipped via 5-iter review loop"
+status: Phases 6 + 7 + 8 all merged to main. Phase 6 (pandas 3 + opt-in polars backend) shipped via 5-iter review loop. Phase 7 (Ingest Auto-Planner) + Phase 8 (Polymarket US Coverage) already on main pre-merge. Python v0.1.0rc1 publish remains operator-gated.
+stopped_at: "Phase 6 merged to main on top of Phase 7 + 8 — 5-iter codex high + python-architect review cycle PASS; full suite green post-merge"
+last_updated: "2026-05-25T08:00:00.000Z"
+last_activity: "2026-05-25 - Phase 6 (TradewindsResult wrapper + pandas 3 dual-lock + opt-in polars backend) merged on top of Phase 7 + 8"
 progress:
-  total_phases: 21
-  completed_phases: 2
-  total_plans: 21
-  completed_plans: 15
-  percent: 71
+  total_phases: 22
+  completed_phases: 4
+  total_plans: 27
+  completed_plans: 21
+  percent: 78
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-21; STATE.md refreshed 2026-05-24)
+See: .planning/PROJECT.md (updated 2026-05-21; STATE.md refreshed 2026-05-25)
 
 **Core value:** `research(contract, station, from_date, to_date)` returns clean, leakage-free, source-identified training pairs that backtest the same way they trade — and any train/infer source mismatch errors loudly instead of silently corrupting a model.
-**Current focus:** v0.1.0rc1 publish (operator-gated PyPI trusted-publisher setup); Phase 6 (pandas 3 + opt-in polars) merged 2026-05-25 — v0.2 foundation laid.
+**Current focus:** Phases 6 + 7 + 8 all merged. Phase 6 lands v0.2 data-layer foundation (pandas 3 dual-lock + opt-in polars). v0.1.0rc1 publish remains operator-gated. Phase 9 (Markets Trade History) next.
 
 ## Current Position
 
-Phase: Python v0.1.0 (12/12 phases, 1674 tests, all REAL impls) COMPLETE + **Phase 6 v0.2 (pandas 3 dual-lock + opt-in polars backend) COMPLETE** + TS v0.1.0 milestone planning COMPLETE + TS-W0 → TS-W7 code-complete.
-Plan: TS-W5 (Polymarket settlement) operator-gated msw recording capture still pending; Phase 6 ships v0.2 wrapper + polars infrastructure that downstream consumers can opt into.
-Status: 1737 Python tests passing. Phase 6 merged via 5-iter review loop (codex high + python-architect parallel; both PASS at iter-5). Python v0.1.0rc1 still operator-gated PyPI publish.
-Last activity: 2026-05-25 - Phase 6 shipped: TradewindsResult provenance wrapper, pandas<3.0 cap lifted (pandas>=2.2,<4.0), coerce_pd3 invertible bridge + ULP drift artifact, narwhals-mediated polars-input shim on 5 cleanly-portable modules, opt-in backend/return_type kwargs on 5 public entry points, [polars] extras with pandas+pyarrow, defense-in-depth grep on 6 parity-locked modules, dual-pandas + polars CI matrix.
+Phase: Python v0.1.0 (12/12 phases COMPLETE) + **Phase 6 v0.2 (pandas 3 dual-lock + opt-in polars backend) COMPLETE** + **Phase 7 Ingest Auto-Planner COMPLETE** + **Phase 8 Polymarket US Coverage COMPLETE** + TS v0.1.0 milestone planning COMPLETE + **TS-W0 → TS-W7 COMPLETE**
+Plan: Phase 9 (Markets Trade History) next on roadmap; Phase 10 (Composable research()) queued. TS parity port of Phase 6 (`backend`/`return_type` kwargs + `TradewindsResult` analogue) tracked as a CROSS-SDK-SYNC parity ticket.
+Status: Phase 6 + Phase 7 + Phase 8 all merged to main. Phase 6 shipped via 5-iter codex + python-architect parallel review (both PASS at iter-5). Python v0.1.0rc1 publish still operator-gated.
+Last activity: 2026-05-25 - Phase 6 (TradewindsResult wrapper + pandas 3 dual-lock + opt-in polars backend) merged on top of Phase 7 + 8.
 
-Progress: Python [██████████] 100% v0.1 (12/12 phases) + **Phase 6 v0.2 COMPLETE** (1679→1737 tests) | TS [8/8 phases shipped — TS-W0 → TS-W7 code-complete; ~1212 TS tests; npm publish operator-gated]
+Progress: Python [██████████] 100% v0.1 (12/12 phases) + **Phase 6 v0.2** + **Phase 7** + **Phase 8** | TS [8/8 phases shipped — TS-W0 → TS-W7 code-complete; 1228 TS tests; npm publish operator-gated]
 
 ## Phase 6 — Pandas 3 + Optional Polars Backend closeout (2026-05-25)
 
-Merge commit pending. Lands the v0.2 data-layer infrastructure:
+Merged on top of Phase 7 + Phase 8. Lands the v0.2 data-layer infrastructure:
 
 **Shipped (W0..W5):**
 - W0 — `tradewinds.core.result.TradewindsResult` backend-neutral provenance wrapper (frame + source + retrieved_at + schema_id + qc + data_version). Frozen dataclass; `legacy_df_with_attrs()` bridges v0.1.0 `df.attrs` consumers; `frame_as_pandas()` for parity-locked module dispatch; `to_dict()` for v0.2 MCP JSON-RPC. Validator + KnowledgeView + LeakageDetector + LeakageDetector.check accept `TradewindsResult` and unwrap.
@@ -51,11 +51,117 @@ Merge commit pending. Lands the v0.2 data-layer infrastructure:
 - iter-4: 1 P1 (ruff failures from new code) + 2 P2 (mode2 + polymarket validated after fetch) fixed.
 - iter-5: 1 P1 ([polars] missing pyarrow) fixed; 1 P2 (live parity not in pandas-3 CI) accepted — live tests stay operator-gated by CLAUDE.md design; `test_coerce_pd3.py` provides the CI-runnable equivalent.
 
-**Test count:** 1679 (baseline) → 1737 passing. +58 tests across W0 (14 wrapper), W2 (13 cross-backend), W3 (15 dispatch), W4 (5 invariants), W1 (10 coerce_pd3 round-trip + 1 ULP gate).
+**Test count:** 1679 (Phase 6 baseline pre-Phase-7/8 merge) → 1737 passing on the Phase 6 branch in isolation. Full post-merge suite will show Phase 6 + 7 + 8 additive totals (Phase 7 +41, Phase 8 +85, Phase 6 +58).
 
 **TS parity work needed (Dual-SDK Rule):** Phase 6 changes the Python public API surface (`backend`/`return_type` kwargs on 5 entry points, `TradewindsResult` wrapper). A parity ticket should land in `.planning/CROSS-SDK-SYNC.md` to track the TS port. TS-W4 already has `Mode2Result` analogue but doesn't carry the `backend` kwarg. NOT built here — Python-only this round per user instruction.
 
 **Deferred to v0.2.x or v0.3:** pyarrow backend (PYARROW-BACKEND-01), polars LazyFrame default (POLARS-LAZY-01), backend autodetection from env, rewriting parity-locked paths in polars, df.attrs strict deprecation (v0.2 supports both wrapper + legacy attrs).
+
+## Phase 7 Ingest Auto-Planner closeout (2026-05-25)
+
+Merged to main. Ships smart ingest strategy resolution at the new
+`tradewinds.weather.obs(station, from, to, *, source, strategy, as_dataframe)`
+public surface. 5 sub-plans, 4-iteration codex review loop (closed at iter-3
+PASS; iter-4 ran clean confirming no follow-up bugs), Python Architect PASS.
+
+5 plans shipped:
+
+- **PLAN-01** — `exact_window` kwarg on `download_iem_asos` (bypasses year-
+  normalization at iem_asos.py:204-209; day-granular URL params); new
+  `tradewinds._exact_fetch._exact_fetch_observations` orchestrator (IEM + AWC
+  168h + GHCNh per-year). B-5 directory-level namespace separation:
+  exact-window CSVs land in `sources/iem_asos_exact/`, never the canonical
+  `sources/iem_asos/`. Perf harness at `tests/perf/test_ingest_obs.py`
+  (live-only) gating ≤ 2 MB cold for 1mo KNYC. Mutable-period invariant tests.
+- **PLAN-02** — `tw.weather.obs(...)` public surface + re-export from
+  `tradewinds.weather`. Source / Strategy `Literal` type aliases.
+  Eager ISO validation + Literal-set ValueError. B-6: default `strategy="auto"`
+  ships from this plan onward and never churns.
+- **PLAN-03** — `warm_cache` strategy as a thin wrapper around research.py
+  internals (NO modifications to research.py — verified by `git diff`).
+  `_warm_cache_fetch` calls `_fetch_observations_range` directly (drops the
+  `_all_caches_warm` + `_prefetch_sources` CLI-prefetch gate per iter-2 HIGH).
+  B-3: `source != None` raises ValueError (post-merge filtering would corrupt
+  SOURCE_PRIORITY). 5-fixture parity test against research() Mode-1 obs
+  aggregates (live-only).
+- **PLAN-04** — `strategy="auto"` decision tree + hosted seam. New
+  `_resolve_strategy` in obs.py and `_has_cached_year` in cache.py (I-4: path-
+  layout helper lives with the cache module). W-2: cache-warmth scan iterates
+  every year touching the window. W-5: dispatch funnels through a single
+  `_dispatch_strategy` helper — `obs()` resolves "auto" then dispatches ONCE,
+  no recursion. Rule ordering: source-filter > TW_HOSTED_URL > window+cache.
+- **PLAN-05** — REQUIREMENTS.md Phase 7 section (INGEST-01..08, all complete),
+  cross-strategy mutable-invariant audit tests (`test_obs_mutable_invariants.py`)
+  reusing `_is_writable_month` / `_is_current_lst_month` / `_is_current_lst_year`,
+  `docs/ingest-strategies.md` (decision-tree ASCII + per-strategy cost table),
+  README "Ingest strategies" section linking to the docs page.
+
+**Key invariants honored:**
+
+- `research.py` UNTOUCHED throughout — verified by `git diff main..HEAD -- packages/core/src/tradewinds/research.py` returning empty.
+- `_exact_fetch_observations` never writes the canonical
+  `v1/observations/{STATION}/{YYYY}/{MM}.parquet` cache.
+- Source filtering enforced at the FETCHER BOUNDARY (not post-merge), preserving
+  merge-priority semantics across all callers.
+- Aggregator (`_aggregate_daily_rows`) buckets raw rows by LST settlement date
+  via `settlement_date_for`, then `_obs_aggregates` produces daily summary
+  rows. Captures the post-midnight UTC tail of the last LST settlement day
+  correctly (fix for iter-1 CRITICAL #2).
+- Mutable-period helpers reused; never reinvented.
+
+**Review discipline:** 4-iteration codex `high` loop + final Python Architect
+sweep per `.planning/REVIEW-DISCIPLINE.md` (cap was 5). Findings/iter:
+
+- iter-1: 2 CRITICAL + 4 HIGH legitimate findings. CRITICAL #1 (obs() raw
+  rows instead of daily aggregates), CRITICAL #2 (per-row UTC-date filter
+  dropped LST settlement tail), HIGH (resolver used raw station instead of
+  ICAO), HIGH (GHCNh stale current-year PSV), HIGH (test coverage gap),
+  P2 (URL-test day2 boundary). All 4 of the HIGH/CRITICAL fixed in `c0d9d82`.
+- iter-2: 3 HIGH. #1 (auto+source ValueError), #3 (warm_cache CLI prefetch).
+  Both fixed in `a6c3057`. #2 (`_has_cached_year` coarse) acknowledged as
+  plan-approved suboptimality; tracked for follow-up.
+- iter-3: 1 HIGH (TW_HOSTED_URL precedence over source). Fixed in `d3188d4`:
+  source check now runs BEFORE the env-var check.
+- iter-4: "No CRITICAL or HIGH findings." Verified `git diff` empty against
+  research.py; targeted Phase 7 test suite (41 tests) all green.
+- Python Architect: PASS. Verified all 7 stated invariants line-by-line.
+
+**Test coverage:** 1720 passed, 8 skipped (was 1679 pre-Phase-7 baseline; +41
+net Phase 7 tests — 8 _exact_fetch unit tests, 4 iem_asos exact_window URL
+tests, 12 obs() surface tests, 13 _resolve_strategy decision-matrix tests, 4
+cross-strategy mutable invariant tests). Live tests gated behind
+`@pytest.mark.live` (5 warm_cache parity fixtures + 2 exact_window mutable-
+period tests + 2 perf-harness budget tests; all run pre-publish only).
+
+**TS Parity:** Phase 7 paired TS work tracked separately (Phase 8/9/10
+Markets composability initiative already drafted; obs() TS parity is a P2
+follow-up — not blocking v0.1.0rc1).
+
+## Phase 8 closeout (2026-05-24) — Polymarket US Coverage + Per-Issuer Settlement Invariants
+
+Merged to main. Closes the silent-corruption invariant gap and unblocks cross-issuer (Kalshi vs Polymarket) basis-trade research for US cities. Phase 8 is **dual-SDK** (paired Python + TS in same merge).
+
+**Requirements shipped (6/6):**
+- POLY-US-01 — Polymarket city catalog extended with 17 US cities (NYC→KLGA NOT KNYC, Chicago→KORD NOT KMDW, LAX/MIA/DEN/BOS/AUS/DC/PHL/SFO/SEA/ATL/HOU/DAL/PHX/MSP/DTW). Per-city `POLYMARKET_CITY_CITATIONS` audit-trail registry (`polymarket_city_citations.py`) — each entry carries the canonical Polymarket event URL + Wunderground proof.
+- POLY-US-02 — `polymarket.KNOWN_WRONG_STATIONS: Mapping[str, frozenset[str]]` (MappingProxyType, runtime-read-only) symmetric to `kalshi_stations.KNOWN_WRONG_STATIONS`. Per-city granularity because Polymarket catalog is multi-city; flat denylist would forbid KLGA from ever resolving even though KLGA IS the correct NYC Polymarket station.
+- POLY-US-03 — Tier 1.5 Wunderground URL extraction in `_per_event_station.py` (Python) + `resolver.ts` (TS). Canonical-anchor regex (`/pws/`, `/dashboard/pws/`, `/history/daily/`, `/history/airport/`, `/weather-station/`, `/cat/forecasts/`) + optional lowercase-slug intermediate segments + negative-lookahead `(?![A-Za-z0-9_-])` for Markdown URL terminators. Case-sensitive (iter-3 fix) so intermediate slugs cannot consume uppercase station segments. Multi-URL disambiguation: ALL extracted ICAOs must agree, else abstain.
+- POLY-US-04 — `tests/test_cross_issuer_station_identity.py` (Python, 9 tests) + `packages-ts/markets/tests/polymarket/cross-issuer.test.ts` (TS, 6 tests). Asserts NYC: Kalshi=KNYC vs Polymarket=KLGA + Chicago: KMDW vs KORD + namespace-isolated denylist semantics.
+- POLY-US-05 — `schemas/polymarket-city-stations.json` regenerated via `scripts/export_schemas.py` (determinism `--check` green). `packages-ts/markets/src/data/generated/polymarket-city-stations.ts` regenerated via `pnpm codegen`. No hand-edits.
+- POLY-US-06 — Parity-fixture pre-flight gate green (non-live dtype lock, `tests/test_parity.py::test_dtypes_match_ground_truth`). Phase 8 does NOT touch parity-locked `_internal/_pairs.py` / `_internal/merge/` — catalog-data + resolver-layer only.
+
+**Review discipline:** Mixed Python+TS PR per REVIEW-DISCIPLINE.md routing. 4-iteration loop with codex `high` + python-architect + ts-architect dispatched in parallel:
+- iter-1: codex CRITICAL (loose regex extracted "KONG" from `wunderground.com/weather/hk/hong-kong/VHHH`), python-architect 3 HIGH (regex too loose / multi-URL first-match-wins / tautological test), ts-architect CRITICAL (`city` field drift between Python + TS via `findCityForIcao` reverse-lookup).
+- iter-2: codex CRITICAL (regex over-tightened — Markdown terminators broke), python-architect CRITICAL (real Polymarket URLs use `/history/daily/us/ny/new-york-city/KLGA` shape — iter-1 fix missed every real URL), ts-architect 2 HIGH (`city`/`stationMeasure` parity drift).
+- iter-3: codex CRITICAL (IGNORECASE let intermediate slugs consume uppercase station segments — `/history/daily/KORD/date/KLAX` extracted KLAX). Dropped IGNORECASE entirely; case-sensitive matching pins ICAO to canonical station slot.
+- iter-4: **codex + python-architect + ts-architect ALL PASS**. Loop terminated 1 iteration under the user-specified 5-iter cap.
+
+**Test coverage delta:**
+- Python: +85 tests (`test_polymarket_us_coverage.py` 18 + `test_per_event_station.py` +47 Tier 1.5 / URL coverage + `test_cross_issuer_station_identity.py` 9 + helpers). Total Python: 1743 passing (up from 1662 baseline).
+- TS: +29 tests across `polymarket/{known-wrong-stations,url-extract,resolver,cross-issuer}.test.ts`. Total TS: 1228 passing (up from ~1199 baseline).
+
+**Unblocks:**
+- Phase 9 (Markets Trade History) — needs Polymarket US settlement working.
+- Phase 10 (Composable research()) — needs multi-contract Polymarket US resolution.
 
 ## TS-W7 Docs + Release Workflow closeout (2026-05-24)
 

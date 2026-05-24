@@ -85,6 +85,62 @@ export function deriveCity(event: PolymarketEventRaw): string | null {
   return null;
 }
 
+// Phase 8 — Tier 1.5 URL extraction (POLY-US-03).
+// Wunderground PWS / airport / history URL pattern; captures K-prefix ICAO
+// from CANONICAL settlement paths only — anchor allowlist: /pws/,
+// /dashboard/pws/, /history/daily/, /history/airport/, /weather-station/,
+// /cat/forecasts/. Real Polymarket settlement URLs carry country / state /
+// city slugs between the anchor and the ICAO (e.g.
+// /history/daily/us/ny/new-york-city/KLGA); the `(?:[a-z0-9-]+/)*` segment
+// captures zero or more such intermediate slugs (codex iter-2 +
+// python-architect iter-2 CRITICAL — prior tighter version that required
+// the ICAO to abut the anchor missed every real Polymarket URL).
+//
+// The trailing negative-lookahead `(?![A-Za-z0-9_-])` rejects any
+// alphanumeric / underscore / hyphen follower so we accept common URL
+// terminators (`/`, `?`, `#`, `)`, `.`, `,`, whitespace, EOF) but reject
+// extensions like `KIDS-summer` where `-` would otherwise pass `\b`
+// (codex iter-2 CRITICAL — original `(?=[/?#\s]|$)` lookahead missed
+// Markdown-embedded URLs that end with `)`, `.`, etc.).
+// Iter-3 codex CRITICAL: case-insensitive flag let `[a-z0-9-]+/` consume
+// uppercase segments, so `/history/daily/KORD/date/KLAX` extracted `KLAX`
+// (the LAST K-prefix segment) instead of `KORD` (canonical station slot).
+// Fix: drop `i` flag — case-sensitive matching pins ICAO to the canonical
+// station slot. Real Wunderground URLs use lowercase paths + uppercase
+// ICAOs (RFC 3986 + Wunderground convention).
+const WUNDERGROUND_ICAO_RE =
+  /https?:\/\/(?:www\.)?wunderground\.com\/(?:dashboard\/)?(?:pws|history\/daily|history\/airport|weather-station|cat\/forecasts)\/(?:[a-z0-9-]+\/)*(K[A-Z]{3})(?![A-Za-z0-9_-])/g;
+
+/**
+ * Extract the canonical Wunderground PWS / airport ICAO from `text`.
+ *
+ * Tier 1.5 of the resolver chain — runs between explicit `event.city`
+ * and slug-derive. When a Polymarket event embeds a Wunderground PWS
+ * URL, the URL IS the source of truth; no catalog lookup needed.
+ *
+ * Multi-URL disambiguation: when multiple canonical Wunderground URLs
+ * appear, ALL extracted ICAOs MUST agree. Disagreement returns null so
+ * the resolver falls through to Tier 2 city-derive (prevents an
+ * issuer-side citation URL from silently swapping the settlement station).
+ *
+ * Returns uppercase ICAO (4 chars, leading K) when a canonical URL is
+ * found AND any additional canonical URLs agree. Null otherwise —
+ * including the disagreement case.
+ */
+export function extractIcaoFromResolutionSource(text: string | null | undefined): string | null {
+  if (typeof text !== "string" || text.length === 0) return null;
+  // Reset lastIndex on the global regex so multiple matchAll calls are safe
+  // (the regex literal is reused across calls).
+  const matches = [...text.matchAll(WUNDERGROUND_ICAO_RE)];
+  if (matches.length === 0) return null;
+  const unique = new Set<string>();
+  for (const m of matches) {
+    if (m[1] !== undefined) unique.add(m[1].toUpperCase());
+  }
+  if (unique.size !== 1) return null; // 0 or disagreement → abstain
+  return [...unique][0] ?? null;
+}
+
 /**
  * Resolve an event to `{icao, stationMeasure}` using the city catalog.
  *
@@ -105,6 +161,56 @@ export function resolveStationForEvent(
       cityKey = low;
     }
   }
+
+  // Tier 1.5: URL extraction from description / resolutionSource.
+  // The Wunderground URL is the issuer's canonical proof — beats catalog
+  // lookup for ICAO. Defer gate still applies so a URL injection cannot
+  // silently route an RCTP / HK-low market.
+  //
+  // Iter-1 TS-architect CRITICAL: the `city` field is owned by the slug-
+  // derive layer (matching Python's `_derive_city`-before-resolve pattern in
+  // `polymarket_discover`). Tier 1.5 ONLY sets `icao`; `city` is whatever
+  // the caller / slug-derive resolved to BEFORE the URL was considered.
+  // Returning `findCityForIcao(extractedIcao)` here would drift the TS row's
+  // `city` column away from the Python row for the same event — silent
+  // per-row source-identity drift, the parity-rubric CRITICAL.
+  const desc = typeof event.description === "string" ? event.description : "";
+  const resSrc =
+    typeof (event as { resolutionSource?: unknown }).resolutionSource === "string"
+      ? (event as { resolutionSource: string }).resolutionSource
+      : "";
+  const urlText = `${desc} ${resSrc}`;
+  const extractedIcao = extractIcaoFromResolutionSource(urlText);
+  if (extractedIcao !== null) {
+    if (extractedIcao === "RCTP") {
+      throw new DeferredMarketError(
+        `Polymarket market for station ${extractedIcao} is deferred until the v0.2 CWA client lands`,
+      );
+    }
+    if (extractedIcao === "VHHH" && marketMeasure === "low") {
+      throw new DeferredMarketError(
+        `Polymarket low-extreme market for station ${extractedIcao} is deferred until the v0.2 HKO client lands`,
+      );
+    }
+    if (DEFERRED_STATIONS.has(extractedIcao) && marketMeasure === "default") {
+      throw new DeferredMarketError(
+        `Polymarket market for deferred station ${extractedIcao} (measure=default) requires v0.2 client`,
+      );
+    }
+    // City: explicit Tier 1 wins; otherwise slug-derived; otherwise empty.
+    // This mirrors Python `polymarket_discover`'s ordering — `_derive_city`
+    // populates `event.city` BEFORE `resolve_station_for_event` runs, so the
+    // explicit-or-derived city is always the `city` column emitted on the row.
+    // discover.ts normalizes empty string back to null at the row boundary
+    // to mirror Python's `(ev.get("city") or "").lower() or None` semantics.
+    const cityForRow = cityKey ?? deriveCity(event) ?? "";
+    // stationMeasure mirrors Python's _detect_measure(text) result (passed
+    // in by the caller as marketMeasure via detectMarketMeasure). Hardcoding
+    // "default" here would drift from Python for URL-sourced low/high
+    // markets (codex iter-2 HIGH).
+    return { city: cityForRow, icao: extractedIcao, stationMeasure: marketMeasure };
+  }
+
   // Tier 2: scan slug + title + tags.
   if (cityKey === null) {
     cityKey = deriveCity(event);
