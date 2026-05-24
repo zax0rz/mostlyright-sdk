@@ -22,7 +22,9 @@
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist coverage .tsbuildinfo",
     "codegen": "echo \"tradewinds (meta) — no codegen step at this layer\"",
-    "capture-parity": "tsx tests/parity/capture_recordings.ts"
+    "capture-parity": "tsx tests/parity/capture_recordings.ts",
+    "drift-capture": "tsx tests/parity/drift_capture.ts",
+    "drift-compare": "tsx tests/parity/drift_compare.ts"
   },
   "dependencies": {
     "@tradewinds/core": "workspace:*",
