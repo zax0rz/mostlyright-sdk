@@ -23,7 +23,7 @@
 // `keys.ts` (plan 03).
 
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -165,6 +165,49 @@ export class FsStore implements CacheStore {
       if (code === "ENOENT") return;
       throw e;
     }
+  }
+
+  /**
+   * Enumerate keys whose stored files exist under the cache root and whose
+   * decoded form starts with `prefix`.
+   *
+   * Returns an empty list if the root directory does not exist (cold cache).
+   *
+   * TS-W6 Wave 1: used by `availability()` to count observation months and
+   * climate years for a station. The file→key mapping is the inverse of
+   * `#pathFor` (encodeURIComponent → strip `.json` → decodeURIComponent).
+   */
+  async listKeys(prefix: string): Promise<ReadonlyArray<string>> {
+    let entries: string[];
+    try {
+      entries = await readdir(this.#root);
+    } catch (e: unknown) {
+      const code = (e as { code?: string }).code;
+      if (code === "ENOENT") return Object.freeze([]);
+      throw e;
+    }
+    const out: string[] = [];
+    for (const name of entries) {
+      if (!name.endsWith(".json")) continue;
+      // Ignore the proper-lockfile lock sidecars and our own in-flight
+      // unique-temp files (`<key>.json.<uuid>.tmp`) — they end with `.tmp`
+      // not `.json`, so the suffix filter above already excludes them.
+      // The lock directories proper-lockfile creates end with `.json.lock`
+      // (a directory entry), also excluded by the `.json` suffix check.
+      const encoded = name.slice(0, -".json".length);
+      let decoded: string;
+      try {
+        decoded = decodeURIComponent(encoded);
+      } catch {
+        // Defensive: skip files whose names don't decode (manual placements,
+        // partial writes, etc).
+        continue;
+      }
+      if (decoded.startsWith(prefix)) {
+        out.push(decoded);
+      }
+    }
+    return Object.freeze(out);
   }
 
   async withLock<T>(key: string, fn: () => Promise<T>): Promise<T> {

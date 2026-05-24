@@ -92,6 +92,33 @@ export class IndexedDBStore implements CacheStore {
     await db.delete(STORE_NAME, key);
   }
 
+  /**
+   * Enumerate keys with the given prefix using IndexedDB's bounded range
+   * query. Live keys only — expired entries are lazy-evicted on read by
+   * `get()`, so a stale-but-not-yet-evicted entry can appear here; callers
+   * who care about expiration should `get()` to confirm.
+   *
+   * TS-W6 Wave 1: `availability()` uses this to count observation months and
+   * climate years for a station.
+   */
+  async listKeys(prefix: string): Promise<ReadonlyArray<string>> {
+    const db = await this.#dbPromise;
+    // Build an inclusive lower bound and an exclusive upper bound using the
+    // next-codepoint trick. IndexedDB's IDBKeyRange handles string ordering
+    // by UTF-16 code units, which matches JS string comparison; we use the
+    // Unicode max-codepoint as the upper sentinel so any key starting with
+    // `prefix` lands inside the range.
+    const range = IDBKeyRange.bound(prefix, `${prefix}￿`, false, false);
+    const keys = (await db.getAllKeys(STORE_NAME, range)) as IDBValidKey[];
+    const out: string[] = [];
+    for (const k of keys) {
+      if (typeof k === "string" && k.startsWith(prefix)) {
+        out.push(k);
+      }
+    }
+    return Object.freeze(out);
+  }
+
   async withLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
     const locks = getWebLocks();
     if (locks !== null) {

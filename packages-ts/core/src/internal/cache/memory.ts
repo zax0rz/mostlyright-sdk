@@ -48,6 +48,28 @@ export class MemoryStore implements CacheStore {
     this.#entries.delete(key);
   }
 
+  /**
+   * Enumerate live (non-expired) keys with the given prefix.
+   *
+   * TS-W6 Wave 1: `availability()` uses this to count cached observation
+   * months and climate years per station. Expired entries are evicted as a
+   * side effect (same lazy-eviction policy as `.get`).
+   */
+  async listKeys(prefix: string): Promise<ReadonlyArray<string>> {
+    const now = Date.now();
+    const out: string[] = [];
+    for (const [key, entry] of this.#entries) {
+      if (entry.expiresAt !== undefined && now >= entry.expiresAt) {
+        this.#entries.delete(key);
+        continue;
+      }
+      if (key.startsWith(prefix)) {
+        out.push(key);
+      }
+    }
+    return Object.freeze(out);
+  }
+
   async withLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
     const prev = this.#chain.get(key) ?? Promise.resolve();
     // Chain `fn` after `prev` regardless of whether `prev` resolved or
