@@ -334,7 +334,14 @@ export async function researchBySource(
         const obs = awcToObservation(m);
         if (obs !== null) parsed.push(obs);
       }
-      rows = parsed;
+      // Filter to the queried [fromDate, toDate] window (inclusive) — match
+      // the IEM/GHCNh branches. AWC's lookback (~168h) can return METARs
+      // outside the caller's window; per-source Mode 2 callers expect rows
+      // strictly inside [fromDate, toDate]. Python mode2.py parity.
+      rows = parsed.filter((r) => {
+        const d = r.observed_at.slice(0, 10);
+        return d >= fromDate && d <= toDate;
+      });
       break;
     }
     case "iem.archive": {

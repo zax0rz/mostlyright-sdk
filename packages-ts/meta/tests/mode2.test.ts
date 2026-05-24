@@ -279,6 +279,42 @@ describe("researchBySource — awc.live dispatch", () => {
     const rows = await researchBySource("NYC", "awc.live", today, today);
     expect(rows).toEqual([]);
   });
+
+  it("filters AWC rows outside [fromDate, toDate] (codex iter-1 P2 fix)", async () => {
+    // AWC lookback can return METARs spanning ~168h. Mode 2 must drop rows
+    // outside the caller's window — same contract IEM/GHCNh honor.
+    const today = recentUtcDate(1);
+    const inWindow = today;
+    const outOfWindowFuture = recentUtcDate(0); // tomorrow vs `today`-window
+    const awc: AwcMockMetar[] = [
+      {
+        icaoId: "KNYC",
+        obsTime: epochOfUtc(`${inWindow}T12:00:00Z`),
+        temp: 25.0,
+        dewp: 15.0,
+        wspd: 5,
+        rawOb: "KNYC 011200Z 18005KT 10SM CLR 25/15 A2992 RMK AO2",
+      },
+      {
+        icaoId: "KNYC",
+        obsTime: epochOfUtc(`${outOfWindowFuture}T12:00:00Z`),
+        temp: 26.0,
+        dewp: 16.0,
+        wspd: 5,
+        rawOb: "KNYC 021200Z 18005KT 10SM CLR 26/16 A2992 RMK AO2",
+      },
+    ];
+    installFetchMock({ awc });
+    const rows = await researchBySource("NYC", "awc.live", today, today);
+    // Only the in-window METAR survives.
+    for (const r of rows) {
+      const d = r.observed_at.slice(0, 10);
+      expect(d >= today && d <= today).toBe(true);
+    }
+    // The out-of-window METAR must NOT appear.
+    const outDates = rows.map((r) => r.observed_at.slice(0, 10));
+    expect(outDates).not.toContain(outOfWindowFuture);
+  });
 });
 
 describe("researchBySource — ghcnh.archive dispatch", () => {
