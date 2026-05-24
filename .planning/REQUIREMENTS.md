@@ -485,6 +485,27 @@ Closes the silent-corruption gap when Polymarket and Kalshi disagree on which st
 
 **Phase 8 coverage:** 6 requirements, all mapped to Phase 8 (paired Python + TS per Dual-SDK Rule).
 
+## Phase 9: Markets Trade History — Kalshi + Polymarket (v0.2+)
+
+Promotes deferred MARKETS-04 from Sprint 0.5+ into a first-class phase. Adds `tradewinds.markets.kalshi.trades` (candles + fills + orderbook snapshots) + `tradewinds.markets.polymarket.trades` (Gamma price history + snapshot) with paired TS subpath `@tradewinds/markets/trades`. Today there is NO way to get trade data for any market; this phase unblocks the `include_trades=True` path in Phase 10's composable `research()`.
+
+- [ ] **TRADES-01**: `tradewinds.markets.kalshi.trades.candles(ticker, *, interval, from_, to)` — OHLCV via `/markets/{ticker}/candlesticks`. Rate-limited shared HTTP client. `source="kalshi"` column preserved on every row.
+- [ ] **TRADES-02**: `tradewinds.markets.kalshi.trades.fills(ticker, *, since)` — historical fills via `/markets/trades`. Pagination cursors handled (Kalshi uses `cursor` field).
+- [ ] **TRADES-03**: `tradewinds.markets.kalshi.trades.orderbook(ticker)` — current book snapshot via `/markets/{ticker}/orderbook`. Snapshot only in v0.2; orderbook tape deferred to v0.3.
+- [ ] **TRADES-04**: `tradewinds.markets.polymarket.trades.history(event_id, *, from_, to)` — Gamma price history endpoint (`/markets/timeseries`). Returns time-indexed price + volume rows (Polymarket reports last_price + volume per interval; no separate H/L/C).
+- [ ] **TRADES-05**: `tradewinds.markets.polymarket.trades.snapshot(event_id)` — current state from Gamma `/events/{id}`. Returns latest price + volume per outcome.
+- [ ] **TRADES-06**: Cache layer: trades cached in `~/.tradewinds/cache/v1/trades/{issuer}/{ticker}/{YYYY-MM}.parquet` (Python) / IndexedDB equivalent (TS). Volatile-window rules apply (current UTC month rewriteable; trades aren't LST-localized so UTC is the right granularity).
+- [ ] **TRADES-07**: Paired TS modules at `@tradewinds/markets/trades` subpath. Same surface, row-equivalent output. tsup entry + package.json export added.
+- [ ] **TRADES-08**: Rate-limit politeness floors documented at `.planning/research/MARKETS-RATE-LIMITS.md` per source — Kalshi (10 req/sec per public docs; settle for 0.1s polite floor), Polymarket Gamma (0.2s polite floor inherited from `_polymarket_client.py`). Empirical spike deferred (manual smoke test only — running a real spike against live endpoints in CI is a DoS concern).
+
+### Phase 9 Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| TRADES-01..TRADES-08 | 9 | Pending |
+
+**Phase 9 coverage:** 8 requirements, all mapped to Phase 9 (paired Python + TS per Dual-SDK Rule).
+
 ---
-*Requirements defined: 2026-05-21; Phase 8 added 2026-05-24*
+*Requirements defined: 2026-05-21; Phase 8 added 2026-05-24; Phase 9 added 2026-05-24*
 *Last updated: 2026-05-23 — Phase 6 (pandas 3 readiness + optional polars backend) added; PANDAS3-01..06 and POLARS-01..08 promoted from deferred; 14 new IDs mapped to Phase 6*
