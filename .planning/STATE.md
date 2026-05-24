@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-21; STATE.md refreshed 2026-05-23)
 Phase: Python v0.1.0 (12/12 phases, 1674 tests, all REAL impls) COMPLETE + TS v0.1.0 milestone planning COMPLETE + **TS-W0 + TS-W1 COMPLETE**
 Plan: TS-W2 (parity gate; HARD) next — adds IEM ASOS + GHCNh fetchers, merge_observations port, 5-fixture byte-equivalent parity test
 Status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W1 merged; 271 TS tests green; Chrome-extension MVP shipped.
-Last activity: 2026-05-24 — TS-W1 merged to main (review-iter-2 PASS; 2-iteration codex high + python-architect loop)
+Last activity: 2026-05-24 - Completed quick task 260524-9pq: Update REVIEW-DISCIPLINE.md to add a TypeScript Architect reviewer
 
 Progress: Python [██████████] 100% (12/12 phases, 1674 tests) | TS [2/8 phases shipped — TS-W0 + TS-W1 done; 271 TS tests]
 
@@ -465,6 +465,7 @@ Open decisions to resolve during execution (per research SUMMARY.md):
 | 260522-nbw | Apply iter-9 P1 mkdir pattern to all 3 FileLock sites (iter-10 architect) | 2026-05-22 | 1c1681d | [260522-nbw-fix-iter-10-architect-high-p1-bug-in-wri](./quick/260522-nbw-fix-iter-10-architect-high-p1-bug-in-wri/) |
 | 260522-ng9 | Fix Task 1 mkdir variable name + ordering (iter-11) | 2026-05-22 | b166e2b | [260522-ng9-fix-iter-11-task-1-mkdir-uses-wrong-var-](./quick/260522-ng9-fix-iter-11-task-1-mkdir-uses-wrong-var-/) |
 | 260523-thb | Retroactively register TS SDK milestone + cross-SDK sync planning work | 2026-05-23 | 17bfb01 | [260523-thb-retroactively-register-ts-sdk-milestone-](./quick/260523-thb-retroactively-register-ts-sdk-milestone-/) |
+| 260524-9pq | Update REVIEW-DISCIPLINE.md to add a TypeScript Architect reviewer | 2026-05-24 | b1614f9 | [260524-9pq-update-review-discipline-md-to-add-a-typ](./quick/260524-9pq-update-review-discipline-md-to-add-a-typ/) |
 
 ## Session Continuity
 
