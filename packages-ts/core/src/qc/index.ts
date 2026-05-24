@@ -24,3 +24,13 @@ export {
   evalWindSpeedNegative,
   type QCRule,
 } from "./rules.js";
+
+// TS-W4 Plan 06 — crosscheckIemGhcnh: IEM/GHCNh disagreement detection.
+// Inner-joins by (station, eventTime); emits rows where
+// |tempCIem - tempCGhcnh| > tolC (default 2.0 °C; STRICT `>`).
+// Mirrors Python `tradewinds.qc.crosscheck_iem_ghcnh` at qc.py:191-228.
+export {
+  crosscheckIemGhcnh,
+  type CrosscheckDisagreement,
+  type CrosscheckOptions,
+} from "./crosscheck.js";
