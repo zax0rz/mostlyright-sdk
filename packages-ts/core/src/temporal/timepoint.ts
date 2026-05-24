@@ -4,6 +4,9 @@
 // Every timestamp in tradewinds.core is UTC-aware. TimePoint rejects:
 //  - naive ISO strings (no Z, no +HH:MM, no -HH:MM offset)
 //  - date-only ISO strings (e.g. "2026-05-21" — no time component)
+//  - date-only ISO strings with a timezone suffix (e.g. "2026-05-21Z" or
+//    "2026-05-21+00:00") — Python `_from_iso_string` rejects these by
+//    requiring a `T` (or space) separator BEFORE checking the tz suffix.
 //  - NaN / Infinity / -Infinity (via Date(NaN), Date(Infinity), etc.)
 //  - empty / whitespace-only strings
 //  - non-Date, non-string inputs (TypeError; belt-and-suspenders runtime guard)
@@ -13,6 +16,11 @@
 // text for a timezone indicator. For Date inputs we only reject NaN/Infinity.
 
 const ISO_DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+// ISO 8601 requires a `T` (or RFC 3339 space) separator between the date
+// and time components. Without one, the string is a bare date — even if a
+// timezone suffix is appended (`"2026-05-21Z"`). Mirrors the Python guard
+// in `_from_iso_string` that checks `"T" not in s and " " not in s`.
+const DATETIME_SEPARATOR = /[T ]/;
 const TZ_SUFFIX = /(?:Z|[+-]\d{2}:?\d{2})$/;
 
 /**
@@ -53,6 +61,18 @@ export class TimePoint {
         `TimePoint requires datetime, not date-only (got ${JSON.stringify(
           value,
         )}). Use an ISO 8601 datetime with a timezone, e.g. '2026-05-21T14:30:00Z'.`,
+      );
+    }
+    // Separator check (MUST run BEFORE the tz-suffix check): a date-only
+    // payload like "2026-05-21Z" or "2026-05-21+00:00" has no `T`/space
+    // separator and is still a bare date — Date.parse silently normalizes
+    // it to midnight UTC, but Python `_from_iso_string` rejects it. Reject
+    // here so the constructor matches the Python contract exactly.
+    if (!DATETIME_SEPARATOR.test(trimmed)) {
+      throw new RangeError(
+        `TimePoint requires datetime, not date-only (got ${JSON.stringify(
+          value,
+        )}). ISO 8601 requires a 'T' or space separator between the date and time, e.g. '2026-05-21T14:30:00Z'.`,
       );
     }
     // Naive check: must end in Z, +HH:MM, +HHMM, -HH:MM, or -HHMM.

@@ -52,6 +52,20 @@ describe("TimePoint — rejects naive / date-only / invalid inputs", () => {
     expect(() => new TimePoint("2026-05-21")).toThrow(RangeError);
   });
 
+  it("rejects date-only ISO string with Z suffix (no T/space separator)", () => {
+    // Regression for iter-1 C1: `Date.parse("2026-05-21Z")` silently
+    // normalizes to midnight UTC. The previous TZ_SUFFIX-only check let
+    // this through. Python `_from_iso_string` rejects it — the separator
+    // guard must run BEFORE the tz-suffix check.
+    expect(() => new TimePoint("2026-05-21Z")).toThrow(RangeError);
+  });
+
+  it("rejects date-only ISO string with +HH:MM offset (no T/space separator)", () => {
+    // Same iter-1 C1 regression — every tz-suffix shape must be guarded,
+    // not just `Z`.
+    expect(() => new TimePoint("2026-05-21+00:00")).toThrow(RangeError);
+  });
+
   it("rejects naive ISO string (no Z, no offset)", () => {
     expect(() => new TimePoint("2026-05-21T14:30:00")).toThrow(RangeError);
   });
