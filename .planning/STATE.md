@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v0.1.0
 milestone_name: — `@tradewinds/*` on npm)
-status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W3 merged; cache + temporal primitives + validator + formats shipped (MV3-safe).
-stopped_at: Completed ts-w3-cache-temporal-validator (all 7 plans merged)
-last_updated: "2026-05-24T17:00:00.000Z"
-last_activity: "2026-05-24 - Merged TS-W3 cache + temporal + validator (7 plans, 14-iter review loop, 16 CRITICAL + 21 HIGH closed)"
+status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W3 merged with cache + temporal primitives + validator + formats. MV3-safe bundles confirmed clean of Node imports.
+stopped_at: Completed ts-w4-mode2-transforms-qc-alpha/ts-w4-05-PLAN.md
+last_updated: "2026-05-24T16:35:33.291Z"
+last_activity: 2026-05-24 - Merged TS-W3 cache+temporal+validator (7 plans, 14-iter review loop, 16 CRITICAL + 21 HIGH closed)
 progress:
   total_phases: 21
   completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
-  percent: 100
+  total_plans: 21
+  completed_plans: 9
+  percent: 43
 ---
 
 # Project State
@@ -111,6 +111,7 @@ Merge commit: `9d9ada0 Merge ts-w2/parity-gate — TS-W2 Parity Gate (8 plans)` 
 - iter-3: TS Architect PASS; Codex 1 P2 backwards-compat (ResearchRow type removal) — below CRITICAL/HIGH gate, deferred to TS-W3.
 
 **Test status (post-merge, on main):**
+
 - core: 181 tests (incl. 16 merge + 8 climate + 1 fast-check property + 6 canonical-replay + 26 pairs)
 - weather: 218 tests (incl. 15 station-translator + 15 GHCNh fetcher + 43 GHCNh parser + 18 IEM ASOS fetcher + 9 IEM chunks + 34 IEM parser + 1 cli-merge re-export)
 - markets: 41 tests
@@ -118,6 +119,7 @@ Merge commit: `9d9ada0 Merge ts-w2/parity-gate — TS-W2 Parity Gate (8 plans)` 
 - codegen: 11 tests
 
 **Operator next step:**
+
 ```bash
 TRADEWINDS_TS_LIVE=1 pnpm --filter tradewinds capture-parity
 git add packages-ts/meta/tests/parity/recordings/
@@ -543,6 +545,7 @@ Validation:
 
 *Updated after each plan completion*
 | Phase ts-w2-parity-gate P01 | 11 | 3 tasks | 8 files |
+| Phase ts-w4-mode2-transforms-qc-alpha P05 | 5min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -573,6 +576,10 @@ Recent decisions affecting current work:
 - **2o lineage gap (per-source provenance): lift Sprint 2o into Phase 2.1** — Decided (user direction); rejected the "lossy single-source field" workaround to keep `source_tmin`/`source_tmax` provenance through to Polymarket settlement
 - **ECMWF Tier-2 + historical NWP backfill: defer to v0.2** — Decided (research finding); local-first SDK can't satisfy ECMWF's 3-day rolling archive without hosted infra; Tier-1 HRRR/GFS/NBM live-fetch path ships in v0.1
 - **Polymarket order book / Kalshi orderbook: stay deferred (Sprint 0.5+)** — Decided; v0.1 ships contract specs + settlement only, not paid market data
+- [Phase ts-w4-mode2-transforms-qc-alpha]: QC bit positions + rule IDs CONSUMED from codegen QC_ALPHA_RULES_BY_ID; never hand-coded (TS-W4 critical-rule #4)
+- [Phase ts-w4-mode2-transforms-qc-alpha]: obsQcStatus camelCase TS-side; Python uses snake_case obs_qc_status; conversion at jsonDumps wire boundary
+- [Phase ts-w4-mode2-transforms-qc-alpha]: Module-load drift guard throws if QC_ALPHA_RULES.length !== ALPHA_RULES.length — Phase 3.5+ additions caught loud
+- [Phase ts-w4-mode2-transforms-qc-alpha]: QC at @tradewinds/core/qc subpath only; root @tradewinds/core barrel unchanged (size 6.02 kB / 25 kB gate intact)
 
 ### Pending Todos
 
@@ -616,7 +623,7 @@ Open decisions to resolve during execution (per research SUMMARY.md):
 
 ## Session Continuity
 
-Last session: 2026-05-24T05:47:00.811Z
-Stopped at: Completed ts-w2-parity-gate/ts-w2-01-PLAN.md
+Last session: 2026-05-24T16:35:22.099Z
+Stopped at: Completed ts-w4-mode2-transforms-qc-alpha/ts-w4-05-PLAN.md
 Resume file: None
 Branch state: Working on `planning/v01-intl-nwp-polymarket` off `merged-vision@d698886`. Commits not yet made — user decides when to commit. Suggested commit sequence: (a) ROADMAP + STATE updates as one commit; (b) REQUIREMENTS.md additions as separate commit; (c) PROJECT.md update as separate commit; (d) per-phase PLAN.md files in subsequent commits via `/gsd-plan-phase`.
