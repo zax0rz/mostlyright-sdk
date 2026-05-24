@@ -134,6 +134,17 @@ Requirements for initial release. Each maps to a roadmap phase.
 - [ ] **SETTLEMENT-API-01**: TBD — `tradewinds.settlement.{settlement_date_for, settlement_window_utc}` at top level with DST-edge-case tests.
 - [ ] **VERSION-01**: TBD — `tradewinds.DataVersion` reproducibility token: `(content_hash, schema_version, lift_sha, fetched_at)`. Property test: same args + same DataVersion → byte-identical DataFrame.
 
+### Ingest Auto-Planner + obs() Surface (Phase 7)
+
+- [x] **INGEST-01**: `tw.weather.obs(...)` public surface at `packages/weather/src/tradewinds/weather/obs.py`; re-export at `tradewinds.weather.obs`.
+- [x] **INGEST-02**: `exact_window` strategy bypasses year-normalization (`iem_asos.py:204-209`); day-granular IEM URL params; separate `sources/iem_asos_exact/` cache directory namespace (B-5: directory-level separation, not filename infix).
+- [x] **INGEST-03**: `warm_cache` strategy preserves current `research()` orchestration; obs aggregates byte-equivalent to `research()` Mode-1 for the 5 Phase 1 parity fixtures (live-only test).
+- [x] **INGEST-04**: `hosted` strategy seam: `TW_HOSTED_URL` env-var gate; raises `NotImplementedError("hosted strategy deferred to v0.2.x — set TW_HOSTED_URL to enable once client lands")`.
+- [x] **INGEST-05**: `strategy="auto"` decision tree: window-size + cache-warmth + env-var triage; W-2 multi-year cache scan; 90-day threshold per empirical research doc.
+- [x] **INGEST-06**: `source=None | "iem" | "ghcnh" | "awc"` single-source path skips other fetchers at the fetcher boundary (preserves merge-priority semantics).
+- [x] **INGEST-07**: Mutable-period invariants preserved across all strategies — `_is_writable_month`, `_is_current_lst_month`, `_is_current_lst_year`, UNION skip predicate; helpers are REUSED, never reinvented.
+- [x] **INGEST-08**: Empirical-timing harness at `tests/perf/test_ingest_obs.py` gates `exact_window` ≤ 2 MB cold for 1mo KNYC (live-only; run pre-publish).
+
 ### Packaging
 
 - [ ] **PKG-01**: Three PyPI distributions publish at v0.1.0: `tradewinds`, `tradewinds-weather`, `tradewinds-markets`

@@ -122,6 +122,19 @@ assert (nhigh.settlement_source, nhigh.settlement_station) == (
 See [docs/adapters/](docs/adapters/) for per-source notes (timezone gotchas,
 DST handling, settlement-station mappings).
 
+## Ingest strategies
+
+`tw.weather.obs(...)` smart-routes between three ingest paths depending on
+window size, cache warmth, and the `TW_HOSTED_URL` env var:
+
+- **`exact_window`** — small queries, day-granular URL params, ≤ 2 MB cold for a 1mo KNYC query.
+- **`warm_cache`** — `research()`-equivalent year-aligned caching; best for repeated overlapping queries.
+- **`hosted`** — precomputed-API seam (deferred to v0.2.x).
+
+The default `strategy="auto"` picks the right one for you. See
+[`docs/ingest-strategies.md`](docs/ingest-strategies.md) for the full
+decision tree and per-strategy cost table.
+
 ## Contributing
 
 See [`CLAUDE.md`](CLAUDE.md) for project rules + collaboration discipline. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for workflow. Review discipline: see [`.planning/REVIEW-DISCIPLINE.md`](.planning/REVIEW-DISCIPLINE.md).
