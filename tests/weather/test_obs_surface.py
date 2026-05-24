@@ -70,11 +70,14 @@ def test_obs_hosted_raises_not_implemented_with_documented_message():
         obs("KNYC", "2024-03-01", "2024-03-31", strategy="hosted")
 
 
-def test_obs_warm_cache_raises_not_implemented_pending_plan_03():
+def test_obs_warm_cache_with_source_raises_value_error():
+    """warm_cache + source!=None must raise ValueError (B-3: post-merge filter
+    would corrupt priority semantics)."""
     from tradewinds.weather.obs import obs
 
-    with pytest.raises(NotImplementedError, match="PLAN-07-03"):
-        obs("KNYC", "2024-03-01", "2024-03-31", strategy="warm_cache")
+    with pytest.raises(ValueError, match="warm_cache strategy requires source=None"):
+        obs("KNYC", "2024-03-01", "2024-03-31",
+            source="iem", strategy="warm_cache")
 
 
 def test_obs_auto_raises_not_implemented_pending_plan_04():
