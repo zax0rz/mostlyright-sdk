@@ -1,7 +1,8 @@
 // @tradewinds/weather — weather fetchers + parsers.
 //
-// TS-W1 Wave 3 lands AWC live-METAR support. Subsequent waves add IEM CLI
-// (Wave 4), IEM ASOS + GHCNh (TS-W2), and the disk cache (TS-W3).
+// TS-W1 ships AWC (Wave 3) + IEM CLI (Wave 4). TS-W2 Plan 01 adds IEM ASOS
+// (yearly-chunk historical METARs) + the IEM CSV parser. Subsequent TS-W2
+// plans add GHCNh + mergeObservations; TS-W3 adds the disk cache.
 
 export const version = "0.0.0";
 
@@ -17,6 +18,8 @@ export {
   type AwcMetarRaw,
   type FetchAwcOptions,
 } from "./_fetchers/awc.js";
+// Shared row contract: `Observation.source` widened in TS-W2 Plan 01 to
+// `"awc" | "iem" | "ghcnh"`. Each parser still emits its own literal.
 export {
   awcToObservation,
   icaoToStationCode,
@@ -46,3 +49,24 @@ export {
   type ClimateObservation,
   type ReportType,
 } from "./_parsers/cli.js";
+
+// TS-W2 Plan 01 — IEM ASOS yearly-chunk fetcher + chunker + CSV parser.
+export {
+  yearlyChunksExclusiveEnd,
+  type IsoDate,
+} from "./_fetchers/_iem_chunks.js";
+export {
+  buildIemUrl,
+  downloadIemAsos,
+  IEM_BASE_URL,
+  IEM_POLITE_DELAY_MS,
+  type DownloadIemAsosOptions,
+  type IemChunkResult,
+} from "./_fetchers/iem-asos.js";
+export {
+  iemToObservation,
+  parseIemCsv,
+  type IemCsvRow,
+  type IemObservationTypeOverride,
+  type IemToObservationOptions,
+} from "./_parsers/iem.js";
