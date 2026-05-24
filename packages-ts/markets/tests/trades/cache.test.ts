@@ -34,6 +34,25 @@ describe("tradesCacheKey", () => {
     ).toThrow(RangeError);
   });
 
+  // Iter-2 codex + python-architect HIGH: TS regex parity with Python.
+  it("rejects all-dot ticker `.`", () => {
+    expect(() => tradesCacheKey({ issuer: "kalshi", ticker: ".", year: 2026, month: 5 })).toThrow(
+      RangeError,
+    );
+  });
+
+  it("rejects all-dot ticker `..`", () => {
+    expect(() => tradesCacheKey({ issuer: "kalshi", ticker: "..", year: 2026, month: 5 })).toThrow(
+      RangeError,
+    );
+  });
+
+  it("rejects all-dot ticker `...`", () => {
+    expect(() => tradesCacheKey({ issuer: "kalshi", ticker: "...", year: 2026, month: 5 })).toThrow(
+      RangeError,
+    );
+  });
+
   it("rejects ticker with slash", () => {
     expect(() =>
       tradesCacheKey({ issuer: "kalshi", ticker: "KX/EVIL", year: 2026, month: 5 }),

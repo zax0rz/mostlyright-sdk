@@ -54,6 +54,15 @@ _MAX_RETRIES: int = 3
 _BASE_DELAY: float = 1.0
 
 
+#: Upper cap on the per-attempt sleep induced by a server ``Retry-After``
+#: header. A hostile or buggy upstream returning ``Retry-After: 86400``
+#: would otherwise hang the SDK for ~24h per retry; ~2 retries → 48h.
+#: 120s = 2-minute ceiling matches the AWS SDK default and is more than
+#: enough headroom for any legitimate Kalshi rate-limit backoff hint.
+#: Iter-2 python-architect HIGH.
+_MAX_RETRY_AFTER_S: float = 120.0
+
+
 #: Safety cap on total pages walked per `fetch_trades` call. 10k pages *
 #: 1000 trades/page = 10M trades, well beyond any sane backtest scope.
 _MAX_TRADES_PAGES: int = 10_000
@@ -109,6 +118,11 @@ def _request(
                 retry_after = _parse_retry_after_seconds(
                     response.headers.get("Retry-After")
                 )
+                # Iter-2 python-architect HIGH: cap Retry-After at
+                # _MAX_RETRY_AFTER_S so a hostile/buggy upstream cannot
+                # pin the SDK in time.sleep() for arbitrary durations.
+                if retry_after is not None:
+                    retry_after = min(retry_after, _MAX_RETRY_AFTER_S)
                 sleep_s = max(retry_after, delay) if retry_after is not None else delay
                 log.warning(
                     "kalshi HTTP %d for %s, retry %d/%d in %.1fs"

@@ -12,7 +12,12 @@
 import type { CacheStore } from "@tradewinds/core/internal/cache";
 
 const ISSUER_RE = /^[a-z][a-z0-9._-]{0,31}$/;
-const TICKER_RE = /^[A-Za-z0-9._-]{1,128}$/;
+// Iter-2 codex + python-architect HIGH: parity with Python `_trades_cache._TICKER_RE`.
+// The leading negative lookahead `(?!\.+$)` rejects all-dot strings (`.`, `..`,
+// `...`). Without it, a `..` ticker would silently misplace the cache key at
+// the issuer-directory level on stores with path-aware semantics (matches
+// Python's silent-misplacement defense).
+const TICKER_RE = /^(?!\.+$)[A-Za-z0-9._-]{1,128}$/;
 
 export interface TradesCacheKey {
   readonly issuer: string;

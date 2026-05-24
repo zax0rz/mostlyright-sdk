@@ -7,8 +7,9 @@ near-zero probability of 429s in burst scenarios.
 
 | Issuer | Endpoint family | Documented limit | Polite floor | Headroom |
 |---|---|---|---|---|
-| Kalshi | `/trade-api/v2/series/{s}/markets/{m}/candlesticks`, `/markets/trades`, `/markets/{t}/orderbook` | 10 req/sec (public, unauthenticated) | 100 ms (10 req/sec) | matches ceiling exactly |
-| Polymarket | `gamma-api.polymarket.com/prices-history`, `gamma-api.polymarket.com/events/{id}` | not documented | 200 ms (~300 req/min) | best-effort; well below where any reasonable WAF rate-limits |
+| Kalshi | `api.elections.kalshi.com/trade-api/v2/series/{s}/markets/{m}/candlesticks`, `/markets/trades`, `/markets/{t}/orderbook` | 10 req/sec (public, unauthenticated) | 100 ms (10 req/sec) | matches ceiling exactly |
+| Polymarket Gamma | `gamma-api.polymarket.com/events`, `/events/{id}`, `/markets/...` (discovery + snapshot) | not documented | 200 ms (~300 req/min) | best-effort; below any reasonable WAF threshold |
+| Polymarket CLOB | `clob.polymarket.com/prices-history` (Phase 9 trades.history) | not documented | 200 ms (~300 req/min, inherits Gamma floor) | CLOB is a separate host from Gamma; trades.history uses the CLOB token id as the `market` param (NOT a Gamma market/condition/event id — architect iter-1 CRITICAL fix) |
 
 ## Kalshi
 
@@ -25,16 +26,28 @@ explicit `sleep_between` / `sleepBetweenMs` higher than 100 ms to stay
 collectively below the ceiling. We do NOT add a process-wide
 distributed limiter — that's caller-side coordination.
 
-## Polymarket Gamma
+## Polymarket — Gamma + CLOB (two hosts)
 
-The Gamma API (`gamma-api.polymarket.com`) has no documented rate
-limit. The pre-existing tradewinds `_polymarket_client.py` has used a
-200 ms polite floor since v0.1.0 (Phase 3.3 — Polymarket discovery +
-settlement) and the Gamma edge has not 429'd in our empirical
-discovery runs over the v0.1.0 → v0.2 window. Phase 9's `polymarket_trades`
-inherits that floor.
+Polymarket exposes two distinct public hosts; the trades surface uses
+both:
 
-Polymarket's edge is fronted by Cloudfront which returns 403 on a blank
+- **Gamma** (`gamma-api.polymarket.com`) — discovery (`/events`) +
+  snapshot (`/events/{id}`). Used by Phase 3.3 (discovery + settlement)
+  and Phase 9 `polymarket_trades.snapshot`.
+- **CLOB** (`clob.polymarket.com`) — historical prices
+  (`/prices-history`). Used by Phase 9 `polymarket_trades.history`.
+  The `market` query parameter on this endpoint is the **CLOB token id**
+  (ERC-1155 asset id, one per outcome), NOT a Gamma market/condition/
+  event id. Mis-passing a Gamma id silently 404s — architect iter-1
+  CRITICAL fix.
+
+Neither host publishes a hard rate limit. The pre-existing tradewinds
+`_polymarket_client.py` has used a 200 ms polite floor since v0.1.0
+(Phase 3.3) and neither edge has 429'd in our empirical discovery runs
+over the v0.1.0 → v0.2 window. Phase 9's `polymarket_trades` inherits
+that floor for both hosts.
+
+Both hosts are fronted by Cloudfront which returns 403 on a blank
 User-Agent. The clients always set `tradewinds-sdk/0.1` (Python) or
 `tradewinds-ts/0.2.0` (TS).
 

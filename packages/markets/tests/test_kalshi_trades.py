@@ -287,6 +287,41 @@ class TestCandles:
         assert _parse_retry_after_seconds("nan") is None
         assert _parse_retry_after_seconds("inf") is None
 
+    def test_retry_after_capped_at_max(self):
+        """Iter-2 python-architect HIGH: a hostile/buggy server returning
+        Retry-After: 999999 must not hang the SDK for ~11 days. The
+        _MAX_RETRY_AFTER_S cap (120s) bounds the sleep."""
+        import tradewinds.markets._kalshi_client as kc
+
+        with respx.mock(assert_all_called=False) as router:
+            route = router.get(
+                f"{KALSHI_API_BASE}/series/{_SERIES}/markets/{_TICKER}/candlesticks"
+            )
+            route.side_effect = [
+                httpx.Response(
+                    429, json={"error": "rate_limited"}, headers={"Retry-After": "999999"}
+                ),
+                httpx.Response(200, json={"candlesticks": []}),
+            ]
+            captured_sleep: list[float] = []
+            orig_sleep = kc.time.sleep
+            kc.time.sleep = lambda s: captured_sleep.append(s)
+            try:
+                candles(
+                    _TICKER,
+                    interval="1h",
+                    from_=datetime(2026, 6, 1, tzinfo=UTC),
+                    to=datetime(2026, 6, 2, tzinfo=UTC),
+                    sleep_between=0,
+                )
+            finally:
+                kc.time.sleep = orig_sleep
+        # The 429-backoff sleep must be ≤ _MAX_RETRY_AFTER_S (120s) even
+        # though the server requested 999999.
+        backoff_sleeps = [s for s in captured_sleep if s > 1.0]
+        assert backoff_sleeps, captured_sleep
+        assert all(s <= 120.0 for s in backoff_sleeps), captured_sleep
+
 
 # ---------------------------------------------------------------------------
 # fills
