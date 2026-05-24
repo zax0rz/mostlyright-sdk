@@ -44,6 +44,11 @@
       "import": "./dist/formats/index.mjs",
       "require": "./dist/formats/index.cjs"
     },
+    "./validator": {
+      "types": "./dist/validator.d.ts",
+      "import": "./dist/validator.mjs",
+      "require": "./dist/validator.cjs"
+    },
     "./internal/cache": {
       "types": "./dist/internal/cache/index.d.ts",
       "import": "./dist/internal/cache/index.mjs",

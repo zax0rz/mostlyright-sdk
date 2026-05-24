@@ -81,6 +81,22 @@ export default defineConfig([
     },
   },
   {
+    // Iter-4 H8 — validateRows moved out of the main barrel to keep
+    // @tradewinds/core's main bundle under its 25 KB size-limit gate
+    // (TS-BUNDLE-01). Emitted at @tradewinds/core/validator.
+    entry: { validator: "src/validator.ts" },
+    format: ["esm", "cjs"],
+    dts: true,
+    sourcemap: true,
+    clean: false,
+    target: "es2022",
+    outDir: "dist",
+    outExtension({ format }) {
+      if (format === "esm") return { js: ".mjs" };
+      return { js: ".cjs" };
+    },
+  },
+  {
     // TS-W3 Plan 01-03 — cache subsystem (CacheStore, MemoryStore, FsStore,
     // IndexedDBStore [plan 02], defaultCacheStore [plan 02], skip-rules + keys
     // [plan 03]). Emitted at @tradewinds/core/internal/cache.
