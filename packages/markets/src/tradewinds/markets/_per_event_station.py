@@ -83,12 +83,19 @@ _LOW_RE = re.compile(r"\b(lowest|low|coldest|coolest|min(?:imum)?)\b", re.IGNORE
 #: `/news/2024-summer-KIDS-overview`. The intermediate `[a-z0-9-]+/`
 #: segments are LOWERCASE only — the uppercase ICAO can never collide with
 #: a slug segment.
+#: Iter-3 codex CRITICAL: the case-insensitive flag let `[a-z0-9-]+/`
+#: consume uppercase segments, so `/history/daily/KORD/date/KLAX` extracted
+#: `KLAX` (the LAST K-prefix segment) instead of `KORD` (the canonical
+#: station slot). Fix: drop IGNORECASE entirely. Real Wunderground URLs
+#: use lowercase paths + uppercase ICAOs (RFC 3986 scheme + Wunderground
+#: convention). Case-sensitive matching pins the ICAO to the canonical
+#: station slot — intermediate slugs (lowercase only) cannot consume
+#: a K-prefix uppercase token.
 _WUNDERGROUND_ICAO_RE = re.compile(
     r"https?://(?:www\.)?wunderground\.com/"
     r"(?:dashboard/)?(?:pws|history/daily|history/airport|weather-station|cat/forecasts)/"
     r"(?:[a-z0-9-]+/)*"
-    r"(K[A-Z]{3})(?![A-Za-z0-9_-])",
-    re.IGNORECASE,
+    r"(K[A-Z]{3})(?![A-Za-z0-9_-])"
 )
 
 

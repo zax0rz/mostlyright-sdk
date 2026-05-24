@@ -67,10 +67,13 @@ describe("extractIcaoFromResolutionSource", () => {
     expect(extractIcaoFromResolutionSource("no urls in this description")).toBeNull();
   });
 
-  it("uppercases the captured ICAO", () => {
-    expect(extractIcaoFromResolutionSource("https://wunderground.com/dashboard/pws/klax")).toBe(
-      "KLAX",
-    );
+  it("does NOT match lowercase ICAO (iter-3 codex CRITICAL — dropped IGNORECASE)", () => {
+    // Iter-3 dropped IGNORECASE so the intermediate-slug pattern can't
+    // consume uppercase station segments. Synthetic lowercase ICAOs no
+    // longer match — real Wunderground URLs use uppercase ICAOs.
+    expect(
+      extractIcaoFromResolutionSource("https://wunderground.com/dashboard/pws/klax"),
+    ).toBeNull();
   });
 
   it("extracts from text containing prose plus URL", () => {
@@ -167,5 +170,37 @@ describe("extractIcaoFromResolutionSource", () => {
 
   it("does NOT extract from /pws/KORDX (longer uppercase ID)", () => {
     expect(extractIcaoFromResolutionSource("https://wunderground.com/pws/KORDX")).toBeNull();
+  });
+
+  // ---------------------------------------------------------------------
+  // Iter-3 codex CRITICAL: regex must NOT consume uppercase station slot
+  // as an "intermediate slug" when IGNORECASE is dropped.
+  // ---------------------------------------------------------------------
+  it("extracts FIRST K-prefix segment from /history/daily/KORD/date/KLAX (canonical slot)", () => {
+    expect(
+      extractIcaoFromResolutionSource("https://www.wunderground.com/history/daily/KORD/date/KLAX"),
+    ).toBe("KORD");
+  });
+
+  it("extracts canonical KORD from /pws/KORD/nearby/KLAX", () => {
+    expect(extractIcaoFromResolutionSource("https://wunderground.com/pws/KORD/nearby/KLAX")).toBe(
+      "KORD",
+    );
+  });
+
+  it("extracts canonical KORD from /history/airport/KORD/2026/5/KLAX/DailyHistory.html", () => {
+    expect(
+      extractIcaoFromResolutionSource(
+        "https://www.wunderground.com/history/airport/KORD/2026/5/KLAX/DailyHistory.html",
+      ),
+    ).toBe("KORD");
+  });
+
+  it("extracts canonical KORD from real-shape URL with trailing uppercase path components", () => {
+    expect(
+      extractIcaoFromResolutionSource(
+        "https://www.wunderground.com/history/daily/us/il/chicago/KORD/date/KLAX",
+      ),
+    ).toBe("KORD");
   });
 });

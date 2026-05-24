@@ -262,10 +262,15 @@ class TestExtractIcaoFromResolutionSource:
     def test_text_without_url_returns_None(self):
         assert extract_icao_from_resolution_source("no urls here") is None
 
-    def test_lowercase_url_uppercases_result(self):
+    def test_lowercase_icao_does_not_match(self):
+        """Iter-3 codex CRITICAL: dropped IGNORECASE to fix a silent-corruption
+        path where the case-insensitive `[a-z0-9-]+/` consumed uppercase
+        station slugs. Trade-off: synthetic lowercase ICAOs no longer match.
+        Real Wunderground URLs use uppercase ICAOs by convention so this is
+        production-correct."""
         assert (
             extract_icao_from_resolution_source("https://wunderground.com/dashboard/pws/klax")
-            == "KLAX"
+            is None
         )
 
     def test_non_string_returns_None(self):
@@ -339,6 +344,33 @@ class TestExtractIcaoFromResolutionSource:
         """`/pws/KORDX` MUST NOT extract `KORD`."""
         url = "https://wunderground.com/pws/KORDX"
         assert extract_icao_from_resolution_source(url) is None
+
+    # ---------------------------------------------------------------------
+    # Iter-3 codex CRITICAL: regex must NOT consume uppercase station slot
+    # as an "intermediate slug" when IGNORECASE is dropped.
+    # ---------------------------------------------------------------------
+    def test_history_daily_uppercase_first_segment_is_canonical_station(self):
+        """`/history/daily/KORD/date/KLAX` extracts `KORD`, not `KLAX`.
+        The canonical station slot is the FIRST K[A-Z]{3} after the anchor;
+        the intermediate-slug pattern is lowercase-only so it cannot
+        consume an uppercase station segment."""
+        url = "https://www.wunderground.com/history/daily/KORD/date/KLAX"
+        assert extract_icao_from_resolution_source(url) == "KORD"
+
+    def test_pws_with_trailing_uppercase_path_is_canonical(self):
+        """`/dashboard/pws/KORD/nearby/KLAX` extracts `KORD`."""
+        url = "https://wunderground.com/pws/KORD/nearby/KLAX"
+        assert extract_icao_from_resolution_source(url) == "KORD"
+
+    def test_history_airport_uppercase_trailing_is_canonical(self):
+        """`/history/airport/KORD/2026/5/KLAX/DailyHistory.html` extracts `KORD`."""
+        url = "https://www.wunderground.com/history/airport/KORD/2026/5/KLAX/DailyHistory.html"
+        assert extract_icao_from_resolution_source(url) == "KORD"
+
+    def test_real_polymarket_url_with_uppercase_trailing_path(self):
+        """Real-shape URL with trailing uppercase path components."""
+        url = "https://www.wunderground.com/history/daily/us/il/chicago/KORD/date/KLAX"
+        assert extract_icao_from_resolution_source(url) == "KORD"
 
 
 class TestResolverTier1_5:

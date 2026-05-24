@@ -102,8 +102,14 @@ export function deriveCity(event: PolymarketEventRaw): string | null {
 // extensions like `KIDS-summer` where `-` would otherwise pass `\b`
 // (codex iter-2 CRITICAL — original `(?=[/?#\s]|$)` lookahead missed
 // Markdown-embedded URLs that end with `)`, `.`, etc.).
+// Iter-3 codex CRITICAL: case-insensitive flag let `[a-z0-9-]+/` consume
+// uppercase segments, so `/history/daily/KORD/date/KLAX` extracted `KLAX`
+// (the LAST K-prefix segment) instead of `KORD` (canonical station slot).
+// Fix: drop `i` flag — case-sensitive matching pins ICAO to the canonical
+// station slot. Real Wunderground URLs use lowercase paths + uppercase
+// ICAOs (RFC 3986 + Wunderground convention).
 const WUNDERGROUND_ICAO_RE =
-  /https?:\/\/(?:www\.)?wunderground\.com\/(?:dashboard\/)?(?:pws|history\/daily|history\/airport|weather-station|cat\/forecasts)\/(?:[a-z0-9-]+\/)*(K[A-Z]{3})(?![A-Za-z0-9_-])/gi;
+  /https?:\/\/(?:www\.)?wunderground\.com\/(?:dashboard\/)?(?:pws|history\/daily|history\/airport|weather-station|cat\/forecasts)\/(?:[a-z0-9-]+\/)*(K[A-Z]{3})(?![A-Za-z0-9_-])/g;
 
 /**
  * Extract the canonical Wunderground PWS / airport ICAO from `text`.
