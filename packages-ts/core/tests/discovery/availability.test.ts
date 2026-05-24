@@ -137,4 +137,62 @@ describe("availability", () => {
     expect(r.station).toBe("X1Y2");
     expect(r.monthsCached).toBe(1);
   });
+
+  describe("validate option (codex iter-3 P2)", () => {
+    // research() v0.1.0 never sets ttlMs, but callers who do should be able
+    // to opt into get()-based confirmation so expired-TTL keys don't inflate
+    // the count. The default (validate=false) trades correctness on the TTL
+    // edge for cheap scans on the canonical path.
+
+    it("validate=true excludes expired TTL entries", async () => {
+      await store.set(cacheKeyForObservations("NYC", 2025, 1, "iem"), { v: 1 }, { ttlMs: 1 });
+      await store.set(cacheKeyForObservations("NYC", 2025, 2, "iem"), { v: 2 });
+      // Wait past the 1ms TTL.
+      await new Promise((r) => setTimeout(r, 5));
+
+      const lazy = await availability("KNYC", store);
+      // MemoryStore evicts expired entries on listKeys (lazy eviction also
+      // fires inside listKeys), so the result is already correct here. The
+      // option still works for stores whose listKeys doesn't lazy-evict.
+      expect(lazy.monthsCached).toBe(1);
+      expect(lazy.firstMonth).toBe("2025-02");
+
+      const validated = await availability("KNYC", store, { validate: true });
+      expect(validated.monthsCached).toBe(1);
+      expect(validated.firstMonth).toBe("2025-02");
+    });
+
+    it("validate=true with a store whose listKeys returns stale entries", async () => {
+      // Synthetic store: listKeys returns more than get() can serve. Mimics
+      // an FsStore/IndexedDBStore scenario before lazy eviction has cleaned
+      // up TTL-expired entries.
+      const synthetic: CacheStore & {
+        listKeys: (prefix: string) => Promise<ReadonlyArray<string>>;
+      } = {
+        async get<T>(key: string): Promise<T | null> {
+          // Only the "2025:02" key resolves; 2025:01 is "expired".
+          if (key.includes(":2025:02:")) return { v: 2 } as unknown as T;
+          return null;
+        },
+        async set() {},
+        async delete() {},
+        async withLock<T>(_k: string, fn: () => Promise<T>) {
+          return fn();
+        },
+        async listKeys(_prefix: string) {
+          return [
+            "tradewinds:v1:observations:NYC:2025:01:iem",
+            "tradewinds:v1:observations:NYC:2025:02:iem",
+          ];
+        },
+      };
+
+      const lazy = await availability("KNYC", synthetic);
+      expect(lazy.monthsCached).toBe(2);
+
+      const validated = await availability("KNYC", synthetic, { validate: true });
+      expect(validated.monthsCached).toBe(1);
+      expect(validated.firstMonth).toBe("2025-02");
+    });
+  });
 });

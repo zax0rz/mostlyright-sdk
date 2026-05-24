@@ -38,7 +38,11 @@
 //   } from "@tradewinds/core/discovery";
 
 export { availability } from "./availability.js";
-export type { AvailabilityResult, KeyEnumerableStore } from "./availability.js";
+export type {
+  AvailabilityOptions,
+  AvailabilityResult,
+  KeyEnumerableStore,
+} from "./availability.js";
 
 export { internationalDailyExtremes } from "./international.js";
 export type {

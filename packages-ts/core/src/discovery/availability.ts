@@ -96,14 +96,40 @@ const OBS_KEY_RE = /^tradewinds:v1:observations:([A-Z0-9]+):(\d{4}):(\d{2})(?::[
 const CLIMATE_KEY_RE = /^tradewinds:v1:climate:([A-Z0-9]+):(\d{4})$/;
 
 /**
+ * Options for `availability()`.
+ */
+export interface AvailabilityOptions {
+  /**
+   * If true, confirm each candidate key with `cache.get()` before counting.
+   * Eliminates the small overcount possible on stores whose `listKeys()` can
+   * return keys with already-expired TTL entries (FsStore and IndexedDBStore
+   * lazy-evict on `get`, not on `listKeys` — codex iter-3 P2). Off by default
+   * because the v0.1.0 `research()` flow never writes with `ttlMs`, so the
+   * overcount window is empty; turn on only if you populate the cache with
+   * explicit TTLs.
+   *
+   * Cost: one `get()` per matching key. On warm caches this is cheap
+   * (MemoryStore + IndexedDBStore in-memory). On FsStore it reads each
+   * candidate's file.
+   */
+  readonly validate?: boolean;
+}
+
+/**
  * Return a summary of cached coverage for `station`.
  *
  * Stores without enumeration support return a zero-coverage result with the
  * station name populated (counts all zero, dates null).
+ *
+ * Pass `{ validate: true }` to confirm each candidate key via `cache.get()`
+ * — needed if your callers populate the cache with `ttlMs` and might query
+ * after expiry. The v0.1.0 `research()` flow does not use `ttlMs`, so the
+ * default (fast scan, no validation) is correct for the canonical path.
  */
 export async function availability(
   station: string,
   cache: CacheStore,
+  opts: AvailabilityOptions = {},
 ): Promise<AvailabilityResult> {
   const stationCode = normalizeStation(station);
   const empty: AvailabilityResult = Object.freeze({
@@ -128,31 +154,69 @@ export async function availability(
     cache.listKeys(climatePrefix),
   ]);
 
-  const months = new Set<string>();
+  // Collect the matching keys grouped by (year-month) / year so we can both
+  // dedupe (e.g. per-source observation keys for the same month) and run a
+  // single validation get() per group.
+  const monthCandidates = new Map<string, string[]>();
   for (const key of obsKeys) {
     const m = OBS_KEY_RE.exec(key);
     if (m && m[1] === stationCode) {
-      months.add(`${m[2]}-${m[3]}`);
+      const ym = `${m[2]}-${m[3]}`;
+      const arr = monthCandidates.get(ym) ?? [];
+      arr.push(key);
+      monthCandidates.set(ym, arr);
     }
   }
-  const sortedMonths = [...months].sort();
 
-  const years = new Set<string>();
+  const yearCandidates = new Map<string, string[]>();
   for (const key of climateKeys) {
     const m = CLIMATE_KEY_RE.exec(key);
     if (m && m[1] === stationCode) {
-      years.add(m[2] as string);
+      const y = m[2] as string;
+      const arr = yearCandidates.get(y) ?? [];
+      arr.push(key);
+      yearCandidates.set(y, arr);
     }
   }
-  const sortedYears = [...years].sort();
+
+  let months: string[];
+  let years: string[];
+
+  if (opts.validate === true) {
+    // For each candidate group, confirm at least one key still resolves.
+    // Stores lazy-evict expired entries inside get() — calling it discards
+    // stale TTLs from the on-disk / on-IDB state and gives us a correct
+    // overall count.
+    const monthChecks = await Promise.all(
+      [...monthCandidates.entries()].map(async ([ym, keys]) => {
+        for (const k of keys) {
+          if ((await cache.get(k)) !== null) return ym;
+        }
+        return null;
+      }),
+    );
+    months = monthChecks.filter((v): v is string => v !== null).sort();
+    const yearChecks = await Promise.all(
+      [...yearCandidates.entries()].map(async ([y, keys]) => {
+        for (const k of keys) {
+          if ((await cache.get(k)) !== null) return y;
+        }
+        return null;
+      }),
+    );
+    years = yearChecks.filter((v): v is string => v !== null).sort();
+  } else {
+    months = [...monthCandidates.keys()].sort();
+    years = [...yearCandidates.keys()].sort();
+  }
 
   return Object.freeze({
     station: stationCode,
-    monthsCached: sortedMonths.length,
-    firstMonth: sortedMonths[0] ?? null,
-    lastMonth: sortedMonths.at(-1) ?? null,
-    climateYears: sortedYears.length,
-    firstClimateYear: sortedYears[0] ?? null,
-    lastClimateYear: sortedYears.at(-1) ?? null,
+    monthsCached: months.length,
+    firstMonth: months[0] ?? null,
+    lastMonth: months.at(-1) ?? null,
+    climateYears: years.length,
+    firstClimateYear: years[0] ?? null,
+    lastClimateYear: years.at(-1) ?? null,
   });
 }
