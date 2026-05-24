@@ -22,4 +22,20 @@ export { core, markets, weather };
 // `PairsRow` is the canonical row shape from @tradewinds/core/internal/pairs.
 export { research, type ResearchOptions, type PairsRow } from "./research.js";
 
+// TS-W4 Wave 1: Mode 2 source-explicit dispatch (researchBySource +
+// assertSourceIdentity + Mode2Source const-union). Lives in the meta
+// package alongside research() — the dispatch needs the @tradewinds/weather
+// Observation type and assertSourceIdentity consumes it structurally;
+// @tradewinds/core must NOT depend on weather (cycle).
+export {
+  MODE2_SOURCES,
+  SOURCE_ALIASES,
+  assertSourceIdentity,
+  isMode2Source,
+  researchBySource,
+  type Mode2Source,
+  type ResearchBySourceOptions,
+  type SourceMismatchRole,
+} from "./mode2.js";
+
 export const version = "0.0.0";
