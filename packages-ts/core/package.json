@@ -42,6 +42,11 @@
       "types": "./dist/formats/index.d.ts",
       "import": "./dist/formats/index.mjs",
       "require": "./dist/formats/index.cjs"
+    },
+    "./internal/cache": {
+      "types": "./dist/internal/cache/index.d.ts",
+      "import": "./dist/internal/cache/index.mjs",
+      "require": "./dist/internal/cache/index.cjs"
     }
   },
   "files": ["dist"],
@@ -54,6 +59,7 @@
     "codegen": "echo \"@tradewinds/core — no codegen step at this layer (consumes from @tradewinds/codegen output)\""
   },
   "devDependencies": {
+    "@types/proper-lockfile": "^4.1.4",
     "fast-check": "3.23.2",
     "tsup": "8.3.5",
     "typescript": "5.6.3",
@@ -61,5 +67,8 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "dependencies": {
+    "proper-lockfile": "^4.1.2"
   }
 }

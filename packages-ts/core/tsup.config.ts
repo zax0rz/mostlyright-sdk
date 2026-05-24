@@ -80,4 +80,20 @@ export default defineConfig([
       return { js: ".cjs" };
     },
   },
+  {
+    // TS-W3 Plan 01-03 — cache subsystem (CacheStore, MemoryStore, FsStore,
+    // IndexedDBStore [plan 02], defaultCacheStore [plan 02], skip-rules + keys
+    // [plan 03]). Emitted at @tradewinds/core/internal/cache.
+    entry: { "cache/index": "src/internal/cache/index.ts" },
+    format: ["esm", "cjs"],
+    dts: true,
+    sourcemap: true,
+    clean: false,
+    target: "es2022",
+    outDir: "dist/internal",
+    outExtension({ format }) {
+      if (format === "esm") return { js: ".mjs" };
+      return { js: ".cjs" };
+    },
+  },
 ]);
