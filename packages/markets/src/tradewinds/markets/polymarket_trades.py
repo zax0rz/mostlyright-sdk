@@ -120,18 +120,26 @@ def history(
     if fidelity_minutes < 1:
         raise ValueError(f"fidelity_minutes must be >= 1; got {fidelity_minutes}")
 
-    raw = get_json(
-        "/prices-history",
-        params={
+    # Iter-3 codex HIGH: passing `sleep_between=0` whenever the caller
+    # omits it would force CLOB calls to run unthrottled by default,
+    # bypassing the 200ms polite floor documented in
+    # `.planning/research/MARKETS-RATE-LIMITS.md`. Tests pass `0`
+    # explicitly; production callers should inherit `get_json`'s default
+    # by passing `None` through (when caller omitted) or the explicit
+    # override (when caller passed `0` for tests).
+    get_kwargs: dict[str, Any] = {
+        "params": {
             "market": token_id,
             "startTs": int(from_.timestamp()),
             "endTs": int(to.timestamp()),
             "fidelity": fidelity_minutes,
         },
-        client=client,
-        sleep_between=0 if sleep_between is None else sleep_between,
-        base_url=CLOB_API_BASE,
-    )
+        "client": client,
+        "base_url": CLOB_API_BASE,
+    }
+    if sleep_between is not None:
+        get_kwargs["sleep_between"] = sleep_between
+    raw = get_json("/prices-history", **get_kwargs)
 
     # Polymarket CLOB typically returns {"history": [{"t": int, "p": float}, ...]}.
     # Defensively unwrap a bare list too (some endpoints flip shapes).

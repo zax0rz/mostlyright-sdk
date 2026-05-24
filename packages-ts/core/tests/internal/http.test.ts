@@ -101,6 +101,44 @@ describe("fetchWithRetry — retry path", () => {
       retryAfter: 0,
     });
   });
+
+  it("caps hostile Retry-After at MAX_RETRY_AFTER_MS (iter-3 codex + python-architect HIGH)", async () => {
+    // Server returns 429 with `Retry-After: 999999` (≈11.5 days). Without
+    // the cap, the next `sleep()` would hang the runtime for that long.
+    // The cap pins sleeps to ≤ 120 000 ms (matches Python `_MAX_RETRY_AFTER_S`).
+    fetchSpy.mockImplementationOnce(
+      async () =>
+        new Response("", {
+          status: 429,
+          headers: { "retry-after": "999999" },
+        }),
+    );
+    fetchSpy.mockImplementationOnce(async () => makeResponse(200, "ok"));
+
+    // Patch the global setTimeout the `sleep` helper uses so the test
+    // observes the requested delay without actually waiting.
+    const capturedDelays: number[] = [];
+    const realSetTimeout = globalThis.setTimeout;
+    // biome-ignore lint/suspicious/noExplicitAny: setTimeout stub
+    (globalThis as any).setTimeout = (fn: () => void, ms: number, ..._rest: unknown[]) => {
+      capturedDelays.push(ms);
+      // Fire immediately so the test doesn't wait.
+      return realSetTimeout(fn, 0);
+    };
+    try {
+      const res = await fetchWithRetry("https://example.test/cap", {
+        baseDelayMs: 1,
+        maxRetries: 3,
+      });
+      expect(res.status).toBe(200);
+    } finally {
+      globalThis.setTimeout = realSetTimeout;
+    }
+    // ≥1 retry sleep ≤ 120 000 ms (the MAX_RETRY_AFTER_MS cap).
+    const retrySleeps = capturedDelays.filter((d) => d > 0);
+    expect(retrySleeps.length).toBeGreaterThan(0);
+    expect(retrySleeps.every((d) => d <= 120_000)).toBe(true);
+  });
 });
 
 describe("fetchWithRetry — non-retryable 4xx", () => {

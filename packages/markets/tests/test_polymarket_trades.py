@@ -124,6 +124,34 @@ class TestHistory:
                 sleep_between=0,
             )
 
+    def test_default_polite_floor_applied_when_sleep_between_omitted(self):
+        """Iter-3 codex HIGH: when the caller omits `sleep_between`, the
+        client must inherit the documented 200ms polite floor from
+        `get_json`. The earlier bug forced `sleep_between=0` whenever the
+        caller didn't override, silently bypassing the rate-limit floor
+        documented in `.planning/research/MARKETS-RATE-LIMITS.md`.
+        """
+        import tradewinds.markets._polymarket_client as pmc
+
+        captured_sleep: list[float] = []
+        orig_sleep = pmc.time.sleep
+        pmc.time.sleep = lambda s: captured_sleep.append(s)
+        try:
+            with respx.mock(assert_all_called=False) as router:
+                router.get(f"{CLOB_API_BASE}/prices-history").mock(
+                    return_value=httpx.Response(200, json={"history": []})
+                )
+                history(
+                    "T1",
+                    from_=datetime(2026, 6, 1, tzinfo=UTC),
+                    to=datetime(2026, 6, 2, tzinfo=UTC),
+                    # NB: no `sleep_between` — exercise default-inherit path.
+                )
+        finally:
+            pmc.time.sleep = orig_sleep
+        # ≥1 sleep call with the documented 0.2s polite floor.
+        assert any(s >= 0.2 for s in captured_sleep), captured_sleep
+
 
 # ---------------------------------------------------------------------------
 # snapshot

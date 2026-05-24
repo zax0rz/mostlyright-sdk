@@ -24,6 +24,17 @@ const DEFAULT_TIMEOUT_MS = 60_000;
 /** Retryable statuses. Mirrors Python `TRANSIENT_CODES`. */
 const DEFAULT_RETRY_STATUSES: ReadonlySet<number> = new Set([429, 500, 502, 503, 504]);
 
+/**
+ * Upper cap on the per-attempt sleep induced by a server ``Retry-After``
+ * header. Mirrors Python ``_MAX_RETRY_AFTER_S = 120.0`` in
+ * `packages/markets/src/tradewinds/markets/_kalshi_client.py`. A hostile
+ * or buggy upstream returning ``Retry-After: 999999`` would otherwise
+ * hang the runtime for ~11 days per retry; a 2-minute cap matches the
+ * AWS SDK default and is more than enough headroom for any legitimate
+ * rate-limit backoff hint. Iter-3 codex + python-architect HIGH.
+ */
+const MAX_RETRY_AFTER_MS = 120_000;
+
 export interface FetchWithRetryOptions {
   /** Base backoff delay in milliseconds (default 1000). */
   baseDelayMs?: number;
@@ -165,7 +176,14 @@ export async function fetchWithRetry(
           const jitter = baseDelay * 2 ** attempt * Math.random() * 0.25;
           const delayMs = baseDelay * 2 ** attempt + jitter;
           // RFC 7231 §7.1.3: prefer caller's Retry-After when present.
-          const sleepMs = retryAfterHeader !== null ? retryAfterHeader * 1000 : delayMs;
+          // Iter-3 codex + python-architect HIGH: cap the upstream hint at
+          // MAX_RETRY_AFTER_MS so a hostile/buggy server cannot pin us in
+          // `sleep()` for arbitrary durations (mirrors Python's
+          // `_MAX_RETRY_AFTER_S = 120.0`).
+          const sleepMs =
+            retryAfterHeader !== null
+              ? Math.min(retryAfterHeader * 1000, MAX_RETRY_AFTER_MS)
+              : delayMs;
           await sleep(sleepMs, opts.signal);
           continue;
         }
