@@ -156,31 +156,43 @@ export async function polymarketSettle(
 
   // Pick the value per the market measure. Codex iter-1 P2: ambiguous
   // markets (default measure — title has both/neither high+low keywords)
-  // are NOT settled to tempMaxF blind; refuse and force the caller to
-  // disambiguate. Mirrors Python's stricter behavior on average / non-
-  // extreme wordings.
-  let resolvedValue: number | null = null;
+  // are NOT settled blind; refuse and force the caller to disambiguate.
+  // Mirrors Python's stricter behavior on average / non-extreme wordings.
+  let resolvedValueC: number | null = null;
+  let resolvedValueF: number | null = null;
   if (marketMeasure === "low") {
-    resolvedValue = day.tempMinF;
+    resolvedValueC = day.tempMinC;
+    resolvedValueF = day.tempMinF;
   } else if (marketMeasure === "high") {
-    resolvedValue = day.tempMaxF;
+    resolvedValueC = day.tempMaxC;
+    resolvedValueF = day.tempMaxF;
   } else {
     throw new PolymarketSettlementError(
       `event ${JSON.stringify(eventId)} (slug=${JSON.stringify(slug)}) has ambiguous measure ("default" — title carries neither high nor low keyword); refusing to settle silently. Disambiguate at the caller.`,
     );
   }
-  if (resolvedValue === null) {
+  if (resolvedValueC === null || resolvedValueF === null) {
     throw new PolymarketSettlementError(
       `daily extreme for ${resolved.icao} on ${settlementDate} has null ${marketMeasure} (low coverage)`,
     );
   }
 
-  // Optional data-quality alert if caller supplied Polymarket's published value.
+  // Codex iter-3 P2: native unit selection. International Polymarket markets
+  // publish in whole-°C; US Kalshi markets publish in °F. Default unit follows
+  // the station's country (US → F, else C); caller can override with the
+  // `unit` option. dataQualityAlert compares in the SAME unit as the
+  // resolved/published values.
+  const isUsStation = STATIONS.find((s) => s.icao === resolved.icao)?.country === "US";
+  const unit = args.unit ?? (isUsStation ? "fahrenheit" : "celsius");
+  const resolvedValue = unit === "celsius" ? resolvedValueC : resolvedValueF;
+
   let dataQualityAlert: string | null = null;
   if (typeof args.polymarketPublishedValue === "number") {
-    const diffF = Math.abs(resolvedValue - args.polymarketPublishedValue);
-    if (diffF > 1) {
-      dataQualityAlert = `tradewinds resolved ${resolvedValue}°F but Polymarket published ${args.polymarketPublishedValue}°F (Δ=${diffF.toFixed(2)}°F > 1°F threshold)`;
+    const diff = Math.abs(resolvedValue - args.polymarketPublishedValue);
+    const threshold = unit === "celsius" ? 0.6 : 1;
+    const unitSym = unit === "celsius" ? "°C" : "°F";
+    if (diff > threshold) {
+      dataQualityAlert = `tradewinds resolved ${resolvedValue}${unitSym} but Polymarket published ${args.polymarketPublishedValue}${unitSym} (Δ=${diff.toFixed(2)}${unitSym} > ${threshold}${unitSym} threshold)`;
     }
   }
 
@@ -190,6 +202,9 @@ export async function polymarketSettle(
     icao: resolved.icao,
     measure: marketMeasure,
     resolvedValue,
+    resolvedValueC,
+    resolvedValueF,
+    unit,
     resolutionSourceType,
     dataQualityAlert,
   });

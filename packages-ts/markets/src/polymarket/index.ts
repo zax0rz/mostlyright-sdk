@@ -40,4 +40,5 @@ export type {
   PolymarketResolutionSourceType,
   PolymarketSettleOptions,
   PolymarketSettlementResult,
+  SettlementUnit,
 } from "./types.js";

@@ -94,7 +94,7 @@ describe("polymarketSettle — settlement", () => {
     ).rejects.toThrow(TooEarlyToSettleError);
   });
 
-  it("resolves a London HIGH market once the delay has elapsed", async () => {
+  it("resolves a London HIGH market once the delay has elapsed (international → °C native)", async () => {
     const rows = denseRows(
       "2026-05-23",
       [
@@ -115,13 +115,17 @@ describe("polymarketSettle — settlement", () => {
     expect(result.icao).toBe("EGLL");
     expect(result.settlementDate).toBe("2026-05-23");
     expect(result.measure).toBe("high");
-    // 30°C → 86°F. Allow ±1°F for rounding.
-    expect(result.resolvedValue).toBeGreaterThanOrEqual(85);
-    expect(result.resolvedValue).toBeLessThanOrEqual(87);
+    expect(result.unit).toBe("celsius");
+    // 30°C → 86°F. Allow ±1 in the native unit.
+    expect(result.resolvedValueC).toBeGreaterThanOrEqual(29);
+    expect(result.resolvedValueC).toBeLessThanOrEqual(31);
+    expect(result.resolvedValueF).toBeGreaterThanOrEqual(85);
+    expect(result.resolvedValueF).toBeLessThanOrEqual(87);
+    expect(result.resolvedValue).toBe(result.resolvedValueC);
     expect(result.resolutionSourceType).toBe("noaa_wrh");
   });
 
-  it("emits a dataQualityAlert when the resolved value diverges from Polymarket's published value", async () => {
+  it("uses the explicit unit option to override native default", async () => {
     const rows = denseRows("2026-05-23", new Array(12).fill(30));
     const result = await polymarketSettle({
       event: {
@@ -131,10 +135,27 @@ describe("polymarketSettle — settlement", () => {
       },
       now: new Date("2026-05-25T12:00:00Z"),
       loader: async () => rows,
-      polymarketPublishedValue: 60, // claim 60°F but tradewinds resolves ~86°F
+      unit: "fahrenheit",
+    });
+    expect(result.unit).toBe("fahrenheit");
+    expect(result.resolvedValue).toBe(result.resolvedValueF);
+  });
+
+  it("emits a dataQualityAlert when the C-native resolved value diverges from Polymarket's published °C", async () => {
+    const rows = denseRows("2026-05-23", new Array(12).fill(30));
+    const result = await polymarketSettle({
+      event: {
+        id: "evt-abc",
+        slug: "will-london-hottest-on-2026-05-23",
+        description: "https://www.weather.gov/",
+      },
+      now: new Date("2026-05-25T12:00:00Z"),
+      loader: async () => rows,
+      polymarketPublishedValue: 20, // claim 20°C but tradewinds resolves ~30°C
     });
     expect(result.dataQualityAlert).not.toBeNull();
     expect(result.dataQualityAlert).toMatch(/Δ/);
+    expect(result.dataQualityAlert).toContain("°C");
   });
 
   it("refuses to settle ambiguous markets (codex iter-1 P2)", async () => {
@@ -153,7 +174,7 @@ describe("polymarketSettle — settlement", () => {
     ).rejects.toThrow(PolymarketSettlementError);
   });
 
-  it("returns dataQualityAlert null when the values agree within 1°F", async () => {
+  it("returns dataQualityAlert null when the values agree within the unit threshold (°C native)", async () => {
     const rows = denseRows("2026-05-23", new Array(12).fill(30));
     const result = await polymarketSettle({
       event: {
@@ -163,7 +184,7 @@ describe("polymarketSettle — settlement", () => {
       },
       now: new Date("2026-05-25T12:00:00Z"),
       loader: async () => rows,
-      polymarketPublishedValue: 86,
+      polymarketPublishedValue: 30, // matches the C-native resolved value
     });
     expect(result.dataQualityAlert).toBeNull();
   });

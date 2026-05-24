@@ -92,13 +92,31 @@ export interface PolymarketDiscoveryRow {
   readonly resolutionSourceType: PolymarketResolutionSourceType | null;
 }
 
+/**
+ * Native unit of the market's published settlement value. Codex iter-3 P2:
+ * international Polymarket markets publish in whole-°C, US in °F. The
+ * settle engine returns the resolved value in BOTH units so the caller's
+ * comparison against Polymarket's published value uses the matching unit.
+ */
+export type SettlementUnit = "fahrenheit" | "celsius";
+
 /** Settlement result shape. */
 export interface PolymarketSettlementResult {
   readonly eventId: string;
   readonly settlementDate: string; // YYYY-MM-DD
   readonly icao: string;
   readonly measure: "high" | "low" | "default";
+  /**
+   * Resolved temperature in the unit the caller asked for (the `unit`
+   * option; defaults to the station's native unit — F for US-registry
+   * stations, C for international). Convenience pointer to `resolvedValueF`
+   * or `resolvedValueC`.
+   */
   readonly resolvedValue: number;
+  readonly resolvedValueC: number;
+  readonly resolvedValueF: number;
+  /** Which unit `resolvedValue` carries. */
+  readonly unit: SettlementUnit;
   readonly resolutionSourceType: PolymarketResolutionSourceType;
   readonly dataQualityAlert: string | null;
 }
@@ -109,6 +127,17 @@ export interface PolymarketSettleOptions {
   readonly description?: string;
   /** Reference "now" for the finalization-delay check. Defaults to `new Date()`. */
   readonly now?: Date;
-  /** Polymarket's published settlement value, if known. ±1°F/0.6°C diff emits an alert. */
+  /**
+   * Polymarket's published settlement value, if known. The comparison
+   * uses whichever unit `unit` is set to. ±1°F (or ±0.6°C) diff emits an
+   * alert; values outside that band don't throw.
+   */
   readonly polymarketPublishedValue?: number;
+  /**
+   * Resolved-value unit. Defaults to the station's native unit:
+   * °F for the 20 US Kalshi cities; °C for international stations
+   * (matches Polymarket's published-bucket convention per
+   * .planning/research/INGEST-PLANNER-RESEARCH.md). Codex iter-3 P2.
+   */
+  readonly unit?: SettlementUnit;
 }
