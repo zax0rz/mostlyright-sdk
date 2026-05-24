@@ -11,9 +11,11 @@
 //   import { lag, diff, diff2, rolling } from "@tradewinds/core/transforms";
 //   import type { RollingFn } from "@tradewinds/core/transforms";
 //
-// Wave 3 (calendar features) and Wave 4 (cross-features: spread, wind_chill,
-// heat_index, clip_outliers) APPEND to this barrel in subsequent commits.
+// Wave 4 (cross-features: spread, wind_chill, heat_index, clip_outliers)
+// APPENDS to this barrel in subsequent commits. Wave 3 (calendarFeatures)
+// is already wired below.
 
 export { lag } from "./lag.js";
 export { diff, diff2 } from "./diff.js";
 export { ROLLING_FNS, type RollingFn, rolling } from "./rolling.js";
+export { calendarFeatures } from "./calendar.js";

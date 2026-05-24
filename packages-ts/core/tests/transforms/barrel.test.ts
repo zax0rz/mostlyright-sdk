@@ -3,12 +3,16 @@
 // Asserts the @tradewinds/core/transforms barrel surfaces lag, diff, diff2,
 // rolling, ROLLING_FNS, and the RollingFn type. Column-naming convention
 // `{col}_{op}_{param}` is verified end-to-end through the barrel.
+//
+// Extended in TS-W4 Plan 03 to also assert calendarFeatures is wired
+// through the same barrel (Wave 3 appends to the transforms subpath).
 
 import { describe, expect, it } from "vitest";
 
 import {
   ROLLING_FNS,
   type RollingFn,
+  calendarFeatures,
   diff,
   diff2,
   lag,
@@ -16,11 +20,12 @@ import {
 } from "../../src/transforms/index.js";
 
 describe("@tradewinds/core/transforms barrel", () => {
-  it("re-exports four transform functions", () => {
+  it("re-exports five transform functions (lag/diff/diff2/rolling/calendarFeatures)", () => {
     expect(typeof lag).toBe("function");
     expect(typeof diff).toBe("function");
     expect(typeof diff2).toBe("function");
     expect(typeof rolling).toBe("function");
+    expect(typeof calendarFeatures).toBe("function");
   });
 
   it("ROLLING_FNS contains exactly 6 reducers in canonical order", () => {
