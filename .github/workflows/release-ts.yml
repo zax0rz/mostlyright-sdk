@@ -67,13 +67,20 @@ jobs:
         run: pnpm -r run build
 
       - name: Size-limit gates (TS-BUNDLE-01)
-        run: pnpm -r run size 2>&1 || echo "size script optional; non-blocking"
+        # The `size` npm script lives on the workspace ROOT (size-limit
+        # config in `package.json` enumerates per-package built artifacts),
+        # NOT on the workspace member packages. `pnpm -r run size` would
+        # select only the members and silently no-op. Codex iter-2 P2.
+        run: pnpm run size
 
       - name: P0 parity-ticket gate (prod-tag only)
         if: ${{ !contains(github.ref_name, 'rc') }}
+        # parity_status.py exits non-zero when there are open P0 parity
+        # tickets for the requested milestone — that IS the strict-P0
+        # gate. (Earlier draft passed `--strict-p0` which the script
+        # doesn't accept; codex iter-2 P1.)
         run: |
-          python3 scripts/parity_status.py --milestone "TS v0.1.0" --strict-p0
-          # Exits non-zero if any P0 ticket is open. Matches TS-W7 SC#6.
+          python3 scripts/parity_status.py --milestone "TS v0.1.0"
 
       - name: Choose dist-tag (rc → next, non-rc → latest)
         id: dist_tag
