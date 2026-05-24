@@ -466,6 +466,25 @@ Two paired tracks. **PANDAS3** drops the `pandas<3.0` cap (PKG-05) and re-captur
 
 **Phase 6 coverage:** 14 requirements (6 pandas-3 + 8 polars), all mapped to Phase 6.
 
+## Phase 8: Polymarket US Coverage + Per-Issuer Settlement Invariants (v0.2+)
+
+Closes the silent-corruption gap when Polymarket and Kalshi disagree on which station settles the same US city. Today the Polymarket city catalog is international-only (40 entries, zero US) — US Polymarket events bottom out in `PolymarketSettlementError`. `polymarket.KNOWN_WRONG_STATIONS` doesn't exist, so the per-issuer denylist namespace is asymmetric with `kalshi_stations.KNOWN_WRONG_STATIONS`. Adds US cities with empirically-verified Wunderground stations (NYC → KLGA, NOT KNYC) + symmetric per-issuer denylists + Tier 1.5 URL extraction so events embedding `wunderground.com/.../KLGA` resolve without catalog dependency.
+
+- [ ] **POLY-US-01**: Polymarket city catalog (`polymarket_city_stations.json`) extended with US cities. Each entry shaped `{"high": "ICAO", "low": "ICAO", "default": "ICAO"}`. Stations empirically verified by parsing Polymarket event `resolutionSource` URLs (Wunderground regex), NOT mirrored from Kalshi. Per-city Polymarket-event citation URL recorded in a sibling registry (`POLYMARKET_CITY_CITATIONS`) so the source-of-truth is provable + auditable.
+- [ ] **POLY-US-02**: `polymarket.KNOWN_WRONG_STATIONS: Final[Mapping[str, frozenset[str]]]` introduced symmetric to `kalshi_stations.KNOWN_WRONG_STATIONS`. For `nyc`: `{KNYC, KJFK, KEWR}` (Polymarket uses KLGA). Namespace-isolated per issuer (Polymarket's `KLGA` is correct; Kalshi's denylist includes `KLGA` because Kalshi uses `KNYC`). Contract test asserts no Polymarket catalog entry resolves to its own per-city denylist value.
+- [ ] **POLY-US-03**: Tier 1.5 URL extraction in `polymarket._per_event_station` (Python) + `polymarket/resolver.ts` (TS). New helper `extract_icao_from_resolution_source(text)` runs a Wunderground URL regex (`https?://(?:www\.)?wunderground\.com/[^\s]*?\b(K[A-Z]{3})\b`) against `event.description` / `event.resolutionSource` and returns the first matched ICAO. Inserted between Tier 1 (`event.city`) and Tier 2 (slug derive) — when the URL extractor returns a value, it overrides catalog-derived stations and bypasses both `_derive_city` and the city map. Records `resolution_tier="url_extract"` on the discovery/settlement record.
+- [ ] **POLY-US-04**: Cross-issuer assertion test (`tests/test_cross_issuer_station_identity.py`) asserts: `KALSHI_SETTLEMENT_STATIONS["NYC"].station == "KNYC"` AND `POLYMARKET_CITY_STATIONS["nyc"]["default"] == "KLGA"` AND `"KLGA" not in polymarket.KNOWN_WRONG_STATIONS["nyc"]` AND `"KLGA" in kalshi_stations.KNOWN_WRONG_STATIONS` AND `"KNYC" in polymarket.KNOWN_WRONG_STATIONS["nyc"]`. Plus the parametric loop: every Polymarket US city's `default` station does NOT appear in its own per-city denylist; every Kalshi city's station does NOT appear in Kalshi's global denylist.
+- [ ] **POLY-US-05**: Paired TS update via codegen. `schemas/polymarket-city-stations.json` regenerates from the Python source via `scripts/export_schemas.py` (already wired). `packages-ts/markets/src/data/generated/polymarket-city-stations.ts` regenerates via `pnpm codegen`. Schema shape is unchanged (cities map allows additional keys); no manifest version bump. `polymarket.KNOWN_WRONG_STATIONS` is paired in TS as `POLYMARKET_KNOWN_WRONG_STATIONS` (NOT codegen — small enough to maintain hand-paired; alphabetized JSON exporter side-effect would conflate it with the cities map).
+- [ ] **POLY-US-06**: Parity-fixture pre-flight gate. Re-run all 5 Python parity fixtures (`uv run pytest tests/test_parity.py -q`) + TS parity gate (`pnpm --filter @tradewinds/core test parity`) before merging. Phase 8 touches catalog-data + resolver logic but does not touch parity-locked `_internal/_pairs.py` / `_internal/merge/`, so the gate should be green; the run is the empirical proof.
+
+### Phase 8 Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| POLY-US-01..POLY-US-06 | 8 | Pending |
+
+**Phase 8 coverage:** 6 requirements, all mapped to Phase 8 (paired Python + TS per Dual-SDK Rule).
+
 ---
-*Requirements defined: 2026-05-21*
+*Requirements defined: 2026-05-21; Phase 8 added 2026-05-24*
 *Last updated: 2026-05-23 — Phase 6 (pandas 3 readiness + optional polars backend) added; PANDAS3-01..06 and POLARS-01..08 promoted from deferred; 14 new IDs mapped to Phase 6*

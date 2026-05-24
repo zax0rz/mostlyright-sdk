@@ -13,8 +13,14 @@ export const POLYMARKET_CITY_STATIONS: Readonly<Record<string, PolymarketCitySta
   amsterdam: {
     default: "EHAM",
   },
+  atlanta: {
+    default: "KATL",
+  },
   auckland: {
     default: "NZAA",
+  },
+  austin: {
+    default: "KAUS",
   },
   bangkok: {
     default: "VTBS",
@@ -28,17 +34,34 @@ export const POLYMARKET_CITY_STATIONS: Readonly<Record<string, PolymarketCitySta
   berlin: {
     default: "EDDB",
   },
+  boston: {
+    default: "KBOS",
+  },
   brisbane: {
     default: "YBBN",
   },
   buenos_aires: {
     default: "SAEZ",
   },
+  chicago: {
+    default: "KORD",
+    high: "KORD",
+    low: "KORD",
+  },
   copenhagen: {
     default: "EKCH",
   },
+  dallas: {
+    default: "KDFW",
+  },
   delhi: {
     default: "VIDP",
+  },
+  denver: {
+    default: "KDEN",
+  },
+  detroit: {
+    default: "KDTW",
   },
   doha: {
     default: "OTHH",
@@ -57,11 +80,19 @@ export const POLYMARKET_CITY_STATIONS: Readonly<Record<string, PolymarketCitySta
     high: "VHHH",
     low: "VHHH",
   },
+  houston: {
+    default: "KIAH",
+  },
   london: {
     default: "EGLL",
   },
   london_gatwick: {
     default: "EGKK",
+  },
+  los_angeles: {
+    default: "KLAX",
+    high: "KLAX",
+    low: "KLAX",
   },
   madrid: {
     default: "LEMD",
@@ -69,8 +100,14 @@ export const POLYMARKET_CITY_STATIONS: Readonly<Record<string, PolymarketCitySta
   melbourne: {
     default: "YMML",
   },
+  miami: {
+    default: "KMIA",
+  },
   milan: {
     default: "LIMC",
+  },
+  minneapolis: {
+    default: "KMSP",
   },
   moscow: {
     default: "UUEE",
@@ -81,6 +118,11 @@ export const POLYMARKET_CITY_STATIONS: Readonly<Record<string, PolymarketCitySta
   munich: {
     default: "EDDM",
   },
+  nyc: {
+    default: "KLGA",
+    high: "KLGA",
+    low: "KLGA",
+  },
   paris: {
     default: "LFPG",
     high: "LFPG",
@@ -89,14 +131,26 @@ export const POLYMARKET_CITY_STATIONS: Readonly<Record<string, PolymarketCitySta
   paris_orly: {
     default: "LFPO",
   },
+  philadelphia: {
+    default: "KPHL",
+  },
+  phoenix: {
+    default: "KPHX",
+  },
   riyadh: {
     default: "OERK",
   },
   rome: {
     default: "LIRF",
   },
+  san_francisco: {
+    default: "KSFO",
+  },
   sao_paulo: {
     default: "SBGR",
+  },
+  seattle: {
+    default: "KSEA",
   },
   seoul: {
     default: "RKSI",
@@ -129,6 +183,9 @@ export const POLYMARKET_CITY_STATIONS: Readonly<Record<string, PolymarketCitySta
   },
   warsaw: {
     default: "EPWA",
+  },
+  washington_dc: {
+    default: "KDCA",
   },
   wellington: {
     default: "NZWN",
