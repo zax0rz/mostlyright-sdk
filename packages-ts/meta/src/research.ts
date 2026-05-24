@@ -20,6 +20,7 @@ import {
   cacheKeyForObservations,
   defaultCacheStore,
   isLiveSource,
+  isWithinVolatileWindow,
   shouldSkipCacheForCurrentLstMonth,
   shouldSkipCacheForCurrentLstYear,
 } from "@tradewinds/core/internal/cache";
@@ -240,9 +241,34 @@ function sortByObservedAtThenSource(rows: ReadonlyArray<Observation>): Observati
 }
 
 /**
+ * True iff the end-of-year ISO date for `year` falls inside the 30-day
+ * volatile amendment window relative to `now`. Used to gate archive
+ * cache reads/writes for IEM ASOS yearly chunks AND IEM CLI yearly
+ * chunks (iter-5 H9). Rationale: rows from a year whose 12-31 boundary
+ * is within 30 days of "now" may still be amended upstream; caching
+ * them would persist soon-to-be-stale values.
+ *
+ * For `year` strictly less than the current calendar year of `now`, the
+ * 12-31 boundary is well past 30 days back → returns false (cacheable).
+ * For `year` equal to the current LST year, the year-end is in the
+ * future relative to `now` → predicate returns false (the per-year
+ * current-LST-year gate handles that case first and is still required).
+ * The window only fires for the immediate-post-year window — exactly
+ * the case where freshly-archived rows are most likely to be revised.
+ */
+function isYearVolatile(year: number, now: Date): boolean {
+  const yearEnd = `${String(year).padStart(4, "0")}-12-31`;
+  return isWithinVolatileWindow(yearEnd, formatDate(now), 30);
+}
+
+/**
  * Fetch CLI climate per-year with read-through cache. Yearly chunks are
  * cached at `cacheKeyForClimate(code, year)`. Skip rules:
  *   - Current LST year — mutable, never cached.
+ *   - 30-day volatile amendment window (iter-5 H9) — chunks whose
+ *     year-end is within 30 days of `now` MUST be re-fetched. The
+ *     window only fires for the year immediately preceding "now"
+ *     once the calendar rolls over.
  *   - Live source (`.live`) — never cached (CLI is archive `iem.cli` →
  *     this never fires today; defensive for future).
  */
@@ -257,7 +283,13 @@ async function fetchCliWithCache(
 ): Promise<ClimateObservation[]> {
   const acc: ClimateObservation[] = [];
   for (let year = fromYear; year <= toYear; year++) {
-    const skip = shouldSkipCacheForCurrentLstYear(cacheCode, year, now);
+    const skipCurrentYear = shouldSkipCacheForCurrentLstYear(cacheCode, year, now);
+    // iter-5 H9: the 30-day volatile amendment window MUST also block
+    // cache reads — a hit served from inside the window would re-serve
+    // soon-to-be-amended rows. Always prefer a fresh fetch when the
+    // window is active.
+    const skipVolatile = isYearVolatile(year, now);
+    const skip = skipCurrentYear || skipVolatile;
     if (cache !== null && !skip) {
       const cached = await cache.get<ClimateObservation[]>(cacheKeyForClimate(cacheCode, year));
       if (cached !== null) {
@@ -271,9 +303,9 @@ async function fetchCliWithCache(
     const cliRaw = await downloadCliRange(fetchIcao, year, year, cliOpts);
     const parsed = parseCliResponse(cliRaw, cacheCode);
     acc.push(...parsed);
-    // Write-through: cache only when (1) backend present, (2) skip permits,
-    // (3) source isn't `.live` (defensive — iem.cli is archive). All parsed
-    // rows share the same `source`; sample the first.
+    // Write-through: cache only when (1) backend present, (2) neither skip
+    // gate fires, (3) source isn't `.live` (defensive — iem.cli is
+    // archive). All parsed rows share the same `source`; sample the first.
     const sample = parsed[0]?.source;
     if (cache !== null && !skip && !isLiveSource(sample)) {
       await cache.set(cacheKeyForClimate(cacheCode, year), parsed);
@@ -305,9 +337,16 @@ async function fetchIemAsosWithCache(
       // at the cache-key level where Python's per-month observations cache
       // lives).
       const skipCurrentMonth = shouldSkipCacheForCurrentLstYear(stationCode, year, now);
+      // iter-5 H9: 30-day volatile amendment window gate. When the
+      // chunk's year-end is within 30 days of `now`, neither read nor
+      // write the cache for this year — IEM may publish amendments
+      // (corrections, late-arriving METARs) in that window and a cache
+      // hit would re-serve stale data.
+      const skipVolatile = isYearVolatile(year, now);
+      const skipCache = skipCurrentMonth || skipVolatile;
 
       let yearRows: Observation[] | null = null;
-      if (cache !== null && !skipCurrentMonth) {
+      if (cache !== null && !skipCache) {
         const cached = await cache.get<Observation[]>(cacheKey);
         if (cached !== null) yearRows = cached;
       }
@@ -332,7 +371,7 @@ async function fetchIemAsosWithCache(
         }
         yearRows = fetched;
         const sample = fetched[0]?.source;
-        if (cache !== null && !skipCurrentMonth && !isLiveSource(sample)) {
+        if (cache !== null && !skipCache && !isLiveSource(sample)) {
           await cache.set(cacheKey, fetched);
         }
       }

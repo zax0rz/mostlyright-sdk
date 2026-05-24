@@ -16,13 +16,18 @@
 //     one `cache.set` MUST carry it (proving the cache actually writes).
 //   - keeps the `skipLive` assertion (no `.live`-suffixed key written)
 //
-// Note on `skipVolatile`: research.ts uses ONLY
-// `shouldSkipCacheForCurrentLstYear` today — the 30-day volatile-window
-// rule from skip-rules.ts is a TS-NEW primitive not yet wired into the
-// orchestrator (CROSS-SDK-SYNC parity ticket per skip-rules.ts comment).
-// Asserting `skipVolatile.true → no cache.set in window` would
-// fabricate a passing test for behavior the orchestrator doesn't have.
-// That assertion is deferred and called out below.
+// Iter-5 H9: the 30-day volatile-window rule is NOW wired into
+// research.ts at the year-chunk level (archive-as-of = `${year}-12-31`).
+// Assertion 2 below combines BOTH gates — `wroteYear` is expected iff
+// neither `skipCurrentMonth` NOR `skipVolatile` fires. The fixture's
+// case-2 + case-3 `now` were bumped to 2025-02-15 to push year=2024
+// chunks past the volatile window, so the existing
+// `skipCurrentMonth=false → wroteYear=true` semantics still hold for
+// those cases. Case-4 keeps `now=2025-01-15` to exercise the new
+// volatile-skip path (year=2024 is 15 days past year-end, inside the
+// 30-day amendment window). A separate Assertion 3 walks every
+// cache.set value and confirms no row inside the 30-day window leaked
+// into the cache.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -159,12 +164,14 @@ describe("research() — 5-case skip behavior replay (TS-W3 SC#2)", () => {
           }
         }
 
-        // --- Assertion 2: skipCurrentMonth maps to the year-keyed cache
-        // The orchestrator uses `shouldSkipCacheForCurrentLstYear`, which
-        // for the fixture's `now` value is true iff `c.year` is the current
-        // LST year. All caching is year-granular, so we check whether any
-        // cache.set call includes `:${c.year}:` (the colon-delimited year
-        // segment in both cacheKeyForObservations and cacheKeyForClimate).
+        // --- Assertion 2: skipCurrentMonth + skipVolatile compose to
+        // determine whether the year-keyed cache was written.
+        // The orchestrator uses BOTH `shouldSkipCacheForCurrentLstYear`
+        // AND `isWithinVolatileWindow` (iter-5 H9) — `wroteYear` is
+        // expected iff neither gate fires. All caching is year-granular,
+        // so we check whether any cache.set call includes `:${c.year}:`
+        // (the colon-delimited year segment in both
+        // cacheKeyForObservations and cacheKeyForClimate).
         const yearMarker = `:${c.year}:`;
         const yearMarkerSuffix = `:${c.year}`; // climate key has no trailing month
         const wroteYear = keysWritten.some(
@@ -173,30 +180,55 @@ describe("research() — 5-case skip behavior replay (TS-W3 SC#2)", () => {
             k.endsWith(yearMarkerSuffix) ||
             k.includes(`${yearMarkerSuffix}:`),
         );
-        if (c.expected.skipCurrentMonth) {
-          expect(
-            wroteYear,
-            `skipCurrentMonth=true: no cache.set may carry year ${c.year} (keys=${JSON.stringify(keysWritten)})`,
-          ).toBe(false);
-        } else {
-          // When NOT skipping, the orchestrator MUST have written at least
-          // one key for the fetched year. Otherwise the cache layer is
-          // silently no-op'ing valid archive responses.
-          expect(
-            wroteYear,
-            `skipCurrentMonth=false: expected cache.set to write at least one key for year ${c.year} (keys=${JSON.stringify(keysWritten)})`,
-          ).toBe(true);
-        }
+        const expectedWroteYear = !c.expected.skipCurrentMonth && !c.expected.skipVolatile;
+        expect(
+          wroteYear,
+          `expected wroteYear=${expectedWroteYear} (skipCurrentMonth=${c.expected.skipCurrentMonth}, skipVolatile=${c.expected.skipVolatile}) but got ${wroteYear}; keys=${JSON.stringify(keysWritten)}`,
+        ).toBe(expectedWroteYear);
 
-        // --- Assertion 3: skipVolatile — DEFERRED. -----------------------
-        // research.ts does NOT call isWithinVolatileWindow today (the
-        // TS-NEW primitive is not yet wired into the orchestrator). Adding
-        // an assertion here would either fabricate a green test for
-        // behavior that doesn't exist, or fail every fixture. Tracking
-        // the wire-in as a CROSS-SDK-SYNC parity follow-up. Once the
-        // orchestrator integrates the volatile-window check, switch the
-        // following void to an assertion analogous to skipCurrentMonth.
-        void c.expected.skipVolatile;
+        // --- Assertion 3: skipVolatile — no row inside the 30-day
+        // amendment window relative to `c.now` may leak into any
+        // cache.set value (iter-5 H9). When the orchestrator decides
+        // a year-chunk is volatile it skips the write entirely, so
+        // this assertion is vacuously satisfied for the chunk-gated
+        // path. The check is still kept because:
+        //   1. It guards against a future "partial-chunk caching"
+        //      regression that writes some rows even when the chunk
+        //      end is volatile.
+        //   2. It documents the row-level invariant the predicate
+        //      enforces — useful when extending to per-row gating.
+        // For rows lacking `observation_date` (Observation shape uses
+        // `observed_at` ISO datetime) we extract the YYYY-MM-DD prefix.
+        const nowIso = c.now.slice(0, 10);
+        for (let idx = 0; idx < valuesWritten.length; idx++) {
+          const val = valuesWritten[idx];
+          if (!Array.isArray(val)) continue;
+          for (let rowIdx = 0; rowIdx < val.length; rowIdx++) {
+            const row = val[rowIdx];
+            if (row === null || typeof row !== "object") continue;
+            const rec = row as { observed_at?: unknown; observation_date?: unknown };
+            const rawDate =
+              typeof rec.observation_date === "string"
+                ? rec.observation_date
+                : typeof rec.observed_at === "string"
+                  ? rec.observed_at.slice(0, 10)
+                  : null;
+            if (rawDate === null) continue;
+            // Re-run the predicate with the same `days=30` the orchestrator
+            // uses; nowIso plays the archiveAsOf role.
+            const inWindow = (() => {
+              const e = Date.parse(`${rawDate}T00:00:00Z`);
+              const a = Date.parse(`${nowIso}T00:00:00Z`);
+              if (!Number.isFinite(e) || !Number.isFinite(a)) return false;
+              const deltaDays = (a - e) / 86_400_000;
+              return deltaDays >= 0 && deltaDays <= 30;
+            })();
+            expect(
+              inWindow,
+              `cache.set call #${idx} (key=${JSON.stringify(keysWritten[idx])}) row #${rowIdx} carries date=${JSON.stringify(rawDate)} inside the 30-day volatile window relative to now=${nowIso} — orchestrator must skip writes for chunks whose data falls in [now-30d, now]`,
+            ).toBe(false);
+          }
+        }
       },
     );
   }
