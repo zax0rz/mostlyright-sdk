@@ -229,3 +229,175 @@ describe("research() — 5-case skip behavior replay (TS-W3 SC#2)", () => {
     });
   }
 });
+
+// Iter-10 H21: the fixture-driven `skipLive` assertion above is vacuous in
+// every case because every fixture uses a stale 2024 date window relative
+// to its `now`. `anyDateOverlapsAwc(toDate, hours=168, now)` short-circuits
+// — AWC fetch never runs — and the minimal fetch mock above returns `[]`
+// for AWC anyway. The only rows in any cache.set call come from the test's
+// pre-loaded IEM-source sentinel (`source: "iem"`), so `isLiveSource(...)`
+// is trivially false for everything inspected. A regression that wrote
+// `.live`-sourced rows to the cache would NOT be caught.
+//
+// This complementary test (H21 fix) constructs a FRESH window:
+//   - `now` is 2025-01-15
+//   - The date range straddles 2024-06-01 → 2025-01-14, so:
+//       (a) AWC's 7-day window (168h before `now`) overlaps `toDate`, so
+//           `anyDateOverlapsAwc` returns true and the AWC fetch path
+//           ACTUALLY executes — exercising the real live-rows-flowing-
+//           through-the-orchestrator codepath.
+//       (b) IEM ASOS months for June–December 2024 are neither the
+//           current LST month nor volatile (>30 days past `now`), so
+//           the cache.set guard at research.ts:549-556 is NOT
+//           short-circuited — `cache.set` actually fires.
+//   - The AWC mock returns valid METAR JSON (so AWC rows enter the
+//     merge pipeline; they're parsed with `source: "awc"` per
+//     `awcToObservation`).
+//
+// With cache.set ACTUALLY firing, the `isLiveSource` invariant is checked
+// against real cache writes. The assertion is non-vacuous: a regression
+// that started tagging cached rows with a `.live`-suffixed source (e.g.,
+// a future catalog-layer stamping refactor) would surface here.
+//
+// We additionally pre-load the cache with a synthetic `.live`-sourced
+// sentinel row and verify the orchestrator never re-emits it as part of a
+// subsequent cache.set value. This guards against "the cache.get path
+// echoes its read value back into cache.set" — a regression that would
+// permit `.live` rows to persist across runs.
+describe("research() — fresh-window skipLive regression (iter-10 H21)", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("fresh window with AWC overlap: no cache.set value contains any .live-sourced row", async () => {
+    // Configure the fetch mock to return real-ish data so the orchestrator
+    // exercises live + archive paths.
+    //
+    // - AWC mock: one METAR ~2h before `now` (well inside the 168h window).
+    //   The AWC parser tags it `source: "awc"` (NOT `.live` — TS today
+    //   never produces `.live`-suffixed row sources; the suffix is a
+    //   catalog-layer source-id). The assertion still walks every row to
+    //   guard against a future regression that introduces `.live`-tagged
+    //   row emission.
+    // - CLI mock: one record per queried year so cache.set fires for CLI.
+    // - IEM ASOS mock: an empty CSV header (no parsed rows; cache write
+    //   skipped because monthRows is empty — but the orchestrator still
+    //   touches the gate, so any regression in the gate's truthiness
+    //   surfaces). The point is to verify the CLI + observation gates.
+    const now = new Date("2025-01-15T12:00:00Z");
+    const awcObsTimeSec = Math.floor(now.getTime() / 1000) - 2 * 3600;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = typeof input === "string" ? input : ((input as Request).url ?? String(input));
+      if (url.includes("aviationweather.gov")) {
+        // AWC METAR with all required fields; AWC parser will emit
+        // `source: "awc"` (NOT `.live`).
+        const metar = [
+          {
+            icaoId: "KNYC",
+            reportTime: "2025-01-15T10:00:00Z",
+            obsTime: awcObsTimeSec,
+            temp: 5.0,
+            dewp: -1.0,
+            wspd: 8,
+            wdir: 270,
+            rawOb: "KNYC 151000Z 27008KT 10SM CLR 05/M01 A3010",
+          },
+        ];
+        return new Response(JSON.stringify(metar), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      if (url.includes("mesonet.agron.iastate.edu/json/cli.py")) {
+        return new Response(
+          JSON.stringify({
+            results: [
+              { valid: "2024-06-15", high: 80, low: 60, product: "test-cli" },
+              { valid: "2024-12-15", high: 35, low: 20, product: "test-cli" },
+            ],
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+      if (url.includes("mesonet.agron.iastate.edu/cgi-bin/request/asos.py")) {
+        return new Response("station,valid\n", {
+          status: 200,
+          headers: { "content-type": "text/plain" },
+        });
+      }
+      if (url.includes("ncei.noaa.gov/oa/global-historical-climatology-network")) {
+        return new Response("", { status: 404 });
+      }
+      throw new Error(`Unexpected fetch URL: ${url}`);
+    });
+
+    const store = new MemoryStore();
+
+    // Pre-load the cache with a synthetic `.live`-tagged sentinel under a
+    // key the orchestrator won't read (a deliberate "poison" entry). If
+    // any future regression caused the orchestrator to read this entry
+    // and re-emit its rows on cache.set, the post-call walk catches it.
+    const poisonKey = cacheKeyForObservations("KNYC", 2024, 6, "awc-poisoned");
+    await store.set(poisonKey, [
+      { source: "awc.live", observed_at: "2024-06-15T12:00:00Z", station_code: "NYC" },
+    ]);
+
+    const setSpy = vi.spyOn(store, "set");
+
+    // Fresh window: AWC overlaps `now`; IEM months June-Dec 2024 are
+    // non-volatile (>30 days past now=2025-01-15) and non-current-LST,
+    // so cache.set fires for at least the CLI path (which writes one
+    // entry per year — for 2024 and 2025 the queried range spans both).
+    await research("NYC", "2024-06-01", "2025-01-14", {
+      cache: store,
+      now,
+    });
+
+    const valuesWritten = setValues(setSpy);
+    const keysWritten = setKeys(setSpy);
+
+    // The fresh window means cache.set MUST have fired at least once
+    // (else the test would be vacuous like the fixture-loop assertion).
+    // If this assertion ever flips to 0, the orchestrator's cache wiring
+    // regressed and the entire H21 test is moot — fail loudly.
+    expect(
+      valuesWritten.length,
+      `expected at least one cache.set call in the fresh window scenario; got ${valuesWritten.length}. If the orchestrator's cache writes were short-circuited, this assertion is the canary — investigate before treating H21 as covered.`,
+    ).toBeGreaterThan(0);
+
+    // The actual H21 invariant: no cache.set value may contain any row
+    // whose `source` ends with `.live`. Walk every value (rows array)
+    // and every row inside.
+    for (let idx = 0; idx < valuesWritten.length; idx++) {
+      const val = valuesWritten[idx];
+      if (!Array.isArray(val)) continue;
+      for (let rowIdx = 0; rowIdx < val.length; rowIdx++) {
+        const row = val[rowIdx];
+        const src =
+          row !== null && typeof row === "object"
+            ? (row as { source?: unknown }).source
+            : undefined;
+        if (typeof src !== "string") continue;
+        expect(
+          isLiveSource(src),
+          `cache.set call #${idx} (key=${JSON.stringify(keysWritten[idx])}) row #${rowIdx} has live source=${JSON.stringify(src)} — the orchestrator must never persist .live-suffixed rows even in the fresh-window path`,
+        ).toBe(false);
+      }
+    }
+
+    // Defense-in-depth: prove the predicate semantics that the assertion
+    // relies on. If isLiveSource ever regressed to return `false` for
+    // a `.live` string, the loop above would pass vacuously regardless
+    // of orchestrator behavior. These two expectations pin the predicate.
+    expect(isLiveSource("awc.live")).toBe(true);
+    expect(isLiveSource("iem.live")).toBe(true);
+    expect(isLiveSource("ghcnh.live")).toBe(true);
+    expect(isLiveSource("awc")).toBe(false);
+    expect(isLiveSource("iem")).toBe(false);
+    expect(isLiveSource("ghcnh")).toBe(false);
+    expect(isLiveSource("iem.archive")).toBe(false);
+  });
+});
