@@ -27,19 +27,34 @@ TypeScript packages. Read [the Changesets docs](https://github.com/changesets/ch
 
 ## v0.1.0 release plan
 
-The four packages currently sit at `0.0.0`. Bumping minor-via-changeset
-from `0.0.0` does NOT yield `0.1.0` (changesets pre-1.0 rules promote
-minor to the next 0.x — but in a `fixed` group the safest path is to
-**manually seed `0.1.0` before the first changeset run**. Codex iter-3
-P2 flagged this; the explicit sequence avoids the 0.0.0 → 1.0.0 trap:
+The four packages currently sit at `0.0.0`. npm versions are immutable
+once published, so `vts-0.1.0rc1` and `vts-0.1.0` MUST publish under
+different package versions or the second publish will be rejected
+(codex iter-4 P1).
+
+The rc tag publishes `0.1.0-rc.1`; the final tag publishes `0.1.0`.
 
 ```bash
-# One-time seed before the v0.1.0rc1 tag:
+# Step 1 — seed 0.1.0-rc.1 across all four packages, then tag vts-0.1.0rc1:
+for pkg in packages-ts/core packages-ts/weather packages-ts/markets packages-ts/meta; do
+  pnpm --filter "./$pkg" exec npm version 0.1.0-rc.1 --no-git-tag-version
+done
+git add -A && git commit -m "chore(release): seed 0.1.0-rc.1"
+git tag vts-0.1.0rc1 && git push origin vts-0.1.0rc1
+# release-ts.yml publishes --tag next.
+
+# Step 2 — after the ≥1-week soak, bump to 0.1.0:
 for pkg in packages-ts/core packages-ts/weather packages-ts/markets packages-ts/meta; do
   pnpm --filter "./$pkg" exec npm version 0.1.0 --no-git-tag-version
 done
-# Then commit the version bumps and proceed with changesets for v0.1.x.
+git add -A && git commit -m "chore(release): promote 0.1.0"
+git tag vts-0.1.0 && git push origin vts-0.1.0
+# release-ts.yml publishes --tag latest (after P0 parity-ticket gate).
 ```
+
+For ongoing v0.1.x releases, switch to the changesets flow (`pnpm
+changeset` / `pnpm changeset version`); the seed step above only
+applies to the first publish.
 
 - `vts-0.1.0rc1` → npm `--tag next`, soak for ≥1 week against the in-repo
   `packages-ts/examples/chrome-extension-mvp/` sample.
