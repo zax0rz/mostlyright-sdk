@@ -86,41 +86,48 @@ export function deriveCity(event: PolymarketEventRaw): string | null {
 }
 
 // Phase 8 — Tier 1.5 URL extraction (POLY-US-03).
-// Wunderground PWS URL pattern; captures K-prefix ICAO. US-only by design —
-// international Wunderground URLs use lat/lng or alternate IDs and fall back
-// to Tier 2 city-derive.
-const WUNDERGROUND_ICAO_RE = /https?:\/\/(?:www\.)?wunderground\.com\/[^\s<>"')]*?\b(K[A-Z]{3})\b/i;
+// Wunderground PWS / airport / weather-station URL pattern; captures K-prefix
+// ICAO from CANONICAL settlement paths only — not arbitrary Wunderground URL
+// paths. Matches: /pws/{ICAO}, /dashboard/pws/{ICAO}, /history/daily/{ICAO},
+// /history/airport/{ICAO}, /weather-station/{ICAO}.
+//
+// Iter-1 architect HIGH: the original loose pattern matched any K-prefix
+// token anywhere in a Wunderground URL, allowing incidental words inside
+// slugs (e.g., news/KIDS-summer-2024 → "KIDS") to silently swap the
+// settlement station. The tightened pattern eliminates the silent-corruption
+// window. US-only constraint (international URLs use lat/lng or alternate
+// IDs and fall back to Tier 2 city-derive).
+const WUNDERGROUND_ICAO_RE =
+  /https?:\/\/(?:www\.)?wunderground\.com\/(?:dashboard\/)?(?:pws|history\/daily|history\/airport|weather-station)\/(K[A-Z]{3})(?=[/?#\s]|$)/gi;
 
 /**
- * Extract the first ICAO from a Wunderground URL in `text`.
+ * Extract the canonical Wunderground PWS / airport ICAO from `text`.
  *
  * Tier 1.5 of the resolver chain — runs between explicit `event.city`
- * and slug-derive. When a Polymarket event embeds a Wunderground URL
- * pointing at a specific PWS station, the URL IS the source of truth;
- * no catalog lookup needed.
+ * and slug-derive. When a Polymarket event embeds a Wunderground PWS
+ * URL, the URL IS the source of truth; no catalog lookup needed.
  *
- * Returns uppercase ICAO (4 chars, leading K) if a Wunderground URL with
- * an ICAO is found; null otherwise. Tolerates null/undefined/empty/non-
- * string for caller convenience.
+ * Multi-URL disambiguation: when multiple canonical Wunderground URLs
+ * appear, ALL extracted ICAOs MUST agree. Disagreement returns null so
+ * the resolver falls through to Tier 2 city-derive (prevents an
+ * issuer-side citation URL from silently swapping the settlement station).
+ *
+ * Returns uppercase ICAO (4 chars, leading K) when a canonical URL is
+ * found AND any additional canonical URLs agree. Null otherwise —
+ * including the disagreement case.
  */
 export function extractIcaoFromResolutionSource(text: string | null | undefined): string | null {
   if (typeof text !== "string" || text.length === 0) return null;
-  const m = text.match(WUNDERGROUND_ICAO_RE);
-  if (m === null || m[1] === undefined) return null;
-  return m[1].toUpperCase();
-}
-
-// Reverse-lookup the canonical city for a given ICAO. Linear scan over the
-// small catalog (≤60 entries) — no perf concern. Returns null when the ICAO
-// is not represented in any catalog entry (e.g. a private PWS).
-function findCityForIcao(icao: string): string | null {
-  for (const [city, entry] of Object.entries(POLYMARKET_CITY_STATIONS)) {
-    if (entry === undefined) continue;
-    if (entry.default === icao || entry.high === icao || entry.low === icao) {
-      return city;
-    }
+  // Reset lastIndex on the global regex so multiple matchAll calls are safe
+  // (the regex literal is reused across calls).
+  const matches = [...text.matchAll(WUNDERGROUND_ICAO_RE)];
+  if (matches.length === 0) return null;
+  const unique = new Set<string>();
+  for (const m of matches) {
+    if (m[1] !== undefined) unique.add(m[1].toUpperCase());
   }
-  return null;
+  if (unique.size !== 1) return null; // 0 or disagreement → abstain
+  return [...unique][0] ?? null;
 }
 
 /**
@@ -146,8 +153,16 @@ export function resolveStationForEvent(
 
   // Tier 1.5: URL extraction from description / resolutionSource.
   // The Wunderground URL is the issuer's canonical proof — beats catalog
-  // lookup. Defer gate still applies so a URL injection cannot silently
-  // route an RCTP / HK-low market.
+  // lookup for ICAO. Defer gate still applies so a URL injection cannot
+  // silently route an RCTP / HK-low market.
+  //
+  // Iter-1 TS-architect CRITICAL: the `city` field is owned by the slug-
+  // derive layer (matching Python's `_derive_city`-before-resolve pattern in
+  // `polymarket_discover`). Tier 1.5 ONLY sets `icao`; `city` is whatever
+  // the caller / slug-derive resolved to BEFORE the URL was considered.
+  // Returning `findCityForIcao(extractedIcao)` here would drift the TS row's
+  // `city` column away from the Python row for the same event — silent
+  // per-row source-identity drift, the parity-rubric CRITICAL.
   const desc = typeof event.description === "string" ? event.description : "";
   const resSrc =
     typeof (event as { resolutionSource?: unknown }).resolutionSource === "string"
@@ -171,11 +186,12 @@ export function resolveStationForEvent(
         `Polymarket market for deferred station ${extractedIcao} (measure=default) requires v0.2 client`,
       );
     }
-    // Reverse-lookup the city for the extracted ICAO; fall back to explicit
-    // city (if set) or empty string when neither resolves (the ICAO is the
-    // authoritative resolution target — discovery can still attribute it).
-    const fallbackCity = findCityForIcao(extractedIcao) ?? cityKey ?? "";
-    return { city: fallbackCity, icao: extractedIcao, stationMeasure: "default" };
+    // City: explicit Tier 1 wins; otherwise slug-derived; otherwise empty.
+    // This mirrors Python `polymarket_discover`'s ordering — `_derive_city`
+    // populates `event.city` BEFORE `resolve_station_for_event` runs, so the
+    // explicit-or-derived city is always the `city` column emitted on the row.
+    const cityForRow = cityKey ?? deriveCity(event) ?? "";
+    return { city: cityForRow, icao: extractedIcao, stationMeasure: "default" };
   }
 
   // Tier 2: scan slug + title + tags.

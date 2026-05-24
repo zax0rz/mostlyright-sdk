@@ -15,10 +15,13 @@ data source ships in v0.2 (Taipei CWA, Hong Kong-lowest HKO) by raising
 from __future__ import annotations
 
 import json
+import logging
 import re
 from pathlib import Path
 
 from tradewinds.international import DEFERRED_STATIONS, DeferredMarketError
+
+log = logging.getLogger(__name__)
 
 __all__ = [
     "DEFERRED_HK_MEASURES",
@@ -60,40 +63,67 @@ _HIGH_RE = re.compile(r"\b(highest|high|hottest|warmest|max(?:imum)?)\b", re.IGN
 #: Regex selecting tokens that signal a "low" (daily-min) market.
 _LOW_RE = re.compile(r"\b(lowest|low|coldest|coolest|min(?:imum)?)\b", re.IGNORECASE)
 
-#: Wunderground PWS URL pattern. Captures the trailing ICAO in URLs like:
-#:   https://www.wunderground.com/dashboard/pws/KLGA
-#:   https://wunderground.com/history/daily/KLGA/date/2026-05-23
-#: The ICAO is always 4 chars starting with K (US-only constraint — international
-#: Wunderground URLs use lat/lng or alternate IDs and are NOT captured by this
-#: regex, falling back to Tier 2 city-derive).
+#: Wunderground PWS / airport URL pattern. Matches ONLY canonical settlement
+#: URL paths (`/pws/{ICAO}`, `/dashboard/pws/{ICAO}`, `/history/daily/{ICAO}`,
+#: `/history/airport/{ICAO}`, `/weather-station/{ICAO}`) — not arbitrary
+#: Wunderground URL paths. ICAO is exactly 4 chars starting with K (US-only
+#: constraint — international Wunderground URLs use lat/lng or alternate IDs).
+#:
+#: Codex iter-1 + python-architect iter-1 HIGH: the original loose pattern
+#: (`wunderground\.com/[^\s<>"')]*?\b(K[A-Z]{3})\b`) matched any K-prefix token
+#: anywhere in a Wunderground URL, including incidental words inside slugs
+#: (e.g., `news/KIDS-summer-2024` would match "KIDS"). Tightening to the
+#: canonical settlement paths eliminates the silent-corruption window.
 _WUNDERGROUND_ICAO_RE = re.compile(
-    r"https?://(?:www\.)?wunderground\.com/[^\s<>\"')]*?\b(K[A-Z]{3})\b",
+    r"https?://(?:www\.)?wunderground\.com/"
+    r"(?:dashboard/)?(?:pws|history/daily|history/airport|weather-station)/"
+    r"(K[A-Z]{3})(?=[/?#\s]|$)",
     re.IGNORECASE,
 )
 
 
 def extract_icao_from_resolution_source(text: str | None) -> str | None:
-    """Extract the first ICAO from a Wunderground URL in ``text``.
+    """Extract the canonical Wunderground PWS / airport ICAO from ``text``.
 
     Tier 1.5 of the resolver chain — runs between explicit ``event.city``
-    and slug-derive. When a Polymarket event embeds a Wunderground URL
-    pointing at a specific PWS station, the URL IS the source of truth;
+    and slug-derive. When a Polymarket event embeds a Wunderground PWS
+    URL pointing at a specific station, the URL IS the source of truth;
     no catalog lookup needed.
+
+    Multi-URL disambiguation: when the text contains MULTIPLE canonical
+    Wunderground URLs, ALL extracted ICAOs MUST agree. If they don't, the
+    function returns None (Tier 1.5 abstains; resolver falls through to
+    Tier 2 city-derive). This prevents an issuer-side typo or an
+    explanatory citation URL from silently swapping the settlement
+    station — first-match-wins on disagreeing URLs would be silent
+    corruption.
 
     Args:
         text: ``event.description`` / ``event.resolutionSource`` content.
             Tolerates None / empty / non-string for caller convenience.
 
     Returns:
-        Uppercase ICAO (4 chars, leading K) if a Wunderground URL with an
-        ICAO is found; None otherwise.
+        Uppercase ICAO (4 chars, leading K) when a canonical Wunderground
+        URL is found AND any additional canonical URLs agree. None
+        otherwise — including the disagreement case (caller falls
+        through to Tier 2).
     """
     if not text or not isinstance(text, str):
         return None
-    match = _WUNDERGROUND_ICAO_RE.search(text)
-    if match is None:
+    matches = _WUNDERGROUND_ICAO_RE.findall(text)
+    if not matches:
         return None
-    return match.group(1).upper()
+    unique = {m.upper() for m in matches}
+    if len(unique) > 1:
+        # Disagreement — abstain. Caller falls through to Tier 2.
+        log.warning(
+            "extract_icao_from_resolution_source: %d disagreeing ICAOs in text "
+            "(%s); abstaining (Tier 1.5 returns None)",
+            len(unique),
+            sorted(unique),
+        )
+        return None
+    return next(iter(unique))
 
 
 def load_polymarket_city_stations() -> dict[str, dict[str, str]]:

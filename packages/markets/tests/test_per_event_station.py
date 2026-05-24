@@ -213,12 +213,39 @@ class TestExtractIcaoFromResolutionSource:
             == "KLGA"
         )
 
-    def test_history_url_with_date_returns_KLGA(self):
+    def test_bare_pws_path_returns_KLGA(self):
+        assert extract_icao_from_resolution_source("https://wunderground.com/pws/KLGA") == "KLGA"
+
+    def test_history_daily_url_with_date_returns_KLGA(self):
         assert (
             extract_icao_from_resolution_source(
                 "see https://www.wunderground.com/history/daily/KLGA/date/2026-05-23"
             )
             == "KLGA"
+        )
+
+    def test_history_airport_url_returns_KORD(self):
+        assert (
+            extract_icao_from_resolution_source(
+                "https://www.wunderground.com/history/airport/KORD/2026/5/23/DailyHistory.html"
+            )
+            == "KORD"
+        )
+
+    def test_weather_station_url_returns_KSFO(self):
+        assert (
+            extract_icao_from_resolution_source("https://wunderground.com/weather-station/KSFO")
+            == "KSFO"
+        )
+
+    def test_noncanonical_news_path_returns_None(self):
+        """Architect iter-1 HIGH: incidental K-prefix tokens in non-canonical
+        Wunderground URL paths (news, dashboards, slugs) MUST NOT extract."""
+        assert (
+            extract_icao_from_resolution_source(
+                "https://www.wunderground.com/news/2024-summer-KIDS-overview"
+            )
+            is None
         )
 
     def test_weather_gov_url_returns_None(self):
@@ -245,17 +272,39 @@ class TestExtractIcaoFromResolutionSource:
         # Defensive — callers occasionally pass back raw dict values.
         assert extract_icao_from_resolution_source(12345) is None  # type: ignore[arg-type]
 
+    def test_disagreeing_multi_url_returns_None(self):
+        """Architect iter-1 HIGH: multiple disagreeing canonical URLs → abstain."""
+        text = (
+            "Primary https://www.wunderground.com/dashboard/pws/KLAX "
+            "or use https://www.wunderground.com/dashboard/pws/KSFO instead"
+        )
+        assert extract_icao_from_resolution_source(text) is None
+
+    def test_agreeing_multi_url_returns_the_ICAO(self):
+        text = (
+            "Primary https://www.wunderground.com/dashboard/pws/KLAX "
+            "and mirror https://www.wunderground.com/history/daily/KLAX/date/2026-05-23"
+        )
+        assert extract_icao_from_resolution_source(text) == "KLAX"
+
 
 class TestResolverTier1_5:
     def test_url_extraction_overrides_catalog(self, city_map):
-        """Tier 1.5 wins over catalog lookup — the URL is the issuer's proof."""
+        """Tier 1.5 wins over catalog lookup — the URL is the issuer's proof.
+
+        Architect iter-1 HIGH: prior version used city=chicago + URL=KORD,
+        where catalog and URL both returned KORD — tautological. The bite-y
+        fixture uses a city whose catalog ICAO disagrees with the URL, so the
+        test only passes if Tier 1.5 actually fires.
+        """
         event = {
-            "city": "chicago",
+            "city": "chicago",  # catalog → KORD
             "title": "Chicago daily high",
-            "description": "Resolves via https://www.wunderground.com/dashboard/pws/KORD",
+            "description": "Resolves via https://www.wunderground.com/dashboard/pws/KLAX",
         }
         icao, _ = resolve_station_for_event(event, city_map)
-        assert icao == "KORD"
+        # URL wins, NOT the chicago→KORD catalog default.
+        assert icao == "KLAX"
 
     def test_url_extraction_works_without_city(self, city_map):
         """Tier 1.5 alone resolves an event with no city field."""
@@ -273,6 +322,50 @@ class TestResolverTier1_5:
         }
         icao, _ = resolve_station_for_event(event, city_map)
         assert icao == "KLGA"
+
+    def test_multi_url_disagreement_abstains(self, city_map):
+        """Architect iter-1 HIGH #2: multiple disagreeing Wunderground URLs
+        in description → Tier 1.5 abstains; resolver falls through to Tier 2.
+
+        The bite-y check: this event has city=chicago (catalog→KORD) + two
+        disagreeing URLs (KLAX + KSFO). Tier 1.5 must abstain so the
+        resolver falls through to the chicago→KORD catalog answer.
+        Otherwise first-match-wins would silently route to KLAX.
+        """
+        event = {
+            "city": "chicago",
+            "description": (
+                "See https://www.wunderground.com/dashboard/pws/KLAX "
+                "and historical https://www.wunderground.com/history/daily/KSFO/date/2026-01-01"
+            ),
+        }
+        icao, _ = resolve_station_for_event(event, city_map)
+        # Tier 1.5 abstains; resolver falls through to Tier 2 catalog (chicago → KORD).
+        assert icao == "KORD"
+
+    def test_multi_url_agreement_passes(self, city_map):
+        """Multiple URLs that all extract the same ICAO → Tier 1.5 fires."""
+        event = {
+            "city": "chicago",
+            "description": (
+                "Primary https://www.wunderground.com/dashboard/pws/KLAX "
+                "or alternate https://www.wunderground.com/history/daily/KLAX/date/2026-05-23"
+            ),
+        }
+        icao, _ = resolve_station_for_event(event, city_map)
+        assert icao == "KLAX"
+
+    def test_noncanonical_url_path_falls_through_to_catalog(self, city_map):
+        """Architect iter-1 HIGH #1: incidental K-tokens in non-canonical paths
+        (news articles, weather alerts) MUST NOT trigger Tier 1.5 — the regex
+        only matches canonical PWS / airport / weather-station paths."""
+        event = {
+            "city": "boston",
+            "description": "See https://www.wunderground.com/news/2024-summer-KIDS-overview",
+        }
+        icao, _ = resolve_station_for_event(event, city_map)
+        # Tier 1.5 should NOT fire on news path → catalog wins (boston → KBOS).
+        assert icao == "KBOS"
 
     def test_url_extraction_carries_market_measure(self, city_map):
         """The 'high'/'low' measure still comes from title — URL only sets the ICAO."""

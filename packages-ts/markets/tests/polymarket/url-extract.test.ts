@@ -3,18 +3,54 @@ import { describe, expect, it } from "vitest";
 import { extractIcaoFromResolutionSource } from "../../src/polymarket/resolver.js";
 
 describe("extractIcaoFromResolutionSource", () => {
-  it("captures KLGA from pws URL", () => {
+  it("captures KLGA from dashboard/pws URL", () => {
     expect(extractIcaoFromResolutionSource("https://wunderground.com/dashboard/pws/KLGA")).toBe(
       "KLGA",
     );
   });
 
-  it("captures KORD from history URL with date", () => {
+  it("captures KLGA from bare pws URL", () => {
+    expect(extractIcaoFromResolutionSource("https://wunderground.com/pws/KLGA")).toBe("KLGA");
+  });
+
+  it("captures KORD from history/daily URL with date", () => {
     expect(
       extractIcaoFromResolutionSource(
         "https://www.wunderground.com/history/daily/KORD/date/2026-05-23",
       ),
     ).toBe("KORD");
+  });
+
+  it("captures KORD from history/airport URL", () => {
+    expect(
+      extractIcaoFromResolutionSource(
+        "https://www.wunderground.com/history/airport/KORD/2026/5/23/DailyHistory.html",
+      ),
+    ).toBe("KORD");
+  });
+
+  it("captures KSFO from weather-station URL", () => {
+    expect(extractIcaoFromResolutionSource("https://wunderground.com/weather-station/KSFO")).toBe(
+      "KSFO",
+    );
+  });
+
+  it("ignores non-canonical paths (news / arbitrary slugs)", () => {
+    // Iter-1 TS-architect HIGH: incidental K-prefix tokens in non-canonical
+    // Wunderground URL paths MUST NOT match.
+    expect(
+      extractIcaoFromResolutionSource(
+        "https://www.wunderground.com/news/2024-summer-KIDS-overview",
+      ),
+    ).toBeNull();
+  });
+
+  it("ignores codex-flagged hostile URL pattern (wunderground.com/weather/.../VHHH)", () => {
+    // Codex iter-1 CRITICAL: original loose regex extracted "KONG" from
+    // "hong-kong" slug. Tightened pattern requires canonical path segment.
+    expect(
+      extractIcaoFromResolutionSource("https://www.wunderground.com/weather/hk/hong-kong/VHHH"),
+    ).toBeNull();
   });
 
   it("ignores weather.gov URLs (not allowlisted for ICAO extraction)", () => {
@@ -41,5 +77,19 @@ describe("extractIcaoFromResolutionSource", () => {
     const text =
       "Settles per Wunderground daily-high — see https://www.wunderground.com/dashboard/pws/KSFO";
     expect(extractIcaoFromResolutionSource(text)).toBe("KSFO");
+  });
+
+  it("returns null on disagreeing multi-URL (architect iter-1 HIGH)", () => {
+    const text =
+      "Primary https://www.wunderground.com/dashboard/pws/KLAX " +
+      "or use https://www.wunderground.com/dashboard/pws/KSFO instead";
+    expect(extractIcaoFromResolutionSource(text)).toBeNull();
+  });
+
+  it("returns the ICAO when multiple URLs agree", () => {
+    const text =
+      "Primary https://www.wunderground.com/dashboard/pws/KLAX " +
+      "and mirror https://www.wunderground.com/history/daily/KLAX/date/2026-05-23";
+    expect(extractIcaoFromResolutionSource(text)).toBe("KLAX");
   });
 });

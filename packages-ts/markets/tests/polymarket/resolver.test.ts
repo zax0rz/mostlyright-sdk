@@ -107,6 +107,122 @@ describe("resolveStationForEvent", () => {
   });
 });
 
+// Phase 8 — Tier 1.5 URL extraction (ts-architect iter-1 HIGH: zero coverage).
+describe("resolveStationForEvent — Tier 1.5 URL extraction", () => {
+  it("URL ICAO overrides catalog (city + URL disagree)", () => {
+    // city=chicago → KORD in catalog; URL embeds KLAX → URL wins.
+    const r = resolveStationForEvent(
+      {
+        slug: "chicago-high",
+        title: "Chicago daily high",
+        description: "Resolves via https://www.wunderground.com/dashboard/pws/KLAX",
+        city: "chicago",
+      } as { slug: string; title: string; description: string; city: string },
+      "high",
+    );
+    expect(r?.icao).toBe("KLAX");
+    // CRITICAL parity invariant: `city` is the slug/explicit value, NOT a
+    // reverse-lookup from the URL ICAO. Mirrors Python `polymarket_discover`.
+    expect(r?.city).toBe("chicago");
+  });
+
+  it("URL alone resolves an event with no city field", () => {
+    const r = resolveStationForEvent(
+      {
+        slug: "ambiguous",
+        title: "Daily high somewhere",
+        description: "https://www.wunderground.com/dashboard/pws/KLAX",
+      },
+      "high",
+    );
+    expect(r?.icao).toBe("KLAX");
+    expect(r?.city).toBe(""); // No explicit nor slug-derived city — empty by design.
+  });
+
+  it("URL extraction picks up resolutionSource field", () => {
+    const r = resolveStationForEvent(
+      {
+        slug: "ambiguous",
+        title: "high",
+        resolutionSource: "https://wunderground.com/dashboard/pws/KLGA",
+      } as { slug: string; title: string; resolutionSource: string },
+      "high",
+    );
+    expect(r?.icao).toBe("KLGA");
+  });
+
+  it("multi-URL disagreement abstains (Tier 1.5 returns null path)", () => {
+    // city=chicago (catalog→KORD) + two disagreeing URLs (KLAX + KSFO).
+    // Tier 1.5 must abstain → resolver falls through to catalog → KORD.
+    const r = resolveStationForEvent(
+      {
+        slug: "chi",
+        city: "chicago",
+        description:
+          "See https://www.wunderground.com/dashboard/pws/KLAX " +
+          "and historical https://www.wunderground.com/history/daily/KSFO/date/2026-01-01",
+      } as { slug: string; city: string; description: string },
+      "high",
+    );
+    expect(r?.icao).toBe("KORD");
+    expect(r?.city).toBe("chicago");
+  });
+
+  it("multi-URL agreement passes", () => {
+    const r = resolveStationForEvent(
+      {
+        slug: "chi",
+        city: "chicago",
+        description:
+          "Primary https://www.wunderground.com/dashboard/pws/KLAX " +
+          "or alternate https://www.wunderground.com/history/daily/KLAX/date/2026-05-23",
+      } as { slug: string; city: string; description: string },
+      "high",
+    );
+    expect(r?.icao).toBe("KLAX");
+    expect(r?.city).toBe("chicago");
+  });
+
+  it("non-canonical Wunderground URL path falls through to catalog", () => {
+    // Hostile-pattern guard: news URLs / arbitrary slugs MUST NOT trigger Tier 1.5.
+    const r = resolveStationForEvent(
+      {
+        slug: "boston",
+        city: "boston",
+        description: "https://www.wunderground.com/news/2024-summer-KIDS-overview",
+      } as { slug: string; city: string; description: string },
+      "high",
+    );
+    expect(r?.icao).toBe("KBOS"); // boston catalog default
+    expect(r?.city).toBe("boston");
+  });
+
+  it("no URL → falls through to Tier 2 city derive", () => {
+    const r = resolveStationForEvent({ slug: "will-london-be-above-25c-2025" }, "high");
+    expect(r?.icao).toBe("EGLL");
+    expect(r?.city).toBe("london");
+  });
+
+  it("URL containing non-K-prefix ICAO (e.g. RCTP) is not extracted by the regex", () => {
+    // The Wunderground regex is K-prefix only by design (US-only constraint).
+    // Even if an issuer embeds a synthetic non-US ICAO in the URL, Tier 1.5
+    // returns null and the resolver falls through to Tier 2 — which catches
+    // the slug-derived "taipei" and routes through the catalog-side defer
+    // gate (already covered by the Tier 2 deferred-market tests above).
+    // The defer gate inside Tier 1.5 is defense-in-depth for any future
+    // K-prefix deferred station and remains as visible source-side guards.
+    expect(() =>
+      resolveStationForEvent(
+        {
+          slug: "taipei",
+          description: "https://www.wunderground.com/dashboard/pws/RCTP",
+        } as { slug: string; description: string },
+        "high",
+      ),
+    ).toThrow(DeferredMarketError);
+  });
+});
+
 describe("settlementDateFromSlug", () => {
   it("extracts a single YYYY-MM-DD", () => {
     expect(settlementDateFromSlug("will-nyc-be-above-80f-on-2026-05-23")).toBe("2026-05-23");
