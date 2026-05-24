@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v0.1.0
 milestone_name: — `@tradewinds/*` on npm)
-status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W2 merged; multi-source parity-gate harness shipped (recordings operator-pending).
-stopped_at: Completed ts-w2-parity-gate (all 8 plans merged)
-last_updated: "2026-05-24T10:00:00.000Z"
-last_activity: "2026-05-24 - Merged TS-W2 parity-gate (8 plans, 3-iter review loop, Codex + TS Architect both clean at CRITICAL/HIGH)"
+status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W3 merged; cache + temporal primitives + validator + formats shipped (MV3-safe).
+stopped_at: Completed ts-w3-cache-temporal-validator (all 7 plans merged)
+last_updated: "2026-05-24T17:00:00.000Z"
+last_activity: "2026-05-24 - Merged TS-W3 cache + temporal + validator (7 plans, 14-iter review loop, 16 CRITICAL + 21 HIGH closed)"
 progress:
   total_phases: 21
   completed_phases: 1
@@ -18,19 +18,76 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-05-21; STATE.md refreshed 2026-05-23)
+See: .planning/PROJECT.md (updated 2026-05-21; STATE.md refreshed 2026-05-24)
 
 **Core value:** `research(contract, station, from_date, to_date)` returns clean, leakage-free, source-identified training pairs that backtest the same way they trade — and any train/infer source mismatch errors loudly instead of silently corrupting a model.
-**Current focus:** v0.1.0rc1 publish (operator-gated PyPI trusted-publisher setup)
+**Current focus:** v0.1.0rc1 publish (operator-gated PyPI trusted-publisher setup) + TS-W4 (Mode 2 + transforms + QC alpha)
 
 ## Current Position
 
-Phase: Python v0.1.0 (12/12 phases, 1674 tests, all REAL impls) COMPLETE + TS v0.1.0 milestone planning COMPLETE + **TS-W0 + TS-W1 + TS-W2 COMPLETE**
-Plan: TS-W3 (disk cache + temporal validator) next; operator-gated capture of Plan 07 msw recordings unblocks the parity test HARD GATE.
-Status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W2 merged with multi-source parity-gate harness (recordings operator-pending).
-Last activity: 2026-05-24 - Merged TS-W2 parity-gate (8 plans, 3-iter review loop, Codex + TS Architect both clean at CRITICAL/HIGH)
+Phase: Python v0.1.0 (12/12 phases, 1674 tests, all REAL impls) COMPLETE + TS v0.1.0 milestone planning COMPLETE + **TS-W0 + TS-W1 + TS-W2 + TS-W3 COMPLETE**
+Plan: TS-W4 (Mode 2 + transforms + QC alpha) next; operator-gated capture of TS-W2 Plan 07 msw recordings still unblocks the parity test HARD GATE.
+Status: Python v0.1.0rc1 ready to publish (operator-gated). TS-W3 merged with cache + temporal primitives + validator + formats. MV3-safe bundles confirmed clean of Node imports.
+Last activity: 2026-05-24 - Merged TS-W3 cache+temporal+validator (7 plans, 14-iter review loop, 16 CRITICAL + 21 HIGH closed)
 
-Progress: Python [██████████] 100% (12/12 phases, 1674 tests) | TS [3/8 phases shipped — TS-W0 + TS-W1 + TS-W2 done; 470 TS tests (27 active + 6 todo for operator-pending parity)]
+Progress: Python [██████████] 100% (12/12 phases, 1674 tests) | TS [4/8 phases shipped — TS-W0 + TS-W1 + TS-W2 + TS-W3 done; 766 TS tests]
+
+## TS-W3 Cache + Temporal + Validator closeout (2026-05-24)
+
+Merge commit: `d8b4ff4 Merge ts-w3/cache-temporal-validator — TS-W3 Cache + Temporal Primitives + Validator` (`--no-ff` into main).
+
+**7 sub-plans landed (51 commits = 14 features + 37 review-fix commits across 14 iterations):**
+
+- Plan 01 — `CacheStore` interface + `MemoryStore` + `FsStore` at `@tradewinds/core/internal/cache` (encodeURIComponent injective key→file mapping after iter-13 C16)
+- Plan 02 — `IndexedDBStore` + Web Locks API + `defaultCacheStore()` runtime auto-detect; jsdom test routing
+- Plan 03 — Cache-skip rules (LST current-month, `.live`-source, 30-day volatile-window inclusive, `isWritableMonth`/`isWritableYear` strictly-past-UTC gates) + 5-case behavior fixture
+- Plan 04 — `TimePoint` + `KnowledgeView<T>` + `LeakageDetector` + `assertNoLeakage` at `@tradewinds/core/temporal`; **BigInt epoch microseconds** for µs-aware comparisons (iter-11 C13); fast-check property test over `[2018-01-01, 2027-12-31]` UTC
+- Plan 05 — `validateRows` consuming ajv-standalone validators (codegen-emitted, MV3-CSP-safe, no runtime ajv); 9 Python-vocabulary violations; date/date-time format post-pass; column-max retrieved_at resolution
+- Plan 06 — Wire cache into `research()` (per-month read/write-through for IEM ASOS + GHCNh + per-year for CLI); 5-case skip behavior replay including RJTT UTC+9 year-wrap; ≥ 88% branch coverage gate on `@tradewinds/core`
+- Plan 07 — `jsonDumps/jsonLoads` + `csvDumps/csvLoads` (stateful RFC-4180 parser preserving quoted newlines) + `toonDumps/toonLoads` (rejects non-uniform / non-primitive rows) at `@tradewinds/core/formats`
+
+**Key technical decisions:**
+
+- Conditional package.json `exports` field — `"node"` condition resolves `@tradewinds/core/internal/cache` to FsStore-aware entry; `"default"` (browser/MV3) resolves to `index.browser.ts` (MemoryStore + IndexedDBStore only). All three meta artifacts (`index.mjs`, `index.bundle.mjs`, `index.global.js`) clean of `node:*` / `proper-lockfile` imports.
+- `LeakageError.toDict()` emits Python-isoformat (`...+00:00`, not `.000Z`) and snake_case payload.
+- `SchemaValidationError.violations[].rule` uses Python vocab: `source_attr_required`, `source_column_required`, `retrieved_at_required`, `required_column_missing`, `non_nullable_has_nulls`, `mixed_null_sentinels`, `dtype_mismatch`, `enum_value_violation`, `unknown_schema_id`.
+- `TimePoint` rejects naive ISO, date-only ISO, NaN/Infinity, AND impossible calendar dates (Feb 30, month 13, etc.) via round-trip check; preserves µs precision via BigInt.
+- `FsStore.set` uses unique per-write temp filename (`${path}.${randomUUID()}.tmp`) so concurrent same-key writes don't race; split try/catch isolates cache.set failures from fetch failures (cache.set fails → log + preserve in-memory rows, don't degrade to null data).
+- Bundle-sanity test walks BOTH static and dynamic imports across all four built artifacts (Node entry, browser entry, MV3 bundle, IIFE).
+- Cache writes gated on `isWritableMonth(year, month, now)` (observations) / `isWritableYear(year, now)` (climate) — strictly-past-UTC, prevents future-month/UTC-rollover poisoning.
+
+**Test coverage:** 766 TS tests across 5 packages (was 470 at TS-W2 close; +296). Core 451, weather 218, markets 41, codegen 6, meta 50 + 1 skipped + 6 todo. All green via `CI=1 pnpm -r run test`. Typecheck clean. All four bundle artifacts clean of Node imports.
+
+**Review discipline:** 14-iteration loop per `.planning/REVIEW-DISCIPLINE.md` (codex `high` + TS Architect, parallel dispatch). Closed **16 CRITICAL** (C1-C16) + **21 HIGH** (H1-H21) findings:
+
+- Iter 1: 4C (TimePoint date-only-Z, validator source map, TOON corruption, CSV roundtrip) + 4H (LeakageError ISO shape, KnowledgeView vocab, MV3 cache subbundle, vacuous test)
+- Iter 2: 3C (date format ignored, FsStore race, CSV header escape) + 3H (FsStore re-export, sanity test scope, skipLive on keys)
+- Iter 3: 2C (TimePoint calendar dates, assertNoLeakage skipping invalid rows)
+- Iter 4: 2C (typecheck failures) + 1H (bundle size 25 KB exceeded)
+- Iter 5: 2H (volatile-window wire-in + boundary off-by-one)
+- Iter 6: 1C (CLI cache failures swallowed) + 2H (retrieved_at masks violations, RJTT skipped)
+- Iter 7: 2H (per-month cache contract gap + GHCNh missing cache)
+- Iter 8: 2H (MV3 bundle still pulled FsStore + sanity test missed dynamic imports)
+- Iter 9: 2H (meta bundle picked Node condition + sanity scanned wrong artifact)
+- Iter 10: 3H (IIFE bundle leak + validator retrieved_at row-0 only + skipLive vacuous v2)
+- Iter 11: 1C (TimePoint µs precision via BigInt — closed the "fundamental JS limitation" deferral)
+- Iter 12: 2C (future-month + future-year cache write gates)
+- Iter 13: 1C (FsStore key→file non-injective)
+- Iter 14: **PASS PASS** — both reviewers clean
+
+**Deferred to follow-up phases (NOT blockers):**
+
+- Banker's rounding vs Math.round (Python rounds half-to-even; cosmetic for current weather precision)
+- Coverage gate CI config drift (the `--` separator in test-ts.yml prevents `--coverage` from reaching vitest)
+- TS-BUNDLE-01 size-limit not actually wired into CI (continue-on-error step)
+- Other international stations beyond RJTT in `_STATION_TZ` (TS-W6 scope)
+- Operator: run `pnpm run capture-recordings` to populate TS-W2 msw recordings; flip parity tests from `it.todo` → live assertions
+
+**Outstanding for TS-W4:**
+
+- Mode 2 dispatch (`researchBySource`)
+- Transforms (`lag`/`diff`/`rolling`/`calendarFeatures`/etc.)
+- QC alpha rules + `obsQcStatus` bitfield
 
 ## TS-W2 Parity Gate closeout (2026-05-24)
 
