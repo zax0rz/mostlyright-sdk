@@ -148,4 +148,55 @@ describe("research() cache integration (TS-W3 Plan 06)", () => {
       expect(secondMs).toBeLessThanOrEqual(firstMs * 0.1 + 50); // 50ms grace for cold caches
     },
   );
+
+  // iter-6 C12 regression: a `cache.set` throw AFTER a successful CLI
+  // fetch+parse MUST NOT discard the in-memory rows. The previous broad
+  // try/catch around the CLI block in research.ts swallowed cache write
+  // failures and returned research rows with null cli_* fields — silent
+  // data corruption. This test simulates a flaky cache backend whose
+  // `set` rejects on every call and asserts cli_* fields are populated.
+  it("C12: cache.set failure does not discard CLI rows (silent corruption guard)", async () => {
+    installFetchMock({
+      cli: [{ valid: "2023-01-15", high: 72, low: 45, product: "test-cli" }],
+      awc: [],
+    });
+    const store = new MemoryStore();
+    // Make every `set` throw. `get` still works normally (returns null
+    // on miss). The orchestrator must (a) still complete, (b) return
+    // rows with populated cli_* fields from the live fetch.
+    vi.spyOn(store, "set").mockImplementation(async () => {
+      throw new Error("simulated cache backend write failure");
+    });
+    const rows = await research("NYC", "2023-01-15", "2023-01-15", { cache: store });
+    expect(rows.length).toBeGreaterThanOrEqual(1);
+    // The CLI row should produce populated cli_high_f / cli_low_f — proving
+    // the rows were NOT discarded by the cache write throw.
+    const row = rows[0];
+    expect(row).toBeDefined();
+    // Defensive narrowing — vitest's toBeDefined doesn't narrow for TS.
+    if (row === undefined) throw new Error("row was undefined");
+    expect(row.cli_high_f).toBe(72);
+    expect(row.cli_low_f).toBe(45);
+  });
+
+  // iter-6 C12 (companion): same guard for the IEM ASOS path. A cache.set
+  // throw from the IEM helper must not propagate up and crash research()
+  // — observations were already fetched + parsed; the cache write is a
+  // best-effort side effect. The IEM mock here returns an empty CSV so the
+  // assertion is "research() completes without throwing," not row count.
+  it("C12: IEM ASOS cache.set failure does not crash research()", async () => {
+    installFetchMock({
+      cli: [{ valid: "2023-01-15", high: 72, low: 45, product: "test-cli" }],
+      awc: [],
+    });
+    const store = new MemoryStore();
+    vi.spyOn(store, "set").mockImplementation(async () => {
+      throw new Error("simulated cache backend write failure");
+    });
+    // Must NOT throw. IEM ASOS mock returns empty CSV → no obs, but the
+    // CLI cache write also throws — neither failure should abort.
+    await expect(
+      research("NYC", "2023-01-15", "2023-01-15", { cache: store }),
+    ).resolves.toBeDefined();
+  });
 });

@@ -271,6 +271,15 @@ function isYearVolatile(year: number, now: Date): boolean {
  *     once the calendar rolls over.
  *   - Live source (`.live`) — never cached (CLI is archive `iem.cli` →
  *     this never fires today; defensive for future).
+ *
+ * iter-6 C12: cache failures must NEVER discard the in-memory rows.
+ * `cache.get` failures degrade to a live fetch (the intent — read-through
+ * is a perf optimization, not a correctness requirement). `cache.set`
+ * failures AFTER a successful fetch+parse MUST log and continue —
+ * persisting to the cache is a best-effort side effect, never a reason
+ * to drop already-fetched climate data. The previous broad try/catch in
+ * the caller swallowed cache.set throws as "no CLI data," silently
+ * corrupting research rows with null cli_* fields.
  */
 async function fetchCliWithCache(
   fetchIcao: string,
@@ -290,31 +299,71 @@ async function fetchCliWithCache(
     // window is active.
     const skipVolatile = isYearVolatile(year, now);
     const skip = skipCurrentYear || skipVolatile;
+
+    // --- Cache read (best-effort) -------------------------------------
+    // iter-6 C12: a `cache.get` failure must not abort the per-year
+    // chunk — fall through to the live fetch. A transient backend hiccup
+    // is no reason to refuse climate data we can still fetch fresh.
     if (cache !== null && !skip) {
-      const cached = await cache.get<ClimateObservation[]>(cacheKeyForClimate(cacheCode, year));
+      let cached: ClimateObservation[] | null = null;
+      try {
+        cached = await cache.get<ClimateObservation[]>(cacheKeyForClimate(cacheCode, year));
+      } catch (cacheErr) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[tradewinds] CLI cache.get failed for code=${cacheCode} year=${year}; falling back to live fetch:`,
+          cacheErr,
+        );
+      }
       if (cached !== null) {
         acc.push(...cached);
         continue;
       }
     }
+
+    // --- Live fetch + parse (errors here ARE fatal to this chunk) -----
+    // Abort propagates; other errors bubble to the caller's try/catch
+    // which degrades to "no CLI data" for the affected years. This is
+    // the existing behavior — DO NOT widen the catch to include cache
+    // writes (see below).
     const cliOpts: { signal?: AbortSignal; politenessMs?: number } = {};
     if (opts.signal !== undefined) cliOpts.signal = opts.signal;
     if (opts.cliPolitenessMs !== undefined) cliOpts.politenessMs = opts.cliPolitenessMs;
     const cliRaw = await downloadCliRange(fetchIcao, year, year, cliOpts);
     const parsed = parseCliResponse(cliRaw, cacheCode);
     acc.push(...parsed);
-    // Write-through: cache only when (1) backend present, (2) neither skip
-    // gate fires, (3) source isn't `.live` (defensive — iem.cli is
-    // archive). All parsed rows share the same `source`; sample the first.
+
+    // --- Cache write (best-effort, AFTER rows are accumulated) --------
+    // iter-6 C12: `cache.set` MUST be wrapped in its own try/catch so a
+    // transient write failure cannot discard already-fetched rows. The
+    // previous code put cache.set inside the caller's broad CLI try/catch,
+    // which silently degraded write failures to "no climate data" —
+    // returning research rows with null cli_* fields. That's silent data
+    // corruption; this guard prevents it.
     const sample = parsed[0]?.source;
     if (cache !== null && !skip && !isLiveSource(sample)) {
-      await cache.set(cacheKeyForClimate(cacheCode, year), parsed);
+      try {
+        await cache.set(cacheKeyForClimate(cacheCode, year), parsed);
+      } catch (cacheErr) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[tradewinds] CLI cache.set failed for code=${cacheCode} year=${year}; in-memory rows preserved:`,
+          cacheErr,
+        );
+      }
     }
   }
   return acc;
 }
 
-/** Fetch IEM ASOS observations per-year with read-through cache. */
+/**
+ * Fetch IEM ASOS observations per-year with read-through cache.
+ *
+ * iter-6 C12: mirrors `fetchCliWithCache`'s split-try pattern — cache
+ * `get` / `set` failures are logged but never discard the in-memory
+ * rows. A cache backend hiccup must not silently drop observations
+ * that were successfully fetched + parsed.
+ */
 async function fetchIemAsosWithCache(
   stationCode: string,
   fromYear: number,
@@ -345,12 +394,24 @@ async function fetchIemAsosWithCache(
       const skipVolatile = isYearVolatile(year, now);
       const skipCache = skipCurrentMonth || skipVolatile;
 
+      // --- Cache read (best-effort) -------------------------------------
+      // iter-6 C12: a `cache.get` failure must not abort the per-year
+      // chunk — fall through to the live fetch.
       let yearRows: Observation[] | null = null;
       if (cache !== null && !skipCache) {
-        const cached = await cache.get<Observation[]>(cacheKey);
-        if (cached !== null) yearRows = cached;
+        try {
+          const cached = await cache.get<Observation[]>(cacheKey);
+          if (cached !== null) yearRows = cached;
+        } catch (cacheErr) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[tradewinds] IEM ASOS cache.get failed for key=${cacheKey}; falling back to live fetch:`,
+            cacheErr,
+          );
+        }
       }
       if (yearRows === null) {
+        // --- Live fetch + parse (errors here propagate to the caller) ---
         const iemOpts: { reportType: 3 | 4; politenessMs: number; signal?: AbortSignal } = {
           reportType,
           politenessMs: opts.iemPolitenessMs ?? 1000,
@@ -370,9 +431,23 @@ async function fetchIemAsosWithCache(
           fetched.push(...parsed);
         }
         yearRows = fetched;
+
+        // --- Cache write (best-effort, AFTER rows are accumulated) ------
+        // iter-6 C12: `cache.set` failures MUST NOT propagate — a
+        // transient write failure cannot be allowed to discard rows that
+        // were just successfully fetched + parsed. Log and continue; the
+        // in-memory `yearRows` is appended to `acc` below regardless.
         const sample = fetched[0]?.source;
         if (cache !== null && !skipCache && !isLiveSource(sample)) {
-          await cache.set(cacheKey, fetched);
+          try {
+            await cache.set(cacheKey, fetched);
+          } catch (cacheErr) {
+            // eslint-disable-next-line no-console
+            console.warn(
+              `[tradewinds] IEM ASOS cache.set failed for key=${cacheKey}; in-memory rows preserved:`,
+              cacheErr,
+            );
+          }
         }
       }
       for (const obs of yearRows) {
