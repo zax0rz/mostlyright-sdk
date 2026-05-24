@@ -121,13 +121,13 @@ def obs(
         resolved = _resolve_strategy(
             from_date=date.fromisoformat(start),
             to_date=date.fromisoformat(end),
-            station=station,
+            station=info.icao,  # cache uses ICAO (e.g. KNYC), not raw user input
             env=os.environ,
         )
     else:
         resolved = strategy
 
-    rows = _dispatch_strategy(
+    raw_rows = _dispatch_strategy(
         info,
         start,
         end,
@@ -135,11 +135,17 @@ def obs(
         strategy=resolved,
     )
 
+    # Aggregate raw observation rows to daily summary rows. The output schema is
+    # the obs_* subset of research() Mode-1 columns (no CLI / no forecast). Both
+    # exact_window and warm_cache funnel through this aggregation so the daily
+    # rows are byte-equivalent across strategies.
+    aggregated = _aggregate_daily_rows(raw_rows, info, start, end)
+
     if as_dataframe:
         import pandas as pd
 
-        return pd.DataFrame(rows)
-    return rows
+        return pd.DataFrame(aggregated)
+    return aggregated
 
 
 def _dispatch_strategy(
@@ -226,6 +232,57 @@ def _warm_cache_fetch(
         extended_to_iso,
         prefetched_awc_rows=awc_rows,
     )
+
+
+def _aggregate_daily_rows(
+    raw_rows: list[dict],
+    info,
+    from_date_iso: str,
+    to_date_iso: str,
+    *,
+    tz_override: str | None = None,
+) -> list[dict]:
+    """Bucket raw obs rows by LST settlement date then aggregate per-day.
+
+    Mirrors the obs-only subset of ``research()``'s pipeline at
+    ``packages/core/src/tradewinds/research.py:1213-1238``: each raw row is
+    routed to its LST settlement date via :func:`settlement_date_for`, then
+    ``_obs_aggregates`` produces the daily summary columns (``obs_high_f``,
+    ``obs_low_f``, ``obs_mean_f``, ``obs_mean_dewpoint_f``, ``obs_max_wind_kt``,
+    ``obs_max_gust_kt``, ``obs_total_precip_in``, ``obs_count``).
+
+    The bucketing fixes the per-row UTC-date filter that previously dropped
+    legitimate observations belonging to the last LST settlement window's
+    pre-midnight UTC tail (codex iter-1 CRITICAL #2): rows are now classified
+    by SETTLEMENT date, not UTC date, so a US-station observation at
+    ``2024-04-01T03:00:00Z`` correctly counts toward ``2024-03-31`` LST.
+
+    Rows whose settlement date falls outside ``[from_date_iso, to_date_iso]``
+    are dropped from the output (they were fetched only to capture the
+    settlement-window tail).
+    """
+    from tradewinds._internal._pairs import _obs_aggregates, date_range
+    from tradewinds.snapshot import settlement_date_for
+
+    dates = date_range(from_date_iso, to_date_iso)
+    buckets: dict[str, list[dict]] = {d: [] for d in dates}
+    for r in raw_rows:
+        observed_at = r.get("observed_at")
+        if not observed_at:
+            continue
+        try:
+            settle_date = settlement_date_for(observed_at, info.code, tz_override=tz_override)
+        except ValueError:
+            continue
+        bucket = buckets.get(settle_date)
+        if bucket is not None:
+            bucket.append(r)
+
+    out: list[dict] = []
+    for d in dates:
+        agg = _obs_aggregates(buckets[d])
+        out.append({"date": d, "station": info.code, **agg})
+    return out
 
 
 def _resolve_strategy(

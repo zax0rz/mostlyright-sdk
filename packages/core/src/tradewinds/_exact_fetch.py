@@ -103,7 +103,10 @@ def _exact_fetch_observations(
     # --- AWC METAR (live 168h only) ---------------------------------------
     # ``fetch_awc_metars`` is live-only — no date range. If ``to_date`` is older
     # than ``now - 168h``, AWC will return zero rows for the window. Skip the
-    # HTTP call in that case.
+    # HTTP call in that case. We DO NOT filter rows by UTC date here — the
+    # final aggregation layer in obs.py buckets by LST settlement_date, which
+    # correctly captures the post-midnight-UTC tail of the last LST day for
+    # negative-offset US stations (codex iter-1 CRITICAL #2).
     if source in (None, "awc"):
         now_utc = datetime.now(UTC)
         awc_horizon = now_utc.date() - timedelta(days=7)
@@ -113,23 +116,28 @@ def _exact_fetch_observations(
                 obs = awc_to_observation(m)
                 if obs is None:
                     continue
-                # Filter to station + date range (AWC may serve unrelated
-                # stations from cached responses; defensive).
+                # Defensive: AWC may serve unrelated stations from cached
+                # responses. Drop those; let settlement-date bucketing handle
+                # window filtering downstream.
                 if obs.get("station_code") != info.code:
                     continue
-                obs_date = (obs.get("observed_at") or "")[:10]
-                if from_date_iso <= obs_date <= to_date_iso:
-                    rows.append(obs)
+                rows.append(obs)
 
     # --- GHCNh (per-station-year) -----------------------------------------
     if source in (None, "ghcnh"):
         import httpx
 
+        from tradewinds.weather.cache import _is_current_lst_year
+
         ghcnh_dir = sources_root / "ghcnh"
         # Per-station-year files; iterate calendar years touching the window.
+        # Mirror research.py:_fetch_ghcnh_year mutable-period gate: NCEI
+        # republishes the current LST year's PSV as new months land, so
+        # callers MUST force a re-download for that year (codex iter-1 HIGH).
         for year in range(from_date.year, extended_to.year + 1):
+            skip_cache = _is_current_lst_year(info.icao, year)
             try:
-                psv_path = download_ghcnh(info.ghcnh_id, year, ghcnh_dir)
+                psv_path = download_ghcnh(info.ghcnh_id, year, ghcnh_dir, skip_cache=skip_cache)
             except httpx.HTTPStatusError as exc:
                 # NCEI returns 404 for stations without data; mirror
                 # _fetch_ghcnh_year's graceful skip.
@@ -139,9 +147,7 @@ def _exact_fetch_observations(
             for row in parse_ghcnh_file(psv_path):
                 if row.get("station_code") != info.code:
                     continue
-                obs_date = (row.get("observed_at") or "")[:10]
-                if from_date_iso <= obs_date <= to_date_iso:
-                    rows.append(row)
+                rows.append(row)
 
     # Pre-sort by (observed_at, source) BEFORE merge — mirrors research.py R2
     # mitigation. merge_observations uses first-seen-wins at equal priority

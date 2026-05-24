@@ -147,19 +147,38 @@ def test_obs_source_none_invokes_all_three_fetchers():
     assert mock_ghcnh.called
 
 
-def test_obs_as_dataframe_true_returns_dataframe():
-    from tradewinds.weather.obs import obs
+def _fake_raw_metars():
+    """Two raw METAR-shaped rows on 2024-03-15 UTC.
 
-    fake_rows = [
+    settlement_date_for normalizes "NYC" to LST 2024-03-15 (UTC-5; afternoon UTC
+    rows land in the same LST day), so the aggregator emits a single daily row
+    with obs_high_f=60, obs_low_f=40, obs_count=2.
+    """
+    return [
         {
-            "date": "2024-03-15",
-            "station": "KNYC",
+            "station_code": "NYC",
+            "observed_at": "2024-03-15T18:00:00Z",
+            "observation_type": "METAR",
             "source": "iem",
-            "obs_high_f": 60.0,
-            "obs_low_f": 40.0,
+            "temp_f": 60.0,
+        },
+        {
+            "station_code": "NYC",
+            "observed_at": "2024-03-15T12:00:00Z",
+            "observation_type": "METAR",
+            "source": "iem",
+            "temp_f": 40.0,
         },
     ]
-    with patch("tradewinds._exact_fetch._exact_fetch_observations", return_value=fake_rows):
+
+
+def test_obs_as_dataframe_true_returns_aggregated_dataframe():
+    from tradewinds.weather.obs import obs
+
+    with patch(
+        "tradewinds._exact_fetch._exact_fetch_observations",
+        return_value=_fake_raw_metars(),
+    ):
         result = obs(
             "KNYC",
             "2024-03-15",
@@ -170,21 +189,21 @@ def test_obs_as_dataframe_true_returns_dataframe():
         )
     assert isinstance(result, pd.DataFrame)
     assert len(result) == 1
+    # Aggregation contract: daily rows with obs_* columns.
+    assert list(result.columns)[:3] == ["date", "station", "obs_high_f"]
+    assert result.iloc[0]["obs_high_f"] == 60.0
+    assert result.iloc[0]["obs_low_f"] == 40.0
+    assert result.iloc[0]["obs_count"] == 2
+    assert result.iloc[0]["station"] == "NYC"
 
 
-def test_obs_as_dataframe_false_returns_list_of_dicts():
+def test_obs_as_dataframe_false_returns_aggregated_list_of_dicts():
     from tradewinds.weather.obs import obs
 
-    fake_rows = [
-        {
-            "date": "2024-03-15",
-            "station": "KNYC",
-            "source": "iem",
-            "obs_high_f": 60.0,
-            "obs_low_f": 40.0,
-        },
-    ]
-    with patch("tradewinds._exact_fetch._exact_fetch_observations", return_value=fake_rows):
+    with patch(
+        "tradewinds._exact_fetch._exact_fetch_observations",
+        return_value=_fake_raw_metars(),
+    ):
         result = obs(
             "KNYC",
             "2024-03-15",
@@ -194,4 +213,10 @@ def test_obs_as_dataframe_false_returns_list_of_dicts():
             as_dataframe=False,
         )
     assert isinstance(result, list)
-    assert result == fake_rows
+    assert len(result) == 1
+    row = result[0]
+    assert row["date"] == "2024-03-15"
+    assert row["station"] == "NYC"
+    assert row["obs_high_f"] == 60.0
+    assert row["obs_low_f"] == 40.0
+    assert row["obs_count"] == 2
