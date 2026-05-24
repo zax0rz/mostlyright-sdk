@@ -43,7 +43,14 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          # pnpm 10 ships improved npm OIDC trusted-publishing support.
+          # The repo lockfile currently records pnpm@9.12.0 in package.json;
+          # the CI lane runs 10 anyway for releases because `pnpm publish
+          # --provenance` requires the newer npm-CLI delegation path. If
+          # the OIDC exchange fails despite this pin, fall back to the
+          # `NODE_AUTH_TOKEN` secret path (operator-gated).
+          # Codex iter-3 P1.
+          version: 10
 
       - uses: actions/setup-node@v4
         with:

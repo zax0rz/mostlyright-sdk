@@ -27,11 +27,25 @@ TypeScript packages. Read [the Changesets docs](https://github.com/changesets/ch
 
 ## v0.1.0 release plan
 
+The four packages currently sit at `0.0.0`. Bumping minor-via-changeset
+from `0.0.0` does NOT yield `0.1.0` (changesets pre-1.0 rules promote
+minor to the next 0.x — but in a `fixed` group the safest path is to
+**manually seed `0.1.0` before the first changeset run**. Codex iter-3
+P2 flagged this; the explicit sequence avoids the 0.0.0 → 1.0.0 trap:
+
+```bash
+# One-time seed before the v0.1.0rc1 tag:
+for pkg in packages-ts/core packages-ts/weather packages-ts/markets packages-ts/meta; do
+  pnpm --filter "./$pkg" exec npm version 0.1.0 --no-git-tag-version
+done
+# Then commit the version bumps and proceed with changesets for v0.1.x.
+```
+
 - `vts-0.1.0rc1` → npm `--tag next`, soak for ≥1 week against the in-repo
   `packages-ts/examples/chrome-extension-mvp/` sample.
 - `vts-0.1.0` → npm `--tag latest`. P0 parity-ticket gate from
   `scripts/parity_status.py --milestone "TS v0.1.0"` must report zero
-  open tickets.
+  open tickets (release-ts.yml runs this on non-rc tags).
 
 ## Config notes
 

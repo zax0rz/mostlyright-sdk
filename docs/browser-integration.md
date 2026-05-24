@@ -129,11 +129,16 @@ export default {
 ## Verifying your integration
 
 Quick smoke test from the browser console (after the extension is loaded
-and host permissions granted):
+and host permissions granted). `research()` ships from the meta package
+only — the worker bundle for an extension that imports `tradewinds`
+exposes it as the `tradewinds` global if you used the IIFE; via the ESM
+bundle it's the imported binding directly.
 
 ```ts
-// In the extension's background-service-worker DevTools console:
-const rows = await tradewindsWeather.research("KNYC", "2025-01-06", "2025-01-12");
+// ESM-bundled extensions (the recommended path) — assuming the service
+// worker imports `research` from "tradewinds":
+import { research } from "tradewinds";
+const rows = await research("KNYC", "2025-01-06", "2025-01-12");
 console.assert(rows.length > 0, "research returned no rows — check host_permissions");
 console.assert(typeof rows[0].cli_high_f === "number", "CLI data missing");
 ```
