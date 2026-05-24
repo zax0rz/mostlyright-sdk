@@ -22,6 +22,7 @@
 // by the caller's opaque string. Station-aware key generation lives in
 // `keys.ts` (plan 03).
 
+import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -109,9 +110,29 @@ export class FsStore implements CacheStore {
     await mkdir(dirname(p), { recursive: true });
     const entry: CacheEntry<T> =
       opts?.ttlMs !== undefined ? { value, expiresAt: Date.now() + opts.ttlMs } : { value };
-    const tmp = `${p}.tmp`;
-    await writeFile(tmp, JSON.stringify(entry), "utf8");
-    await rename(tmp, p);
+    // Codex iter-2 C6: use a UNIQUE temp filename per write. Two concurrent
+    // `set("same-key", ...)` calls would otherwise race on the shared
+    // `<path>.tmp`: writer A creates `<path>.tmp` and renames it to
+    // `<path>`; writer B's subsequent rename then fails with ENOENT
+    // because A's rename moved B's-in-progress temp away. With a unique
+    // per-write suffix, each writer owns its own temp file; rename-into-
+    // place stays atomic on POSIX (last-rename-wins semantics — any of
+    // the N concurrent writers' value will be the final cache contents,
+    // documented at the test that covers this).
+    const tmp = `${p}.${randomUUID()}.tmp`;
+    try {
+      await writeFile(tmp, JSON.stringify(entry), "utf8");
+      await rename(tmp, p);
+    } catch (e) {
+      // Best-effort cleanup if rename failed (e.g. permissions). Don't
+      // let a stale unique-temp file leak.
+      try {
+        await rm(tmp, { force: true });
+      } catch {
+        // ignore
+      }
+      throw e;
+    }
   }
 
   async delete(key: string): Promise<void> {

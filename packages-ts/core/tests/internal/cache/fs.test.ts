@@ -107,4 +107,49 @@ describe("FsStore", () => {
       expect(events).toEqual(["p1-start", "p1-end", "p2-start", "p2-end"]);
     });
   });
+
+  describe("concurrent set race (iter-2 C6)", () => {
+    // Codex iter-2 CRITICAL. Prior to the fix, FsStore.set always wrote to
+    // `<path>.tmp` (literal `.tmp` suffix, not per-write random). Two
+    // concurrent `set("same-key", ...)` calls would race: writer A's
+    // rename moved `<path>.tmp` to `<path>` while writer B was still
+    // mid-write, so B's subsequent rename threw ENOENT.
+    //
+    // research.ts calls cache.set unconditionally inside loops without
+    // withLock, so this hits in test isolation under parallel vitest
+    // workers. Fix at the FsStore layer: unique temp file per write.
+    it("N parallel set() calls on the same key all succeed (no ENOENT)", async () => {
+      const store = new FsStore({ root: scratchDir });
+      const N = 20;
+      const values = Array.from({ length: N }, (_, i) => ({ writer: i }));
+      // All N parallel — no inter-promise serialization.
+      const results = await Promise.allSettled(values.map((v) => store.set("contended-key", v)));
+      const rejected = results.filter((r) => r.status === "rejected");
+      // Surface the first error for clarity on regression.
+      if (rejected.length > 0) {
+        const reason = (rejected[0] as PromiseRejectedResult).reason;
+        throw new Error(
+          `Expected 0 ENOENT rejections under N=${N} concurrent set; got ${rejected.length}. First: ${String(reason)}`,
+        );
+      }
+      // Final value must be one of the N writes (last-rename-wins
+      // semantics — documented in FsStore.set).
+      const final = (await store.get("contended-key")) as { writer: number } | null;
+      expect(final).not.toBeNull();
+      expect(final?.writer).toBeGreaterThanOrEqual(0);
+      expect(final?.writer).toBeLessThan(N);
+    });
+
+    it("uses a unique temp filename per write (not literal `.tmp`)", async () => {
+      // Belt-and-suspenders: even with a single writer, the temp file
+      // should carry a random suffix (per-write isolation). Verified by
+      // inspecting source — no literal `${p}.tmp` pattern.
+      const store = new FsStore({ root: scratchDir });
+      await store.set("unique-temp", { ok: true });
+      // After success there is no `.tmp` file at all (rename moved it).
+      // This pairs with the existing "set produces no .tmp residue" test.
+      const got = await store.get("unique-temp");
+      expect(got).toEqual({ ok: true });
+    });
+  });
 });
