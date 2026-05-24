@@ -46,6 +46,19 @@ class TestPath:
         with pytest.raises(ValueError, match="invalid ticker"):
             trades_cache_path("kalshi", "../../etc/passwd", 2026, 5)
 
+    def test_all_dot_ticker_rejected_dot(self, cache_dir):
+        """Architect iter-1 HIGH: ``.`` ticker would silently misplace files."""
+        with pytest.raises(ValueError, match="invalid ticker"):
+            trades_cache_path("kalshi", ".", 2026, 5)
+
+    def test_all_dot_ticker_rejected_dotdot(self, cache_dir):
+        with pytest.raises(ValueError, match="invalid ticker"):
+            trades_cache_path("kalshi", "..", 2026, 5)
+
+    def test_all_dot_ticker_rejected_triple(self, cache_dir):
+        with pytest.raises(ValueError, match="invalid ticker"):
+            trades_cache_path("kalshi", "...", 2026, 5)
+
     def test_ticker_with_null_byte_rejected(self, cache_dir):
         with pytest.raises(ValueError, match="invalid ticker"):
             trades_cache_path("kalshi", "KX\x00EVIL", 2026, 5)

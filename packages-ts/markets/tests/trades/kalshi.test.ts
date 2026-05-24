@@ -42,7 +42,58 @@ function mockSequence(
 }
 
 describe("kalshiCandles", () => {
-  it("returns rows with the expected columns + source", async () => {
+  it("real Kalshi shape: FixedPointDollars strings → cents [0–100]", async () => {
+    const result = await kalshiCandles(
+      TICKER,
+      {
+        interval: "1h",
+        from: new Date("2026-06-01T00:00:00Z"),
+        to: new Date("2026-06-02T00:00:00Z"),
+      },
+      {
+        fetchFn: mockOnce({
+          candlesticks: [
+            {
+              end_period_ts: 1717200000,
+              price: {
+                open_dollars: "0.5000",
+                high_dollars: "0.5500",
+                low_dollars: "0.4800",
+                close_dollars: "0.5200",
+              },
+              volume_fp: "100",
+              open_interest_fp: "500",
+            },
+            {
+              end_period_ts: 1717203600,
+              price: {
+                open_dollars: "0.5200",
+                high_dollars: "0.6000",
+                low_dollars: "0.5100",
+                close_dollars: "0.5800",
+              },
+              volume_fp: "200",
+              open_interest_fp: "600",
+            },
+          ],
+        }),
+        sleepBetweenMs: 0,
+      },
+    );
+    expect(result.rows.length).toBe(2);
+    // cents = float(dollars_string) * 100 (binary roundoff acceptable).
+    expect(result.rows[0]?.open).toBeCloseTo(50);
+    expect(result.rows[0]?.close).toBeCloseTo(52);
+    expect(result.rows[1]?.high).toBeCloseTo(60);
+    expect(result.rows[0]?.volume).toBe(100);
+    expect(result.rows[1]?.openInterest).toBe(600);
+    expect(result.rows.every((r) => r.source === "kalshi")).toBe(true);
+    expect(result.source).toBe("kalshi");
+    expect(result.ticker).toBe(TICKER);
+    expect(result.interval).toBe("1h");
+  });
+
+  it("legacy unsuffixed candle fields still parsed", async () => {
     const result = await kalshiCandles(
       TICKER,
       {
@@ -59,25 +110,43 @@ describe("kalshiCandles", () => {
               volume: 100,
               open_interest: 500,
             },
+          ],
+        }),
+        sleepBetweenMs: 0,
+      },
+    );
+    expect(result.rows[0]?.open).toBe(50);
+    expect(result.rows[0]?.volume).toBe(100);
+  });
+
+  it("subpenny precision preserved (0.567 → 56.7)", async () => {
+    const result = await kalshiCandles(
+      TICKER,
+      {
+        interval: "1h",
+        from: new Date("2026-06-01T00:00:00Z"),
+        to: new Date("2026-06-02T00:00:00Z"),
+      },
+      {
+        fetchFn: mockOnce({
+          candlesticks: [
             {
-              end_period_ts: 1717203600,
-              price: { open: 52, high: 60, low: 51, close: 58 },
-              volume: 200,
-              open_interest: 600,
+              end_period_ts: 1717200000,
+              price: {
+                open_dollars: "0.5670",
+                high_dollars: "0.5670",
+                low_dollars: "0.5670",
+                close_dollars: "0.5670",
+              },
+              volume_fp: "0",
+              open_interest_fp: "0",
             },
           ],
         }),
         sleepBetweenMs: 0,
       },
     );
-    expect(result.rows.length).toBe(2);
-    expect(result.rows[0]?.open).toBe(50);
-    expect(result.rows[0]?.close).toBe(52);
-    expect(result.rows[1]?.high).toBe(60);
-    expect(result.rows.every((r) => r.source === "kalshi")).toBe(true);
-    expect(result.source).toBe("kalshi");
-    expect(result.ticker).toBe(TICKER);
-    expect(result.interval).toBe("1h");
+    expect(result.rows[0]?.open).toBeCloseTo(56.7);
   });
 
   it("rejects invalid Date", async () => {
@@ -149,7 +218,7 @@ describe("kalshiCandles", () => {
 });
 
 describe("kalshiFills", () => {
-  it("walks cursor pagination", async () => {
+  it("real Kalshi shape: yes_price_dollars / count_fp / taker_outcome_side", async () => {
     const result = await kalshiFills(
       TICKER,
       {},
@@ -160,10 +229,10 @@ describe("kalshiFills", () => {
               {
                 trade_id: "t1",
                 created_time: 1717200000,
-                yes_price: 52,
-                no_price: 48,
-                count: 10,
-                taker_side: "yes",
+                yes_price_dollars: "0.5200",
+                no_price_dollars: "0.4800",
+                count_fp: "10",
+                taker_outcome_side: "yes",
               },
             ],
             cursor: "P2",
@@ -173,10 +242,10 @@ describe("kalshiFills", () => {
               {
                 trade_id: "t2",
                 created_time: "2026-06-01T00:01:00Z",
-                yes_price: 53,
-                no_price: 47,
-                count: 5,
-                taker_side: "no",
+                yes_price_dollars: "0.5300",
+                no_price_dollars: "0.4700",
+                count_fp: "5",
+                taker_outcome_side: "no",
               },
             ],
             cursor: "",
@@ -190,6 +259,37 @@ describe("kalshiFills", () => {
     expect(result.rows[1]?.takerSide).toBe("no");
     expect(result.rows[1]?.ts).toBe(new Date("2026-06-01T00:01:00Z").toISOString());
     expect(result.rows.every((r) => r.source === "kalshi")).toBe(true);
+    // cents
+    expect(result.rows[0]?.yesPrice).toBeCloseTo(52);
+    expect(result.rows[1]?.noPrice).toBeCloseTo(47);
+    expect(result.rows[0]?.count).toBe(10);
+    expect(result.rows[1]?.count).toBe(5);
+  });
+
+  it("legacy unsuffixed trade fields still parsed", async () => {
+    const result = await kalshiFills(
+      TICKER,
+      {},
+      {
+        fetchFn: mockOnce({
+          trades: [
+            {
+              trade_id: "t1",
+              created_time: 1717200000,
+              yes_price: 52,
+              no_price: 48,
+              count: 10,
+              taker_side: "yes",
+            },
+          ],
+          cursor: "",
+        }),
+        sleepBetweenMs: 0,
+      },
+    );
+    expect(result.rows[0]?.yesPrice).toBe(52);
+    expect(result.rows[0]?.count).toBe(10);
+    expect(result.rows[0]?.takerSide).toBe("yes");
   });
 
   it("respects maxPages safety cap", async () => {
@@ -221,7 +321,33 @@ describe("kalshiFills", () => {
 });
 
 describe("kalshiOrderbook", () => {
-  it("flattens yes/no levels into rows", async () => {
+  it("real Kalshi shape: orderbook_fp with yes_dollars / no_dollars", async () => {
+    const result = await kalshiOrderbook(
+      TICKER,
+      {},
+      {
+        fetchFn: mockOnce({
+          orderbook_fp: {
+            yes_dollars: [
+              ["0.5200", "100"],
+              ["0.5100", "200"],
+            ],
+            no_dollars: [["0.4800", "150"]],
+          },
+        }),
+        sleepBetweenMs: 0,
+      },
+    );
+    expect(result.rows.length).toBe(3);
+    expect(result.rows.filter((r) => r.side === "yes").length).toBe(2);
+    // cents = float(dollars_string) * 100
+    expect(result.rows[0]?.price).toBeCloseTo(52);
+    expect(result.rows[0]?.size).toBe(100);
+    expect(result.rows.every((r) => r.source === "kalshi")).toBe(true);
+    expect(typeof result.snapshotAt).toBe("string");
+  });
+
+  it("legacy orderbook shape still parsed", async () => {
     const result = await kalshiOrderbook(
       TICKER,
       {},
@@ -239,10 +365,7 @@ describe("kalshiOrderbook", () => {
       },
     );
     expect(result.rows.length).toBe(3);
-    expect(result.rows.filter((r) => r.side === "yes").length).toBe(2);
     expect(result.rows[0]?.price).toBe(52);
-    expect(result.rows.every((r) => r.source === "kalshi")).toBe(true);
-    expect(typeof result.snapshotAt).toBe("string");
   });
 
   it("supports dict-form levels", async () => {

@@ -10,10 +10,12 @@ function mockOnce(payload: unknown, status = 200): typeof fetch {
     })) as typeof fetch;
 }
 
-describe("polymarketHistory", () => {
-  it("returns rows with the expected columns + source", async () => {
+describe("polymarketHistory (CLOB)", () => {
+  /** Architect iter-1 CRITICAL: prices-history lives on the CLOB host, not
+   * Gamma; `market` query param is the CLOB token id, not Gamma market id. */
+  it("returns rows with the expected columns + source=polymarket.clob", async () => {
     const result = await polymarketHistory(
-      "0xMARKETCONDITION",
+      "0xYES_OUTCOME_TOKEN_ID",
       {
         from: new Date("2026-06-01T00:00:00Z"),
         to: new Date("2026-06-02T00:00:00Z"),
@@ -30,10 +32,29 @@ describe("polymarketHistory", () => {
     );
     expect(result.rows.length).toBe(2);
     expect(result.rows[0]?.price).toBe(0.42);
-    expect(result.rows.every((r) => r.source === "polymarket.gamma")).toBe(true);
-    expect(result.source).toBe("polymarket.gamma");
-    expect(result.marketId).toBe("0xMARKETCONDITION");
+    expect(result.rows.every((r) => r.source === "polymarket.clob")).toBe(true);
+    expect(result.source).toBe("polymarket.clob");
+    expect(result.tokenId).toBe("0xYES_OUTCOME_TOKEN_ID");
     expect(result.fidelityMinutes).toBe(60);
+  });
+
+  it("calls the CLOB host (not Gamma)", async () => {
+    let captured: string | URL | undefined;
+    const fetchFn: typeof fetch = async (url, _init) => {
+      captured = url as string | URL;
+      return new Response(JSON.stringify({ history: [] }), { status: 200 });
+    };
+    await polymarketHistory(
+      "T1",
+      {
+        from: new Date("2026-06-01T00:00:00Z"),
+        to: new Date("2026-06-02T00:00:00Z"),
+      },
+      { fetchFn, sleepBetweenMs: 0 },
+    );
+    const urlStr = String(captured);
+    expect(urlStr).toContain("clob.polymarket.com/prices-history");
+    expect(urlStr).not.toContain("gamma-api.polymarket.com");
   });
 
   it("tolerates a bare-list payload", async () => {
@@ -51,7 +72,7 @@ describe("polymarketHistory", () => {
     expect(result.rows.length).toBe(1);
   });
 
-  it("rejects empty marketId", async () => {
+  it("rejects empty tokenId", async () => {
     await expect(
       polymarketHistory(
         "",
@@ -93,7 +114,7 @@ describe("polymarketHistory", () => {
 
   it("empty history returns empty rows", async () => {
     const result = await polymarketHistory(
-      "M1",
+      "T1",
       {
         from: new Date("2026-06-01T00:00:00Z"),
         to: new Date("2026-06-02T00:00:00Z"),
@@ -101,7 +122,7 @@ describe("polymarketHistory", () => {
       { fetchFn: mockOnce({ history: [] }), sleepBetweenMs: 0 },
     );
     expect(result.rows.length).toBe(0);
-    expect(result.source).toBe("polymarket.gamma");
+    expect(result.source).toBe("polymarket.clob");
   });
 });
 

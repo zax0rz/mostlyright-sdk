@@ -100,15 +100,27 @@ def _request(
         for attempt in range(_MAX_RETRIES):
             response = client.get(url, params=params, headers=headers)
             if response.status_code in _TRANSIENT_CODES and attempt < _MAX_RETRIES - 1:
+                # Architect iter-1 CRITICAL: honor the upstream Retry-After
+                # header if present. RFC 7231 §7.1.3 allows either an int
+                # (seconds) or an HTTP-date; we honor the integer form (Kalshi
+                # documents seconds). Use max(retry_after, delay) so a
+                # smaller server hint doesn't shorten our exponential
+                # backoff and lose monotonicity.
+                retry_after = _parse_retry_after_seconds(
+                    response.headers.get("Retry-After")
+                )
+                sleep_s = max(retry_after, delay) if retry_after is not None else delay
                 log.warning(
-                    "kalshi HTTP %d for %s, retry %d/%d in %.1fs",
+                    "kalshi HTTP %d for %s, retry %d/%d in %.1fs"
+                    "%s",
                     response.status_code,
                     url,
                     attempt + 1,
                     _MAX_RETRIES,
-                    delay,
+                    sleep_s,
+                    f" (Retry-After={retry_after}s)" if retry_after is not None else "",
                 )
-                time.sleep(delay)
+                time.sleep(sleep_s)
                 delay *= 2
                 continue
             response.raise_for_status()
@@ -244,6 +256,25 @@ def fetch_orderbook(
             f"kalshi orderbook for {ticker!r}: expected dict payload, got {type(payload).__name__}"
         )
     return payload
+
+
+def _parse_retry_after_seconds(value: str | None) -> float | None:
+    """Parse an HTTP ``Retry-After`` header into seconds.
+
+    RFC 7231 §7.1.3 allows either delta-seconds (int) or an HTTP-date.
+    We honor the int form only — Kalshi documents seconds. HTTP-date is
+    rare in 429 contexts and not worth a date parser. Negative / unparseable
+    values return ``None`` so the caller falls back to its own backoff.
+    """
+    if not value:
+        return None
+    try:
+        s = float(value.strip())
+    except (TypeError, ValueError):
+        return None
+    if s < 0 or not (s == s) or s == float("inf"):
+        return None
+    return s
 
 
 __all__ = [

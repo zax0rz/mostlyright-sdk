@@ -13,7 +13,10 @@ import pytest
 
 respx = pytest.importorskip("respx")
 
-from tradewinds.markets._polymarket_client import GAMMA_API_BASE  # noqa: E402
+from tradewinds.markets._polymarket_client import (  # noqa: E402
+    CLOB_API_BASE,
+    GAMMA_API_BASE,
+)
 from tradewinds.markets.polymarket_trades import history, snapshot  # noqa: E402
 
 
@@ -21,9 +24,12 @@ from tradewinds.markets.polymarket_trades import history, snapshot  # noqa: E402
 # history
 # ---------------------------------------------------------------------------
 class TestHistory:
+    """Iter-1 architect CRITICAL: prices-history lives on the CLOB host, NOT
+    Gamma. Tests now mock the CLOB endpoint and assert source='polymarket.clob'."""
+
     def test_returns_dataframe_with_expected_columns(self):
         with respx.mock(assert_all_called=False) as router:
-            router.get(f"{GAMMA_API_BASE}/prices-history").mock(
+            router.get(f"{CLOB_API_BASE}/prices-history").mock(
                 return_value=httpx.Response(
                     200,
                     json={
@@ -34,21 +40,24 @@ class TestHistory:
                     },
                 )
             )
+            # `token_id` is the CLOB ERC-1155 asset id (per-outcome), not a
+            # Gamma market/condition/event id.
             df = history(
-                "0xMARKETCONDITION",
+                "0xYES_OUTCOME_TOKEN_ID",
                 from_=datetime(2026, 6, 1, tzinfo=UTC),
                 to=datetime(2026, 6, 2, tzinfo=UTC),
                 sleep_between=0,
             )
         assert list(df.columns) == ["ts", "price", "volume", "source"]
         assert len(df) == 2
-        assert (df["source"] == "polymarket.gamma").all()
+        assert (df["source"] == "polymarket.clob").all()
         assert df["price"].tolist() == [0.42, 0.45]
+        assert df.attrs["token_id"] == "0xYES_OUTCOME_TOKEN_ID"
 
     def test_bare_list_payload_tolerated(self):
-        """Gamma occasionally returns a bare list instead of {history: ...}."""
+        """CLOB occasionally returns a bare list instead of {history: ...}."""
         with respx.mock(assert_all_called=False) as router:
-            router.get(f"{GAMMA_API_BASE}/prices-history").mock(
+            router.get(f"{CLOB_API_BASE}/prices-history").mock(
                 return_value=httpx.Response(
                     200,
                     json=[
@@ -57,7 +66,7 @@ class TestHistory:
                 )
             )
             df = history(
-                "M1",
+                "T1",
                 from_=datetime(2026, 6, 1, tzinfo=UTC),
                 to=datetime(2026, 6, 2, tzinfo=UTC),
                 sleep_between=0,
@@ -66,11 +75,11 @@ class TestHistory:
 
     def test_empty_history_returns_empty_dataframe(self):
         with respx.mock(assert_all_called=False) as router:
-            router.get(f"{GAMMA_API_BASE}/prices-history").mock(
+            router.get(f"{CLOB_API_BASE}/prices-history").mock(
                 return_value=httpx.Response(200, json={"history": []})
             )
             df = history(
-                "M1",
+                "T1",
                 from_=datetime(2026, 6, 1, tzinfo=UTC),
                 to=datetime(2026, 6, 2, tzinfo=UTC),
                 sleep_between=0,
@@ -96,7 +105,7 @@ class TestHistory:
                 sleep_between=0,
             )
 
-    def test_empty_market_id_raises(self):
+    def test_empty_token_id_raises(self):
         with pytest.raises(ValueError, match="non-empty str"):
             history(
                 "",

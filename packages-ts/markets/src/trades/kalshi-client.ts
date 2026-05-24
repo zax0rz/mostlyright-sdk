@@ -106,31 +106,69 @@ async function getJson(
   return json;
 }
 
+// Real Kalshi API (post-March-2026 migration) returns FixedPointDollars
+// strings (`_dollars` suffix) for prices and FixedPoint integer strings
+// (`_fp` suffix) for sizes. Legacy unsuffixed fields accepted as a
+// fallback for older endpoints / recorded fixtures. Field types are
+// `string | number` to cover both wire shapes.
 export interface RawKalshiCandle {
   readonly end_period_ts?: number;
   readonly price?: {
-    readonly open?: number;
-    readonly high?: number;
-    readonly low?: number;
-    readonly close?: number;
+    // New wire format: dollar strings like "0.5600".
+    readonly open_dollars?: string;
+    readonly high_dollars?: string;
+    readonly low_dollars?: string;
+    readonly close_dollars?: string;
+    // Legacy integer cents.
+    readonly open?: number | string;
+    readonly high?: number | string;
+    readonly low?: number | string;
+    readonly close?: number | string;
   };
-  readonly volume?: number;
-  readonly open_interest?: number;
+  // New wire format: FixedPoint integer strings.
+  readonly volume_fp?: string;
+  readonly open_interest_fp?: string;
+  // Legacy ints.
+  readonly volume?: number | string;
+  readonly open_interest?: number | string;
 }
 
 export interface RawKalshiTrade {
   readonly trade_id?: string;
   readonly created_time?: number | string;
-  readonly yes_price?: number;
-  readonly no_price?: number;
-  readonly count?: number;
+  // New wire format: dollar strings + integer strings.
+  readonly yes_price_dollars?: string;
+  readonly no_price_dollars?: string;
+  readonly count_fp?: string;
+  readonly taker_outcome_side?: "yes" | "no";
+  // Legacy unsuffixed.
+  readonly yes_price?: number | string;
+  readonly no_price?: number | string;
+  readonly count?: number | string;
   readonly taker_side?: "yes" | "no";
 }
 
+// Orderbook level: real wire format is [price_dollar_string, count_fp_string];
+// legacy is [price_int, count_int]. Dict form tolerated for backward compat
+// with hand-authored fixtures.
+type KalshiOrderLevel =
+  | readonly [string | number, string | number]
+  | {
+      readonly price?: string | number;
+      readonly size?: string | number;
+      readonly contracts?: string | number;
+    };
+
 export interface RawKalshiOrderbook {
+  // New wire format: orderbook_fp with yes_dollars / no_dollars arrays.
+  readonly orderbook_fp?: {
+    readonly yes_dollars?: ReadonlyArray<KalshiOrderLevel>;
+    readonly no_dollars?: ReadonlyArray<KalshiOrderLevel>;
+  };
+  // Legacy: orderbook with yes / no arrays.
   readonly orderbook?: {
-    readonly yes?: Array<[number, number] | { price?: number; size?: number; contracts?: number }>;
-    readonly no?: Array<[number, number] | { price?: number; size?: number; contracts?: number }>;
+    readonly yes?: ReadonlyArray<KalshiOrderLevel>;
+    readonly no?: ReadonlyArray<KalshiOrderLevel>;
   };
 }
 

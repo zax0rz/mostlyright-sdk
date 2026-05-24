@@ -90,7 +90,11 @@ def candles(
         ``pd.DataFrame`` with columns:
 
         - ``ts`` (datetime UTC): end-of-period timestamp.
-        - ``open`` / ``high`` / ``low`` / ``close`` (float | None): OHLC cents.
+        - ``open`` / ``high`` / ``low`` / ``close`` (float | None): OHLC in
+          **cents** (0.0–100.0, subpenny precision preserved). Conversion
+          from the Kalshi FixedPointDollars wire format (e.g. ``"0.5600"``)
+          is ``cents = float(api_string) * 100`` per the canonical
+          ``packages/core/.../specs/candle.json`` contract.
         - ``volume`` (int | None): contracts traded in the bucket.
         - ``open_interest`` (int | None): contracts outstanding at bucket end.
         - ``source`` (str): always ``"kalshi"``.
@@ -126,15 +130,24 @@ def candles(
             if isinstance(ts_value, (int, float))
             else None
         )
+        # Kalshi API (March 2026 migration) returns FixedPointDollars strings
+        # (e.g. "0.5600") for prices and FixedPoint integer strings for
+        # volume / open_interest (`*_fp` suffix). Canonical storage per
+        # `packages/core/src/tradewinds/_internal/specs/candle.json` is cents
+        # in [0, 100] (float — subpenny preserved). Conversion:
+        #   cents = float(api_string) * 100
+        # Legacy integer-cents fields (`open`/`high`/`low`/`close`/`volume`/
+        # `open_interest` without suffix) are accepted as a fallback so a
+        # future Kalshi rollback or alternate endpoint shape stays parseable.
         rows.append(
             {
                 "ts": ts,
-                "open": _maybe_float(price.get("open")),
-                "high": _maybe_float(price.get("high")),
-                "low": _maybe_float(price.get("low")),
-                "close": _maybe_float(price.get("close")),
-                "volume": _maybe_int(c.get("volume")),
-                "open_interest": _maybe_int(c.get("open_interest")),
+                "open": _pick_price(price, "open"),
+                "high": _pick_price(price, "high"),
+                "low": _pick_price(price, "low"),
+                "close": _pick_price(price, "close"),
+                "volume": _pick_fp(c, "volume"),
+                "open_interest": _pick_fp(c, "open_interest"),
                 "source": _SOURCE,
             }
         )
@@ -182,9 +195,15 @@ def fills(
 
         - ``trade_id`` (str | None)
         - ``ts`` (datetime UTC | None)
-        - ``yes_price`` / ``no_price`` (float | None)
-        - ``count`` (int | None): contracts in this fill.
-        - ``taker_side`` (str | None): ``"yes"`` / ``"no"`` / None.
+        - ``yes_price`` / ``no_price`` (float | None): cents (0.0–100.0,
+          subpenny precision). Converted from Kalshi's
+          ``yes_price_dollars``/``no_price_dollars`` FixedPointDollars
+          strings via ``cents = float(s) * 100``.
+        - ``count`` (int | None): contracts in this fill. Read from
+          ``count_fp`` (Kalshi's FixedPoint integer string) and converted
+          to int.
+        - ``taker_side`` (str | None): ``"yes"`` / ``"no"`` / None. Read
+          from Kalshi's ``taker_outcome_side``.
         - ``source`` (str): always ``"kalshi"``.
 
     Raises:
@@ -221,14 +240,22 @@ def fills(
                 ts = datetime.fromisoformat(ts_value.replace("Z", "+00:00"))
             except ValueError:
                 ts = None
+        # Real Kalshi /markets/trades returns FixedPointDollars strings:
+        # yes_price_dollars / no_price_dollars / count_fp / taker_outcome_side.
+        # Legacy unsuffixed names accepted as a fallback.
+        taker_side = (
+            t.get("taker_outcome_side")
+            if "taker_outcome_side" in t
+            else t.get("taker_side")
+        )
         rows.append(
             {
                 "trade_id": t.get("trade_id"),
                 "ts": ts,
-                "yes_price": _maybe_float(t.get("yes_price")),
-                "no_price": _maybe_float(t.get("no_price")),
-                "count": _maybe_int(t.get("count")),
-                "taker_side": t.get("taker_side"),
+                "yes_price": _pick_price(t, "yes_price"),
+                "no_price": _pick_price(t, "no_price"),
+                "count": _pick_fp(t, "count"),
+                "taker_side": taker_side,
                 "source": _SOURCE,
             }
         )
@@ -270,8 +297,12 @@ def orderbook(
         DataFrame, one row per (side, price level):
 
         - ``side`` (str): ``"yes"`` or ``"no"``.
-        - ``price`` (float | None): price in cents.
-        - ``size`` (int | None): contracts at this level.
+        - ``price`` (float | None): price in cents (0.0–100.0). Converted
+          from Kalshi's ``orderbook_fp.{yes_dollars,no_dollars}`` levels
+          (each level is ``[price_dollar_string, count_fp_string]``) via
+          ``cents = float(price_dollar_string) * 100``.
+        - ``size`` (int | None): contracts at this level (parsed from
+          ``count_fp_string``).
         - ``source`` (str): always ``"kalshi"``.
 
         Snapshot timestamp lives in ``df.attrs["snapshot_at"]`` (no
@@ -281,12 +312,25 @@ def orderbook(
     payload = fetch_orderbook(
         ticker, depth=depth, client=client, sleep_between=sleep_between
     )
-    book = payload.get("orderbook") or {}
+    # Kalshi API (March 2026 migration) returns `orderbook_fp` with
+    # `yes_dollars` / `no_dollars` arrays of [price_dollar_string,
+    # count_fp_string]. Legacy `orderbook.yes` / `.no` accepted as fallback
+    # for older endpoints or recorded fixtures with the prior shape.
+    if "orderbook_fp" in payload:
+        book = payload.get("orderbook_fp") or {}
+        keys = {"yes": "yes_dollars", "no": "no_dollars"}
+        fp_form = True
+    else:
+        book = payload.get("orderbook") or {}
+        keys = {"yes": "yes", "no": "no"}
+        fp_form = False
     rows: list[dict[str, Any]] = []
-    for side in ("yes", "no"):
-        levels = book.get(side) or []
+    for side, key in keys.items():
+        levels = book.get(key) or []
         for level in levels:
-            # Kalshi documents [price, size] tuples. Tolerate dict form too.
+            # [price, size] tuples (legacy: ints; new fp form: dollar
+            # strings + fp integer strings). Dict form also tolerated for
+            # backward compatibility with mock fixtures.
             if isinstance(level, (list, tuple)) and len(level) >= 2:
                 price_v, size_v = level[0], level[1]
             elif isinstance(level, dict):
@@ -294,11 +338,17 @@ def orderbook(
                 size_v = level.get("size") or level.get("contracts")
             else:
                 continue
+            if fp_form:
+                price_cents = _dollars_to_cents(price_v)
+                size_int = _fp_string_to_int(size_v)
+            else:
+                price_cents = _maybe_float(price_v)
+                size_int = _maybe_int(size_v)
             rows.append(
                 {
                     "side": side,
-                    "price": _maybe_float(price_v),
-                    "size": _maybe_int(size_v),
+                    "price": price_cents,
+                    "size": size_int,
                     "source": _SOURCE,
                 }
             )
@@ -330,6 +380,48 @@ def _maybe_float(v: Any) -> float | None:
         return float(v)
     except (TypeError, ValueError):
         return None
+
+
+def _dollars_to_cents(v: Any) -> float | None:
+    """Parse a Kalshi FixedPointDollars string (e.g. ``"0.5600"``) → cents.
+
+    Canonical conversion per
+    ``packages/core/src/tradewinds/_internal/specs/candle.json``:
+    ``cents = float(dollars_string) * 100``. Subpenny precision preserved
+    (e.g. ``"0.567"`` → 56.7).
+    """
+    f = _maybe_float(v)
+    if f is None:
+        return None
+    return f * 100.0
+
+
+def _fp_string_to_int(v: Any) -> int | None:
+    """Parse a Kalshi FixedPoint integer string (volume_fp / count_fp /
+    open_interest_fp) to int. Tolerates trailing decimals like ``"100.00"``.
+    """
+    if v is None:
+        return None
+    try:
+        return int(float(v))
+    except (TypeError, ValueError):
+        return None
+
+
+def _pick_price(d: dict[str, Any], base: str) -> float | None:
+    """Read ``{base}_dollars`` and convert to cents; fall back to legacy ``base``."""
+    dollars_key = f"{base}_dollars"
+    if dollars_key in d:
+        return _dollars_to_cents(d.get(dollars_key))
+    return _maybe_float(d.get(base))
+
+
+def _pick_fp(d: dict[str, Any], base: str) -> int | None:
+    """Read ``{base}_fp`` and convert to int; fall back to legacy ``base``."""
+    fp_key = f"{base}_fp"
+    if fp_key in d:
+        return _fp_string_to_int(d.get(fp_key))
+    return _maybe_int(d.get(base))
 
 
 def _maybe_int(v: Any) -> int | None:

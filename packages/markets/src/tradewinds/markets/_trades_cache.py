@@ -57,7 +57,14 @@ _ISSUER_RE = re.compile(r"^[a-z][a-z0-9._-]{0,31}$")
 #: real Kalshi (``KXHIGHNY-25MAY26-T79``) and Polymarket
 #: (``0x...condition-id``) tickers use. Capped at 128 chars to bound the
 #: filesystem path length on Windows (260-char default).
-_TICKER_RE = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
+#:
+#: Architect iter-1 HIGH: the original ``^[A-Za-z0-9._-]{1,128}$`` matched
+#: ``"."`` / ``".."`` / ``"..."`` — `resolve()` + `relative_to()` would still
+#: keep the path under the cache root, but it would silently misplace files
+#: at the issuer-directory level (a different ticker bucket). The leading
+#: negative lookahead ``(?!\.+$)`` rejects all-dot strings explicitly so the
+#: silent-misplacement window is closed.
+_TICKER_RE = re.compile(r"^(?!\.+$)[A-Za-z0-9._-]{1,128}$")
 
 
 def _cache_root() -> Path:

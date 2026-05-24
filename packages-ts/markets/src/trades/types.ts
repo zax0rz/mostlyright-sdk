@@ -5,8 +5,13 @@
 // objects (frozen `readonly` arrays) since `@tradewinds/markets` does
 // not depend on a DataFrame library.
 
-/** Source string carried per row — load-bearing invariant for cross-frame joins. */
-export type TradesSource = "kalshi" | "polymarket.gamma";
+/** Source string carried per row — load-bearing invariant for cross-frame joins.
+ *
+ * `polymarket.gamma` covers /events + /events/{id} (snapshot endpoint);
+ * `polymarket.clob` covers /prices-history (history endpoint, on the CLOB
+ * host — distinct from Gamma per architect iter-1 CRITICAL).
+ */
+export type TradesSource = "kalshi" | "polymarket.gamma" | "polymarket.clob";
 
 export interface KalshiCandleRow {
   /** Bucket-end timestamp as ISO 8601 UTC string. */
@@ -39,9 +44,11 @@ export interface KalshiOrderbookRow {
 
 export interface PolymarketHistoryRow {
   readonly ts: string | null;
+  /** Last-traded price in [0, 1] for the requested CLOB token. */
   readonly price: number | null;
   readonly volume: number | null;
-  readonly source: "polymarket.gamma";
+  /** History rows live on the CLOB host (architect iter-1 CRITICAL fix). */
+  readonly source: "polymarket.clob";
 }
 
 export interface PolymarketSnapshotRow {
@@ -66,6 +73,8 @@ export interface TradesResult<Row> {
   readonly eventId?: string;
   readonly interval?: string;
   readonly fidelityMinutes?: number;
+  /** CLOB token id for polymarketHistory results (architect iter-1 fix). */
+  readonly tokenId?: string;
 }
 
 /** Supported candle intervals — exact union mirrors Python `INTERVALS`. */

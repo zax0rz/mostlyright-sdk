@@ -24,7 +24,11 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-from tradewinds.markets._polymarket_client import fetch_event_by_id, get_json
+from tradewinds.markets._polymarket_client import (
+    CLOB_API_BASE,
+    fetch_event_by_id,
+    get_json,
+)
 
 if TYPE_CHECKING:
     import httpx
@@ -34,10 +38,15 @@ if TYPE_CHECKING:
 __all__ = ["history", "snapshot"]
 
 
-_SOURCE: str = "polymarket.gamma"
+#: Per-row source label for the snapshot endpoint (Gamma-hosted).
+_SOURCE_SNAPSHOT: str = "polymarket.gamma"
+
+#: Per-row source label for the history endpoint (CLOB-hosted; distinct
+#: from snapshot because the two endpoints live on different hosts).
+_SOURCE_HISTORY: str = "polymarket.clob"
 
 
-def _require_pandas() -> Any:
+def _require_pandas(source_label: str = "polymarket") -> Any:
     """Lazy-import pandas with an actionable install hint on miss."""
     try:
         import pandas as _pandas
@@ -47,7 +56,7 @@ def _require_pandas() -> Any:
         raise SourceUnavailableError(
             "tradewinds.markets.polymarket_trades requires pandas. Install with: "
             "pip install tradewinds-markets[trades]",
-            source=_SOURCE,
+            source=source_label,
             retryable=False,
             underlying=str(exc),
         ) from None
@@ -55,7 +64,7 @@ def _require_pandas() -> Any:
 
 
 def history(
-    market_id: str,
+    token_id: str,
     *,
     from_: datetime,
     to: datetime,
@@ -63,18 +72,25 @@ def history(
     client: httpx.Client | None = None,
     sleep_between: float | None = None,
 ) -> pd.DataFrame:
-    """Market price/volume timeseries from Gamma ``/prices-history``.
+    """Market price/volume timeseries from Polymarket CLOB ``/prices-history``.
+
+    Architect iter-1 CRITICAL fix: ``/prices-history`` lives on the **CLOB**
+    host (``clob.polymarket.com``), NOT Gamma. The ``market`` query
+    parameter is the CLOB token id (ERC-1155 asset id, one per YES/NO
+    outcome), retrievable from Gamma's ``/markets/slug/{slug}`` response as
+    ``clobTokenIds``. It is NOT a Gamma market/condition/event id.
 
     Polymarket reports time-bucketed last-price + volume; there is no
     separate H/L/C per bucket (the order book is too thin in many
     markets for OHLC to be meaningful at sub-day granularity).
 
     Args:
-        market_id: Polymarket market id (numeric or condition-id form).
+        token_id: Polymarket CLOB token id (asset id for a single
+            outcome — YES or NO; pick the side you want). NOT a Gamma
+            market/condition/event id.
         from_, to: tz-aware UTC datetimes bounding the window.
         fidelity_minutes: Bucket size in minutes (default 60 = hourly).
-            Polymarket documents minimum 1; values that don't divide
-            the window cleanly are tolerated upstream.
+            Polymarket documents minimum 1.
         client: Optional shared ``httpx.Client``.
         sleep_between: Per-request polite-sleep override.
 
@@ -82,18 +98,21 @@ def history(
         DataFrame with columns:
 
         - ``ts`` (datetime UTC | None): bucket end timestamp.
-        - ``price`` (float | None): last-traded price [0, 1] for YES.
+        - ``price`` (float | None): last-traded price in [0, 1] for the
+          requested outcome token.
         - ``volume`` (float | None): volume in the bucket.
-        - ``source`` (str): always ``"polymarket.gamma"``.
+        - ``source`` (str): always ``"polymarket.clob"``.
+
+        ``df.attrs["token_id"]`` echoes the input for downstream attribution.
 
     Raises:
         TypeError: ``from_``/``to`` not tz-aware datetimes.
         ValueError: ``from_ >= to`` or ``fidelity_minutes < 1``.
-        ValueError: ``market_id`` not a non-empty str.
+        ValueError: ``token_id`` not a non-empty str.
     """
-    pd = _require_pandas()
-    if not isinstance(market_id, str) or not market_id:
-        raise ValueError(f"market_id must be a non-empty str; got {market_id!r}")
+    pd = _require_pandas(source_label=_SOURCE_HISTORY)
+    if not isinstance(token_id, str) or not token_id:
+        raise ValueError(f"token_id must be a non-empty str; got {token_id!r}")
     _validate_aware(from_, "from_")
     _validate_aware(to, "to")
     if from_ >= to:
@@ -104,16 +123,17 @@ def history(
     raw = get_json(
         "/prices-history",
         params={
-            "market": market_id,
+            "market": token_id,
             "startTs": int(from_.timestamp()),
             "endTs": int(to.timestamp()),
             "fidelity": fidelity_minutes,
         },
         client=client,
         sleep_between=0 if sleep_between is None else sleep_between,
+        base_url=CLOB_API_BASE,
     )
 
-    # Gamma typically returns {"history": [{"t": int, "p": float}, ...]}.
+    # Polymarket CLOB typically returns {"history": [{"t": int, "p": float}, ...]}.
     # Defensively unwrap a bare list too (some endpoints flip shapes).
     points: list[Any]
     if isinstance(raw, dict):
@@ -138,12 +158,12 @@ def history(
                 "ts": ts,
                 "price": _maybe_float(p.get("p") if "p" in p else p.get("price")),
                 "volume": _maybe_float(p.get("v") if "v" in p else p.get("volume")),
-                "source": _SOURCE,
+                "source": _SOURCE_HISTORY,
             }
         )
     df = pd.DataFrame(rows, columns=["ts", "price", "volume", "source"])
-    df.attrs["source"] = _SOURCE
-    df.attrs["market_id"] = market_id
+    df.attrs["source"] = _SOURCE_HISTORY
+    df.attrs["token_id"] = token_id
     df.attrs["fidelity_minutes"] = fidelity_minutes
     df.attrs["retrieved_at"] = datetime.now(UTC)
     return df
@@ -205,14 +225,14 @@ def snapshot(
                     "last_price": _maybe_float(price_str),
                     "volume": volume,
                     "liquidity": liquidity,
-                    "source": _SOURCE,
+                    "source": _SOURCE_SNAPSHOT,
                 }
             )
     df = pd.DataFrame(
         rows,
         columns=["market_id", "outcome", "last_price", "volume", "liquidity", "source"],
     )
-    df.attrs["source"] = _SOURCE
+    df.attrs["source"] = _SOURCE_SNAPSHOT
     df.attrs["event_id"] = event_id
     df.attrs["snapshot_at"] = datetime.now(UTC)
     return df

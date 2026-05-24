@@ -9,9 +9,16 @@ import { fetchWithRetry } from "@tradewinds/core";
 import type { PolymarketHistoryRow, PolymarketSnapshotRow, TradesResult } from "./types.js";
 
 const GAMMA_BASE = "https://gamma-api.polymarket.com";
+// Architect iter-1 CRITICAL: prices-history lives on the CLOB host
+// (clob.polymarket.com), NOT Gamma. The `market` query parameter is the
+// CLOB token id (ERC-1155 asset id) — NOT a Gamma market/condition/event id.
+const CLOB_BASE = "https://clob.polymarket.com";
 const DEFAULT_USER_AGENT = "tradewinds-ts/0.2.0 (+https://github.com/helloiamvu/tradewinds)";
 const DEFAULT_SLEEP_BETWEEN_MS = 200;
-const SOURCE = "polymarket.gamma" as const;
+/** Source label for snapshot rows (Gamma-hosted). */
+const SOURCE_SNAPSHOT = "polymarket.gamma" as const;
+/** Source label for history rows (CLOB-hosted; distinct from Gamma). */
+const SOURCE_HISTORY = "polymarket.clob" as const;
 
 export interface PolymarketClientOptions {
   /** Politeness sleep between requests in ms. Default 200. 0 to skip. */
@@ -70,10 +77,11 @@ async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 }
 
 function buildUrl(
+  baseUrl: string,
   path: string,
   params?: Record<string, string | number | boolean | null | undefined>,
 ): string {
-  const url = new URL(`${GAMMA_BASE}${path}`);
+  const url = new URL(`${baseUrl}${path}`);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       if (value === undefined || value === null) continue;
@@ -84,11 +92,12 @@ function buildUrl(
 }
 
 async function getJson(
+  baseUrl: string,
   path: string,
   params: Record<string, string | number | boolean | null | undefined> | undefined,
   opts: PolymarketClientOptions,
 ): Promise<unknown> {
-  const url = buildUrl(path, params);
+  const url = buildUrl(baseUrl, path, params);
   const headers: Record<string, string> = {
     "User-Agent": DEFAULT_USER_AGENT,
     Accept: "application/json",
@@ -155,12 +164,14 @@ function coerceStringList(v: unknown): string[] {
 }
 
 export async function polymarketHistory(
-  marketId: string,
+  /** CLOB token id (ERC-1155 asset id, one per outcome — YES or NO). NOT
+   * a Gamma market/condition/event id. Architect iter-1 CRITICAL fix. */
+  tokenId: string,
   args: PolymarketHistoryArgs,
   opts: PolymarketClientOptions = {},
 ): Promise<TradesResult<PolymarketHistoryRow>> {
-  if (typeof marketId !== "string" || marketId.length === 0) {
-    throw new TypeError(`marketId must be a non-empty string; got ${JSON.stringify(marketId)}`);
+  if (typeof tokenId !== "string" || tokenId.length === 0) {
+    throw new TypeError(`tokenId must be a non-empty string; got ${JSON.stringify(tokenId)}`);
   }
   validateDate(args.from, "from");
   validateDate(args.to, "to");
@@ -174,9 +185,10 @@ export async function polymarketHistory(
     throw new RangeError(`fidelityMinutes must be a positive integer; got ${fidelity}`);
   }
   const payload = await getJson(
+    CLOB_BASE,
     "/prices-history",
     {
-      market: marketId,
+      market: tokenId,
       startTs: Math.trunc(args.from.getTime() / 1000),
       endTs: Math.trunc(args.to.getTime() / 1000),
       fidelity,
@@ -203,14 +215,14 @@ export async function polymarketHistory(
       ts,
       price: maybeNumber(p.p ?? p.price),
       volume: maybeNumber(p.v ?? p.volume),
-      source: SOURCE,
+      source: SOURCE_HISTORY,
     });
   }
   return Object.freeze({
     rows: Object.freeze(rows),
-    source: SOURCE,
+    source: SOURCE_HISTORY,
     retrievedAt: new Date().toISOString(),
-    marketId,
+    tokenId,
     fidelityMinutes: fidelity,
   });
 }
@@ -222,7 +234,12 @@ export async function polymarketSnapshot(
   if (typeof eventId !== "string" || eventId.length === 0) {
     throw new TypeError(`eventId must be a non-empty string; got ${JSON.stringify(eventId)}`);
   }
-  const payload = await getJson(`/events/${encodeURIComponent(eventId)}`, undefined, opts);
+  const payload = await getJson(
+    GAMMA_BASE,
+    `/events/${encodeURIComponent(eventId)}`,
+    undefined,
+    opts,
+  );
   if (payload === null || typeof payload !== "object" || Array.isArray(payload)) {
     throw new Error(
       `polymarket snapshot: bad event payload for ${JSON.stringify(eventId)}; expected object`,
@@ -246,14 +263,14 @@ export async function polymarketSnapshot(
         lastPrice: maybeNumber(priceStr),
         volume,
         liquidity,
-        source: SOURCE,
+        source: SOURCE_SNAPSHOT,
       });
     }
   }
   const snapshotAt = new Date().toISOString();
   return Object.freeze({
     rows: Object.freeze(rows),
-    source: SOURCE,
+    source: SOURCE_SNAPSHOT,
     retrievedAt: snapshotAt,
     snapshotAt,
     eventId,

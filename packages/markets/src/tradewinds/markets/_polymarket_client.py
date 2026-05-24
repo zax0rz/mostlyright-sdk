@@ -31,7 +31,16 @@ log = logging.getLogger(__name__)
 
 
 #: Polymarket Gamma API base URL — read-only public REST endpoint.
+#: Hosts: ``/events``, ``/events/{id}``, ``/markets``.
 GAMMA_API_BASE: str = "https://gamma-api.polymarket.com"
+
+
+#: Polymarket CLOB API base URL — read-only public REST endpoint hosting
+#: ``/prices-history``. Separate hostname from Gamma (Phase 9 architect
+#: iter-1 CRITICAL: the prices-history endpoint moved from Gamma to CLOB
+#: at some point and the `market` query parameter on this endpoint is the
+#: CLOB token id (ERC-1155 asset id), NOT the Gamma market/condition id).
+CLOB_API_BASE: str = "https://clob.polymarket.com"
 
 
 #: Politeness sleep between requests (~300 req/min ceiling). Polymarket
@@ -62,19 +71,23 @@ def get_json(
     client: httpx.Client | None = None,
     timeout: float = HTTP_TIMEOUT,
     sleep_between: float = _REQUEST_DELAY_S,
+    base_url: str = GAMMA_API_BASE,
 ) -> Any:
-    """Generic ``GET`` against the Gamma API; returns parsed JSON.
+    """Generic ``GET`` against a Polymarket public endpoint; returns parsed JSON.
 
     Phase 9 addition (TRADES-04..05): exposes the shared HTTP path so
     the trades surface can reuse the User-Agent + politeness + timeout
     discipline already established for events / event-by-id fetchers.
 
     Args:
-        path: Path under :data:`GAMMA_API_BASE` (must start with ``/``).
+        path: Path under ``base_url`` (must start with ``/``).
         params: Optional query parameters.
         client: Optional shared ``httpx.Client``.
         timeout: Per-request timeout in seconds.
         sleep_between: Per-request polite sleep (tests pass ``0``).
+        base_url: Polymarket host base. Defaults to :data:`GAMMA_API_BASE`;
+            callers needing the CLOB endpoint (``/prices-history``) pass
+            :data:`CLOB_API_BASE` explicitly.
 
     Returns:
         Parsed JSON payload (``dict`` / ``list``).
@@ -90,7 +103,7 @@ def get_json(
             headers={"User-Agent": _USER_AGENT, "Accept": "application/json"},
         )
     try:
-        response = client.get(f"{GAMMA_API_BASE}{path}", params=params)
+        response = client.get(f"{base_url}{path}", params=params)
         response.raise_for_status()
         if sleep_between > 0:
             time.sleep(sleep_between)

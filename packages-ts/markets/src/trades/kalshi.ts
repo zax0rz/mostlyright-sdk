@@ -85,6 +85,55 @@ function maybeInt(v: unknown): number | null {
   return Math.trunc(n);
 }
 
+/**
+ * Convert a Kalshi FixedPointDollars string (e.g. ``"0.5600"``) to cents
+ * [0.0–100.0]. Subpenny precision is preserved (`"0.567"` → 56.7).
+ * Canonical conversion per `packages/core/.../specs/candle.json`:
+ * `cents = float(api_string) * 100`. Returns null on unparseable input.
+ */
+function dollarsToCents(v: unknown): number | null {
+  const n = maybeNumber(v);
+  if (n === null) return null;
+  return n * 100;
+}
+
+/**
+ * Parse a Kalshi FixedPoint integer string (e.g. ``"100"`` or ``"100.00"``)
+ * to int. Tolerates trailing-decimal forms; returns null on unparseable.
+ */
+function fpStringToInt(v: unknown): number | null {
+  const n = maybeNumber(v);
+  if (n === null) return null;
+  return Math.trunc(n);
+}
+
+/**
+ * Read either `{base}_dollars` (new wire format, FixedPointDollars string)
+ * or legacy unsuffixed `{base}` (integer cents) from a Kalshi payload
+ * field and return a value in cents [0.0–100.0].
+ */
+function pickPrice(d: Record<string, unknown> | undefined, base: string): number | null {
+  if (d === undefined) return null;
+  const dollarsKey = `${base}_dollars`;
+  if (Object.prototype.hasOwnProperty.call(d, dollarsKey)) {
+    return dollarsToCents(d[dollarsKey]);
+  }
+  return maybeNumber(d[base]);
+}
+
+/**
+ * Read either `{base}_fp` (new wire format, FixedPoint integer string) or
+ * legacy unsuffixed `{base}` (integer) from a Kalshi payload field.
+ */
+function pickFp(d: Record<string, unknown> | undefined, base: string): number | null {
+  if (d === undefined) return null;
+  const fpKey = `${base}_fp`;
+  if (Object.prototype.hasOwnProperty.call(d, fpKey)) {
+    return fpStringToInt(d[fpKey]);
+  }
+  return maybeInt(d[base]);
+}
+
 export async function kalshiCandles(
   ticker: string,
   args: KalshiCandlesArgs,
@@ -111,16 +160,24 @@ export async function kalshiCandles(
     },
     opts,
   );
-  const rows: KalshiCandleRow[] = raw.map((c: RawKalshiCandle) => ({
-    ts: toIsoOrNull(c.end_period_ts),
-    open: maybeNumber(c.price?.open),
-    high: maybeNumber(c.price?.high),
-    low: maybeNumber(c.price?.low),
-    close: maybeNumber(c.price?.close),
-    volume: maybeInt(c.volume),
-    openInterest: maybeInt(c.open_interest),
-    source: SOURCE,
-  }));
+  // Kalshi API (post-March-2026): FixedPointDollars strings for prices,
+  // FixedPoint integer strings for sizes (`_fp` suffix). Legacy unsuffixed
+  // names accepted as a fallback. pickPrice converts dollars → cents
+  // [0.0, 100.0] per canonical specs/candle.json.
+  const rows: KalshiCandleRow[] = raw.map((c: RawKalshiCandle) => {
+    const priceObj = c.price as Record<string, unknown> | undefined;
+    const top = c as unknown as Record<string, unknown>;
+    return {
+      ts: toIsoOrNull(c.end_period_ts),
+      open: pickPrice(priceObj, "open"),
+      high: pickPrice(priceObj, "high"),
+      low: pickPrice(priceObj, "low"),
+      close: pickPrice(priceObj, "close"),
+      volume: pickFp(top, "volume"),
+      openInterest: pickFp(top, "open_interest"),
+      source: SOURCE,
+    };
+  });
   return Object.freeze({
     rows: Object.freeze(rows),
     source: SOURCE,
@@ -152,15 +209,23 @@ export async function kalshiFills(
   if (args.until) fetchArgs.maxTs = Math.trunc(args.until.getTime() / 1000);
   if (args.maxPages !== undefined) fetchArgs.maxPages = args.maxPages;
   const raw = await fetchTrades(ticker, fetchArgs, opts);
-  const rows: KalshiFillRow[] = raw.map((t: RawKalshiTrade) => ({
-    tradeId: t.trade_id ?? null,
-    ts: stringTsToIso(t.created_time),
-    yesPrice: maybeNumber(t.yes_price),
-    noPrice: maybeNumber(t.no_price),
-    count: maybeInt(t.count),
-    takerSide: t.taker_side === "yes" || t.taker_side === "no" ? t.taker_side : null,
-    source: SOURCE,
-  }));
+  // Real Kalshi /markets/trades returns yes_price_dollars / no_price_dollars
+  // / count_fp / taker_outcome_side. Legacy unsuffixed accepted as fallback.
+  const rows: KalshiFillRow[] = raw.map((t: RawKalshiTrade) => {
+    const obj = t as unknown as Record<string, unknown>;
+    const takerRaw = (t.taker_outcome_side ?? t.taker_side) as unknown;
+    const takerSide: "yes" | "no" | null =
+      takerRaw === "yes" || takerRaw === "no" ? takerRaw : null;
+    return {
+      tradeId: t.trade_id ?? null,
+      ts: stringTsToIso(t.created_time),
+      yesPrice: pickPrice(obj, "yes_price"),
+      noPrice: pickPrice(obj, "no_price"),
+      count: pickFp(obj, "count"),
+      takerSide,
+      source: SOURCE,
+    };
+  });
   return Object.freeze({
     rows: Object.freeze(rows),
     source: SOURCE,
@@ -175,16 +240,33 @@ export async function kalshiOrderbook(
   opts: KalshiClientOptions = {},
 ): Promise<TradesResult<KalshiOrderbookRow>> {
   const payload: RawKalshiOrderbook = await fetchOrderbook(ticker, args, opts);
-  const book = payload.orderbook ?? {};
+  // Real Kalshi orderbook (post-March-2026): `orderbook_fp` with
+  // `yes_dollars` / `no_dollars` arrays of [price_dollar_string,
+  // count_fp_string]. Legacy `orderbook.yes` / `.no` accepted as fallback.
+  let useFp: boolean;
+  let levelsBySide: { yes: ReadonlyArray<unknown>; no: ReadonlyArray<unknown> };
+  if (payload.orderbook_fp !== undefined) {
+    useFp = true;
+    levelsBySide = {
+      yes: payload.orderbook_fp.yes_dollars ?? [],
+      no: payload.orderbook_fp.no_dollars ?? [],
+    };
+  } else {
+    useFp = false;
+    levelsBySide = {
+      yes: payload.orderbook?.yes ?? [],
+      no: payload.orderbook?.no ?? [],
+    };
+  }
   const rows: KalshiOrderbookRow[] = [];
   for (const side of ["yes", "no"] as const) {
-    const levels = book[side] ?? [];
+    const levels = levelsBySide[side];
     for (const level of levels) {
       if (Array.isArray(level) && level.length >= 2) {
         rows.push({
           side,
-          price: maybeNumber(level[0]),
-          size: maybeInt(level[1]),
+          price: useFp ? dollarsToCents(level[0]) : maybeNumber(level[0]),
+          size: useFp ? fpStringToInt(level[1]) : maybeInt(level[1]),
           source: SOURCE,
         });
       } else if (level !== null && typeof level === "object") {
@@ -193,8 +275,10 @@ export async function kalshiOrderbook(
         const obj = level as Record<string, unknown>;
         rows.push({
           side,
-          price: maybeNumber(obj.price),
-          size: maybeInt(obj.size ?? obj.contracts),
+          price: useFp ? dollarsToCents(obj.price) : maybeNumber(obj.price),
+          size: useFp
+            ? fpStringToInt(obj.size ?? obj.contracts)
+            : maybeInt(obj.size ?? obj.contracts),
           source: SOURCE,
         });
       }
