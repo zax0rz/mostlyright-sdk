@@ -41,6 +41,9 @@ Decimal phases appear between their surrounding integers in numeric order. TS ph
 - [ ] **Phase 5: MCP Data Platform** [Python v0.2+] - MCP server layer at `packages/mcp/` exposing tradewinds as MCP-native data platform for prediction market ML; 5-layer context-engineered data catalog; agent-generated connector pipeline; server-enforced temporal safety; multi-vertical expansion (weather → sports → politics → finance). See [`phases/05-mcp-data-platform/VISION.md`](phases/05-mcp-data-platform/VISION.md). **Post-v0.1.0; depends on Phase 2 (temporal primitives + catalog) and Phase 4 (CI/CD).**
 - [ ] **Phase 6: Pandas 3 Readiness + Optional Polars Backend** [Python v0.2+] [PLANNED 2026-05-23] - Data-layer infrastructure across two paired tracks: (a) **PANDAS3** — drop `pandas<3.0` cap, prove parity under pandas 3.x via the `tests/fixtures/parity/coerce_pd3.py` invertible-transform bridge (NOT a second fixture set — see PLAN W1-T5; the canonical 2.x fixtures stay immutable and the pandas-3 test reads them, applies a documented `ns→us` + `object→string` coercion, then compares against live `research()` output), audit the 6 datetime/dtype risk sites flagged in the recon (validator string-vs-object branching, `pd.Series([], dtype="datetime64[ns, UTC]")` in `cli.py:158,216`, `to_datetime` calls in `_pairs.py:397` + `cli.py:149-151,225` + `_obs_projection.py:172`), keep parity-locked modules byte-equivalent under CoW; ULP-drift carried forward as a committed `ulp_drift_pd3.json` artifact + CI gate. (b) **POLARS** — opt-in `backend="polars"` kwarg on `research()` / `research_by_source()` / `polymarket_discover()` / `forecast_nwp()` / `daily_extremes()` that returns a `TradewindsResult` wrapping a Polars DataFrame (`backend="polars"` requires `return_type="wrapper"`; default return shape stays v0.1.0-compatible — pandas DataFrame for the four DataFrame-returning surfaces, `list[dict]` for `daily_extremes()`), narwhals-mediated internal data layer for the 5 cleanly-portable modules (`transforms.py`, `preprocessing.py`, `qc.crosscheck_iem_ghcnh`, `core/temporal/knowledge_view.py`, `core/formats/{json,csv,toon}.py`) serving DIRECT user calls (research() itself stays pandas end-to-end per W4-T1), pandas stays the canonical backend for parity-locked paths (`_pairs.py`, `core/merge.py`, `_climate.py`, validator). `df.attrs` migration: introduce `TradewindsResult` thin wrapper that carries provenance separate from the frame, so both backends carry `source`/`retrieved_at` provenance without polars-incompatible `.attrs` writes. Optional extras: `tradewinds[polars]` + `tradewinds-weather[polars]` + `tradewinds-markets[polars]` add `polars>=1.0,<2.0` and `narwhals>=1.20`. **Post-v0.1.0; independent of Phase 5 (MCP doesn't dictate backend). Depends on Phase 4 CI/CD (re-runs the parity gate via the `coerce_pd3.py` bridge under pandas 3).** See [`phases/06-pandas-3-polars-backend/PLAN.md`](phases/06-pandas-3-polars-backend/PLAN.md).
 - [ ] **Phase 7: Ingest Auto-Planner + `tw.weather.obs()` Public Surface** [INSERTED 2026-05-24] [Python v0.2+] - New public surface `tw.weather.obs(station, start, end, source=None, strategy="auto")` smart-routes between 3 ingest strategies: `exact_window` (small cold one-off, ≤2 MB), `warm_cache` (current `research()` orchestration, year-aligned cache), `hosted` (precomputed-API seam, NotImplementedError gate until v0.2.x). Empirical motivation: 1mo and 3mo `research()` calls currently download **identical 13.4 MB** because `iem_asos.py:204-209` normalizes start to `date(year, 1, 1)`. See [`.planning/research/INGEST-PLANNER-RESEARCH.md`](./research/INGEST-PLANNER-RESEARCH.md). Numbered 7 (not 6) because Phase 6 (pandas3-polars) is reserved on main.
+- [ ] **Phase 8: Polymarket US Coverage + Per-Issuer Settlement Invariants** [INSERTED 2026-05-24] [Python v0.2+, paired TS] - Add US cities to Polymarket city catalog with empirically-verified Wunderground stations (NYC → KLGA, NOT KNYC); add `polymarket.KNOWN_WRONG_STATIONS` symmetric to existing Kalshi denylist (per-issuer namespace, NOT shared); Tier 1.5 URL extraction (Wunderground regex `wunderground.com/.../KLGA`) bypasses catalog when issuer embeds the URL; cross-issuer assertion test (same city → DIFFERENT settlement stations per issuer, each validated against own denylist). Empirical risk: same-day KNYC vs KLGA differ ~3°F (Oct 1 2025: 63°F vs 60°F per sprint 2t research). Today Polymarket US events drop to `PolymarketSettlementError` because catalog is international-only. Paired Python + TS per Dual-SDK Rule. Unblocks Phase 9 + Phase 10. ~3-4 days.
+- [ ] **Phase 9: Markets Trade History (Kalshi + Polymarket)** [INSERTED 2026-05-24] [Python v0.2+, paired TS] - Promote deferred MARKETS-04 from Sprint 0.5+. `tradewinds.markets.kalshi.trades` (candles, fills, orderbook snapshots via `/markets/trades` + `/markets/candlesticks`) + `tradewinds.markets.polymarket.trades` (Gamma price history + snapshot). TS subpaths `@tradewinds/markets/trades`. Rate-limited HTTP clients sharing `_http` retry helpers + IndexedDB/parquet cache layer respecting LST/volatile-window invariants. Source column preserved on every row. Paired Python + TS per Dual-SDK Rule. Depends on Phase 8 (Polymarket US settlement). Required for Phase 10 (`include_trades=True`). ~3 weeks both lanes.
+- [ ] **Phase 10: Composable `research()` — Multi-Contract Basis Trade** [INSERTED 2026-05-24] [Python v0.2+, paired TS] - Evolve `research()` signature with mutually-exclusive selectors: `contract="kalshi:KXHIGHNY"` (single issuer:ticker auto-resolves to station), `contracts=[...]` (multi-issuer DataFrame with computed `basis_f` column — the headline basis-trade use case), `city="NYC"` (multi-station per-city DataFrame), `station_override=` (basis research with loud `StationOverrideWarning` + `settlement_mismatch=True` flag), `sources=[...]` / `source=` (Mode 1 subset / Mode 2 single-source dispatch). `discover(city="NYC")` shows per-station `settles_for` annotations so the cross-issuer station asymmetry is visible before backtest. Paired Python + TS per Dual-SDK Rule. Depends on Phase 8 + Phase 9. Headline UX win — single-call basis-trade DataFrame. ~2 weeks both lanes.
 
 ### TypeScript SDK milestone (v0.1.0 — `@tradewinds/*` on npm)
 
@@ -451,6 +454,9 @@ TS phases execute strictly serial after Python v0.1.0 final: **TS-W0** → **TS-
 | 5. MCP Data Platform [Python v0.2+] | 0/6 | Plans committed (PLAN-00..PLAN-05); execution gated on TS v0.1.0 ship + Python v0.2 milestone open | - |
 | 6. Pandas 3 Readiness + Optional Polars Backend [Python v0.2+] | 0/TBD | Phase entry committed; PLAN.md to follow via `/gsd-plan-phase 06`. Independent of Phase 5 (can run in parallel). | - |
 | 7. Ingest Auto-Planner + `tw.weather.obs()` Public Surface [Python v0.2+] | 0/5 | Plans committed (07-01..07-05); execution gated on Python v0.2 milestone open. Research doc at `.planning/research/INGEST-PLANNER-RESEARCH.md`. | - |
+| 8. Polymarket US Coverage + Per-Issuer Settlement Invariants [Python v0.2+, paired TS] | 0/TBD | Phase entry committed; PLAN.md to follow via `/gsd-plan-phase 08`. Unblocks Phase 9 + 10. | - |
+| 9. Markets Trade History (Kalshi + Polymarket) [Python v0.2+, paired TS] | 0/TBD | Phase entry committed; PLAN.md to follow via `/gsd-plan-phase 09`. Depends on Phase 8. Required for Phase 10 `include_trades=True`. | - |
+| 10. Composable `research()` — Multi-Contract Basis Trade [Python v0.2+, paired TS] | 0/TBD | Phase entry committed; PLAN.md to follow via `/gsd-plan-phase 10`. Depends on Phase 8 + 9. Headline UX win (single-call basis-trade DataFrame). | - |
 
 ### TypeScript v0.1.0 (`@tradewinds/*` on npm)
 
@@ -499,3 +505,111 @@ TS phases execute strictly serial after Python v0.1.0 final: **TS-W0** → **TS-
 **Review panel:** standard 2-reviewer loop per `.planning/REVIEW-DISCIPLINE.md` — codex `high` + python-architect. No 3rd reviewer needed; Mode-1 parity for `research()` is preserved by INGEST-03 SC#2, not parity-critical for the 5 fixtures themselves.
 
 **Plans**: 5 plans committed at `.planning/phases/07-ingest-auto-planner-tw-weather-obs-public-surface/07-01..05-PLAN.md` (research input: `.planning/research/INGEST-PLANNER-RESEARCH.md`)
+
+### Phase 8: Polymarket US Coverage + Per-Issuer Settlement Invariants
+
+**Goal**: Close the silent-corruption invariant gap and unblock cross-issuer (Kalshi vs Polymarket) basis-trade research for US cities. Today `polymarket_city_stations.json` is international-only (40 cities, zero US) — US Polymarket events drop to `PolymarketSettlementError`. And `polymarket.KNOWN_WRONG_STATIONS` doesn't exist, so the per-issuer denylist namespace (already established by `kalshi_stations.KNOWN_WRONG_STATIONS`) is asymmetric. Phase 8 adds US cities with empirically-verified Wunderground stations (NYC → KLGA, NOT KNYC) + symmetric per-issuer denylists + Tier 1.5 URL extraction so events embedding `wunderground.com/.../KLGA` resolve without catalog dependency.
+
+**Depends on**: Python v0.1.0 (shipped — 12/12 phases on main), TS-W5 (Polymarket discover/settle, shipped), TS-W6 (internationalDailyExtremes, shipped).
+
+**Required for**: Phase 9 (Markets Trade History — needs Polymarket US settlement working), Phase 10 (Composable research() — multi-contract basis trade requires Polymarket US resolution).
+
+**Requirements** (to add to REQUIREMENTS.md as part of `/gsd-plan-phase 08`):
+- POLY-US-01 — Polymarket city catalog extended with US cities. Each entry shaped `{"high": "ICAO", "low": "ICAO", "default": "ICAO"}`. Stations empirically verified by parsing Polymarket event resolutionSource URLs (Wunderground regex), NOT mirrored from Kalshi. Live Polymarket URLs cited per entry.
+- POLY-US-02 — `polymarket.KNOWN_WRONG_STATIONS` introduced symmetric to `kalshi_stations.KNOWN_WRONG_STATIONS` (e.g., for `nyc`: `{KNYC, KJFK, KEWR}` are wrong because Polymarket uses KLGA). Namespace-isolated per issuer.
+- POLY-US-03 — Tier 1.5 URL extraction added to `polymarket/resolver.ts` + Python equivalent. Wunderground URL regex extracts ICAO directly from event `resolutionSource` / `description`, bypassing catalog dependency.
+- POLY-US-04 — Cross-issuer assertion test: `kalshi.SPECS["NYC"].station == "KNYC"` AND `polymarket NYC default == "KLGA"` AND `KLGA in polymarket.KNOWN_WRONG_STATIONS["nyc"] is False` AND `KLGA in kalshi_stations.KNOWN_WRONG_STATIONS is True`. Per-issuer denylist invariants validated.
+- POLY-US-05 — Paired TS update via codegen. `packages-ts/markets/src/data/generated/polymarket-city-stations.ts` regenerates from the JSON source. Schema at `schemas/polymarket-city-stations.json` extended if shape changes.
+- POLY-US-06 — Parity-fixture pre-flight gate: re-run all 5 Python parity fixtures + TS parity gate before merging (catalog change is parity-adjacent for any Polymarket-touching flow).
+
+**Success Criteria** (what must be TRUE):
+1. Polymarket NYC event resolves to `KLGA` (NOT `KNYC`) via both the catalog (Tier 3) AND the URL extractor (Tier 1.5).
+2. `polymarket.KNOWN_WRONG_STATIONS["nyc"]` includes `KNYC`; `polymarket.KNOWN_WRONG_STATIONS["chicago"]` includes `KMDW`; etc. (mirror inverse of Kalshi's denylist for US cities Polymarket covers).
+3. Cross-issuer assertion test passes: same city → different settlement station per issuer, each validated against own denylist.
+4. Parity gate green: all 5 Python parity fixtures + TS parity gate unchanged.
+5. Paired TS codegen output regenerated cleanly from JSON source (no hand-edits to `polymarket-city-stations.ts`).
+6. Live empirical check: `polymarket_settle(event_id)` against a known historical Polymarket NYC event resolves to `KLGA` with whole-°F value matching Polymarket's published settlement (≤1°F tolerance per §22).
+
+**Out of Scope**:
+- Markets trade history (Phase 9)
+- Composable research() signature evolution (Phase 10)
+- Refresher drift detection enhancements (folded into Phase 8 if cheap; otherwise separate)
+- Adding international cities to Kalshi (Kalshi is US-only by contract design)
+- Taipei + HK-lowest deferred markets — DeferredMarketError contract preserved
+
+**Review panel**: Standard 2-reviewer (codex `high` + python-architect + TS Architect per Dual-SDK Rule). Cross-issuer denylist invariant is parity-critical (silent-corruption class) — same parity-fixture pre-flight gate Phase 1.5 / 2.1 used.
+
+**Plans**: TBD (run `/gsd-plan-phase 08` to break down — directory: `.planning/phases/08-polymarket-us-coverage-per-issuer-settlement-invariants/`)
+
+### Phase 9: Markets Trade History (Kalshi + Polymarket)
+
+**Goal**: Promote deferred MARKETS-04 from Sprint 0.5+ into a first-class phase. Add `tradewinds.markets.kalshi.trades` (candles, fills, orderbook snapshots) + `tradewinds.markets.polymarket.trades` (Gamma price history + snapshot) with paired TS subpath `@tradewinds/markets/trades`. Today there is NO way to get trade data for any market; this phase unblocks the `include_trades=True` path in Phase 10's composable `research()`.
+
+**Depends on**: Phase 8 (Polymarket US settlement must work before pairing trade data against settlement station).
+
+**Required for**: Phase 10 (`include_trades=True` kwarg requires this module).
+
+**Requirements** (to add to REQUIREMENTS.md as part of `/gsd-plan-phase 09`):
+- TRADES-01 — `tradewinds.markets.kalshi.trades.candles(ticker, *, interval, from_, to)` — OHLCV via `/markets/{ticker}/candlesticks`. Rate-limited shared HTTP client. Source column preserved.
+- TRADES-02 — `tradewinds.markets.kalshi.trades.fills(ticker, *, since)` — historical fills via `/markets/trades`. Pagination cursors handled.
+- TRADES-03 — `tradewinds.markets.kalshi.trades.orderbook(ticker)` — current book snapshot via `/markets/{ticker}/orderbook`. No history (snapshot only in v0.2; orderbook tape deferred).
+- TRADES-04 — `tradewinds.markets.polymarket.trades.history(event_id, *, from_, to)` — Gamma price history endpoint. Returns OHLCV-ish (Polymarket reports last_price + volume, no separate H/L/C per interval).
+- TRADES-05 — `tradewinds.markets.polymarket.trades.snapshot(event_id)` — current state from Gamma.
+- TRADES-06 — Cache layer: trades cached in `~/.tradewinds/cache/v1/trades/{issuer}/{ticker}/{YYYY-MM}.parquet` (Python) / IndexedDB equivalent (TS). LST/volatile-window rules apply (current month rewriteable).
+- TRADES-07 — Paired TS modules at `@tradewinds/markets/trades` subpath. Same surface, row-equivalent output.
+- TRADES-08 — Rate-limit headroom empirical spike against Kalshi `/markets/trades` and Polymarket Gamma `/timeseries` to set politeness floors.
+
+**Success Criteria** (what must be TRUE):
+1. `kalshi.trades.candles("KXHIGHNY-25MAY26-T79", interval="1h", from_=..., to=...)` returns OHLCV rows with source column = `"kalshi"`.
+2. `polymarket.trades.history(event_id, from_=..., to=...)` returns time-indexed price + volume rows with source = `"polymarket.gamma"`.
+3. Orderbook + fills endpoints round-trip data without losing ticker/timestamp precision.
+4. Trade cache respects LST current-month volatility (no parquet write for current LST month; matches observation cache discipline).
+5. Paired TS modules pass parity check against Python output for the same `(ticker, window)` query (row-equivalent shape).
+6. Rate-limit politeness floors documented at `.planning/research/MARKETS-RATE-LIMITS.md` per source.
+
+**Out of Scope**:
+- Composable `research()` integration (Phase 10 — but contracts MUST be stable here for that to land).
+- Real-time streaming (websockets deferred to v0.3).
+- Kalshi orderbook tape / historical book replay (snapshot only in v0.2).
+- Polymarket on-chain UMA settlement validation (Polymarket Gamma is the contracted source; UMA stays out of scope).
+
+**Review panel**: Standard 2-reviewer (codex `high` + python-architect + TS Architect per Dual-SDK Rule). Rate-limit changes are security-adjacent (DoS surface for issuer endpoints) — review panel may add security if rate-limit spike reveals headroom < expected.
+
+**Plans**: TBD (run `/gsd-plan-phase 09` to break down — directory: `.planning/phases/09-markets-trade-history-kalshi-polymarket/`)
+
+### Phase 10: Composable `research()` — Multi-Contract Basis Trade
+
+**Goal**: Evolve `research()` from station-only into the composable surface that lets quants ask the questions they actually have: "give me Kalshi NYC paired with KNYC weather", "give me Polymarket NYC paired with KLGA weather", "give me BOTH and compute the basis spread in one call". Adds mutually-exclusive selectors (`station=` | `city=` | `contract=` | `contracts=`) + optional kwargs (`station_override=`, `sources=` / `source=`, `include_trades=`) + a `discover(city=...)` ergonomic surface that shows which station settles which issuer's market BEFORE the user picks.
+
+**Depends on**: Phase 8 (Polymarket US settlement), Phase 9 (markets.trades modules for `include_trades=True`).
+
+**Required for**: Nothing in this milestone — Phase 10 is the headline UX deliverable for the v0.2 markets stack.
+
+**Requirements** (to add to REQUIREMENTS.md as part of `/gsd-plan-phase 10`):
+- COMPOSE-01 — `research(station=, city=, contract=, contracts=)` selectors mutually-exclusive at the dispatch layer. Validation error on multiple selectors.
+- COMPOSE-02 — `research(contract="kalshi:KXHIGHNY-25MAY26-T79")` auto-resolves to settlement station via Phase 8 catalog, returns existing `research(station=...)` columns + market metadata (settlement_value, market_close_utc) per date.
+- COMPOSE-03 — `research(contracts=[...], include_trades=True)` returns multi-issuer DataFrame with per-station weather columns + per-issuer trade columns + computed `basis_f` column (cross-issuer station difference) where applicable.
+- COMPOSE-04 — `research(city="NYC")` returns multi-station DataFrame (KNYC + KLGA + KJFK + KEWR rows for that date range). `settles_for` annotation column lists which markets settle against each.
+- COMPOSE-05 — `research(contract=..., station_override=...)` allows basis-research with explicit station mismatch. Emits `StationOverrideWarning` loudly. Output row carries `settlement_mismatch=True` flag.
+- COMPOSE-06 — `sources=[...]` (plural — Mode 1 subset, dedupe within) and `source=...` (singular — Mode 2 pin, error on mismatch) — mutually exclusive. Inherits existing Mode 1 / Mode 2 semantics.
+- COMPOSE-07 — `discover(city=...)` ergonomic surface (separate function, not a `research()` selector) — returns per-station table with `settles_for` annotations so cross-issuer station asymmetry visible before user picks.
+- COMPOSE-08 — Paired TS evolution. Same surface shape via `research({ station, city, contract, contracts, ... })` options object. Mutual-exclusion enforced by TypeScript union types.
+- COMPOSE-09 — Backwards compatibility: existing `research(station, from_date, to_date)` signature MUST still work unchanged. New surface is additive — no breaking change.
+
+**Success Criteria** (what must be TRUE):
+1. `research(contracts=["kalshi:KXHIGHNY-25MAY26-T79", "polymarket:highest-temperature-in-nyc-on-may-25-2026"], include_trades=True)` returns a single DataFrame with `knyc_high_f`, `klga_high_f`, `basis_f`, `kalshi_price`, `poly_price`, `implied_basis_f` columns.
+2. `research(city="NYC", from_date=..., to_date=...)` returns 4-station DataFrame (KNYC, KLGA, KJFK, KEWR) with `settles_for` annotations.
+3. `research(contract="kalshi:KXHIGHNY", station_override="KJFK")` returns KJFK weather + Kalshi trades, emits `StationOverrideWarning`, sets `settlement_mismatch=True`.
+4. Existing parity fixtures still pass against the legacy `research(station, from_date, to_date)` signature (no breaking change).
+5. Paired TS surface returns row-equivalent output for the same multi-contract query.
+6. Notebook tutorial at `docs/basis-trade.ipynb` demonstrates the headline use case end-to-end.
+
+**Out of Scope**:
+- New issuers beyond Kalshi + Polymarket (v0.3 candidates: PredictIt, Manifold)
+- Real-time joining of streamed trade data (v0.3 — needs websocket subsystem first)
+- Statistical basis-trade strategies (this phase ships the data plumbing; strategy code stays user-side)
+- TS-side `discover()` extension if it requires a separate phase (probably folds in; defer split to PLAN.md if needed)
+
+**Review panel**: Standard 2-reviewer (codex `high` + python-architect + TS Architect per Dual-SDK Rule). API surface evolution is signature-design-heavy — review for ergonomics + mutual-exclusion validation + backward-compat invariants.
+
+**Plans**: TBD (run `/gsd-plan-phase 10` to break down — directory: `.planning/phases/10-composable-research-multi-contract-basis-trade/`)
