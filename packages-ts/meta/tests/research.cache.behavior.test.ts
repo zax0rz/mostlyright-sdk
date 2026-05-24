@@ -26,7 +26,11 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { MemoryStore, cacheKeyForObservations } from "@tradewinds/core/internal/cache";
+import {
+  MemoryStore,
+  cacheKeyForObservations,
+  isLiveSource,
+} from "@tradewinds/core/internal/cache";
 import { research } from "../src/research.js";
 
 import fixtureData from "../../core/tests/internal/cache/fixtures/skip-rules-behavior.json" with {
@@ -57,6 +61,24 @@ function installMinimalFetchMock() {
 /** All cache.set keys (string-coerced) seen across the test. */
 function setKeys(setSpy: { mock: { calls: ReadonlyArray<ReadonlyArray<unknown>> } }): string[] {
   return setSpy.mock.calls.map((call) => String(call[0]));
+}
+
+/**
+ * All cache.set value arguments seen across the test.
+ *
+ * Iter-2 H7: the previous `skipLive` assertion grepped cache *keys* for
+ * `.live`, but `cacheKeyForObservations` emits
+ * `tradewinds:v1:observations:STATION:YYYY:MM` (and the climate key has
+ * the same shape) — there is no `.live` token in any key the orchestrator
+ * writes. The check passed vacuously, so a regression that wrote
+ * AWC live-source rows to the cache would still pass. The fix is to
+ * inspect the cache *value* (rows): when `skipLive=true`, no row in any
+ * cache.set value may have a `source` matching `isLiveSource(source)`.
+ */
+function setValues(setSpy: {
+  mock: { calls: ReadonlyArray<ReadonlyArray<unknown>> };
+}): unknown[] {
+  return setSpy.mock.calls.map((call) => call[1]);
 }
 
 describe("research() — 5-case skip behavior replay (TS-W3 SC#2)", () => {
@@ -106,14 +128,34 @@ describe("research() — 5-case skip behavior replay (TS-W3 SC#2)", () => {
         });
 
         const keysWritten = setKeys(setSpy);
+        const valuesWritten = setValues(setSpy);
 
-        // --- Assertion 1: skipLive — no `.live`-suffixed key written --
+        // --- Assertion 1: skipLive — no cache.set value may contain
+        // a row whose `source` is a live source (per `isLiveSource`).
+        //
+        // Iter-2 H7: the previous version asserted on cache *keys*
+        // (`k.includes(".live")`) which was vacuous — cacheKey
+        // generators never emit `.live` in any key. Now we walk every
+        // cache.set value (an array of rows) and check each row's
+        // `source` against the canonical `isLiveSource` predicate
+        // (the same predicate research.ts uses to gate the write).
+        // Any AWC-live row leaking into the cache fails the test.
         if (c.expected.skipLive) {
-          for (const k of keysWritten) {
-            expect(
-              k.includes(".live"),
-              `skipLive=true: cache.set must not write any .live-suffixed key, saw ${JSON.stringify(k)}`,
-            ).toBe(false);
+          for (let idx = 0; idx < valuesWritten.length; idx++) {
+            const val = valuesWritten[idx];
+            if (!Array.isArray(val)) continue;
+            for (let rowIdx = 0; rowIdx < val.length; rowIdx++) {
+              const row = val[rowIdx];
+              const src =
+                row !== null && typeof row === "object"
+                  ? (row as { source?: unknown }).source
+                  : undefined;
+              if (typeof src !== "string") continue;
+              expect(
+                isLiveSource(src),
+                `skipLive=true: cache.set call #${idx} (key=${JSON.stringify(keysWritten[idx])}) row #${rowIdx} has live source=${JSON.stringify(src)} — the orchestrator must never persist .live-suffixed rows`,
+              ).toBe(false);
+            }
           }
         }
 
