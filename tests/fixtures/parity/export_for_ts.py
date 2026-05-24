@@ -92,9 +92,7 @@ def _coerce_cell(value: Any, dtype_str: str) -> Any:
     return value
 
 
-def row_to_dict(
-    row: "pd.Series[Any]", dtypes: dict[str, str]
-) -> dict[str, Any]:
+def row_to_dict(row: pd.Series[Any], dtypes: dict[str, str]) -> dict[str, Any]:
     """Project one pandas row to a JSON-safe dict, applying per-column dtype rules."""
     out: dict[str, Any] = {}
     for col in row.index:
@@ -172,7 +170,9 @@ def main(argv: list[str] | None = None) -> int:
     for case_num, station, frm, to in CASES:
         entry = export_case_to_json(case_num, station, frm, to, parity_dir, output_dir)
         manifest[f"case_{case_num}"] = entry
-        print(f"  case_{case_num} {station} {frm}..{to} → {entry['row_count']} rows  sha256={entry['sha256'][:12]}…")
+        print(
+            f"  case_{case_num} {station} {frm}..{to} → {entry['row_count']} rows  sha256={entry['sha256'][:12]}…"
+        )
 
     manifest_path = output_dir / "manifest.json"
     with open(manifest_path, "w", encoding="utf-8") as f:

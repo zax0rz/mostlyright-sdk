@@ -87,9 +87,9 @@ def test_every_polymarket_us_city_default_not_in_own_denylist():
         if city not in poly:
             continue  # international city without a denylist entry — skip
         default = poly[city]["default"]
-        assert (
-            default not in denylist
-        ), f"polymarket {city!r} default {default!r} appears in own denylist {sorted(denylist)!r}"
+        assert default not in denylist, (
+            f"polymarket {city!r} default {default!r} appears in own denylist {sorted(denylist)!r}"
+        )
 
 
 def test_per_issuer_denylists_are_namespace_isolated():

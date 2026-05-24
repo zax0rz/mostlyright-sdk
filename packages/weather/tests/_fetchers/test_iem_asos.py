@@ -493,9 +493,9 @@ class TestPartialNamespace:
                 ):
                     utc_now_calls.append(node)
 
-        assert (
-            not forbidden
-        ), f"Pitfall 2: forbidden date.today() call in iem_asos.py code: {forbidden}"
+        assert not forbidden, (
+            f"Pitfall 2: forbidden date.today() call in iem_asos.py code: {forbidden}"
+        )
         assert utc_now_calls, "Expected at least one datetime.now(...) call for UTC cutoff"
         # At least one of those datetime.now() calls must be passing UTC (positionally
         # or as a keyword) to ensure timezone awareness.

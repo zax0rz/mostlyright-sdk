@@ -224,9 +224,7 @@ def resolve_station_for_event(
     # Wunderground URLs in Polymarket events are the issuer's canonical proof of
     # which PWS station settles — beats catalog lookup. Defer-check still applies
     # so a URL bypass cannot silently route an RCTP/HK-low market.
-    url_text = " ".join(
-        str(event.get(field, "")) for field in ("description", "resolutionSource")
-    )
+    url_text = " ".join(str(event.get(field, "")) for field in ("description", "resolutionSource"))
     extracted_icao = extract_icao_from_resolution_source(url_text)
     if extracted_icao is not None:
         if (extracted_icao, measure) in DEFERRED_STATION_MEASURES or (

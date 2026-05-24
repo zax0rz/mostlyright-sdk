@@ -7,6 +7,58 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) once it ships
 
 ## [Unreleased]
 
+### Phase 6 — Pandas 3 readiness + Optional Polars Backend (v0.2)
+
+#### Added
+- **`tradewinds.core.TradewindsResult`** — backend-neutral provenance
+  wrapper (frame + source + retrieved_at + schema_id + qc + data_version).
+  Both pandas and polars backends produce the same wrapper shape;
+  `.legacy_df_with_attrs()` bridges callers still consuming
+  `df.attrs["source"]` directly for one release cycle.
+- **Opt-in `backend="polars"` kwarg** on every public DataFrame-returning
+  entry point: `research()`, `research_by_source()`, `polymarket_discover()`,
+  `forecast_nwp()`, `daily_extremes()`. Default stays `backend="pandas"`
+  so v0.1.0 callers see zero behaviour change. Pairs with a new
+  `return_type="dataframe"|"wrapper"` kwarg; polars output requires
+  `return_type="wrapper"` (polars frames have no `df.attrs`).
+- **`[polars]` optional extra** on all three packages (`polars>=1.0,<2.0`
+  + `narwhals>=1.20,<2.0`). Calling `backend="polars"` without the extra
+  raises `SourceUnavailableError` with install hint (mirrors `[nwp]`).
+- **Pandas 3 compatibility** — the `pandas<3.0` cap is dropped across
+  all 6 affected extras (`pandas>=2.2,<4.0`). Dual-pandas CI matrix
+  re-runs the fast suite on the latest pandas 3.x lockfile.
+  `tests/fixtures/parity/coerce_pd3.py` defines the invertible
+  `ns→us` + `object→string` bridge; `ulp_drift_pd3.json` carries the
+  committed per-column max-abs drift measurement; `measure_ulp_drift.py`
+  refreshes the artifact under pandas 3.x.
+- **`@pytest.mark.polars` marker** registered + cross-backend CI job
+  (`polars-suite`) that installs the `[polars]` extra on each member
+  package and runs the polars-marked tests. `with-polars=false` runs
+  default install with `pytest -m "not live and not polars"`.
+- 5 cleanly-portable modules (`transforms`, `preprocessing`,
+  `qc.crosscheck_iem_ghcnh`, `core.formats.{json,csv,toon}`,
+  `KnowledgeView` via wrapper) now accept pandas OR polars input via a
+  narwhals-mediated boundary shim — return type follows caller backend.
+
+#### Changed
+- Parity-locked modules (`_internal/_pairs`, `core/merge`,
+  `core/validator`, `core/_json_safe`, `core/temporal/timepoint`,
+  `core/temporal/leakage`, `core/_climate`) stay pandas end-to-end;
+  polars-mode `research()` converts ONLY at the outer return boundary.
+  Defense-in-depth grep test rejects future narwhals/polars imports
+  in these modules.
+
+#### Migration
+- v0.1.0 `df = research(...)` continues to work unchanged.
+- New v0.2: `result = research(..., return_type="wrapper")` returns a
+  `TradewindsResult` with `result.frame`, `result.source`,
+  `result.retrieved_at`.
+- New v0.2: `result = research(..., backend="polars", return_type="wrapper")`
+  returns a polars `DataFrame` on `result.frame` plus the same
+  provenance fields.
+- Callers consuming `df.attrs["source"]` directly should migrate to
+  `result.source` over the v0.2 → v0.3 window; v0.2 supports both.
+
 ### Phase 4 — Coverage, Docs, CI/CD, Release
 
 #### Added

@@ -206,13 +206,24 @@ def crosscheck_iem_ghcnh(
         DataFrame with rows where the two sources disagree above ``tol_c``.
         Columns: ``station``, ``event_time``, ``temp_c_iem``, ``temp_c_ghcnh``,
         ``delta_c``.
+
+    Phase 6 W2-T4: accepts pandas OR polars input for both arms; returns
+    the same backend the caller passed (matches first arg's backend if
+    they differ — both polars or both pandas is the supported case).
     """
     import pandas as pd
 
+    from tradewinds.core._narwhals_compat import pandas_to_polars, to_pandas_if_polars
+
+    iem_df, iem_was_polars = to_pandas_if_polars(iem_df)
+    ghcnh_df, _ghcnh_was_polars = to_pandas_if_polars(ghcnh_df)
+    return_polars = iem_was_polars
+
     if iem_df.empty or ghcnh_df.empty:
-        return pd.DataFrame(
+        out = pd.DataFrame(
             columns=["station", "event_time", "temp_c_iem", "temp_c_ghcnh", "delta_c"]
         )
+        return pandas_to_polars(out) if return_polars else out
     key_cols = ["station", "event_time"]
     if not all(c in iem_df.columns for c in [*key_cols, "temp_c"]):
         raise ValueError("iem_df missing required columns")
@@ -225,4 +236,5 @@ def crosscheck_iem_ghcnh(
         how="inner",
     )
     merged["delta_c"] = (merged["temp_c_iem"] - merged["temp_c_ghcnh"]).abs()
-    return merged.loc[merged["delta_c"] > tol_c].reset_index(drop=True)
+    out = merged.loc[merged["delta_c"] > tol_c].reset_index(drop=True)
+    return pandas_to_polars(out) if return_polars else out

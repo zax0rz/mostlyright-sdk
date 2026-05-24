@@ -32,6 +32,7 @@ from tradewinds.core.exceptions import (
     TemporalDriftError,
     TradewindsError,
 )
+from tradewinds.core.result import TradewindsResult
 from tradewinds.core.schema import ColumnSpec, Schema, SchemaRegistration
 from tradewinds.core.temporal import (
     KnowledgeView,
@@ -55,6 +56,7 @@ __all__ = [
     "TemporalDriftError",
     "TimePoint",
     "TradewindsError",
+    "TradewindsResult",
     "assert_no_leakage",
     "validate_dataframe",
 ]

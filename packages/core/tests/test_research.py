@@ -691,9 +691,9 @@ class TestSourceCacheAndPartialIEM:
         # not current. ``_is_current_lst_month`` uses real wall-clock and
         # is False at GSD test runtime for (2025, 4), so this test isolates
         # the UTC leg cleanly.
-        assert (
-            (2025, 5, True) in captured
-        ), f"expected (2025, 5) to skip IEM source cache (UTC-current leg); got {captured}"
+        assert (2025, 5, True) in captured, (
+            f"expected (2025, 5) to skip IEM source cache (UTC-current leg); got {captured}"
+        )
 
     def test_fetch_climate_skips_source_cache_for_current_lst_year(
         self, tmp_cache_env: Path, monkeypatch: pytest.MonkeyPatch
@@ -803,9 +803,9 @@ class TestSourceCacheAndPartialIEM:
         climate_2025 = tmp_cache_env / "v1" / "climate" / "KNYC" / "2025.parquet"
         climate_2026 = tmp_cache_env / "v1" / "climate" / "KNYC" / "2026.parquet"
 
-        assert (
-            climate_2025.exists()
-        ), f"climate cache for 2025 (strictly past UTC) MUST be written; missing {climate_2025}"
+        assert climate_2025.exists(), (
+            f"climate cache for 2025 (strictly past UTC) MUST be written; missing {climate_2025}"
+        )
         assert not climate_2026.exists(), (
             "climate cache for 2026 (UTC-current at frozen now) must NOT be "
             f"written; found {climate_2026} which would freeze a partial-year snapshot"
@@ -1021,19 +1021,19 @@ class TestFetchObservationsRangeCacheGating:
             from tradewinds import research
 
             research("KNYC", "2025-01-06", "2025-01-12")
-            assert (
-                iem2.call_count == 0
-            ), f"expected zero IEM calls on cache-hit re-run, got {iem2.call_count}"
-            assert (
-                ghcnh2.call_count == 0
-            ), f"expected zero GHCNh calls on cache-hit re-run, got {ghcnh2.call_count}"
-            assert (
-                awc2.call_count == 0
-            ), f"expected zero AWC calls on cache-hit re-run, got {awc2.call_count}"
+            assert iem2.call_count == 0, (
+                f"expected zero IEM calls on cache-hit re-run, got {iem2.call_count}"
+            )
+            assert ghcnh2.call_count == 0, (
+                f"expected zero GHCNh calls on cache-hit re-run, got {ghcnh2.call_count}"
+            )
+            assert awc2.call_count == 0, (
+                f"expected zero AWC calls on cache-hit re-run, got {awc2.call_count}"
+            )
             # CLI cache is annual; same year -> hit.
-            assert (
-                cli2.call_count == 0
-            ), f"expected zero CLI calls on cache-hit re-run, got {cli2.call_count}"
+            assert cli2.call_count == 0, (
+                f"expected zero CLI calls on cache-hit re-run, got {cli2.call_count}"
+            )
 
 
 class TestMergeInputOrderingDeterminism:
@@ -1111,9 +1111,9 @@ class TestMergeInputOrderingDeterminism:
         assert obs_path.exists(), f"expected observation cache at {obs_path}"
         rows = pq.read_table(obs_path).to_pylist()
         observed_ats = [r["observed_at"] for r in rows]
-        assert observed_ats == sorted(
-            observed_ats
-        ), f"persisted rows must be sorted by observed_at; got {observed_ats[:5]}..."
+        assert observed_ats == sorted(observed_ats), (
+            f"persisted rows must be sorted by observed_at; got {observed_ats[:5]}..."
+        )
 
     def test_research_smoke_obs_count_stable_after_presort(
         self, mocked_http: Any, tmp_cache_env: Path

@@ -169,8 +169,7 @@ def fetch_event_by_id(
         payload = response.json()
         if not isinstance(payload, dict):
             raise ValueError(
-                f"Polymarket /events/{event_id} returned non-dict payload: "
-                f"{type(payload).__name__}"
+                f"Polymarket /events/{event_id} returned non-dict payload: {type(payload).__name__}"
             )
         return payload
     finally:

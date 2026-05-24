@@ -88,7 +88,7 @@ def main() -> int:
     # Soft-fail: even if some cases failed, write what we got. Upstream API
     # outages are exactly the kind of thing the drift watchdog catches —
     # do not bail before compare.py runs.
-    return 0 if failures == 0 else 0
+    return 0 if failures == 0 else 0  # noqa: RUF034 — intentional: even on failure, soft-success so compare.py runs
 
 
 if __name__ == "__main__":

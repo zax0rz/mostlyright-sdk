@@ -80,9 +80,9 @@ def test_exporter_deterministic(tmp_path: Path) -> None:
     for rel in files_a:
         a_bytes = (out_a / rel).read_bytes()
         b_bytes = (out_b / rel).read_bytes()
-        assert (
-            a_bytes == b_bytes
-        ), f"byte mismatch for {rel}: {len(a_bytes)} vs {len(b_bytes)} bytes"
+        assert a_bytes == b_bytes, (
+            f"byte mismatch for {rel}: {len(a_bytes)} vs {len(b_bytes)} bytes"
+        )
 
 
 def test_group_a_files_present(tmp_path: Path) -> None:
@@ -151,9 +151,9 @@ def test_check_mode_passes_on_fresh_run() -> None:
         check=False,
         cwd=str(_REPO_ROOT),
     )
-    assert (
-        proc.returncode == 0
-    ), f"--check failed (rc={proc.returncode})\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+    assert proc.returncode == 0, (
+        f"--check failed (rc={proc.returncode})\nstdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+    )
 
 
 def test_group_a_schemas_carry_required_keys(tmp_path: Path) -> None:
@@ -167,9 +167,9 @@ def test_group_a_schemas_carry_required_keys(tmp_path: Path) -> None:
         assert payload.get("$schema") == "https://json-schema.org/draft/2020-12/schema"
         assert payload.get("$id", "").startswith("https://tradewinds.dev/schemas/")
         assert payload.get("type") == "object"
-        assert payload.get("version", "").startswith(
-            "v"
-        ), f"{rel}: version field missing or malformed: {payload.get('version')!r}"
+        assert payload.get("version", "").startswith("v"), (
+            f"{rel}: version field missing or malformed: {payload.get('version')!r}"
+        )
         assert isinstance(payload.get("properties"), dict)
         assert isinstance(payload.get("required"), list)
         # required-list must be sorted (determinism rule).

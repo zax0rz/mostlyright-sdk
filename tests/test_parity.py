@@ -56,6 +56,40 @@ EXPECTED_DTYPES: dict[str, dict[str, str]] = json.loads(
     (FIXTURES / "expected_dtypes.json").read_text()
 )
 
+# Phase 6 W1-T5 + W1 merge gate: ULP drift artifact is required to exist.
+# CI's `pandas-resolution: highest` job re-runs measure_ulp_drift.py to
+# refresh per_column_max_abs_drift against pandas 3.x; a missing artifact
+# blocks the merge. The artifact is loaded at import so an absent file
+# fails the entire parity module collection (loudest possible signal).
+_ULP_PATH = FIXTURES / "ulp_drift_pd3.json"
+if not _ULP_PATH.exists():
+    raise RuntimeError(
+        "tests/fixtures/parity/ulp_drift_pd3.json missing; required by "
+        "Phase 6 W1 merge gate. Run "
+        "`uv run python tests/fixtures/parity/measure_ulp_drift.py`."
+    )
+ULP_DRIFT: dict[str, object] = json.loads(_ULP_PATH.read_text())
+PARITY_ATOL: float = float(ULP_DRIFT.get("tolerance_used", 1e-12))
+
+
+def test_ulp_drift_artifact_under_tolerance() -> None:
+    """Per-column max-abs-drift never exceeds the artifact-declared tolerance.
+
+    The artifact's ``tolerance_used`` is the contract the parity test runs
+    under; if any per-column max-abs drift > tolerance the script writes
+    a looser tolerance and CI flags the promotion. This test fails loudly
+    if the artifact is malformed (drift > tolerance is a measurement bug).
+    """
+    drift = ULP_DRIFT.get("per_column_max_abs_drift", {})
+    assert isinstance(drift, dict)
+    bad = {col: v for col, v in drift.items() if float(v) > PARITY_ATOL}
+    assert not bad, (
+        f"ulp_drift_pd3.json declares tolerance_used={PARITY_ATOL} but the "
+        f"following per-column drifts exceed it: {bad}. Re-run "
+        "tests/fixtures/parity/measure_ulp_drift.py to refresh the artifact."
+    )
+
+
 # (case_num, station_icao, from_date, to_date) - inclusive bounds.
 CASES: list[tuple[int, str, str, str]] = [
     (1, "KNYC", "2025-01-06", "2025-01-12"),
@@ -127,12 +161,15 @@ def test_parity_case(case_num: int, station: str, frm: str, to: str) -> None:
     )
 
     # PARITY-02: value + dtype equivalence (Rung 3 - see module docstring).
-    # `atol=1e-12` accepts ~1-ULP float-associativity drift in sum-aggregate
-    # columns while still catching any genuine value regression (~35,000x
-    # headroom over the worst measured drift of 2.84e-14 on case 4 KMIA).
-    # Integers/objects/datetimes still require strict equality.
+    # `PARITY_ATOL` is loaded from `ulp_drift_pd3.json` so the artifact's
+    # `tolerance_used` is the source of truth (codex iter-2 P2 fix —
+    # previously hardcoded at 1e-12 which contradicted the artifact when
+    # measure_ulp_drift.py promoted to 1e-10). Default seed is 1e-12,
+    # which accepts ~1-ULP float-associativity drift in sum-aggregate
+    # columns while catching any genuine value regression. Integers/
+    # objects/datetimes still require strict equality.
     assert_frame_equal(
-        actual_c, expected_c, check_dtype=True, check_exact=False, rtol=0, atol=1e-12
+        actual_c, expected_c, check_dtype=True, check_exact=False, rtol=0, atol=PARITY_ATOL
     )
 
 

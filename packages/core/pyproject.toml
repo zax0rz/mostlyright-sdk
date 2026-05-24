@@ -29,26 +29,43 @@ dependencies = [
 
 [project.optional-dependencies]
 # DataFrame return + parquet cache. Matches v0.14.1's [parquet] extra.
-# Pandas pinned strictly below 3.0 because the Phase 1 parity gate
-# captures byte-equivalent fixtures against pandas 2.x. Pandas 3.0
-# (Jan 2026) ships breaking dtype/datetime inference changes that
-# would invalidate the parity hash without explicit re-validation -
-# CLAUDE.md "Data + parity rules" pins this cap as PARITY-CRITICAL.
+# Phase 6 (PANDAS3-02): the pandas<3.0 cap is dropped. Pandas 3 byte-
+# equivalence is enforced via the dual-pandas CI matrix (W1-T4) +
+# tests/fixtures/parity/coerce_pd3.py invertible bridge (W1-T5) +
+# ulp_drift_pd3.json measurement artifact, NOT a recapture-on-3.x cap.
+# CLAUDE.md "Data + parity rules" updated alongside this drop.
 parquet = [
     "pyarrow>=17.0,<24.0",
-    "pandas>=2.2,<3.0",
+    "pandas>=2.2,<4.0",
 ]
 # Pull in the sibling weather package + pandas/pyarrow so the default
 # `tradewinds.research(...)` call returns a DataFrame without `ImportError`.
 # Codex iter-1 P2 fix: previously `research` listed only `tradewinds-weather`,
 # leaving the soft `import pandas` in `pairs_to_dataframe` to blow up at call
-# time because `as_dataframe=True` is the default. Codex iter-6 P2: pandas
-# upper cap mirrors the `parquet` extra so a fresh install cannot resolve
-# pandas 3.x and silently shift the parity-critical DataFrame dtypes.
+# time because `as_dataframe=True` is the default. Phase 6 (PANDAS3-02):
+# pandas upper bound aligned with `parquet` extra at <4.0; both backends
+# are exercised by the dual-pandas CI matrix.
 research = [
     "tradewinds-weather>=0.1.0rc1,<0.2",
     "pyarrow>=17.0,<24.0",
-    "pandas>=2.2,<3.0",
+    "pandas>=2.2,<4.0",
+]
+# Phase 6 (POLARS-05): opt-in polars backend. Default install never
+# pulls polars; calling `backend="polars"` without the extra raises
+# SourceUnavailableError with an install hint (mirrors the [nwp] pattern).
+# narwhals is the cross-backend abstraction layer the cleanly-portable
+# modules go through. pandas is required because the boundary shim
+# (core/_narwhals_compat.py) converts polars↔pandas via `pl.from_pandas`
+# and `pl.DataFrame.to_pandas()` — codex iter-3 P2 fix; a clean
+# `pip install tradewinds[polars]` would otherwise fail at first
+# `transforms.lag(pl_df, ...)` call with ImportError. pyarrow is
+# required by pl.from_pandas/to_pandas for non-trivial dtypes
+# (codex iter-5 P1 fix).
+polars = [
+    "polars>=1.0,<2.0",
+    "narwhals>=1.20,<2.0",
+    "pandas>=2.2,<4.0",
+    "pyarrow>=17.0,<24.0",
 ]
 
 [build-system]

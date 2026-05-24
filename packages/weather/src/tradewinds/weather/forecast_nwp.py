@@ -423,6 +423,8 @@ def forecast_nwp(
     fxx: int = 1,
     mirror: str | None = None,
     client: httpx.Client | None = None,
+    backend: str = "pandas",
+    return_type: str = "dataframe",
 ) -> pd.DataFrame:
     """Fetch NWP forecast values for one or more stations from NOAA BDP.
 
@@ -520,6 +522,13 @@ def forecast_nwp(
 
     if fxx < 0:
         raise ValueError(f"fxx must be non-negative; got {fxx}")
+    # Phase 6 W3-T2: validate backend kwargs early (steps 1 + 2) so the
+    # caller fails fast BEFORE the network fetch. The lazy polars import
+    # (step 3) still fires at wrap time when backend='polars'.
+    from tradewinds.core._backend_dispatch import validate_backend_kwargs
+
+    validate_backend_kwargs(backend, return_type)  # type: ignore[arg-type]
+
     if cycle is None:
         cycle = _default_cycle_for(model, fxx=fxx)
     if cycle.tzinfo is None or cycle.tzinfo.utcoffset(cycle) is None:
@@ -538,7 +547,8 @@ def forecast_nwp(
     variable_map = get_variable_map(model)
 
     if not resolved:
-        return _empty_dataframe(model=model, grid_kind=grid_kind)
+        df = _empty_dataframe(model=model, grid_kind=grid_kind)
+        return _maybe_wrap_forecast(df, backend=backend, return_type=return_type)
 
     mirrors_to_try = (mirror,) if mirror is not None else DEFAULT_MIRROR_CHAIN
 
@@ -674,7 +684,7 @@ def forecast_nwp(
         for col in nullable_numeric_cols:
             if col in df.columns:
                 df[col] = df[col].astype("float64")
-        return df
+        return _maybe_wrap_forecast(df, backend=backend, return_type=return_type)
     finally:
         if owns_client and client is not None:
             client.close()
@@ -720,6 +730,11 @@ def _empty_dataframe(*, model: str, grid_kind: str) -> pd.DataFrame:
     """Return an empty DataFrame whose columns match ``schema.forecast_nwp.v1``."""
     import pandas as pd
 
+    # PANDAS3: explicit [ns, UTC] literal stays the parity-pinned
+    # construction shape on both pandas 2.x and 3.x; lossless promotion
+    # at construction time means callers see the same dtype regardless
+    # of the pandas major version. Use empty_utc_datetime_series helper
+    # if these grow to more sites.
     df = pd.DataFrame(
         {
             "station": pd.Series(dtype="object"),
@@ -750,6 +765,39 @@ def _empty_dataframe(*, model: str, grid_kind: str) -> pd.DataFrame:
     df.attrs["source"] = "noaa_bdp"
     df.attrs["retrieved_at"] = datetime.now(UTC)
     return df
+
+
+def _maybe_wrap_forecast(
+    df: pd.DataFrame,
+    *,
+    backend: str,
+    return_type: str,
+) -> Any:
+    """Phase 6 W3-T2: forecast_nwp backend/return_type post-processing.
+
+    Default (``backend="pandas", return_type="dataframe"``) returns
+    ``df`` unchanged (zero-overhead, v0.1.0 compat). Other combinations
+    route through ``wrap_result`` which converts to polars and/or wraps
+    in :class:`TradewindsResult`.
+    """
+    if backend == "pandas" and return_type == "dataframe":
+        return df
+
+    from tradewinds.core._backend_dispatch import wrap_result
+
+    # Codex iter-3 P2 fix: pass through the captured retrieved_at from
+    # df.attrs (set at line ~670 / ~752) instead of defaulting to
+    # datetime.now() in wrap_result. The adapter timestamp is what the
+    # row-level `retrieved_at` column carries; the wrapper must match
+    # so provenance is consistent across the wrap boundary.
+    return wrap_result(
+        df,
+        backend=backend,  # type: ignore[arg-type]
+        return_type=return_type,  # type: ignore[arg-type]
+        source=str(df.attrs.get("source", "noaa_bdp")),
+        retrieved_at=df.attrs.get("retrieved_at"),
+        schema_id="schema.forecast_nwp.v1",
+    )
 
 
 __all__ = ["forecast_nwp"]

@@ -383,9 +383,9 @@ class TestRoundtrip:
         # (2)
         assert set(original.column_names).issubset(set(read_back.column_names))
         for col in original.column_names:
-            assert (
-                read_back.column(col).to_pylist() == original.column(col).to_pylist()
-            ), f"column {col!r} did not round-trip equal"
+            assert read_back.column(col).to_pylist() == original.column(col).to_pylist(), (
+                f"column {col!r} did not round-trip equal"
+            )
         # (3) Schema-only columns: pick a couple of fields that OBSERVATION_SCHEMA
         # defines but _sample_rows() does NOT provide. They MUST exist in the
         # written file (proves schema enforcement) AND be all-null (proves they
@@ -570,9 +570,9 @@ class TestParquetOptions:
         path = cache_path("KNYC", 2025, 1)
         meta = pq.read_metadata(path)
         # Format version metadata starts with "2.6" — pyarrow may extend it.
-        assert str(meta.format_version).startswith(
-            "2.6"
-        ), f"expected parquet format_version to start with '2.6', got {meta.format_version!r}"
+        assert str(meta.format_version).startswith("2.6"), (
+            f"expected parquet format_version to start with '2.6', got {meta.format_version!r}"
+        )
 
     def test_observed_at_is_iso_string(
         self,
@@ -689,9 +689,9 @@ class TestConcurrentWriters:
         # The winner must be entirely worker_a or entirely worker_b (no
         # interleaving / no partial bytes).
         sources = {row["source"] for row in out}
-        assert sources == {"worker_a"} or sources == {
-            "worker_b"
-        }, f"expected one writer to win cleanly; got mixed sources {sources}"
+        assert sources == {"worker_a"} or sources == {"worker_b"}, (
+            f"expected one writer to win cleanly; got mixed sources {sources}"
+        )
 
         # No leftover .tmp sibling — atomic rename completed.
         tmp = path.with_suffix(".tmp")

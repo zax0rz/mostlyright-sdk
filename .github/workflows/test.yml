@@ -54,8 +54,8 @@ jobs:
           uv run ruff check .
           uv run ruff format --check .
 
-      - name: Run fast test suite (excludes @pytest.mark.live)
-        run: uv run pytest -m "not live" -q
+      - name: Run fast test suite (excludes @pytest.mark.live and @pytest.mark.polars)
+        run: uv run pytest -m "not live and not polars" -q
 
       # Phase 4 DOCS-01: doctests on 4 public-surface modules. We pass
       # explicit module paths (NOT --doctest-modules with package discovery)
@@ -68,6 +68,63 @@ jobs:
             packages/core/src/tradewinds/core/temporal/knowledge_view.py \
             packages/core/src/tradewinds/core/temporal/leakage.py \
             packages/core/src/tradewinds/core/validator.py
+
+  # Phase 6 W1-T4: dual-pandas matrix. The Phase 1 parity gate was
+  # captured on pandas 2.x; this job re-runs the fast suite on the latest
+  # pandas-3 lockfile to confirm the coerce_pd3 bridge + ULP-drift artifact
+  # keep byte-equivalence across both pandas majors. Capped at one Python
+  # version (3.13) initially to keep CI cost down; expand to the full
+  # matrix when 3.x bytes stabilize.
+  pandas-3-suite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+      - name: Set up Python 3.13
+        run: uv python install 3.13
+      - name: Re-resolve workspace WITHOUT committed lockfile (forces pandas 3.x)
+        # codex iter-2 P1 fix: uv sync --resolution highest still
+        # consumes the committed uv.lock (which pins pandas 2.3.3), so
+        # the previous step duplicated the default suite. Drop the lock
+        # AND upgrade pandas explicitly so the resolver actually pulls
+        # the latest 3.x wheel matching `pandas>=2.2,<4.0`.
+        run: |
+          rm -f uv.lock
+          uv lock --upgrade-package pandas
+          uv sync --all-packages --resolution highest
+      - name: Assert pandas 3.x is resolved
+        # Hard gate: if the resolver somehow still picks 2.x, fail loudly
+        # rather than silently running the wrong suite.
+        run: |
+          uv run python -c "import pandas, sys; v=pandas.__version__; print('pandas', v); sys.exit(0 if int(v.split('.')[0]) >= 3 else 1)"
+      - name: Run fast test suite under pandas 3.x
+        run: uv run pytest -m "not live and not polars" -q
+
+  # Phase 6 W5-T1: cross-backend matrix. Installs the [polars] extra on
+  # each member package (workspace root has no [polars] extra per codex
+  # iter-1 P2 — the only correct invocation iterates the three member
+  # packages). Required on every PR touching tradewinds.research,
+  # tradewinds.mode2, tradewinds.transforms, tradewinds.preprocessing,
+  # tradewinds.core.result, or the catalog adapters.
+  polars-suite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+      - name: Set up Python 3.13
+        run: uv python install 3.13
+      - name: Sync workspace + per-package [polars] extras
+        run: |
+          uv sync --all-packages
+          uv sync --package tradewinds --extra polars
+          uv sync --package tradewinds-weather --extra polars
+          uv sync --package tradewinds-markets --extra polars
+      - name: Show resolved polars version
+        run: uv run python -c "import polars; print('polars', polars.__version__)"
+      - name: Run full fast suite INCLUDING @pytest.mark.polars
+        run: uv run pytest -m "not live" -q
 
   coverage-gate:
     runs-on: ubuntu-latest

@@ -15,6 +15,7 @@ to_date)`` + ``DeferredMarketError`` for sources we can't ship until v0.2
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 from datetime import date as _date
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
@@ -203,6 +204,8 @@ def daily_extremes(
     to_date: _date,
     *,
     merge: str = "live_v1",
+    backend: str = "pandas",
+    return_type: str = "list",
 ) -> list[dict[str, Any]]:
     """Roll up cached hourly observations to per-local-day temperature extremes.
 
@@ -370,4 +373,51 @@ def daily_extremes(
             }
         )
 
-    return out
+    # Phase 6 W3-T2 (codex iter-3 P2): daily_extremes' DEFAULT return is
+    # list[dict] (preserves v0.1.0 zero-behaviour-change). Backend/return
+    # kwargs are OPT-IN: callers must explicitly pass return_type='wrapper'
+    # (and optionally backend='polars') to get a TradewindsResult.
+    if return_type == "list" and backend == "pandas":
+        return out
+
+    from tradewinds.core._backend_dispatch import (
+        validate_backend_kwargs,
+        wrap_result,
+    )
+
+    if return_type == "list":
+        # backend='polars' with return_type='list' is incoherent — polars
+        # frames cannot exist without a wrapper to carry provenance.
+        raise ValueError(
+            "daily_extremes: backend='polars' requires return_type='wrapper'; "
+            "got return_type='list'"
+        )
+
+    # Architect iter-1 CRITICAL-1 fix: pass through the caller's
+    # return_type so a request for return_type="dataframe" actually
+    # delivers a raw DataFrame instead of being silently upgraded to a
+    # TradewindsResult. validate_backend_kwargs is the gate that rejects
+    # backend="polars" + return_type="dataframe" upfront.
+    validate_backend_kwargs(backend, return_type)  # type: ignore[arg-type]
+
+    import pandas as pd
+
+    df = pd.DataFrame(out)
+    # Codex iter-3 P2 fix: stamp df.attrs BEFORE wrap_result so the
+    # return_type='dataframe' path (which returns df unchanged) still
+    # carries the v0.1.0 provenance contract that the other 4 public
+    # entry points preserve. wrap_result with return_type='dataframe'
+    # is a no-op, so attrs must be stamped here.
+    src = f"daily_extremes.{merge}"
+    retrieved_at = datetime.now(UTC)
+    df.attrs["source"] = src
+    df.attrs["retrieved_at"] = retrieved_at
+    df.attrs["schema_id"] = "schema.daily_extreme.v1"
+    return wrap_result(
+        df,
+        backend=backend,  # type: ignore[arg-type]
+        return_type=return_type,  # type: ignore[arg-type]
+        source=src,
+        retrieved_at=retrieved_at,
+        schema_id="schema.daily_extreme.v1",
+    )

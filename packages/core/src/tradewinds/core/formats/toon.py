@@ -140,7 +140,14 @@ def dumps(df: pd.DataFrame) -> str:
     lose precision (``int(2**60)`` → ``float(2**60)``). Column-wise
     iteration preserves each column's native dtype before per-cell
     coercion. See module docstring for the full loss matrix.
+
+    Phase 6 W2-T6: accepts pandas OR polars input; polars frames are
+    converted to pandas at the boundary because the byte-pinned ``_toon``
+    encoder body is parity-locked (CLAUDE.md) and stays pandas-only.
     """
+    from tradewinds.core._narwhals_compat import to_pandas_if_polars
+
+    df, _ = to_pandas_if_polars(df)
     if len(df) == 0:
         # encode_tabular wants non-empty rows; emit the canonical empty form
         # carrying column names so loads() can reconstruct an empty frame.

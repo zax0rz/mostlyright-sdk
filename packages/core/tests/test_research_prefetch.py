@@ -116,9 +116,9 @@ def test_prefetch_sources_pitfall_6_submitted_at_in_source(monkeypatch) -> None:
             submit_loops_found += 1
             # Same body MUST also have submitted_at[ assignment, immediately
             # after submit() returns.
-            assert (
-                "submitted_at[" in joined
-            ), "submit loop missing submitted_at[name] capture — Pitfall 6 anti-pattern"
+            assert "submitted_at[" in joined, (
+                "submit loop missing submitted_at[name] capture — Pitfall 6 anti-pattern"
+            )
             submit_idx = next(i for i, s in enumerate(body_strs) if "ex.submit" in s)
             cap_idx = next(i for i, s in enumerate(body_strs) if "submitted_at[" in s)
             assert submit_idx < cap_idx, (
@@ -143,9 +143,9 @@ def test_prefetch_sources_pitfall_6_submitted_at_in_source(monkeypatch) -> None:
         joined = "\n".join(body_strs)
         # Defends against the bug-preserving refactor codex flagged: a t0
         # captured inside the as_completed loop measures wrong wall time.
-        assert (
-            "t0 = time.monotonic()" not in joined
-        ), "Pitfall 6 anti-pattern detected: t0 captured inside as_completed body"
+        assert "t0 = time.monotonic()" not in joined, (
+            "Pitfall 6 anti-pattern detected: t0 captured inside as_completed body"
+        )
         # Defends against the architect's HIGH-6 weakness: ensure the timing
         # arithmetic actually reads submitted_at (not a local var).
         assert "submitted_at[" in joined, (
@@ -155,9 +155,9 @@ def test_prefetch_sources_pitfall_6_submitted_at_in_source(monkeypatch) -> None:
         # The per_source_times assignment must use submitted_at directly.
         per_source_lines = [s for s in body_strs if "per_source_times[" in s]
         assert per_source_lines, "per_source_times[name] not assigned in as_completed body"
-        assert any(
-            "submitted_at[" in s for s in per_source_lines
-        ), "per_source_times[name] assignment does not use submitted_at[name]"
+        assert any("submitted_at[" in s for s in per_source_lines), (
+            "per_source_times[name] assignment does not use submitted_at[name]"
+        )
     assert as_completed_loops_found >= 1, "no as_completed loop found in _prefetch_sources"
 
 
@@ -186,9 +186,9 @@ def test_prefetch_sources_uses_max_workers_4(monkeypatch) -> None:
     for call in pool_calls:
         for kw in call.keywords:
             if kw.arg == "max_workers" and isinstance(kw.value, ast.Constant):
-                assert (
-                    kw.value.value == 4
-                ), f"max_workers must be 4 (Option C); got {kw.value.value}"
+                assert kw.value.value == 4, (
+                    f"max_workers must be 4 (Option C); got {kw.value.value}"
+                )
                 return
     raise AssertionError("max_workers=4 keyword not found on ThreadPoolExecutor call")
 

@@ -70,6 +70,8 @@ def research_by_source(
     to_date: str,
     *,
     as_dataframe: bool = True,
+    backend: str = "pandas",
+    return_type: str = "dataframe",
 ) -> pd.DataFrame | list[dict[str, Any]]:
     """Return source-explicit Mode 2 raw observations.
 
@@ -109,8 +111,15 @@ def research_by_source(
     """
     if source not in _VALID_OBSERVATION_SOURCES:
         raise ValueError(
-            f"Mode 2 source must be one of {sorted(_VALID_OBSERVATION_SOURCES)}; " f"got {source!r}"
+            f"Mode 2 source must be one of {sorted(_VALID_OBSERVATION_SOURCES)}; got {source!r}"
         )
+
+    # Codex iter-4 P2 fix: validate backend/return_type BEFORE any
+    # network fetch or cache write so a typo doesn't trigger live
+    # API calls + cache mutations before raising.
+    from tradewinds.core._backend_dispatch import validate_backend_kwargs
+
+    validate_backend_kwargs(backend, return_type)  # type: ignore[arg-type]
 
     # Local import — research.py is heavy and we don't want mode2 to
     # pay the import cost on every package-level `from tradewinds`.
@@ -153,9 +162,25 @@ def research_by_source(
 
     if not filtered:
         df = pd.DataFrame()
+        retrieved_at = datetime.now(UTC)
         df.attrs["source"] = source
-        df.attrs["retrieved_at"] = datetime.now(UTC)
-        return df
+        df.attrs["retrieved_at"] = retrieved_at
+        # Phase 6 W3-T2: dispatch even on the empty path.
+        from tradewinds.core._backend_dispatch import (
+            validate_backend_kwargs,
+            wrap_result,
+        )
+
+        validate_backend_kwargs(backend, return_type)  # type: ignore[arg-type]
+        if backend == "pandas" and return_type == "dataframe":
+            return df
+        return wrap_result(
+            df,
+            backend=backend,  # type: ignore[arg-type]
+            return_type=return_type,  # type: ignore[arg-type]
+            source=source,
+            retrieved_at=retrieved_at,
+        )
 
     df = pd.DataFrame(filtered)
     # Architect HIGH (silent rewrite): DO NOT overwrite per-row source —
@@ -164,10 +189,27 @@ def research_by_source(
     # alias here would silently break source-identity invariants.
     # The aliasing table is INPUT-ONLY: it accepts both forms at the
     # boundary, but the returned DataFrame carries what the parser said.
+    retrieved_at = datetime.now(UTC)
     df.attrs["source"] = source
-    df.attrs["retrieved_at"] = datetime.now(UTC)
+    df.attrs["retrieved_at"] = retrieved_at
     df.attrs["accepted_sources"] = sorted(accepted_sources)
-    return df
+
+    # Phase 6 W3-T2: backend / return_type dispatch.
+    from tradewinds.core._backend_dispatch import (
+        validate_backend_kwargs,
+        wrap_result,
+    )
+
+    validate_backend_kwargs(backend, return_type)  # type: ignore[arg-type]
+    if backend == "pandas" and return_type == "dataframe":
+        return df
+    return wrap_result(
+        df,
+        backend=backend,  # type: ignore[arg-type]
+        return_type=return_type,  # type: ignore[arg-type]
+        source=source,
+        retrieved_at=retrieved_at,
+    )
 
 
 def assert_source_identity(df: pd.DataFrame, expected_source: str) -> None:
