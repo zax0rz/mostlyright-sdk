@@ -6,7 +6,8 @@
     "paths": {
       "@tradewinds/core": ["../core/src/index.ts"],
       "@tradewinds/weather": ["../weather/src/index.ts"],
-      "@tradewinds/markets": ["../markets/src/index.ts"]
+      "@tradewinds/markets": ["../markets/src/index.ts"],
+      "@tradewinds/markets/polymarket": ["../markets/src/polymarket/index.ts"]
     }
   },
   "include": ["src/**/*", "tests/**/*"],

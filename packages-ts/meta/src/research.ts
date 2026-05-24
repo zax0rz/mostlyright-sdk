@@ -83,6 +83,39 @@ export interface ResearchOptions {
    * Pass `null` to opt out of caching entirely.
    */
   cache?: CacheStore | null;
+
+  // ── Phase 10: composable selectors (mutually exclusive with station). ──
+  //
+  // Per the Phase 10 v0.2 scope, the validation surface is shipped on
+  // both Python and TS; the multi-station / multi-issuer JOIN +
+  // trade-attachment is deferred to v0.3. Passing any of the three
+  // selectors below currently throws a clear NotImplementedError-like
+  // error pointing callers at `discover()` + the station= path until
+  // v0.3 lands.
+
+  /** Cross-issuer city selector. Returns rows for every station that any
+   *  issuer settles against (Kalshi + Polymarket + denylist backstops). */
+  city?: string;
+  /** Single-contract selector. Format: `"<issuer>:<id>"` (e.g.
+   *  `"kalshi:KXHIGHNYC-25MAY26-T79"`). Auto-resolves to the contract's
+   *  canonical settlement station via the Phase 8 catalog. */
+  contract?: string;
+  /** Multi-contract selector for basis-trade research. */
+  contracts?: ReadonlyArray<string>;
+  /** Override the contract's canonical settlement station. Emits a
+   *  StationOverrideWarning via `onWarning?`; output row carries
+   *  `settlementMismatch: true`. Only valid with `contract` selector. */
+  stationOverride?: string;
+  /** Mode 1 source subset — dedupe within. Mutually exclusive with `source`. */
+  sources?: ReadonlyArray<string>;
+  /** Mode 2 single-source pin — error on mismatch. Mutually exclusive with `sources`. */
+  source?: string;
+  /** Attach per-issuer trade timeseries via @tradewinds/markets/trades.
+   *  Requires `contract` or `contracts`. */
+  includeTrades?: boolean;
+  /** Callback receiving Phase 10 StationOverrideWarning (no `warnings.warn()`
+   *  analogue in JS). */
+  onWarning?: (w: import("./compose.js").StationOverrideWarning) => void;
 }
 
 /**
@@ -762,6 +795,58 @@ export async function research(
   toDate: string,
   opts: ResearchOptions = {},
 ): Promise<ReadonlyArray<PairsRow>> {
+  // ── Phase 10 selector + cross-arg validation ─────────────────────────
+  //
+  // The TS signature pre-dates Phase 10's composable kwargs, so the
+  // `station` positional is still always passed. The new selectors live
+  // on `opts` (city / contract / contracts) and are validated here:
+  // exactly one of station / city / contract / contracts is allowed.
+  //
+  // v0.2 ships only the validation surface; the multi-station JOIN +
+  // trade-attachment lands in v0.3. Passing any non-station selector
+  // surfaces a clear NotImplementedError-style error so callers can
+  // route via discover() + the station-path until v0.3.
+  const hasCity = typeof opts.city === "string" && opts.city.length > 0;
+  const hasContract = typeof opts.contract === "string" && opts.contract.length > 0;
+  const hasContracts = Array.isArray(opts.contracts) && opts.contracts.length > 0;
+  const hasStation = typeof station === "string" && station.length > 0;
+  const selectorCount =
+    Number(hasStation) + Number(hasCity) + Number(hasContract) + Number(hasContracts);
+  if (selectorCount === 0) {
+    throw new Error(
+      "research(): exactly one of station, opts.city, opts.contract, opts.contracts must be provided",
+    );
+  }
+  if (selectorCount > 1) {
+    const names: string[] = [];
+    if (hasStation) names.push("station");
+    if (hasCity) names.push("city");
+    if (hasContract) names.push("contract");
+    if (hasContracts) names.push("contracts");
+    throw new Error(`research(): selectors are mutually exclusive; got ${JSON.stringify(names)}`);
+  }
+  if (opts.sources !== undefined && opts.source !== undefined) {
+    throw new Error("research(): sources and source are mutually exclusive");
+  }
+  if (opts.stationOverride !== undefined && !hasContract) {
+    throw new Error(
+      "research(): stationOverride requires contract (not standalone station/city/contracts)",
+    );
+  }
+  if (opts.includeTrades === true && !(hasContract || hasContracts)) {
+    throw new Error(
+      "research(): includeTrades requires contract or contracts (station/city selectors have no trade timeseries)",
+    );
+  }
+  if (hasCity || hasContract || hasContracts) {
+    throw new Error(
+      "research(): city/contract/contracts selectors are validated in Phase 10 v0.2 " +
+        "but the multi-station/multi-issuer JOIN + trade attachment lands in v0.3. " +
+        "For now, use `discover({city})` to find the station then call " +
+        "`research(station, fromDate, toDate)` directly.",
+    );
+  }
+  // ── Backwards-compat station path (existing implementation) ─────────
   const resolved = normalizeStation(station);
   const dates = buildDateList(fromDate, toDate);
   const extendedTo = plusOneDay(toDate);

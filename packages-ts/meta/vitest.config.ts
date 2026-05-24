@@ -48,12 +48,24 @@ export default defineConfig({
         replacement: resolve(__dirname, "../core/src/formats/index.ts"),
       },
       {
+        find: "@tradewinds/core/discovery",
+        replacement: resolve(__dirname, "../core/src/discovery/index.ts"),
+      },
+      {
+        find: "@tradewinds/core/qc",
+        replacement: resolve(__dirname, "../core/src/qc/index.ts"),
+      },
+      {
         find: "@tradewinds/core",
         replacement: resolve(__dirname, "../core/src/index.ts"),
       },
       {
         find: "@tradewinds/weather",
         replacement: resolve(__dirname, "../weather/src/index.ts"),
+      },
+      {
+        find: "@tradewinds/markets/polymarket",
+        replacement: resolve(__dirname, "../markets/src/polymarket/index.ts"),
       },
       {
         find: "@tradewinds/markets",
