@@ -105,7 +105,9 @@ def test_legacy_df_with_attrs_stamps_all_provenance_fields() -> None:
     )
     legacy = result.legacy_df_with_attrs()
     assert legacy.attrs["source"] == "awc.live"
-    assert legacy.attrs["retrieved_at"] == ts.isoformat()
+    # Codex iter-1 P2 fix: legacy attrs carry the tz-aware datetime
+    # (not an ISO string) so Schema.register() can consume it.
+    assert legacy.attrs["retrieved_at"] == ts
     assert legacy.attrs["qc"] == {"rules_fired": {"r1": 0}}
     assert legacy.attrs["schema_id"] == "schema.observation.v1"
     # Underlying frame untouched.

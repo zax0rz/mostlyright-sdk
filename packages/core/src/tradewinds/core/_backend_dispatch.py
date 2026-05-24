@@ -91,13 +91,26 @@ def convert_to_backend(df: pd.DataFrame, backend: BackendT) -> Any:
     Raises ``SourceUnavailableError`` with the install hint when
     ``backend="polars"`` and the ``[polars]`` extra is not installed
     (step 3 of the validation order).
+
+    Codex iter-1 P2 fix: ``pl.from_pandas(df)`` defaults to
+    ``include_index=False`` so a named-index column (``research()``
+    returns one indexed on ``date``) silently disappears. Reset any
+    named index into a regular column before conversion so the polars
+    frame carries the same observable columns as the pandas one.
     """
     if backend == "pandas":
         return df
     # backend == "polars"
+    import pandas as pd
+
     from tradewinds.core._polars_compat import require_polars
 
     pl = require_polars()
+    # Promote named index → column so it survives the conversion.
+    if df.index.name is not None or (
+        isinstance(df.index, pd.MultiIndex) and any(n is not None for n in df.index.names)
+    ):
+        df = df.reset_index()
     return pl.from_pandas(df)
 
 

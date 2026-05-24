@@ -236,10 +236,30 @@ def validate_dataframe(
     A full passing example requires the canonical column set; see
     ``packages/core/tests/core/test_validator.py`` for end-to-end fixtures.
     """
-    # Phase 6 W0-T4: unwrap TradewindsResult → pandas DataFrame with
-    # legacy attrs populated so the downstream checks see the v0.1.0 shape.
+    # Phase 6 W0-T4 + codex iter-1 P2 fix: unwrap TradewindsResult →
+    # pandas DataFrame with legacy attrs populated. For pandas-backed
+    # frames the cheap legacy_df_with_attrs() path applies; for
+    # polars-backed frames it would raise TypeError (the legacy shape
+    # is pandas-only), so route them through frame_as_pandas() first
+    # and re-stamp attrs from the wrapper's provenance fields. Either
+    # way, the downstream checks see the v0.1.0 attrs-stamped shape.
     if isinstance(df, TradewindsResult):
-        df = df.legacy_df_with_attrs()
+        import pandas as _pd
+
+        if isinstance(df.frame, _pd.DataFrame):
+            df = df.legacy_df_with_attrs()
+        else:
+            wrapper = df
+            pdf = wrapper.frame_as_pandas().copy()
+            pdf.attrs["source"] = wrapper.source
+            pdf.attrs["retrieved_at"] = wrapper.retrieved_at
+            if wrapper.qc is not None:
+                pdf.attrs["qc"] = wrapper.qc
+            if wrapper.data_version is not None:
+                pdf.attrs["data_version"] = wrapper.data_version.token
+            if wrapper.schema_id is not None:
+                pdf.attrs["schema_id"] = wrapper.schema_id
+            df = pdf
 
     schema_cls = _lookup_schema(schema_id)
 

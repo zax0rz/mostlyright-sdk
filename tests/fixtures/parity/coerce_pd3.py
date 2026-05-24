@@ -99,5 +99,10 @@ def coerce_3x_to_2x(df: pd.DataFrame) -> pd.DataFrame:
                 new_dtype = dtype_str.replace("[us", "[ns", 1)
                 out[col] = s.astype(new_dtype)
         elif isinstance(s.dtype, pd.StringDtype) or str(s.dtype) == "string":
-            out[col] = s.astype("object")
+            # object→string→object: pandas' string dtype represents missing
+            # as pd.NA; on the way back we restore Python None so the round-
+            # trip is observationally identical to the canonical object-storage
+            # column (where missing values are Python None / np.nan).
+            converted = s.astype("object")
+            out[col] = converted.where(~s.isna(), None)
     return out

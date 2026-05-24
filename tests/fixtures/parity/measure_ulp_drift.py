@@ -61,8 +61,20 @@ def measure() -> dict[str, object]:
     compares column-wise against ``tradewinds.research()`` output running
     on the current pandas. Returns the JSON-ready report dict.
     """
+    import importlib.util
+    import sys
+
     import tradewinds
-    from tests.fixtures.parity.coerce_pd3 import coerce_2x_to_3x
+
+    # Load sibling coerce_pd3.py without making tests/ a package.
+    _spec = importlib.util.spec_from_file_location(
+        "_coerce_pd3_local", FIXTURES / "coerce_pd3.py"
+    )
+    assert _spec is not None and _spec.loader is not None
+    _mod = importlib.util.module_from_spec(_spec)
+    sys.modules["_coerce_pd3_local"] = _mod
+    _spec.loader.exec_module(_mod)
+    coerce_2x_to_3x = _mod.coerce_2x_to_3x
 
     per_column: dict[str, float] = {col: 0.0 for col in DRIFT_COLUMNS}
 

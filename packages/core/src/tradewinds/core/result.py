@@ -157,7 +157,13 @@ class TradewindsResult:
 
         df = self.frame.copy()
         df.attrs["source"] = self.source
-        df.attrs["retrieved_at"] = self.retrieved_at.isoformat()
+        # Codex iter-1 P2 fix: keep retrieved_at as a tz-aware datetime
+        # (NOT an ISO string). The Validator forwards this attr to
+        # Schema.register() which requires a datetime; an ISO string
+        # raises TypeError there and makes wrapper results fail to
+        # validate. The v0.1.0 adapter contract also wrote a datetime
+        # to df.attrs["retrieved_at"], so this matches the legacy shape.
+        df.attrs["retrieved_at"] = self.retrieved_at
         if self.qc is not None:
             df.attrs["qc"] = self.qc
         if self.data_version is not None:

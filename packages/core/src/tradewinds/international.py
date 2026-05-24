@@ -392,12 +392,12 @@ def daily_extremes(
             "got return_type='list'"
         )
 
-    # return_type='wrapper': validate via the shared dispatcher (which
-    # also rejects backend='polars' + return_type='dataframe').
-    if return_type == "dataframe":
-        validate_backend_kwargs(backend, "dataframe")  # type: ignore[arg-type]
-    else:
-        validate_backend_kwargs(backend, "wrapper")  # type: ignore[arg-type]
+    # Architect iter-1 CRITICAL-1 fix: pass through the caller's
+    # return_type so a request for return_type="dataframe" actually
+    # delivers a raw DataFrame instead of being silently upgraded to a
+    # TradewindsResult. validate_backend_kwargs is the gate that rejects
+    # backend="polars" + return_type="dataframe" upfront.
+    validate_backend_kwargs(backend, return_type)  # type: ignore[arg-type]
 
     import pandas as pd
 
@@ -405,7 +405,7 @@ def daily_extremes(
     return wrap_result(
         df,
         backend=backend,  # type: ignore[arg-type]
-        return_type="wrapper",
+        return_type=return_type,  # type: ignore[arg-type]
         source=f"daily_extremes.{merge}",
         retrieved_at=None,
         schema_id="schema.daily_extreme.v1",
