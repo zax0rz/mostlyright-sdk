@@ -83,10 +83,21 @@ jobs:
         uses: astral-sh/setup-uv@v3
       - name: Set up Python 3.13
         run: uv python install 3.13
-      - name: Sync workspace at highest resolution (pulls pandas 3.x)
-        run: uv sync --all-packages --resolution highest
-      - name: Show resolved pandas version
-        run: uv run python -c "import pandas; print('pandas', pandas.__version__)"
+      - name: Re-resolve workspace WITHOUT committed lockfile (forces pandas 3.x)
+        # codex iter-2 P1 fix: uv sync --resolution highest still
+        # consumes the committed uv.lock (which pins pandas 2.3.3), so
+        # the previous step duplicated the default suite. Drop the lock
+        # AND upgrade pandas explicitly so the resolver actually pulls
+        # the latest 3.x wheel matching `pandas>=2.2,<4.0`.
+        run: |
+          rm -f uv.lock
+          uv lock --upgrade-package pandas
+          uv sync --all-packages --resolution highest
+      - name: Assert pandas 3.x is resolved
+        # Hard gate: if the resolver somehow still picks 2.x, fail loudly
+        # rather than silently running the wrong suite.
+        run: |
+          uv run python -c "import pandas, sys; v=pandas.__version__; print('pandas', v); sys.exit(0 if int(v.split('.')[0]) >= 3 else 1)"
       - name: Run fast test suite under pandas 3.x
         run: uv run pytest -m "not live and not polars" -q
 

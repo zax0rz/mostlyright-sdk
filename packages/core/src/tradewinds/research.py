@@ -1152,6 +1152,13 @@ def research(
     >>> list(df.columns)[:4]  # doctest: +SKIP
     ['station', 'cli_high_f', 'cli_low_f', 'cli_report_type']
     """
+    # Phase 6 codex iter-2 P2 fix: validate backend / return_type kwargs
+    # BEFORE any network fetch or cache write. A typo in the new kwargs
+    # otherwise hits live APIs + mutates the parquet cache before raising.
+    from tradewinds.core._backend_dispatch import validate_backend_kwargs
+
+    validate_backend_kwargs(backend, return_type)  # type: ignore[arg-type]
+
     if include_forecast:
         raise NotImplementedError(
             "include_forecast=True is not supported in Phase 1 (v0.1.0). "
@@ -1237,16 +1244,11 @@ def research(
         forecast_model=forecast_model,
         tz_override=tz_override,
     )
-    # Phase 6 W3-T2 + W3-T3: validate backend/return_type kwargs upfront
-    # (steps 1 + 2 of the strict order — fails BEFORE the polars install
-    # check). When return_type='dataframe' the legacy v0.1.0 shape is
-    # returned unchanged; when 'wrapper' the result is a TradewindsResult.
-    from tradewinds.core._backend_dispatch import (
-        validate_backend_kwargs,
-        wrap_result,
-    )
-
-    validate_backend_kwargs(backend, return_type)  # type: ignore[arg-type]
+    # Phase 6 W3-T2 + W3-T3: backend / return_type already validated at
+    # the top of research() (codex iter-2 P2 fix). Here we only need the
+    # wrap_result helper to convert + wrap the pandas result if the
+    # caller opted into a non-default backend or return_type.
+    from tradewinds.core._backend_dispatch import wrap_result
 
     result = pairs_to_dataframe(rows) if as_dataframe else rows
     # Phase 3.4: surface qc summary on df.attrs when the qc=True opt-in

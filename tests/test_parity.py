@@ -160,12 +160,15 @@ def test_parity_case(case_num: int, station: str, frm: str, to: str) -> None:
     )
 
     # PARITY-02: value + dtype equivalence (Rung 3 - see module docstring).
-    # `atol=1e-12` accepts ~1-ULP float-associativity drift in sum-aggregate
-    # columns while still catching any genuine value regression (~35,000x
-    # headroom over the worst measured drift of 2.84e-14 on case 4 KMIA).
-    # Integers/objects/datetimes still require strict equality.
+    # `PARITY_ATOL` is loaded from `ulp_drift_pd3.json` so the artifact's
+    # `tolerance_used` is the source of truth (codex iter-2 P2 fix —
+    # previously hardcoded at 1e-12 which contradicted the artifact when
+    # measure_ulp_drift.py promoted to 1e-10). Default seed is 1e-12,
+    # which accepts ~1-ULP float-associativity drift in sum-aggregate
+    # columns while catching any genuine value regression. Integers/
+    # objects/datetimes still require strict equality.
     assert_frame_equal(
-        actual_c, expected_c, check_dtype=True, check_exact=False, rtol=0, atol=1e-12
+        actual_c, expected_c, check_dtype=True, check_exact=False, rtol=0, atol=PARITY_ATOL
     )
 
 
