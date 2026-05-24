@@ -28,11 +28,16 @@ function quoteCell(value: unknown): string {
  * Serialize rows to a CSV string. Column names come from
  * `Object.keys(rows[0])`. Empty rows emits an empty string (matches
  * `pd.DataFrame({}).to_csv(index=False)`).
+ *
+ * Iter-2 C7: header cells are quoted the same way as data cells.
+ * Python's `DataFrame.to_csv` quotes header strings on the same
+ * triggers as values; without this guard a column name like `"a,b"`
+ * would dump as two headers and roundtrip into the wrong schema.
  */
 export function csvDumps(rows: ReadonlyArray<Record<string, unknown>>): string {
   if (rows.length === 0) return "";
   const columns = Object.keys(rows[0] as Record<string, unknown>);
-  const header = columns.join(",");
+  const header = columns.map(quoteCell).join(",");
   const dataLines = rows.map((r) =>
     columns.map((c) => quoteCell((r as Record<string, unknown>)[c])).join(","),
   );

@@ -89,4 +89,63 @@ describe("csvDumps + csvLoads", () => {
     expect(columns).toEqual(["a", "b"]);
     expect(rows).toEqual([{ a: "1", b: "2" }]);
   });
+
+  describe("header escaping (iter-2 C7)", () => {
+    // Codex iter-2 CRITICAL. csvDumps previously joined raw column names
+    // with `,`, so a column named `"a,b"` dumped as two headers and
+    // roundtripped into the wrong schema. Python `DataFrame.to_csv`
+    // quotes header cells the same as values; we mirror that.
+
+    it("column name with comma roundtrips correctly", () => {
+      const rows = [{ "a,b": "val", c: "other" }];
+      const dumped = csvDumps(rows);
+      // The "a,b" header must be quoted, not emitted as two columns.
+      expect(dumped).toContain('"a,b"');
+      const { rows: loaded, columns } = csvLoads(dumped);
+      expect(columns).toEqual(["a,b", "c"]);
+      expect(loaded[0]?.["a,b"]).toBe("val");
+      expect(loaded[0]?.c).toBe("other");
+    });
+
+    it('column name with double-quote (") roundtrips correctly', () => {
+      const rows = [{ 'col"name': "val", plain: "ok" }];
+      const dumped = csvDumps(rows);
+      // RFC 4180: literal `"` inside a quoted cell is doubled `""`.
+      expect(dumped).toContain('"col""name"');
+      const { rows: loaded, columns } = csvLoads(dumped);
+      expect(columns).toEqual(['col"name', "plain"]);
+      expect(loaded[0]?.['col"name']).toBe("val");
+      expect(loaded[0]?.plain).toBe("ok");
+    });
+
+    it("column name with newline (\\n) roundtrips correctly", () => {
+      const rows = [{ "col\nname": "val", plain: "ok" }];
+      const dumped = csvDumps(rows);
+      // The newline inside the header must be quoted; csvLoads's
+      // stateful parser then preserves it inside the quoted cell.
+      expect(dumped).toContain('"col\nname"');
+      const { rows: loaded, columns } = csvLoads(dumped);
+      expect(columns).toEqual(["col\nname", "plain"]);
+      expect(loaded[0]?.["col\nname"]).toBe("val");
+      expect(loaded[0]?.plain).toBe("ok");
+    });
+
+    it("column name with CR (\\r) roundtrips correctly", () => {
+      const rows = [{ "col\rname": "val" }];
+      const dumped = csvDumps(rows);
+      expect(dumped).toContain('"col\rname"');
+      const { rows: loaded, columns } = csvLoads(dumped);
+      expect(columns).toEqual(["col\rname"]);
+      expect(loaded[0]?.["col\rname"]).toBe("val");
+    });
+
+    it("plain (no-trigger) column names emit without quotes", () => {
+      // Belt-and-suspenders: header escaping must not add spurious
+      // quotes to normal column names — would still parse but bloats
+      // the wire payload and breaks byte-equivalence vs Python.
+      const rows = [{ alpha: "1", beta: "2" }];
+      const dumped = csvDumps(rows);
+      expect(dumped.split("\n")[0]).toBe("alpha,beta");
+    });
+  });
 });
