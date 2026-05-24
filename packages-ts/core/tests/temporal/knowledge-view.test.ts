@@ -49,20 +49,19 @@ describe("KnowledgeView", () => {
   });
 
   it("missing knowledge_time → SchemaValidationError at construction", () => {
-    const rows = [
-      { knowledge_time: "2025-01-01T00:00:00Z" },
-      // @ts-expect-error — runtime defensive check
-      { value: 99 },
-    ];
+    // Runtime defensive check — cast through unknown so TS allows the
+    // structurally-invalid row to exercise the runtime guard.
+    const rows = [{ knowledge_time: "2025-01-01T00:00:00Z" }, { value: 99 }] as unknown as Array<{
+      knowledge_time: string;
+    }>;
     expect(() => new KnowledgeView(rows, asOf)).toThrow(SchemaValidationError);
   });
 
   it("non-string knowledge_time → SchemaValidationError", () => {
     const rows = [
       { knowledge_time: "2025-01-01T00:00:00Z" },
-      // @ts-expect-error — runtime defensive check
       { knowledge_time: 123 },
-    ];
+    ] as unknown as Array<{ knowledge_time: string }>;
     expect(() => new KnowledgeView(rows, asOf)).toThrow(SchemaValidationError);
   });
 
