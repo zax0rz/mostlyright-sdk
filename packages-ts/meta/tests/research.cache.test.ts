@@ -271,4 +271,142 @@ describe("research() cache integration (TS-W3 Plan 06)", () => {
     // 2025-03 IEM key NOT written — current LST month.
     expect(writtenKeys).not.toContain("tradewinds:v1:observations:NYC:2025:03:iem");
   });
+
+  // iter-7 H14: GHCNh archive chunks are now cacheable. The previous code
+  // always called `downloadGhcnhRange` on every research() invocation,
+  // dropping the read-through path on the floor. These tests pin the
+  // new per-month read-through / write-through cache semantics:
+  //   1. First call populates per-month GHCNh keys; second call reuses
+  //      them and issues ZERO NCEI HTTP requests.
+  //   2. GHCNh and IEM ASOS keys do NOT collide for the same triplet
+  //      (the source segment disambiguates "iem" vs "ghcnh").
+  //   3. NCEI 404 (no data for station-year) is memoized empty so each
+  //      month's per-month read-through still short-circuits the network.
+  it("H14: GHCNh per-month cache read-through — second call issues zero NCEI requests", async () => {
+    // Build a synthetic GHCNh PSV with two rows: 2023-01-15 and 2023-01-20.
+    // NCEI mock returns this PSV on first call; mocked fetch counter
+    // verifies subsequent calls don't re-hit NCEI.
+    const header =
+      "Station_ID|DATE|temperature_Source_Station_ID|temperature|temperature_Quality_Code|dew_point_temperature|dew_point_temperature_Quality_Code|wind_speed|wind_speed_Quality_Code|sea_level_pressure|sea_level_pressure_Quality_Code";
+    const row1 = "USW00094728|2023-01-15T14:51:00Z|ICAO-KNYC|10.0|0|5.0|0|3.5|0|1015.0|0";
+    const row2 = "USW00094728|2023-01-20T15:21:00Z|ICAO-KNYC|12.0|0|6.0|0|4.0|0|1014.0|0";
+    const psv = [header, row1, row2].join("\n");
+
+    let ghcnhHits = 0;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = typeof input === "string" ? input : ((input as Request).url ?? String(input));
+      if (url.includes("aviationweather.gov"))
+        return new Response("[]", { status: 200, headers: { "content-type": "application/json" } });
+      if (url.includes("mesonet.agron.iastate.edu/json/cli.py"))
+        return new Response(JSON.stringify({ results: [] }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      if (url.includes("mesonet.agron.iastate.edu/cgi-bin/request/asos.py"))
+        return new Response("station,valid\n", {
+          status: 200,
+          headers: { "content-type": "text/plain" },
+        });
+      if (url.includes("ncei.noaa.gov/oa/global-historical-climatology-network")) {
+        ghcnhHits += 1;
+        return new Response(psv, { status: 200, headers: { "content-type": "text/plain" } });
+      }
+      throw new Error(`Unexpected fetch URL: ${url}`);
+    });
+
+    const store = new MemoryStore();
+    // Cold call: hits NCEI once (single station-year).
+    await research("NYC", "2023-01-15", "2023-01-15", { cache: store });
+    expect(ghcnhHits, "cold call hits NCEI once").toBe(1);
+
+    // Per-month GHCNh key written.
+    const ghcnhKey = cacheKeyForObservations("NYC", 2023, 1, "ghcnh");
+    expect(await store.get(ghcnhKey)).not.toBeNull();
+
+    // Warm call: per-month read-through MUST short-circuit the NCEI fetch.
+    ghcnhHits = 0;
+    await research("NYC", "2023-01-15", "2023-01-15", { cache: store });
+    expect(ghcnhHits, "warm call must NOT re-hit NCEI").toBe(0);
+  });
+
+  it("H14: GHCNh and IEM ASOS write disjoint per-month keys (source namespacing)", async () => {
+    // Synthetic PSV with one row to give GHCNh something to cache.
+    const psv =
+      "Station_ID|DATE|temperature_Source_Station_ID|temperature|temperature_Quality_Code|dew_point_temperature|dew_point_temperature_Quality_Code|wind_speed|wind_speed_Quality_Code|sea_level_pressure|sea_level_pressure_Quality_Code\n" +
+      "USW00094728|2023-01-15T14:51:00Z|ICAO-KNYC|10.0|0|5.0|0|3.5|0|1015.0|0";
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = typeof input === "string" ? input : ((input as Request).url ?? String(input));
+      if (url.includes("aviationweather.gov"))
+        return new Response("[]", { status: 200, headers: { "content-type": "application/json" } });
+      if (url.includes("mesonet.agron.iastate.edu/json/cli.py"))
+        return new Response(JSON.stringify({ results: [] }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      if (url.includes("mesonet.agron.iastate.edu/cgi-bin/request/asos.py"))
+        return new Response("station,valid\n", {
+          status: 200,
+          headers: { "content-type": "text/plain" },
+        });
+      if (url.includes("ncei.noaa.gov/oa/global-historical-climatology-network"))
+        return new Response(psv, { status: 200, headers: { "content-type": "text/plain" } });
+      throw new Error(`Unexpected fetch URL: ${url}`);
+    });
+
+    const store = new MemoryStore();
+    const setSpy = vi.spyOn(store, "set");
+    await research("NYC", "2023-01-15", "2023-01-15", { cache: store });
+    const keys = setSpy.mock.calls.map((c) => String(c[0]));
+
+    // Both source-namespaced keys present, disjoint.
+    expect(keys, "missing IEM per-month key").toContain(
+      "tradewinds:v1:observations:NYC:2023:01:iem",
+    );
+    expect(keys, "missing GHCNh per-month key").toContain(
+      "tradewinds:v1:observations:NYC:2023:01:ghcnh",
+    );
+
+    // No collision: the un-namespaced legacy key MUST NOT appear.
+    expect(keys, "legacy non-namespaced observations key leaked").not.toContain(
+      "tradewinds:v1:observations:NYC:2023:01",
+    );
+  });
+
+  it("H14: GHCNh 404 is memoized; empty per-month entries cached so warm calls skip NCEI", async () => {
+    let ghcnhHits = 0;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = typeof input === "string" ? input : ((input as Request).url ?? String(input));
+      if (url.includes("aviationweather.gov"))
+        return new Response("[]", { status: 200, headers: { "content-type": "application/json" } });
+      if (url.includes("mesonet.agron.iastate.edu/json/cli.py"))
+        return new Response(JSON.stringify({ results: [] }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      if (url.includes("mesonet.agron.iastate.edu/cgi-bin/request/asos.py"))
+        return new Response("station,valid\n", {
+          status: 200,
+          headers: { "content-type": "text/plain" },
+        });
+      if (url.includes("ncei.noaa.gov/oa/global-historical-climatology-network")) {
+        ghcnhHits += 1;
+        return new Response("", { status: 404 });
+      }
+      throw new Error(`Unexpected fetch URL: ${url}`);
+    });
+
+    const store = new MemoryStore();
+    // Range spans two months in same year so we exercise memoization:
+    // year 2023 should be fetched ONCE despite two months in range.
+    await research("NYC", "2023-01-15", "2023-02-15", { cache: store });
+    expect(ghcnhHits, "404 year fetched at most once across multiple months").toBeLessThanOrEqual(
+      1,
+    );
+
+    // 404 still WRITES empty per-month entries so subsequent calls skip
+    // the network entirely. Both months should have empty arrays cached.
+    expect(await store.get(cacheKeyForObservations("NYC", 2023, 1, "ghcnh"))).toEqual([]);
+    expect(await store.get(cacheKeyForObservations("NYC", 2023, 2, "ghcnh"))).toEqual([]);
+  });
 });

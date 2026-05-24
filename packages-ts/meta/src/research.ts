@@ -13,7 +13,12 @@
 // (TS-W4), no forecast (TS-W5+), no parallel prefetch (TS-W3+). Fetches
 // are sequential — fine for the parity gate; performance work is later.
 
-import { STATION_BY_CODE, STATION_BY_ICAO, settlementDateFor } from "@tradewinds/core";
+import {
+  NotFoundError,
+  STATION_BY_CODE,
+  STATION_BY_ICAO,
+  settlementDateFor,
+} from "@tradewinds/core";
 import {
   type CacheStore,
   cacheKeyForClimate,
@@ -36,7 +41,7 @@ import {
   type Observation,
   awcToObservation,
   downloadCliRange,
-  downloadGhcnhRange,
+  downloadGhcnh,
   downloadIemAsos,
   fetchAwcMetars,
   parseCliResponse,
@@ -567,6 +572,145 @@ async function fetchIemAsosWithCache(
   return acc;
 }
 
+/**
+ * Fetch GHCNh archive observations per-month with read-through cache.
+ *
+ * iter-7 H14: previously the GHCNh path called `downloadGhcnhRange` on
+ * every `research()` invocation and never touched the cache. TS-W3
+ * requires GHCNh chunks to be cacheable just like IEM ASOS — this helper
+ * applies the same per-month contract as `fetchIemAsosWithCache`:
+ *
+ *   1. Enumerate `(year, month)` pairs overlapping the queried range.
+ *   2. For each pair, attempt a per-month cache read using the source-
+ *      namespaced key `cacheKeyForObservations(station, year, month,
+ *      "ghcnh")`. The `"ghcnh"` source segment prevents collision with
+ *      IEM ASOS writes for the same `(station, year, month)` triplet
+ *      (iter-7 H13 introduced `"iem"` namespacing).
+ *   3. On cache miss, fetch the full year via `downloadGhcnh` (single
+ *      PSV per station-year — NCEI's archive is yearly-chunked at the
+ *      source) — memoized within the helper so multiple months in the
+ *      same year share one HTTP round-trip.
+ *   4. Per-month skip rules: `shouldSkipCacheForCurrentLstMonth` +
+ *      `isMonthVolatile` (30-day amendment window). NCEI republishes
+ *      `GHCNh_<id>_<YEAR>.psv` as new months land, so the same skip
+ *      logic the IEM helper uses applies here.
+ *   5. 404-as-no-data: a `NotFoundError` from `downloadGhcnh` means NCEI
+ *      has no archive for this station-year (typical for recent partial
+ *      years or pre-1973 stations). We memoize an empty year and treat
+ *      every month as cache-eligible-but-empty. The Python range fetcher
+ *      silently swallows 404 too (research.py L160-166 logs + continues).
+ *
+ * iter-6 C12: mirrors the split-try pattern — cache `get` / `set`
+ * failures are logged but never discard the in-memory rows.
+ */
+async function fetchGhcnhWithCache(
+  stationCode: string,
+  ghcnhId: string,
+  fromDate: string,
+  extendedTo: string,
+  opts: ResearchOptions,
+  cache: CacheStore | null,
+  now: Date,
+): Promise<Observation[]> {
+  const acc: Observation[] = [];
+
+  // Per-call memoization: avoid re-fetching the same year when multiple
+  // months in the same year miss the cache. `null` sentinel records a 404
+  // (no data) so subsequent months in that year skip the HTTP call too.
+  const yearCache = new Map<number, ReadonlyArray<Observation>>();
+
+  async function fetchYearOnce(year: number): Promise<ReadonlyArray<Observation>> {
+    const cached = yearCache.get(year);
+    if (cached !== undefined) return cached;
+    const ghcnhOpts: { signal?: AbortSignal } = {};
+    if (opts.signal !== undefined) ghcnhOpts.signal = opts.signal;
+    let parsed: ReadonlyArray<Observation>;
+    try {
+      const yr = await downloadGhcnh(ghcnhId, year, ghcnhOpts);
+      parsed = parseGhcnhPsv(yr.psv);
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        // NCEI 404 → no data for this station-year. Mirrors the
+        // `downloadGhcnhRange` swallow-404 behavior; memoize empty so
+        // subsequent months in this year don't re-hit NCEI.
+        parsed = [];
+      } else {
+        throw err;
+      }
+    }
+    yearCache.set(year, parsed);
+    return parsed;
+  }
+
+  function filterMonth(
+    rows: ReadonlyArray<Observation>,
+    year: number,
+    month: number,
+  ): Observation[] {
+    const yyyy = String(year).padStart(4, "0");
+    const mm = String(month).padStart(2, "0");
+    const prefix = `${yyyy}-${mm}-`;
+    const out: Observation[] = [];
+    for (const r of rows) {
+      if (r.observed_at.startsWith(prefix) && r.station_code === stationCode) out.push(r);
+    }
+    return out;
+  }
+
+  const pairs = monthsInRange(fromDate, extendedTo);
+  for (const [year, month] of pairs) {
+    const cacheKey = cacheKeyForObservations(stationCode, year, month, "ghcnh");
+    const skipCurrentMonth = shouldSkipCacheForCurrentLstMonth(stationCode, year, month, now);
+    const skipVolatile = isMonthVolatile(year, month, now);
+    const skipCache = skipCurrentMonth || skipVolatile;
+
+    // --- Cache read (best-effort) -------------------------------------
+    let monthRows: Observation[] | null = null;
+    if (cache !== null && !skipCache) {
+      try {
+        const cached = await cache.get<Observation[]>(cacheKey);
+        if (cached !== null) monthRows = cached;
+      } catch (cacheErr) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[tradewinds] GHCNh cache.get failed for key=${cacheKey}; falling back to live fetch:`,
+          cacheErr,
+        );
+      }
+    }
+
+    if (monthRows === null) {
+      // --- Live fetch + parse (errors here propagate to the caller) ---
+      const yearRows = await fetchYearOnce(year);
+      monthRows = filterMonth(yearRows, year, month);
+
+      // --- Cache write (best-effort, AFTER rows are accumulated) ------
+      // iter-6 C12: `cache.set` failures MUST NOT propagate. Even an
+      // empty month list is written when the year was successfully
+      // fetched — it pins the "no observations for this month" fact so
+      // the next call doesn't re-fetch the year just to discover nothing.
+      const sample = monthRows[0]?.source;
+      if (cache !== null && !skipCache && !isLiveSource(sample)) {
+        try {
+          await cache.set(cacheKey, monthRows);
+        } catch (cacheErr) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[tradewinds] GHCNh cache.set failed for key=${cacheKey}; in-memory rows preserved:`,
+            cacheErr,
+          );
+        }
+      }
+    }
+
+    for (const obs of monthRows) {
+      const obsDate = obs.observed_at.slice(0, 10);
+      if (obsDate >= fromDate && obsDate <= extendedTo) acc.push(obs);
+    }
+  }
+  return acc;
+}
+
 // ---------------------------------------------------------------------------
 // Public surface
 // ---------------------------------------------------------------------------
@@ -663,20 +807,22 @@ export async function research(
   );
 
   // --- GHCNh archive observations (US stations only) --------------------
-  const ghcnhRows: Observation[] = [];
+  // iter-7 H14: now wraps `downloadGhcnh` in `fetchGhcnhWithCache` so
+  // GHCNh chunks are persisted at the same per-month granularity as IEM
+  // ASOS. Repeat `research()` calls for the same range skip NCEI
+  // entirely on cache hit. Non-US stations short-circuit before reaching
+  // the helper — GHCNh PSVs are US-only.
+  let ghcnhRows: Observation[] = [];
   if (isUsStation(resolved) && resolved.ghcnhId !== null && resolved.ghcnhId.length > 0) {
-    const ghcnhOpts: { politenessMs: number; signal?: AbortSignal } = {
-      politenessMs: opts.ghcnhPolitenessMs ?? 1000,
-    };
-    if (opts.signal !== undefined) ghcnhOpts.signal = opts.signal;
-    const years = await downloadGhcnhRange(resolved.ghcnhId, fromYear, extendedToYear, ghcnhOpts);
-    for (const yr of years) {
-      const parsed = parseGhcnhPsv(yr.psv);
-      for (const obs of parsed) {
-        const obsDate = obs.observed_at.slice(0, 10);
-        if (obsDate >= fromDate && obsDate <= extendedTo) ghcnhRows.push(obs);
-      }
-    }
+    ghcnhRows = await fetchGhcnhWithCache(
+      resolved.code,
+      resolved.ghcnhId,
+      fromDate,
+      extendedTo,
+      opts,
+      cache,
+      cacheNow,
+    );
   }
 
   // --- Merge observations + bucket by settlement date -------------------
