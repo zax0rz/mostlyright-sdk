@@ -240,8 +240,24 @@ def fetch_iem_mos(
             client.close()
 
     if not rows:
-        return pd.DataFrame(columns=list(_CANONICAL_COLUMNS))
-    return pd.DataFrame(rows, columns=list(_CANONICAL_COLUMNS))
+        empty = pd.DataFrame(columns=list(_CANONICAL_COLUMNS))
+        # Schema validator requires both attrs to match
+        # schema.forecast.iem_mos.v1 — stamp them so an empty return
+        # passes validation just like a populated one.
+        empty.attrs["source"] = "iem.archive"
+        empty.attrs["retrieved_at"] = retrieved_at
+        # Pin sky_cover_pct dtype: validator checks dtype on nullable
+        # columns when present. IEM MOS never emits sky cover so the
+        # column stays all-NaN; coerce to pandas Int64 (nullable int).
+        empty["sky_cover_pct"] = empty["sky_cover_pct"].astype("Int64")
+        return empty
+    df = pd.DataFrame(rows, columns=list(_CANONICAL_COLUMNS))
+    df.attrs["source"] = "iem.archive"
+    df.attrs["retrieved_at"] = retrieved_at
+    # sky_cover_pct is always None in IEM MOS rows; coerce to nullable
+    # Int64 so the column matches schema.forecast.iem_mos.v1 dtype.
+    df["sky_cover_pct"] = df["sky_cover_pct"].astype("Int64")
+    return df
 
 
 __all__ = ["SUPPORTED_MOS_MODELS", "fetch_iem_mos"]

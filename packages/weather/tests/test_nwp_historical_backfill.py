@@ -34,9 +34,12 @@ def test_cycle_and_cycle_range_start_mutually_exclusive() -> None:
 
 
 def test_cycle_range_start_requires_end() -> None:
+    """cycle_range_start without cycle_range_end is half-specified —
+    iter-1 unified the message with the end-alone case.
+    """
     from mostlyright.weather.forecast_nwp import forecast_nwp
 
-    with pytest.raises(ValueError, match="requires cycle_range_end"):
+    with pytest.raises(ValueError, match="must both be provided"):
         forecast_nwp(
             "KNYC",
             "hrrr",
@@ -85,6 +88,48 @@ def test_cycle_range_iteration_placeholder_not_implemented() -> None:
 
     with pytest.raises(NotImplementedError, match="PLAN-09"):
         forecast_nwp(
+            "KNYC",
+            "hrrr",
+            cycle_range_start=datetime(2026, 5, 24, 0, tzinfo=UTC),
+            cycle_range_end=datetime(2026, 5, 24, 23, tzinfo=UTC),
+        )
+
+
+# Phase 17 Wave 3 iter-1 codex review hardening.
+
+
+def test_cycle_range_end_alone_rejected() -> None:
+    """cycle_range_end without cycle_range_start must NOT silently fall
+    through to the default single-cycle path (codex iter-1 HIGH #2).
+    """
+    from mostlyright.weather.forecast_nwp import forecast_nwp
+
+    with pytest.raises(ValueError, match="must both be provided"):
+        forecast_nwp(
+            "KNYC",
+            "hrrr",
+            cycle_range_end=datetime(2026, 5, 24, 23, tzinfo=UTC),
+        )
+
+
+def test_public_forecasts_wrapper_forwards_cycle_range_kwargs() -> None:
+    """The public ``mostlyright.forecasts.forecast_nwp`` wrapper must
+    forward cycle_range_start/end (codex iter-1 HIGH #1: without
+    forwarding, callers would get ``TypeError("unexpected keyword
+    argument")``).
+    """
+    import inspect
+
+    from mostlyright.forecasts import forecast_nwp as public_forecast_nwp
+
+    sig = inspect.signature(public_forecast_nwp)
+    assert "cycle_range_start" in sig.parameters
+    assert "cycle_range_end" in sig.parameters
+
+    # End-to-end: calling the public wrapper with the kwargs should
+    # reach the PLAN-09 placeholder, not raise TypeError.
+    with pytest.raises(NotImplementedError, match="PLAN-09"):
+        public_forecast_nwp(
             "KNYC",
             "hrrr",
             cycle_range_start=datetime(2026, 5, 24, 0, tzinfo=UTC),

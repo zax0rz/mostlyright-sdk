@@ -570,14 +570,22 @@ def forecast_nwp(
     # ``SourceUnavailableError`` about missing optional deps.
     from ._fetchers._nwp_cycle_chunks import check_historical_depth, cycle_range
 
-    if cycle is not None and cycle_range_start is not None:
+    # Codex iter-1 HIGH #2: any cycle-range kwarg enters the range path.
+    # cycle + range is mutually exclusive (rejects ambiguous calls);
+    # range needs BOTH bounds (rejects half-specified calls);
+    # cycle_range_end alone (without cycle_range_start) would otherwise
+    # silently fall through to the legacy single-cycle path.
+    using_range = cycle_range_start is not None or cycle_range_end is not None
+    if cycle is not None and using_range:
         raise ValueError(
-            "forecast_nwp(): cycle and cycle_range_start are mutually exclusive."
+            "forecast_nwp(): cycle and cycle_range_start/end are mutually exclusive."
         )
-    if cycle_range_start is not None:
-        if cycle_range_end is None:
+    if using_range:
+        if cycle_range_start is None or cycle_range_end is None:
             raise ValueError(
-                "forecast_nwp(): cycle_range_start requires cycle_range_end."
+                "forecast_nwp(): cycle_range_start AND cycle_range_end must "
+                f"both be provided (got start={cycle_range_start!r}, "
+                f"end={cycle_range_end!r})."
             )
         cycles_to_fetch = cycle_range(model, cycle_range_start, cycle_range_end)
         raise NotImplementedError(

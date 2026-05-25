@@ -144,10 +144,17 @@ def cycle_range(model: str, start_dt: datetime, end_dt: datetime) -> list[dateti
         return []
     hours = CYCLE_HOURS[model]
     out: list[datetime] = []
-    cur = (
-        start_dt.astimezone(UTC)
-        .replace(minute=0, second=0, microsecond=0)
-    )
+    start_utc = start_dt.astimezone(UTC)
+    # Ceiling instead of floor: if start_dt has minutes/seconds, round
+    # UP to the next hour so the returned cycle list is strictly inside
+    # ``[start_dt, end_dt]``. Flooring would include the previous hour
+    # which sits OUTSIDE the requested window (codex iter-4 finding).
+    if start_utc.minute or start_utc.second or start_utc.microsecond:
+        cur = start_utc.replace(
+            minute=0, second=0, microsecond=0
+        ) + timedelta(hours=1)
+    else:
+        cur = start_utc.replace(minute=0, second=0, microsecond=0)
     end_utc = end_dt.astimezone(UTC)
     while cur <= end_utc:
         if cur.hour in hours:
