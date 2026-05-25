@@ -5,9 +5,11 @@
 //   <root>/<sanitized-key>.json
 //
 // Where `<root>` defaults to
-// `$TRADEWINDS_CACHE_DIR ?? $HOME/.mostlyright/cache-ts` (per TS-CACHE-02 —
-// distinct from Python's `.mostlyright/cache` so the JSON envelopes here
-// can't shadow Python's parquet files).
+// `$MOSTLYRIGHT_CACHE_DIR ?? $TRADEWINDS_CACHE_DIR (legacy + warn) ??
+// $HOME/.mostlyright/cache-ts` (per TS-CACHE-02 — distinct from Python's
+// `.mostlyright/cache` so the JSON envelopes here can't shadow Python's
+// parquet files). Phase 12 W4 + review-iter2: mirrors the Python back-compat
+// shim semantics — canonical → legacy + DeprecationWarning → default.
 //
 // Atomic write: payload is written to `<path>.tmp` then renamed onto
 // `<path>` (POSIX-atomic; Windows-safe via `fs.rename`).
@@ -33,17 +35,40 @@ import type { CacheEntry, CacheSetOptions, CacheStore } from "./types.js";
 
 /**
  * Resolve the cache root on each call (not cached at module load) so tests
- * can `vi.stubEnv("TRADEWINDS_CACHE_DIR", ...)` between cases without a
+ * can `vi.stubEnv("MOSTLYRIGHT_CACHE_DIR", ...)` between cases without a
  * module reload.
  *
- * Per TS-CACHE-02: defaults to `~/.mostlyright/cache-ts` — DISTINCT from
- * Python's `~/.mostlyright/cache` so JSON envelopes here can't shadow
- * Python's parquet files.
+ * Resolution order (Phase 12 W4 + review-iter2 — mirrors Python shim):
+ * 1. `MOSTLYRIGHT_CACHE_DIR` env var (canonical, post-Phase-12).
+ * 2. `TRADEWINDS_CACHE_DIR` env var (legacy; emits a one-time deprecation
+ *    `console.warn`; scheduled for removal in vts-0.3).
+ * 3. `~/.mostlyright/cache-ts` (per TS-CACHE-02 — DISTINCT from Python's
+ *    `~/.mostlyright/cache` so JSON envelopes here can't shadow Python's
+ *    parquet files).
  */
+let _legacyCacheDirWarned = false;
+
 export function defaultFsRoot(): string {
-  const env = process.env.TRADEWINDS_CACHE_DIR;
-  if (env !== undefined && env.length > 0) return env;
+  const canonical = process.env.MOSTLYRIGHT_CACHE_DIR;
+  if (canonical !== undefined && canonical.length > 0) return canonical;
+  const legacy = process.env.TRADEWINDS_CACHE_DIR;
+  if (legacy !== undefined && legacy.length > 0) {
+    if (!_legacyCacheDirWarned) {
+      console.warn(
+        "TRADEWINDS_CACHE_DIR is deprecated; use MOSTLYRIGHT_CACHE_DIR. " +
+          "Support will be removed in vts-0.3. " +
+          "Run: mv ~/.tradewinds ~/.mostlyright",
+      );
+      _legacyCacheDirWarned = true;
+    }
+    return legacy;
+  }
   return join(homedir(), ".mostlyright", "cache-ts");
+}
+
+/** Reset the one-time TRADEWINDS_CACHE_DIR deprecation latch — TEST USE ONLY. */
+export function _resetLegacyCacheDirWarn(): void {
+  _legacyCacheDirWarned = false;
 }
 
 export interface FsStoreOptions {

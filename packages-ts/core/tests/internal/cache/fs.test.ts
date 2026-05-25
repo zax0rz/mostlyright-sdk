@@ -6,7 +6,7 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { FsStore, defaultFsRoot } from "../../../src/internal/cache/fs.js";
+import { FsStore, _resetLegacyCacheDirWarn, defaultFsRoot } from "../../../src/internal/cache/fs.js";
 import { runCacheStoreContract } from "./_contract.js";
 
 describe("FsStore", () => {
@@ -25,8 +25,9 @@ describe("FsStore", () => {
   runCacheStoreContract(() => new FsStore({ root: scratchDir }));
 
   describe("defaultFsRoot()", () => {
-    it("honors TRADEWINDS_CACHE_DIR env override", () => {
-      vi.stubEnv("TRADEWINDS_CACHE_DIR", "/tmp/custom-mostlyright");
+    it("honors MOSTLYRIGHT_CACHE_DIR env override (canonical, post-Phase-12)", () => {
+      vi.stubEnv("MOSTLYRIGHT_CACHE_DIR", "/tmp/custom-mostlyright");
+      vi.stubEnv("TRADEWINDS_CACHE_DIR", "");
       try {
         expect(defaultFsRoot()).toBe("/tmp/custom-mostlyright");
       } finally {
@@ -34,7 +35,36 @@ describe("FsStore", () => {
       }
     });
 
+    it("canonical wins when both env vars set; legacy NOT consulted", () => {
+      vi.stubEnv("MOSTLYRIGHT_CACHE_DIR", "/tmp/canonical");
+      vi.stubEnv("TRADEWINDS_CACHE_DIR", "/tmp/legacy");
+      try {
+        expect(defaultFsRoot()).toBe("/tmp/canonical");
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    });
+
+    it("falls back to legacy TRADEWINDS_CACHE_DIR with console.warn (back-compat)", () => {
+      vi.stubEnv("MOSTLYRIGHT_CACHE_DIR", "");
+      vi.stubEnv("TRADEWINDS_CACHE_DIR", "/tmp/legacy-only");
+      // Reset the one-time latch so this test sees the warn even if a prior test fired it.
+      _resetLegacyCacheDirWarn();
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      try {
+        expect(defaultFsRoot()).toBe("/tmp/legacy-only");
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining("TRADEWINDS_CACHE_DIR is deprecated"),
+        );
+      } finally {
+        warnSpy.mockRestore();
+        vi.unstubAllEnvs();
+        _resetLegacyCacheDirWarn();
+      }
+    });
+
     it("falls back to $HOME/.mostlyright/cache-ts when env unset", () => {
+      vi.stubEnv("MOSTLYRIGHT_CACHE_DIR", "");
       vi.stubEnv("TRADEWINDS_CACHE_DIR", "");
       try {
         expect(defaultFsRoot()).toBe(join(homedir(), ".mostlyright", "cache-ts"));
@@ -44,6 +74,7 @@ describe("FsStore", () => {
     });
 
     it("does NOT match the Python cache root (.mostlyright/cache)", () => {
+      vi.stubEnv("MOSTLYRIGHT_CACHE_DIR", "");
       vi.stubEnv("TRADEWINDS_CACHE_DIR", "");
       try {
         const tsRoot = defaultFsRoot();

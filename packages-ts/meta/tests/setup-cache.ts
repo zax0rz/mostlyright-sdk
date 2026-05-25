@@ -14,7 +14,7 @@ import { beforeEach } from "vitest";
 // process.env is per-process, so this isolates workers from each other AND
 // from the user's $HOME/.mostlyright/cache-ts.
 const workerRoot = mkdtempSync(join(tmpdir(), `tw-meta-test-w${process.pid}-`));
-process.env.TRADEWINDS_CACHE_DIR = workerRoot;
+process.env.MOSTLYRIGHT_CACHE_DIR = workerRoot;
 
 beforeEach(async () => {
   // Wipe the worker root before each test — kills any cache state written
