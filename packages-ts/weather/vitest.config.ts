@@ -30,6 +30,14 @@ export default defineConfig({
         find: "@tradewinds/core",
         replacement: resolve(__dirname, "../core/src/index.ts"),
       },
+      // Phase 11 subpath alias — `@tradewinds/weather/live` is exported via
+      // `package.json` `exports`, but vitest's alias resolver runs FIRST so
+      // we need an explicit aliasing entry here too. Order matters — most
+      // specific subpath BEFORE the bare-name alias.
+      {
+        find: "@tradewinds/weather/live",
+        replacement: resolve(__dirname, "./src/live/index.ts"),
+      },
       // Self-alias so backward-compat tests can import from @tradewinds/weather.
       {
         find: "@tradewinds/weather",

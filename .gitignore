@@ -56,3 +56,4 @@ packages-ts/*/coverage/
 # TS-W2 Plan 08 drift watchdog — output files are transient, not committed.
 packages-ts/meta/tests/parity/drift/*.json
 packages-ts/meta/tests/parity/drift-report.md
+.claude/

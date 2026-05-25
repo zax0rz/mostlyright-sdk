@@ -87,3 +87,22 @@ export {
   extractStationCode,
   SSID_COLUMNS,
 } from "./_parsers/ghcnh.js";
+
+// Phase 11 — `tradewinds.live` ticker surface (stream + latest).
+export {
+  POLITE_FLOORS_S,
+  SOURCE_IDENTITY_TAGS,
+  SUPPORTED_SOURCES,
+  isLiveSource,
+  latest,
+  sourceTag,
+  stream,
+  validatePollSeconds,
+  validateSource,
+  type LatestOptions,
+  type LiveObservation,
+  type LiveSource,
+  type LiveSourceTag,
+  type StreamOptions,
+} from "./live/index.js";
+export { LiveStreamError, NoLiveDataError } from "@tradewinds/core";
