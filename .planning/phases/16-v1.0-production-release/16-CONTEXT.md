@@ -14,6 +14,7 @@ Final stretch from "v0.1.0 published + docs live" → "v1.0.0 production-shipped
 3. **External validation**: clock-time an external user through the README quickstart end-to-end (<5 min target); fix blockers as `1.0.1` patches within 72h.
 
 **What this phase ships:**
+- **W0 cleanup wave (NEW 2026-05-25; bundled with Phase 13 W0 — whichever ships first owns the commit):** untrack `.planning/` (`git rm -r --cached .planning/`; `.gitignore` already lists it), prune dev-only artifacts (`spike/`, `.scratch/`, debug scripts inventory below), stub root `README.md` to production-grade. **The OP0a (org create) + OP0c (repo transfer) operator steps are documented in Phase 13 W0; this phase re-asserts the cleanup commit if not yet shipped.** After Phase 16 W0 + Phase 13 W0 BOTH ship, the repo `mostlyright/mostlyright-sdk` is production-public-ready.
 - Rewritten root `README.md` (user-facing marketing copy + 60s quickstart + API surface map + links to mostlyright.md/docs/sdk)
 - Rewritten per-package READMEs (8 packages: `packages/{core,weather,markets}/README.md` + `packages-ts/{codegen,core,weather,markets,meta}/README.md`)
 - NEW `CHANGELOG.md` Keep-A-Changelog format with `[1.0.0]` + `[0.1.0]` + `[0.1.0rc1]` + `[Unreleased]` sections (extends the file Phase 13 W1 seeded)
@@ -29,7 +30,7 @@ Final stretch from "v0.1.0 published + docs live" → "v1.0.0 production-shipped
 **What this phase does NOT ship (out of scope):**
 - v1.x feature work (e.g. ECMWF Tier-2, hosted-backend MCP, polars-default backend). Phase 16 is mechanical — same code as 0.1.0, just promoted.
 - API surface changes (no breaking changes between 0.1.0 → 1.0.0; promoting to 1.0.0 SIGNALS API stability, doesn't introduce new API).
-- Repo rename `helloiamvu/tradewinds` → `helloiamvu/mostlyright` — operator may do out-of-band; in-repo URLs left pointing at the current repo until then.
+- Repo transfer `helloiamvu/tradewinds` → `mostlyright/mostlyright-sdk` is owned by **Phase 13 W0 OP0c**, not Phase 16. Phase 16's W0 cleanup wave is the in-repo prep (untrack, prune dev artifacts) that happens BEFORE the operator clicks Transfer; the transfer itself is documented in `.planning/phases/13-pypi-publication-pipeline/13-W0-ORG-TRANSFER.md`.
 - New CI/CD infrastructure — release.yml + release-ts.yml + docs-publish.yml are all in place from Phases 4/13/14/15; Phase 16 just fires them via tag-push.
 - v0.1.x patch backports — separate `support/v0.1` branch may be opened by the operator later if 0.1.x security patches are needed.
 
@@ -58,9 +59,9 @@ NOT:
 
 This means a consumer with `pip install mostlyright==0.1.0` can `pip install mostlyright==1.0.0` and observe zero behavior change. The 1.0 release is a TRUST signal: "we're confident enough in this surface to commit to SemVer-style API stability."
 
-### Repo URL stability (LOCKED — operator-gated)
+### Repo URL stability (LOCKED — bound to Phase 13 W0 transfer)
 
-In-repo references to `github.com/helloiamvu/tradewinds` stay unchanged in Phase 16. Repo rename is an operator out-of-band decision (Settings → Rename). After rename, GitHub redirects keep old URLs working. Phase 16's README badges + repository fields stay pointing at `helloiamvu/tradewinds` unless operator confirms the rename has occurred (in which case a follow-up `1.0.1` patch updates URLs).
+Phase 16 assumes Phase 13 W0 has already moved the repo to `mostlyright/mostlyright-sdk`. ALL Phase 16 deliverables (README badges, package.json `repository` fields, `pyproject.toml` URLs, CONTRIBUTING/SECURITY URLs, badge image sources) point at `github.com/mostlyright/mostlyright-sdk`. GitHub auto-redirects from the old `helloiamvu/tradewinds` URL for 1 year per policy, so external links that pre-existed v1.0 still work, but the canonical URL in the v1.0 repo is the new one.
 
 ### CODE_OF_CONDUCT source (LOCKED — Contributor Covenant 2.1)
 
@@ -162,7 +163,7 @@ From REQUIREMENTS.md RELEASE-01..RELEASE-10:
 - **v1.x feature work** — ECMWF Tier-2, hosted-backend MCP, polars-default. These ship as `1.x.0` / `1.x.x` after 1.0.0 lands.
 - **Breaking API changes** — would justify v2.0; deferred indefinitely.
 - **v0.3 deprecation removal** (`TRADEWINDS_CACHE_DIR` back-compat shim) — happens at v0.3, NOT v1.0. v1.0 still carries the shim.
-- **GitHub repo rename** `helloiamvu/tradewinds` → `helloiamvu/mostlyright` — operator out-of-band.
+- **GitHub repo transfer** to `mostlyright/mostlyright-sdk` — NOW IN SCOPE for Phase 13 W0 (no longer deferred). Phase 16 inherits the new repo coordinates and ships v1.0 from the new repo.
 - **Marketing site refresh** — landing-team workstream; Phase 16 just polishes the SDK repo.
 
 </deferred>

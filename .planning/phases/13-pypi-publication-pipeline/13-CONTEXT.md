@@ -10,15 +10,16 @@
 Stand up the PyPI publish pipeline end-to-end for the 3 Python distributions (`mostlyright`, `mostlyright-weather`, `mostlyright-markets`), close out operator pre-flight OP1 + OP2 deferred from Phase 12, run a `v0.1.0rc1` TestPyPI dry-run, soak ≥1 week, and promote `v0.1.0` to production PyPI.
 
 **What this phase ships:**
-- 3 PyPI pending-publisher registrations (operator-gated, manual on pypi.org)
-- 3 TestPyPI pending-publisher registrations (operator-gated, manual on test.pypi.org)
-- GH repo Environments `pypi` + `testpypi` (operator-gated, GH UI)
-- `v0.1.0rc1` git tag → release-testpypi.yml fires → 3 wheels on test.pypi.org
+- **W0 operator pre-flight (NEW — added 2026-05-25):** (a) operator creates `mostlyright` GitHub org, (b) repo cleanup commit on `main` (untrack `.planning/`, prune dev artifacts, write production-grade root README — paired with Phase 16; see X-ref), (c) operator transfers `helloiamvu/tradewinds` → `mostlyright/mostlyright-sdk`. All subsequent waves bind to the **new** repo coordinates.
+- 3 PyPI pending-publisher registrations against `mostlyright/mostlyright-sdk` (operator-gated, manual on pypi.org)
+- 3 TestPyPI pending-publisher registrations against `mostlyright/mostlyright-sdk` (operator-gated, manual on test.pypi.org)
+- GH repo Environments `pypi` + `testpypi` on the NEW repo (operator-gated, GH UI)
+- `v0.1.0rc1` git tag pushed to `mostlyright/mostlyright-sdk` → release-testpypi.yml fires → 3 wheels on test.pypi.org
 - Clean-venv smoke test of `pip install --index-url https://test.pypi.org/simple/ mostlyright==0.1.0rc1`
 - ≥1 week soak on TestPyPI with external installer feedback
 - `v0.1.0` git tag → release.yml fires → 3 wheels on prod pypi.org
 - CI-04 `check_wheel_metadata.py` Requires-Dist pin gate green on both publishes
-- New `.planning/phases/13-pypi-publication-pipeline/RUNBOOK.md` for routine future releases
+- New `.planning/phases/13-pypi-publication-pipeline/RUNBOOK.md` for routine future releases (under new org)
 
 **What this phase does NOT ship (deferred):**
 - `v1.0.0` final tag — Phase 16 owns that promotion after the rc1 → 0.1.0 cycle proves out
@@ -50,7 +51,7 @@ Per CLAUDE.md "Data + parity rules": pandas pinned to 2.x for the parity gate. T
 - Python release workflow filename: `.github/workflows/release.yml` (stays from Phase 4; renamed-internally-only by Phase 12 W6)
 - Python release-testpypi workflow filename: `.github/workflows/release-testpypi.yml` (same)
 - GH environment names: `pypi` (production) + `testpypi` (dry-run)
-- OIDC trusted-publisher bindings on pypi.org / test.pypi.org are keyed to **(owner, repo, workflow filename, environment name)** — changing ANY of those 4 invalidates the binding. Phase 12 W6 preserved all 4; this phase does NOT re-touch them.
+- OIDC trusted-publisher bindings on pypi.org / test.pypi.org are keyed to **(owner, repo, workflow filename, environment name)** — changing ANY of those 4 invalidates the binding. Phase 12 W6 preserved workflow filename + env names; **W0 of this phase changes (owner, repo) from `helloiamvu/tradewinds` → `mostlyright/mostlyright-sdk` via a GitHub repo transfer.** Pending-publisher registrations therefore MUST be done AFTER the transfer completes, against the new repo coordinates. A repo transfer auto-redirects git pushes but does NOT carry over OIDC bindings — they're registered fresh against the new owner/repo.
 
 ### TestPyPI vs prod PyPI separation (LOCKED — separate publishers, separate environments)
 
@@ -65,15 +66,26 @@ Per CLAUDE.md "Data + parity rules": pandas pinned to 2.x for the parity gate. T
 
 ### Operator pre-flight (REQUIRED before any in-repo wave executes)
 
-Phase 12 closeout deferred these. Phase 13 W1 documents + tracks them; no in-repo PR work proceeds until the operator confirms:
+Phase 12 closeout deferred these. Phase 13 W0 + W1 document + track them; no in-repo PR work proceeds until the operator confirms:
 
+**W0 — org + repo prep (NEW, BLOCKING, ordered):**
+- **OP0a** (REQUIRED, ordered first): Operator creates `mostlyright` GitHub organization at https://github.com/organizations/new. Personal account on the org. Org owner = operator. No teams needed for v1.0.
+- **OP0b** (REQUIRED, ordered second): Cleanup commit on `main` of `helloiamvu/tradewinds` BEFORE transfer — this is the "production-grade" pass that prepares the repo to be public:
+  - `git rm -r --cached .planning/` (untrack, keep locally; `.gitignore` already prevents re-add)
+  - Prune dev-only artifacts (`spike/`, `agents/`, `.scratch/`, etc. — full inventory in Phase 16 W0)
+  - Replace root `README.md` with public-facing copy (Phase 16 W1 owns the rewrite; W0 of Phase 13 only stubs it if Phase 16 hasn't merged)
+  - Single PR titled `cleanup: prepare repo for public transfer (Phase 13 W0)`
+  - **Bundled with Phase 16 W0**: the cleanup wave is documented in Phase 16 and re-asserted here; whichever phase merges first owns the commit.
+- **OP0c** (REQUIRED, ordered third): Operator transfers `helloiamvu/tradewinds` → `mostlyright/mostlyright-sdk` via GitHub Settings → General → Transfer ownership. New repo URL: `https://github.com/mostlyright/mostlyright-sdk`. Local clone `git remote set-url origin git@github.com:mostlyright/mostlyright-sdk.git`. The old URL `helloiamvu/tradewinds` auto-redirects for 1 year per GitHub policy, but planning artifacts in this repo should be updated to the new URL.
+
+**W1 — publisher + environment registration (REQUIRED, after W0):**
 - **OP1** (recommended, not blocking): `mv ~/Documents/GitHub/mostlyright ~/Documents/GitHub/mostlyright-legacy` — prevents Python `sys.path[0] = cwd` collision when running scripts from another directory near the rename boundary.
-- **OP2a** (REQUIRED): Register 3 PyPI pending publishers on pypi.org:
-  - `mostlyright` → repo + workflow `release.yml` + env `pypi`
+- **OP2a** (REQUIRED): Register 3 PyPI pending publishers on pypi.org, **bound to `mostlyright/mostlyright-sdk`** (NOT helloiamvu/tradewinds):
+  - `mostlyright` → owner `mostlyright`, repo `mostlyright-sdk`, workflow `release.yml`, env `pypi`
   - `mostlyright-weather` → same
   - `mostlyright-markets` → same
 - **OP2b** (REQUIRED): Register 3 TestPyPI pending publishers on test.pypi.org with the same shape but workflow `release-testpypi.yml` + env `testpypi`.
-- **OP2c** (REQUIRED): Create GH repo Environments `pypi` + `testpypi`. Set `pypi` to require reviewer approval; `testpypi` optional.
+- **OP2c** (REQUIRED): Create GH repo Environments `pypi` + `testpypi` on `mostlyright/mostlyright-sdk`. Set `pypi` to require reviewer approval; `testpypi` optional.
 
 ### Claude's Discretion
 
@@ -117,12 +129,13 @@ Phase 12 closeout deferred these. Phase 13 W1 documents + tracks them; no in-rep
 <specifics>
 ## Specific Concrete Requirements
 
-From REQUIREMENTS.md PYPI-01..PYPI-08:
+From REQUIREMENTS.md PYPI-00..PYPI-08:
 
 | Req | Wave |
 |-----|------|
-| PYPI-01: 3 PyPI publishers registered | W1 (operator pre-flight) |
-| PYPI-02: 3 TestPyPI publishers registered | W1 (operator pre-flight) |
+| PYPI-00: org created + cleanup commit landed + repo transferred to `mostlyright/mostlyright-sdk` | **W0 (operator pre-flight, NEW)** |
+| PYPI-01: 3 PyPI publishers registered against `mostlyright/mostlyright-sdk` | W1 (operator pre-flight) |
+| PYPI-02: 3 TestPyPI publishers registered against `mostlyright/mostlyright-sdk` | W1 (operator pre-flight) |
 | PYPI-03: rc1 tag → release-testpypi.yml green | W2 |
 | PYPI-04: `pip install` from TestPyPI works in clean venv + smoke | W2 |
 | PYPI-05: ≥1 week soak with external installer feedback | W3 (calendar gate) |

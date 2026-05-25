@@ -2,6 +2,8 @@
 phase: 16-v1.0-production-release
 type: execute
 depends_on: [13-pypi-publication-pipeline, 14-npm-publication-pipeline, 15-docs-autogen-landing-site]
+# Phase 13 W0 (org create + repo transfer to mostlyright/mostlyright-sdk) is a HARD prerequisite.
+# Phase 16 W0 (cleanup wave: untrack .planning, prune dev artifacts, stub README) is BUNDLED with Phase 13 W0 — whichever ships first owns the commit.
 requirements:
   - RELEASE-01
   - RELEASE-02
@@ -49,7 +51,9 @@ must_haves:
 ---
 
 <objective>
-W1 — Rewrite prose: root README.md (marketing copy + 60s quickstart + API map + badges) + 8 per-package READMEs.
+W0 (NEW 2026-05-25) — **Pre-public cleanup wave (BUNDLED with Phase 13 W0; whichever phase ships first owns the commit).** Untrack `.planning/` from git (kept locally; `.gitignore` already excludes it). Prune dev-only artifacts (`spike/`, `.scratch/`, any debug shell scripts not part of the documented workflow). Stub root README.md to production-grade (the full W1 rewrite supersedes this stub). Goal: the repo is safe to make public AS-IS before W1 prose lands. If Phase 13 W0 already shipped this cleanup, W0-T1 here is a no-op verify.
+
+W1 — Rewrite prose: root README.md (marketing copy + 60s quickstart + API map + badges pointing at `mostlyright/mostlyright-sdk`) + 8 per-package READMEs.
 
 W2 — Governance files: CHANGELOG.md sections, CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md, LICENSE confirmation.
 
@@ -78,6 +82,95 @@ W4 — External validation: recruit external user, clock-time quickstart, fix an
 <tasks>
 
 <task type="auto" depends_on="">
+  <name>W0 Task 1: Pre-public cleanup wave (bundled with Phase 13 W0 — idempotent)</name>
+  <files>
+    .gitignore (verify .planning/ + spike/ + .scratch/ already listed; append if missing),
+    README.md (stub if not already production-grade),
+    .planning/phases/16-v1.0-production-release/16-W0-CLEANUP.md (NEW; inventory of files removed + commit SHA)
+  </files>
+  <read_first>
+    .gitignore (current state),
+    git ls-files .planning/ | wc -l  (count of tracked planning files BEFORE cleanup),
+    .planning/phases/13-pypi-publication-pipeline/13-W0-ORG-TRANSFER.md (if shipped, this wave is verify-only)
+  </read_first>
+  <action>
+    Step 1 — idempotency check. If Phase 13 W0 already shipped the cleanup commit, skip to Step 5 (verify-only).
+      git log --oneline | grep -E 'cleanup: prepare repo for public transfer' && echo "ALREADY SHIPPED in Phase 13 W0; this task is verify-only" && exit 0
+
+    Step 2 — confirm .gitignore covers untrackable trees. Required entries (append if missing):
+      .planning/
+      spike/
+      .scratch/
+      *.pyc
+      __pycache__/
+      .pytest_cache/
+      node_modules/
+      dist/
+      *.parquet
+      .DS_Store
+
+    Step 3 — untrack `.planning/` (keep locally; .gitignore prevents re-add):
+      git rm -r --cached .planning/
+
+    Step 4 — prune dev-only artifacts. Inventory (operator confirms each):
+      - spike/ (if tracked)
+      - .scratch/ (if tracked)
+      - any *.local.* files
+      - any "DRAFT-" or "TODO-" prefixed top-level docs that are not part of the documented workflow
+      For each: `git rm <path>`
+
+    Step 5 — stub root README.md to production-grade IF the Phase 16 W1 rewrite hasn't merged yet:
+      cat > README.md <<'EOF'
+      # mostlyright
+
+      Local-first SDK for prediction-market weather settlement research.
+
+      - PyPI: `pip install mostlyright`
+      - npm:  `npm install @mostlyright/core`
+      - Docs: https://mostlyright.md/docs/sdk/
+
+      Full README + quickstart shipping with v1.0 (Phase 16).
+      EOF
+      # NOTE: This stub is replaced wholesale by W1-T1. The stub exists so Phase 13 W0 (which precedes Phase 16 W1) can transfer the repo with a public-grade README.
+
+    Step 6 — write inventory log:
+      cat > .planning/phases/16-v1.0-production-release/16-W0-CLEANUP.md <<'EOF'
+      # Phase 16 W0 — Cleanup inventory
+      Date: <fill at execution>
+      Commit SHA: <fill after commit>
+      Untracked: .planning/ (N files), spike/ (N files), .scratch/ (N files)
+      .gitignore entries added: <list>
+      README.md stubbed: yes/no (yes if W1 not yet merged)
+      Phase 13 W0 bundling note: <commit SHA if bundled, else "stand-alone W0 commit">
+      EOF
+
+    Step 7 — commit (single atomic commit; this IS the public-prep commit):
+      git checkout -b cleanup/prepare-public-transfer  # if not already on a branch from Phase 13 W0
+      git add .gitignore README.md .planning/phases/16-v1.0-production-release/16-W0-CLEANUP.md
+      git commit -m "cleanup: prepare repo for public transfer (Phase 13 W0 / Phase 16 W0)"
+      git push origin cleanup/prepare-public-transfer
+      gh pr create --title "cleanup: prepare repo for public transfer" --body "Phase 13 W0 + Phase 16 W0 bundled. Untrack .planning/, prune dev artifacts, stub README. See .planning/phases/16-v1.0-production-release/16-W0-CLEANUP.md for inventory."
+      # Review loop: codex `high` + python-architect per .planning/REVIEW-DISCIPLINE.md
+  </action>
+  <verify>
+    <automated>
+    # .planning/ no longer tracked (still exists locally)
+    test "$(git ls-files .planning/ | wc -l)" = "0"
+    # .gitignore covers the right trees
+    grep -qE '^\.planning/$' .gitignore
+    grep -qE '^(spike/|\.scratch/)$' .gitignore || true   # optional
+    # cleanup PR committed
+    git log --oneline -10 | grep -qE 'cleanup: prepare repo for public transfer'
+    # Inventory log committed
+    test -f .planning/phases/16-v1.0-production-release/16-W0-CLEANUP.md
+    </automated>
+  </verify>
+  <done>
+    `.planning/` untracked (still on disk for local planning work; .gitignore prevents accidental re-add). Dev-only artifacts pruned. Stub README in place. Repo safe for the Phase 13 W0 OP0c transfer. Cleanup PR merged to main.
+  </done>
+</task>
+
+<task type="auto" depends_on="W0-T1">
   <name>W1 Task 1: Rewrite root README.md as user-facing marketing copy</name>
   <files>README.md</files>
   <read_first>
@@ -96,7 +189,7 @@ W4 — External validation: recruit external user, clock-time quickstart, fix an
 
     [![PyPI](https://img.shields.io/pypi/v/mostlyright?label=pypi%3A%20mostlyright)](https://pypi.org/project/mostlyright/)
     [![npm](https://img.shields.io/npm/v/@mostlyright/core?label=npm%3A%20%40mostlyright%2Fcore)](https://www.npmjs.com/package/@mostlyright/core)
-    [![CI](https://github.com/helloiamvu/tradewinds/actions/workflows/test.yml/badge.svg)](https://github.com/helloiamvu/tradewinds/actions/workflows/test.yml)
+    [![CI](https://github.com/mostlyright/mostlyright-sdk/actions/workflows/test.yml/badge.svg)](https://github.com/mostlyright/mostlyright-sdk/actions/workflows/test.yml)
     [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
     > Local-first SDK for prediction-market weather settlement research. No hosted backend.
@@ -335,7 +428,7 @@ W4 — External validation: recruit external user, clock-time quickstart, fix an
 
       ## Quick start
 
-      1. **Fork** the repository on GitHub: https://github.com/helloiamvu/tradewinds
+      1. **Fork** the repository on GitHub: https://github.com/mostlyright/mostlyright-sdk
       2. **Branch** from `main`: `git checkout -b your-feature-branch`
       3. **Install** workspace + dev deps: `uv sync` (Python) + `pnpm install` (TypeScript)
       4. **Test** locally: `uv run pytest -m "not live"` + `CI=1 pnpm -r run test`
@@ -393,7 +486,7 @@ W4 — External validation: recruit external user, clock-time quickstart, fix an
 
       Report privately via one of:
 
-      1. **GitHub Security Advisory** (preferred): https://github.com/helloiamvu/tradewinds/security/advisories/new
+      1. **GitHub Security Advisory** (preferred): https://github.com/mostlyright/mostlyright-sdk/security/advisories/new
       2. **Email**: `<maintainer-email>` (PGP key fingerprint on request)
 
       Include:
@@ -667,7 +760,7 @@ W4 — External validation: recruit external user, clock-time quickstart, fix an
       - Has Python 3.12 + Node 20 already installed
       - Has never used mostlyright OR tradewinds
 
-    Step 2 — Give them ONLY the URL to https://github.com/helloiamvu/tradewinds (root README). No out-of-band help.
+    Step 2 — Give them ONLY the URL to https://github.com/mostlyright/mostlyright-sdk (root README). No out-of-band help.
 
     Step 3 — Clock the wall time for the combined quickstart:
       1. `pip install 'mostlyright[research]==1.0.0'`
@@ -786,9 +879,9 @@ W4 — External validation: recruit external user, clock-time quickstart, fix an
       **Docs live:** https://mostlyright.md/docs/sdk/ regenerated against 1.0.0
 
       **Operator follow-ups (post-1.0; optional):**
-      1. Rename `helloiamvu/tradewinds` → `helloiamvu/mostlyright` (out-of-band; in-repo URLs follow via 1.0.1 patch)
-      2. Transfer or delete orphaned `tradewinds*` PyPI distros + `@tradewinds/*` npm packages
-      3. Tag a `support/v0.1` branch for 6-month security-fix backports per SECURITY.md
+      1. Transfer or delete orphaned `tradewinds*` PyPI distros + `@tradewinds/*` npm packages (legacy names from pre-Phase-12).
+      2. Tag a `support/v0.1` branch on `mostlyright/mostlyright-sdk` for 6-month security-fix backports per SECURITY.md.
+      3. Archive `helloiamvu/mostlyright-legacy` (the operator's local folder pre-rename, per Phase 12 OP1) once 1.0 has soaked.
 
       **v1.x ready:** v1.0 SHIPS the surface; v1.x feature work (ECMWF Tier-2, hosted-backend MCP, polars-default) starts immediately.
 

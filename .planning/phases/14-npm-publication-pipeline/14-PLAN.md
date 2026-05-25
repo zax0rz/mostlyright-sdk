@@ -1,7 +1,7 @@
 ---
 phase: 14-npm-publication-pipeline
 type: execute
-depends_on: [13-pypi-publication-pipeline]  # Python publishes first; TS schemas codegen-shared
+depends_on: [13-pypi-publication-pipeline]  # Python publishes first; TS schemas codegen-shared. Phase 13 W0 (org create + repo transfer to mostlyright/mostlyright-sdk) is a HARD prerequisite — npm OIDC publishers MUST bind to the new repo.
 requirements:
   - NPM-01
   - NPM-02
@@ -41,7 +41,9 @@ must_haves:
 ---
 
 <objective>
-W1 — Operator pre-flight (OP3 + OP4): claim `@mostlyright` npm scope, register 4 npm OIDC pending publishers, create GH Environment `npm`. Write operator-confirmation checklist.
+**Pre-condition: Phase 13 W0 closed (mostlyright GitHub org created, repo transferred to `mostlyright/mostlyright-sdk`). All npm OIDC publishers below MUST be registered AFTER the transfer, against the new repo coordinates.**
+
+W1 — Operator pre-flight (OP3 + OP4): claim `@mostlyright` npm scope **under the mostlyright GitHub org's linked npm account**, register 4 npm OIDC pending publishers bound to `mostlyright/mostlyright-sdk`, create GH Environment `npm` on the new repo. Write operator-confirmation checklist.
 
 W2 — `vts-0.1.0rc1` npm `next` dry-run: run `pnpm changeset` for the bump, push tag, monitor release-ts.yml, install-from-npm-next smoke in clean Node 20 + pnpm 9 project, rebuild + load `examples/chrome-extension-mvp/` against rc1 IIFE bundle.
 
@@ -81,25 +83,32 @@ Output: 4 packages on npm `latest` at vts-0.1.0; clean-project smoke + browser s
   </read_first>
   <action>
     Step 1 — write OPERATOR-PREFLIGHT.md:
+      - Pre-condition: Phase 13 W0 OP0a/OP0b/OP0c all checked (org `mostlyright` created, repo transferred to `mostlyright/mostlyright-sdk`). If not yet shipped, STOP and wait.
       - Pre-flight summary: 6 manual steps (OP3 scope claim + 4 OP4a publisher registrations + OP4b GH env)
       - Field-by-field values for each npmjs.com pending-publisher form:
         - Package name: `@mostlyright/core` / `@mostlyright/weather` / `@mostlyright/markets` / `mostlyright`
-        - GitHub owner: helloiamvu
-        - Repository: tradewinds
+        - GitHub owner: `mostlyright` (NOT helloiamvu — repo was transferred in Phase 13 W0)
+        - Repository: `mostlyright-sdk` (NOT tradewinds — renamed during transfer)
         - Workflow filename: `release-ts.yml`
         - Environment name: `npm`
-      - OP3 scope-claim instructions (with screenshot citations) — and fallback path if `@mostlyright` unavailable
-      - OP4b GH Environment creation steps (Settings → Environments → New → `npm` → Required reviewers = operator)
+      - OP3 scope-claim instructions (with screenshot citations):
+        * Log into npmjs.com with the same operator account that owns the `mostlyright` GH org
+        * Visit https://www.npmjs.com/settings/{operator-username}/orgs (or hit "Create New Organization" if no npm org exists yet)
+        * Create npm scope `@mostlyright` (free tier OK for v1.0; paid tier later for private packages)
+        * Set scope visibility = public
+        * Documented org link: this scope is "owned by the operator" but conceptually linked to the GitHub `mostlyright` org — future team handoff plan: invite collaborators to npm org rather than transfer ownership
+        * Fallback if `@mostlyright` is squatted: unscoped names per `.planning/research/TS-SDK-DESIGN.md` §13.1 (P0 fork point)
+      - OP4b GH Environment creation steps: Settings → Environments → New → `npm` → Required reviewers = operator. (Note: settings live at https://github.com/mostlyright/mostlyright-sdk/settings/environments/new)
       - Verification commands:
         - `curl -s 'https://registry.npmjs.org/-/v1/search?text=@mostlyright/core' | jq` (returns empty before first publish; populated after)
-        - `gh api repos/helloiamvu/tradewinds/environments` (lists configured environments)
+        - `gh api repos/mostlyright/mostlyright-sdk/environments` (lists configured environments; replaces the pre-transfer `helloiamvu/tradewinds` form)
       - 5-line PR-description-ready operator-confirmation checklist:
-        - [ ] OP3: `@mostlyright` npm scope claimed (public access)
-        - [ ] OP4a-i: `@mostlyright/core` OIDC publisher registered
-        - [ ] OP4a-ii: `@mostlyright/weather` OIDC publisher registered
-        - [ ] OP4a-iii: `@mostlyright/markets` OIDC publisher registered
-        - [ ] OP4a-iv: `mostlyright` (meta) OIDC publisher registered
-        - [ ] OP4b: GH Environment `npm` created with required reviewer
+        - [ ] OP3: `@mostlyright` npm scope claimed (public access; linked to the mostlyright GH org's operator account)
+        - [ ] OP4a-i: `@mostlyright/core` OIDC publisher registered (owner=mostlyright, repo=mostlyright-sdk)
+        - [ ] OP4a-ii: `@mostlyright/weather` OIDC publisher registered (owner=mostlyright, repo=mostlyright-sdk)
+        - [ ] OP4a-iii: `@mostlyright/markets` OIDC publisher registered (owner=mostlyright, repo=mostlyright-sdk)
+        - [ ] OP4a-iv: `mostlyright` (meta) OIDC publisher registered (owner=mostlyright, repo=mostlyright-sdk)
+        - [ ] OP4b: GH Environment `npm` created on `mostlyright/mostlyright-sdk` with required reviewer
 
     Step 2 — commit:
       git add .planning/phases/14-npm-publication-pipeline/OPERATOR-PREFLIGHT.md
@@ -377,6 +386,8 @@ Output: 4 packages on npm `latest` at vts-0.1.0; clean-project smoke + browser s
   <automated>
     # WAVE 14 ACCEPTANCE GATE — all must pass before Phase 15 starts
     test -f .planning/phases/14-npm-publication-pipeline/OPERATOR-PREFLIGHT.md
+    # Phase 13 W0 prerequisite check: origin must be mostlyright/mostlyright-sdk
+    git remote get-url origin | grep -q 'mostlyright/mostlyright-sdk'
     git ls-remote --tags origin vts-0.1.0-rc.1 | wc -l | grep -q '^1$'
     git ls-remote --tags origin vts-0.1.0 | wc -l | grep -q '^1$'
     curl -fsS 'https://registry.npmjs.org/@mostlyright/core' | jq -r '."dist-tags".latest' | grep -q '^0.1.0$'

@@ -10,10 +10,11 @@
 Stand up the npm publish pipeline end-to-end for the 5 TypeScript packages (`@mostlyright/core`, `@mostlyright/weather`, `@mostlyright/markets`, `@mostlyright/codegen`, unscoped meta `mostlyright`), close out operator pre-flight OP3 + OP4 deferred from Phase 12, run a `vts-0.1.0rc1` `npm dist-tag next` dry-run, soak ≥1 week, and promote `vts-0.1.0` to npm `latest`.
 
 **What this phase ships:**
-- 1 npm scope claim: `@mostlyright` (operator OP3)
-- 4 npm OIDC pending-publisher registrations (operator OP4): `@mostlyright/{core,weather,markets}` + unscoped meta `mostlyright`. **`@mostlyright/codegen` is NOT published** — it's `"private": true` in package.json (build-only).
-- GH repo Environment `npm` (operator-gated, GH UI, mirrors Python's `pypi` posture)
-- `vts-0.1.0rc1` git tag → release-ts.yml fires → 4 packages on npm with `--tag next` dist-tag
+- **Pre-condition: Phase 13 W0 must have shipped** — `mostlyright` GitHub org exists, repo transferred to `mostlyright/mostlyright-sdk`. All npm OIDC publishers below bind to the NEW repo coordinates.
+- 1 npm scope claim: `@mostlyright` (operator OP3) — **claimed UNDER the `mostlyright` GitHub org** (linked to the org-owner npm account, not the individual `helloiamvu` account, so the scope ownership matches the repo ownership for future team handoffs).
+- 4 npm OIDC pending-publisher registrations (operator OP4): `@mostlyright/{core,weather,markets}` + unscoped meta `mostlyright`, all bound to `mostlyright/mostlyright-sdk` + `release-ts.yml` + env `npm`. **`@mostlyright/codegen` is NOT published** — it's `"private": true` in package.json (build-only).
+- GH repo Environment `npm` on `mostlyright/mostlyright-sdk` (operator-gated, GH UI, mirrors Python's `pypi` posture)
+- `vts-0.1.0rc1` git tag pushed to `mostlyright/mostlyright-sdk` → release-ts.yml fires → 4 packages on npm with `--tag next` dist-tag
 - Clean Node 20 + pnpm 9 project smoke install: `npm install @mostlyright/core@next`
 - Browser smoke test: `packages-ts/examples/chrome-extension-mvp/` rebuilt against `@mostlyright/core@next` IIFE bundle, loaded in Chrome MV3 SW
 - ≥1 week soak on npm `next` channel with external installer feedback
@@ -47,7 +48,7 @@ Stand up the npm publish pipeline end-to-end for the 5 TypeScript packages (`@mo
 
 - npm release workflow filename: `.github/workflows/release-ts.yml` (stays from TS-W7; renamed-internally-only by Phase 12 W6)
 - GH environment name: `npm` (mirror Python's `pypi`)
-- OIDC trusted-publisher bindings on npmjs.com keyed to **(owner, repo, workflow filename, environment name, package name)** for each of the 4 publishers — changing ANY of those 5 invalidates the binding. Phase 12 W6 preserved the first 3; this phase does NOT re-touch them.
+- OIDC trusted-publisher bindings on npmjs.com keyed to **(owner, repo, workflow filename, environment name, package name)** for each of the 4 publishers — changing ANY of those 5 invalidates the binding. Phase 12 W6 preserved workflow filename + env names. **Phase 13 W0 changed (owner, repo) from `helloiamvu/tradewinds` → `mostlyright/mostlyright-sdk` via repo transfer.** npm publisher registrations therefore MUST be done AFTER the Phase 13 W0 transfer completes, against the new repo coordinates.
 
 ### Dist-tag policy (LOCKED — rc routes to `next`, non-rc to `latest`)
 
@@ -69,15 +70,15 @@ Phase 12 review-iter1 fixed the script to rewrite `peerDependencies['@mostlyrigh
 
 ### Operator pre-flight (REQUIRED before any in-repo wave executes)
 
-Phase 12 closeout deferred OP3 + OP4. Phase 14 W1 documents + tracks them; no in-repo PR work proceeds until the operator confirms:
+Phase 12 closeout deferred OP3 + OP4. Phase 14 W1 documents + tracks them; no in-repo PR work proceeds until the operator confirms. **Pre-condition: Phase 13 W0 already closed (org created, repo transferred to `mostlyright/mostlyright-sdk`).**
 
-- **OP3** (REQUIRED): Claim `@mostlyright` npm scope on npmjs.com under the project owner's account. Set scope to public access (mirrors PyPI public-by-default posture). If `@mostlyright` is unavailable, fall back to unscoped `mostlyright-core` / `mostlyright-weather` / `mostlyright-markets` per `.planning/research/TS-SDK-DESIGN.md` §13.1 — this is a P0 fork point.
-- **OP4a** (REQUIRED): Register 4 npm OIDC pending publishers on npmjs.com:
-  - `@mostlyright/core` → repo + workflow `release-ts.yml` + env `npm`
+- **OP3** (REQUIRED): Claim `@mostlyright` npm scope on npmjs.com **under the `mostlyright` GitHub org's linked npm account** (the operator's npm account that owns the `mostlyright` GH org — same person, but scope ownership documented as org-linked so future team handoffs don't require scope transfer). Set scope to public access (mirrors PyPI public-by-default posture). If `@mostlyright` is unavailable, fall back to unscoped `mostlyright-core` / `mostlyright-weather` / `mostlyright-markets` per `.planning/research/TS-SDK-DESIGN.md` §13.1 — this is a P0 fork point.
+- **OP4a** (REQUIRED): Register 4 npm OIDC pending publishers on npmjs.com, **bound to `mostlyright/mostlyright-sdk`** (NOT helloiamvu/tradewinds):
+  - `@mostlyright/core` → owner `mostlyright`, repo `mostlyright-sdk`, workflow `release-ts.yml`, env `npm`
   - `@mostlyright/weather` → same
   - `@mostlyright/markets` → same
   - `mostlyright` (unscoped meta) → same
-- **OP4b** (REQUIRED): Create GH repo Environment `npm`. Set required reviewer = operator.
+- **OP4b** (REQUIRED): Create GH repo Environment `npm` on `mostlyright/mostlyright-sdk`. Set required reviewer = operator.
 
 ### Claude's Discretion
 
