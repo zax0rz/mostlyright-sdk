@@ -39,9 +39,7 @@ _MOS_POLITE_DELAY_S: float = 1.0
 _NBE_CYCLE_CUTOVER: datetime = datetime(2026, 5, 5, tzinfo=UTC)
 
 
-def _runtime_hours_for(
-    model: str, from_dt: datetime, to_dt: datetime
-) -> tuple[int, ...]:
+def _runtime_hours_for(model: str, from_dt: datetime, to_dt: datetime) -> tuple[int, ...]:
     """Return the runtime-hours tuple for ``model`` in ``[from_dt, to_dt]``.
 
     NBE: ``{01,07,13,19}Z`` pre-cutover, ``{00,06,12,18}Z`` post-cutover.
@@ -60,6 +58,7 @@ def _runtime_hours_for(
             return (1, 7, 13, 19)
         return (0, 6, 12, 18)
     return (0, 6, 12, 18)
+
 
 #: Canonical column list matching ``schema.forecast.iem_mos.v1.COLUMNS``.
 #: Returned empty DataFrame uses these so dtype inference is consistent
@@ -155,11 +154,7 @@ def _parse_mos_row(
         "temp_c": _f_to_c(_maybe_float(row, "tmp")),
         "dew_point_c": _f_to_c(_maybe_float(row, "dpt")),
         "wind_speed_ms": _kt_to_ms(_maybe_float(row, "wsp")),
-        "wind_dir_deg": (
-            int(round(d))
-            if (d := _maybe_float(row, "wdr")) is not None
-            else None
-        ),
+        "wind_dir_deg": (int(round(d)) if (d := _maybe_float(row, "wdr")) is not None else None),
         "precip_probability": _pct_to_unit(_maybe_float(row, "pop12")),
         "sky_cover_pct": None,  # IEM MOS doesn't expose a single sky-cover %
         "source": "iem.archive",
@@ -203,14 +198,10 @@ def fetch_iem_mos(
             skipped — many runtimes have no data and that's normal).
     """
     if model not in SUPPORTED_MOS_MODELS:
-        raise ValueError(
-            f"model must be one of {sorted(SUPPORTED_MOS_MODELS)}; got {model!r}"
-        )
+        raise ValueError(f"model must be one of {sorted(SUPPORTED_MOS_MODELS)}; got {model!r}")
     try:
         from_dt = datetime.fromisoformat(from_date).replace(tzinfo=UTC)
-        to_dt = datetime.fromisoformat(to_date).replace(
-            tzinfo=UTC, hour=23, minute=59, second=59
-        )
+        to_dt = datetime.fromisoformat(to_date).replace(tzinfo=UTC, hour=23, minute=59, second=59)
     except ValueError as exc:
         raise ValueError(
             f"from_date / to_date must be ISO YYYY-MM-DD; "
@@ -300,15 +291,9 @@ def _coerce_canonical_dtypes(df: pd.DataFrame) -> pd.DataFrame:
     df["issued_at"] = pd.to_datetime(df["issued_at"], utc=True, errors="coerce")
     df["valid_at"] = pd.to_datetime(df["valid_at"], utc=True, errors="coerce")
     df["retrieved_at"] = pd.to_datetime(df["retrieved_at"], utc=True, errors="coerce")
-    df["forecast_hour"] = pd.to_numeric(df["forecast_hour"], errors="coerce").astype(
-        "Int64"
-    )
-    df["wind_dir_deg"] = pd.to_numeric(df["wind_dir_deg"], errors="coerce").astype(
-        "Int64"
-    )
-    df["sky_cover_pct"] = pd.to_numeric(df["sky_cover_pct"], errors="coerce").astype(
-        "Int64"
-    )
+    df["forecast_hour"] = pd.to_numeric(df["forecast_hour"], errors="coerce").astype("Int64")
+    df["wind_dir_deg"] = pd.to_numeric(df["wind_dir_deg"], errors="coerce").astype("Int64")
+    df["sky_cover_pct"] = pd.to_numeric(df["sky_cover_pct"], errors="coerce").astype("Int64")
     for fcol in ("temp_c", "dew_point_c", "wind_speed_ms", "precip_probability"):
         df[fcol] = pd.to_numeric(df[fcol], errors="coerce").astype("Float64")
     return df

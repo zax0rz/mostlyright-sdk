@@ -131,9 +131,7 @@ def cycle_range(model: str, start_dt: datetime, end_dt: datetime) -> list[dateti
         ValueError: ``model`` unknown OR either datetime naive.
     """
     if model not in CYCLE_HOURS:
-        raise ValueError(
-            f"unknown model {model!r}; supported: {sorted(CYCLE_HOURS)}"
-        )
+        raise ValueError(f"unknown model {model!r}; supported: {sorted(CYCLE_HOURS)}")
     if start_dt.tzinfo is None or end_dt.tzinfo is None:
         raise ValueError(
             "start_dt and end_dt must be UTC-aware; "
@@ -150,9 +148,7 @@ def cycle_range(model: str, start_dt: datetime, end_dt: datetime) -> list[dateti
     # ``[start_dt, end_dt]``. Flooring would include the previous hour
     # which sits OUTSIDE the requested window (codex iter-4 finding).
     if start_utc.minute or start_utc.second or start_utc.microsecond:
-        cur = start_utc.replace(
-            minute=0, second=0, microsecond=0
-        ) + timedelta(hours=1)
+        cur = start_utc.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
     else:
         cur = start_utc.replace(minute=0, second=0, microsecond=0)
     end_utc = end_dt.astimezone(UTC)
@@ -196,10 +192,7 @@ def check_historical_depth(model: str, requested_cycle: datetime) -> None:
         ValueError: ``model`` unknown.
     """
     if model not in NWP_HISTORICAL_DEPTH:
-        raise ValueError(
-            f"unknown model {model!r}; "
-            f"supported: {sorted(NWP_HISTORICAL_DEPTH)}"
-        )
+        raise ValueError(f"unknown model {model!r}; supported: {sorted(NWP_HISTORICAL_DEPTH)}")
     depth = NWP_HISTORICAL_DEPTH[model]
     if depth is None:
         # Phase 17 Wave 3 iter-5 review: live-only models accept current

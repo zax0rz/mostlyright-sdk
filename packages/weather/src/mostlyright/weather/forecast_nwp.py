@@ -108,9 +108,7 @@ _WIRED_NWP_MODELS: frozenset[str] = frozenset(
 #: empty DataFrame (anti-pattern noted in 03.2-RESEARCH.md). Mirrors
 #: ``mostlyright.forecasts._WIRED_NWP_MODELS`` so the two entry points
 #: agree on what's served.
-_RESERVED_MODELS: frozenset[str] = (
-    frozenset(NWP_MODEL_VALUES) - _WIRED_NWP_MODELS
-)
+_RESERVED_MODELS: frozenset[str] = frozenset(NWP_MODEL_VALUES) - _WIRED_NWP_MODELS
 
 
 #: cfgrib's canonical short-name for each GRIB2 ``(variable, level)`` pair
@@ -133,79 +131,41 @@ _GRIB_VAR_TO_CFGRIB_NAME: dict[tuple[str, str], str] = {
 
 
 # ----------------------------------------------------------------------
-# Physics-bounds QC (alpha — Phase 3.4 lands the full registry)
+# Physics-bounds QC — Phase 17 PLAN-10 dispatches via per-model registry.
 # ----------------------------------------------------------------------
-def _qc_status_for_row(row: dict[str, Any]) -> str:
-    """Inline physics-bounds check; returns the row's ``qc_status`` verdict.
+def _qc_status_for_row(row: dict[str, Any], *, model: str = "hrrr") -> str:
+    """Return ``row``'s ``qc_status`` verdict by applying the per-model rule
+    set from :data:`mostlyright.weather.qc.rules_nwp.QC_RULES_NWP`.
 
-    A row goes ``"suspect"`` if it violates a hard physics floor /
-    ceiling (negative absolute temperature, sub-Martian surface
-    pressure, etc. — impossible on Earth so the row is almost certainly
-    a decode bug). ``"flagged"`` covers values outside the conservative
-    operational window but physically possible (very high wind gust,
-    very high precip rate). ``"clean"`` is the default when all checks
-    pass or the column is null.
+    PLAN-10 refactor: this was an inline physics-bounds check that
+    treated HRRR/GFS/NBM uniformly. The Phase 17 catalog (24 models)
+    needs per-family customization — ECMWF tp-meters, HAFS basin-lat,
+    MSC HRDPS regional bounds, GEFS ensemble dispersion. The registry
+    captures all of that. Backward compat: HRRR / GFS / NBM map to
+    :data:`RULES_NWP_NCEP`, which is a verbatim port of the prior
+    inline body, so existing rows produce the same verdict.
+
+    Args:
+        row: Canonical schema.forecast_nwp.v1 row dict.
+        model: Phase 17 model id (defaults to ``"hrrr"`` for the
+            no-kwarg call sites still active in the codebase).
+
+    Returns:
+        ``"clean"`` | ``"flagged"`` | ``"suspect"`` — worst rule wins.
     """
-    suspect = False
-    flagged = False
+    from mostlyright.weather.qc.rules_nwp import QC_RULES_NWP, apply_rules
 
-    t = row.get("temp_k_2m")
-    if t is not None and not _is_nan(t):
-        # Kelvin: world record extremes ~ 184 K (-89 C) to 330 K (57 C).
-        # Hard suspect: ≤ 0 K (non-physical) or ≥ 400 K (Venus).
-        if t <= 0.0 or t >= 400.0:
-            suspect = True
-        elif t < 180.0 or t > 340.0:
-            flagged = True
-
-    dp = row.get("dewpoint_k_2m")
-    if dp is not None and not _is_nan(dp):
-        if dp <= 0.0 or dp >= 400.0:
-            suspect = True
-        # Dewpoint > temperature is physically impossible at the same point.
-        if t is not None and not _is_nan(t) and not _is_nan(dp) and dp > t + 1.0:
-            flagged = True
-
-    rh = row.get("relative_humidity_pct_2m")
-    if rh is not None and not _is_nan(rh):
-        if rh < 0.0 or rh > 105.0:
-            flagged = True
-        if rh < -5.0 or rh > 110.0:
-            suspect = True
-
-    gust = row.get("wind_gust_ms")
-    if gust is not None and not _is_nan(gust):
-        if gust < 0.0:
-            suspect = True
-        elif gust > 90.0:  # ~ 200 mph
-            flagged = True
-
-    precip = row.get("precip_mm_1h")
-    if precip is not None and not _is_nan(precip):
-        if precip < 0.0:
-            suspect = True
-        elif precip > 305.0:  # ~ world hourly record
-            flagged = True
-
-    p_surf = row.get("pressure_pa_surface")
-    if p_surf is not None and not _is_nan(p_surf):
-        if p_surf <= 0.0:
-            suspect = True
-        elif p_surf < 50_000.0 or p_surf > 110_000.0:
-            flagged = True
-
-    p_mslp = row.get("pressure_pa_mslp")
-    if p_mslp is not None and not _is_nan(p_mslp):
-        if p_mslp <= 0.0:
-            suspect = True
-        elif p_mslp < 87_000.0 or p_mslp > 108_500.0:
-            flagged = True
-
-    if suspect:
-        return "suspect"
-    if flagged:
-        return "flagged"
-    return "clean"
+    # NaN-aware passthrough preserves Phase 3.2 inline semantics: rules
+    # treat None as "clean" but receive raw values otherwise. NaN floats
+    # are filtered to None here so registry predicates don't double-handle.
+    cleaned: dict[str, Any] = {}
+    for k, v in row.items():
+        if isinstance(v, float) and _is_nan(v):
+            cleaned[k] = None
+        else:
+            cleaned[k] = v
+    rules = QC_RULES_NWP.get(model, QC_RULES_NWP["hrrr"])
+    return apply_rules(rules, cleaned)
 
 
 def _is_nan(v: Any) -> bool:
@@ -638,9 +598,7 @@ def forecast_nwp(
     # silently fall through to the legacy single-cycle path.
     using_range = cycle_range_start is not None or cycle_range_end is not None
     if cycle is not None and using_range:
-        raise ValueError(
-            "forecast_nwp(): cycle and cycle_range_start/end are mutually exclusive."
-        )
+        raise ValueError("forecast_nwp(): cycle and cycle_range_start/end are mutually exclusive.")
     if using_range:
         if cycle_range_start is None or cycle_range_end is None:
             raise ValueError(
@@ -649,11 +607,70 @@ def forecast_nwp(
                 f"end={cycle_range_end!r})."
             )
         cycles_to_fetch = cycle_range(model, cycle_range_start, cycle_range_end)
-        raise NotImplementedError(
-            f"forecast_nwp(cycle_range_start, cycle_range_end) iteration is "
-            f"wired in PLAN-09. Wave 3 ships cycle_range() + "
-            f"check_historical_depth(); Wave 4 wires execution. "
-            f"Computed {len(cycles_to_fetch)} cycles."
+        # Phase 17 PLAN-09 Task 2: actual per-cycle iteration. Wave 3
+        # shipped cycle_range() + check_historical_depth(); this wires
+        # the recursive single-cycle fetch + concat.
+        import pandas as _pd
+
+        if not cycles_to_fetch:
+            return _pd.DataFrame()
+
+        # Pre-flight: validate every cycle is within the model's archive
+        # depth BEFORE firing any HTTP. Surfaces HistoricalDepthError to
+        # the caller without leaking partial work.
+        for _c in cycles_to_fetch:
+            check_historical_depth(model, _c)
+
+        per_cycle_frames: list[pd.DataFrame] = []
+        for _c in cycles_to_fetch:
+            try:
+                # Phase 17 Wave 4 iter-2 review HIGH (Finding 3): force the
+                # per-cycle recursive call to return a raw pandas DataFrame
+                # regardless of the caller's backend / return_type. We
+                # concatenate pandas frames here and then route the final
+                # result through ``_maybe_wrap_forecast`` below so the
+                # outer caller's backend/return_type contract is honored
+                # exactly once.
+                cycle_df = forecast_nwp(
+                    station=station,
+                    model=model,
+                    cycle=_c,
+                    fxx=fxx if fxx is not None else (0 if model in {"rtma", "urma"} else 1),
+                    mirror=mirror,
+                    client=client,
+                    backend="pandas",
+                    return_type="dataframe",
+                )
+                if cycle_df is not None and not cycle_df.empty:
+                    per_cycle_frames.append(cycle_df)
+            except (
+                NwpModelNotAvailableError,
+                NoLiveForNwpError,
+                GribIntegrityError,
+            ) as exc:
+                # Continue past per-cycle exceptions — a single failed
+                # cycle in a multi-day backfill should not abort the
+                # whole batch (PLAN-09 contract).
+                log.warning(
+                    "forecast_nwp multi-cycle: cycle %s failed: %s (continuing)",
+                    _c.isoformat(),
+                    exc,
+                )
+                continue
+        if not per_cycle_frames:
+            # Phase 17 Wave 4 iter-2 review HIGH (Finding 3): even the
+            # empty-result path must honor backend/return_type so polars /
+            # TradewindsResult callers don't get a raw pandas DataFrame
+            # back when every cycle failed.
+            return _maybe_wrap_forecast(
+                _pd.DataFrame(),
+                backend=backend,
+                return_type=return_type,
+            )
+        return _maybe_wrap_forecast(
+            _pd.concat(per_cycle_frames, ignore_index=True),
+            backend=backend,
+            return_type=return_type,
         )
 
     # If the caller supplied a single cycle, validate its archive depth
@@ -661,9 +678,7 @@ def forecast_nwp(
     # HistoricalDepthError for pre-archive cycles.
     if cycle is not None:
         if cycle.tzinfo is None or cycle.tzinfo.utcoffset(cycle) is None:
-            raise ValueError(
-                f"cycle must be timezone-aware (UTC); got naive {cycle!r}"
-            )
+            raise ValueError(f"cycle must be timezone-aware (UTC); got naive {cycle!r}")
         check_historical_depth(model, cycle.astimezone(UTC))
 
     # Lazy-import the heavy deps so the module imports without [nwp].
@@ -851,7 +866,7 @@ def forecast_nwp(
             # that variable map entry (e.g. NBM has no pressure_pa_surface).
             for col in nullable_numeric_cols:
                 row.setdefault(col, float("nan"))
-            row["qc_status"] = _qc_status_for_row(row)
+            row["qc_status"] = _qc_status_for_row(row, model=model)
             row["retrieved_at"] = retrieved_at
             # Codex iter-2 P2: validator requires a per-row `source`
             # overlay column on every canonical DataFrame in addition to

@@ -19,14 +19,33 @@ DAY_END = datetime(2026, 5, 24, 23, tzinfo=UTC)
 
 ALL_MODELS = (
     # NCEP family (3 v0.1.0 + 8 Phase 17 PLAN-03)
-    "hrrr", "gfs", "nbm",
-    "hrrrak", "gefs", "gdas", "rap", "rrfs", "rtma", "urma", "cfs",
+    "hrrr",
+    "gfs",
+    "nbm",
+    "hrrrak",
+    "gefs",
+    "gdas",
+    "rap",
+    "rrfs",
+    "rtma",
+    "urma",
+    "cfs",
     # ECMWF family (PLAN-04)
-    "ecmwf_ifs_hres", "ecmwf_ifs_ens", "ecmwf_aifs_single", "ecmwf_aifs_ens",
+    "ecmwf_ifs_hres",
+    "ecmwf_ifs_ens",
+    "ecmwf_aifs_single",
+    "ecmwf_aifs_ens",
     # MSC Canadian family (PLAN-05)
-    "hrdps", "rdps", "gdps", "geps", "reps",
+    "hrdps",
+    "rdps",
+    "gdps",
+    "geps",
+    "reps",
     # HAFS + legacy (PLAN-06)
-    "hafs", "nam", "href", "hiresw",
+    "hafs",
+    "nam",
+    "href",
+    "hiresw",
 )
 
 

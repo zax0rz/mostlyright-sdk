@@ -79,19 +79,33 @@ def test_msc_model_always_raises_historical_depth() -> None:
     assert exc_info.value.archive_depth is None
 
 
-def test_cycle_range_iteration_placeholder_not_implemented() -> None:
-    """PLAN-09 wires the multi-cycle iteration body; PLAN-07 ships the
-    range-builder + signature only.
+def test_cycle_range_iteration_placeholder_closed() -> None:
+    """PLAN-09 Task 2 wires the multi-cycle iteration body. The PLAN-07
+    placeholder ``NotImplementedError(match="PLAN-09")`` is now closed —
+    the function iterates, fetches per-cycle, and concatenates.
+
+    Without a live mirror or mocking, the call surface raises a
+    downstream error (HistoricalDepthError for archive-floor pre-dates,
+    or NoLiveForNwpError when mirrors are exhausted). We assert the
+    PLAN-09 placeholder is GONE — anything else is acceptable.
     """
     from mostlyright.weather.forecast_nwp import forecast_nwp
 
-    with pytest.raises(NotImplementedError, match="PLAN-09"):
+    try:
         forecast_nwp(
             "KNYC",
             "hrrr",
             cycle_range_start=datetime(2026, 5, 24, 0, tzinfo=UTC),
             cycle_range_end=datetime(2026, 5, 24, 23, tzinfo=UTC),
         )
+    except NotImplementedError as exc:
+        if "PLAN-09" in str(exc):
+            raise AssertionError(f"PLAN-09 placeholder must be closed; still got: {exc!r}") from exc
+        raise
+    except Exception:
+        # Any other downstream exception (HTTP, archive depth, missing
+        # cfgrib) is fine — proves the placeholder was removed.
+        pass
 
 
 # Phase 17 Wave 3 iter-1 codex review hardening.
@@ -116,6 +130,10 @@ def test_public_forecasts_wrapper_forwards_cycle_range_kwargs() -> None:
     forward cycle_range_start/end (codex iter-1 HIGH #1: without
     forwarding, callers would get ``TypeError("unexpected keyword
     argument")``).
+
+    PLAN-09 Task 2 closes the placeholder, so the end-to-end check is
+    now "the wrapper forwards the kwargs and we don't see TypeError or
+    the PLAN-09 placeholder" rather than "we hit the placeholder".
     """
     import inspect
 
@@ -125,15 +143,31 @@ def test_public_forecasts_wrapper_forwards_cycle_range_kwargs() -> None:
     assert "cycle_range_start" in sig.parameters
     assert "cycle_range_end" in sig.parameters
 
-    # End-to-end: calling the public wrapper with the kwargs should
-    # reach the PLAN-09 placeholder, not raise TypeError.
-    with pytest.raises(NotImplementedError, match="PLAN-09"):
+    # End-to-end: calling the public wrapper with the kwargs must reach
+    # the (now-implemented) iteration code path. Any TypeError ("unexpected
+    # keyword argument") would mean the wrapper failed to forward; any
+    # NotImplementedError mentioning PLAN-09 would mean the placeholder
+    # is still in place. Other downstream errors are out of scope.
+    try:
         public_forecast_nwp(
             "KNYC",
             "hrrr",
             cycle_range_start=datetime(2026, 5, 24, 0, tzinfo=UTC),
             cycle_range_end=datetime(2026, 5, 24, 23, tzinfo=UTC),
         )
+    except TypeError as exc:
+        raise AssertionError(
+            f"public wrapper failed to forward cycle_range_* kwargs: {exc!r}"
+        ) from exc
+    except NotImplementedError as exc:
+        if "PLAN-09" in str(exc):
+            raise AssertionError(f"PLAN-09 placeholder must be closed; still got: {exc!r}") from exc
+        raise
+    except Exception:
+        # Downstream HTTP / archive-depth errors are expected (no live
+        # mirror here). The kwarg-forwarding + placeholder-closed
+        # invariants are already verified above.
+        pass
 
 
 # ---------------------------------------------------------------------------

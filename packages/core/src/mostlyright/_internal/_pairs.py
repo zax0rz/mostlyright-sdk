@@ -239,6 +239,7 @@ def build_pairs_row(
     *,
     forecast_model: str | None = None,
     tz_override: str | None = None,
+    nwp_forecasts_by_model: dict[str, list[dict[str, Any]] | None] | None = None,
 ) -> dict[str, Any]:
     """Build one row of the pairs DataFrame for a single settlement date.
 
@@ -254,10 +255,21 @@ def build_pairs_row(
             selection. None = no filtering (best available run).
         tz_override: IANA timezone name override for stations not in the known
             timezone map (e.g. "America/Chicago" for a custom station).
+        nwp_forecasts_by_model: PLAN-09 Mode 2 — per-model NWP forecast rows
+            grouped by date. Keys are NWP model names (e.g. ``"hrrr"``);
+            values are lists of canonical ``schema.forecast_nwp.v1`` row
+            dicts for ``date_str`` (or None when the model returned nothing).
+            For each populated model, the result row gains additive
+            ``fcst_high_f_nwp_<model>`` + ``fcst_low_f_nwp_<model>`` columns
+            (Kelvin → Fahrenheit). When None or empty, no per-model NWP
+            columns are added — preserves the parity contract for
+            ``include_forecast=False`` callers.
 
     Returns:
         Dict with keys: date, station, cli_high_f, cli_low_f, obs_*, fcst_*
         All fcst_* keys are always present (None when no forecast data).
+        Optional ``fcst_*_nwp_<model>`` keys appear iff
+        ``nwp_forecasts_by_model`` is populated for the date.
     """
     code = _station_code_normalized(station)
     obs_agg = _obs_aggregates(observations)
@@ -287,9 +299,19 @@ def build_pairs_row(
         iem_records = [r for r in forecasts if r.get("issued_at")]
         om_records = [r for r in forecasts if not r.get("issued_at")]
 
-        # Apply forecast_model filter to IEM MOS records before run selection
+        # Apply forecast_model filter to IEM MOS records before run selection.
+        # Phase 17 Wave 4 iter-3 review HIGH: case-insensitive match because
+        # _iem_mos.fetch_iem_mos emits ``model.upper()`` (e.g. ``"NBE"``)
+        # while the user-facing kwarg is lowercase. A naive ``==`` filter
+        # would drop every row and produce all-null forecast columns.
         if forecast_model is not None:
-            iem_records = [r for r in iem_records if r.get("model") == forecast_model]
+            target_model = forecast_model.upper()
+            iem_records = [
+                r
+                for r in iem_records
+                if (m := r.get("model")) is not None
+                and str(m).upper() == target_model
+            ]
 
         fcst_high: float | None = None
         fcst_low: float | None = None
@@ -343,6 +365,36 @@ def build_pairs_row(
             }
         )
 
+    # PLAN-09 Mode 2: per-model NWP fcst_* columns. Additive — keys only
+    # appear when ``nwp_forecasts_by_model`` is populated for the date,
+    # so the include_forecast=False parity contract (NO fcst_*_nwp_*
+    # columns) is preserved by callers passing ``None``.
+    nwp_extra: dict[str, Any] = {}
+    if nwp_forecasts_by_model:
+        for nwp_model, nwp_rows in nwp_forecasts_by_model.items():
+            if not nwp_rows:
+                continue
+            temps_k: list[float] = []
+            for r in nwp_rows:
+                v = r.get("temp_k_2m")
+                if v is None:
+                    continue
+                try:
+                    f = float(v)
+                except (TypeError, ValueError):
+                    continue
+                # Skip NaN sentinel values forecast_nwp emits when a model
+                # lacks the temp variable.
+                if f != f:  # NaN check without importing math
+                    continue
+                temps_k.append(f)
+            if not temps_k:
+                continue
+            high_k = max(temps_k)
+            low_k = min(temps_k)
+            nwp_extra[f"fcst_high_f_nwp_{nwp_model}"] = (high_k - 273.15) * 9.0 / 5.0 + 32.0
+            nwp_extra[f"fcst_low_f_nwp_{nwp_model}"] = (low_k - 273.15) * 9.0 / 5.0 + 32.0
+
     return {
         "date": date_str,
         "station": code,
@@ -354,6 +406,8 @@ def build_pairs_row(
         **obs_agg,
         # Forecast (stub if unavailable)
         **fcst,
+        # PLAN-09 Mode 2 NWP per-model columns (empty unless populated)
+        **nwp_extra,
         # Metadata
         "market_close_utc": market_close.strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
@@ -415,6 +469,7 @@ def build_pairs(
     *,
     forecast_model: str | None = None,
     tz_override: str | None = None,
+    nwp_forecasts_by_model_date: (dict[str, dict[str, list[dict[str, Any]] | None]] | None) = None,
 ) -> list[dict[str, Any]]:
     """Build the pairs DataFrame as a list of row dicts.
 
@@ -428,6 +483,10 @@ def build_pairs(
             issued_at are treated as IEM MOS; records without as Open-Meteo.
         forecast_model: Filter IEM MOS records to this model name before run
             selection. None (default) = no filtering (best available run).
+        nwp_forecasts_by_model_date: PLAN-09 Mode 2 — outer dict keyed by
+            NWP model name; inner dict keyed by date_iso → list of canonical
+            NWP forecast row dicts for that date. None (default) = no NWP
+            wiring (parity-preserving — no fcst_*_nwp_* columns emitted).
 
     Returns:
         List of row dicts, one per date. Pass to pandas.DataFrame() for
@@ -438,6 +497,17 @@ def build_pairs(
         obs = observations_by_date.get(date, [])
         climate = climate_by_date.get(date)
         forecasts = (forecasts_by_date or {}).get(date) if forecasts_by_date is not None else None
+        # PLAN-09 Mode 2: pull the per-date slice for each NWP model
+        # registered in the outer dict. Pass None when no models are wired
+        # so build_pairs_row's parity contract (no fcst_*_nwp_* columns
+        # when nwp_forecasts_by_model is None or empty) is preserved.
+        nwp_by_model_for_date: dict[str, list[dict[str, Any]] | None] | None
+        if nwp_forecasts_by_model_date:
+            nwp_by_model_for_date = {
+                m: by_date.get(date) for m, by_date in nwp_forecasts_by_model_date.items()
+            }
+        else:
+            nwp_by_model_for_date = None
         rows.append(
             build_pairs_row(
                 date,
@@ -447,6 +517,7 @@ def build_pairs(
                 forecasts,
                 forecast_model=forecast_model,
                 tz_override=tz_override,
+                nwp_forecasts_by_model=nwp_by_model_for_date,
             )
         )
     return rows
