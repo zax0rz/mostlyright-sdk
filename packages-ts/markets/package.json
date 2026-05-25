@@ -1,6 +1,6 @@
 {
   "name": "@mostlyrightmd/markets",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.2",
   "description": "Prediction-market resolvers (Kalshi NHIGH/NLOW, Polymarket) for the mostlyright TypeScript SDK (placeholder scaffold; implementation lands in TS-W1+).",
   "license": "MIT",
   "type": "module",
@@ -24,14 +24,16 @@
       "require": "./dist/trades/index.cjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "prebuild": "pnpm --filter @mostlyrightmd/codegen run codegen",
     "build": "tsup",
     "test": "vitest",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist coverage .tsbuildinfo",
-    "codegen": "echo \"@mostlyrightmd/markets — no codegen step at this layer\""
+    "codegen": "echo \"@mostlyrightmd/markets \u2014 no codegen step at this layer\""
   },
   "peerDependencies": {
     "@mostlyrightmd/core": "^0.0.0"

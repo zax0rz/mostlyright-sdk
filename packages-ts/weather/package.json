@@ -1,6 +1,6 @@
 {
   "name": "@mostlyrightmd/weather",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.2",
   "description": "Weather fetchers and parsers (AWC, IEM ASOS, IEM CLI, GHCNh) for the mostlyright TypeScript SDK (placeholder scaffold; implementation lands in TS-W1+).",
   "license": "MIT",
   "type": "module",
@@ -24,14 +24,16 @@
       "require": "./dist/forecasts/index.cjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "prebuild": "pnpm --filter @mostlyrightmd/codegen run codegen",
     "build": "tsup",
     "test": "vitest",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist coverage .tsbuildinfo",
-    "codegen": "echo \"@mostlyrightmd/weather — no codegen step at this layer\""
+    "codegen": "echo \"@mostlyrightmd/weather \u2014 no codegen step at this layer\""
   },
   "peerDependencies": {
     "@mostlyrightmd/core": "^0.0.0"
