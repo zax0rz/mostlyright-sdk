@@ -94,10 +94,29 @@ def test_fetch_observations_not_implemented():
         a.fetch_observations("iem.archive", "KNYC", "2025-01-01", "2025-01-02")
 
 
-def test_fetch_forecasts_deferred_to_phase_3():
+def test_fetch_forecasts_iem_archive_wired_via_iem_mos() -> None:
+    """Phase 17 PLAN-08: the Phase-2 ``NotImplementedError`` stub is gone.
+
+    ``iem.archive`` now wires through :func:`fetch_iem_mos` and returns
+    a DataFrame matching ``schema.forecast.iem_mos.v1``.
+    """
+    from unittest.mock import patch
+
+    with patch("mostlyright.weather._fetchers._iem_mos.fetch_iem_mos") as mock_fetch:
+        mock_fetch.return_value = pd.DataFrame()
+        a = IEMAdapter()
+        df = a.fetch_forecasts("iem.archive", "KNYC", "2025-01-01", "2025-01-02")
+        assert isinstance(df, pd.DataFrame)
+        mock_fetch.assert_called_once_with(
+            "KNYC", "2025-01-01", "2025-01-02", model="nbe"
+        )
+
+
+def test_fetch_forecasts_iem_live_deferred_to_v02() -> None:
+    """``iem.live`` MOS still deferred — error message points at iem.archive."""
     a = IEMAdapter()
-    with pytest.raises(NotImplementedError, match="deferred to Phase 3"):
-        a.fetch_forecasts("iem.archive", "KNYC", "2025-01-01", "2025-01-02")
+    with pytest.raises(NotImplementedError, match="iem.live MOS deferred to v0.2"):
+        a.fetch_forecasts("iem.live", "KNYC", "2025-01-01", "2025-01-02")
 
 
 def test_registered_in_catalog():
