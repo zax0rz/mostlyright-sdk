@@ -4,7 +4,7 @@
  * Writes JSON rows to packages-ts/meta/tests/parity/drift/case_N_*.json.
  * Compared against tests/fixtures/parity/ts/ by drift_compare.ts.
  *
- * Hits LIVE public APIs — gated behind TRADEWINDS_TS_LIVE=1. Run weekly
+ * Hits LIVE public APIs — gated behind MOSTLYRIGHT_TS_LIVE=1. Run weekly
  * by .github/workflows/drift-rotate-ts.yml.
  */
 import * as fs from "node:fs";
@@ -13,8 +13,8 @@ import { fileURLToPath } from "node:url";
 
 import { research } from "../../src/research.js";
 
-if (process.env.TRADEWINDS_TS_LIVE !== "1") {
-  console.error("Refusing to run: TRADEWINDS_TS_LIVE=1 is required (hits live APIs).");
+if (process.env.MOSTLYRIGHT_TS_LIVE !== "1") {
+  console.error("Refusing to run: MOSTLYRIGHT_TS_LIVE=1 is required (hits live APIs).");
   process.exit(1);
 }
 

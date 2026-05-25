@@ -23,7 +23,7 @@ issue. The recordings make the parity test deterministic and offline-safe.
 
 ## Recording procedure (Plan 07 owns the actual capture)
 
-1. Set `TRADEWINDS_TS_LIVE=1` in env (gates a live-capture vitest suite).
+1. Set `MOSTLYRIGHT_TS_LIVE=1` in env (gates a live-capture vitest suite).
 2. Run the capture script that wraps `research()` for each case and writes
    msw-format JSON handlers to `recordings/case_N_<station>_<from>_<to>/handlers.json`.
 3. Each handler entry shape:

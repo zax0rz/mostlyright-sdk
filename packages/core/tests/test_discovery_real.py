@@ -8,7 +8,6 @@ env var. Scheduled for removal in v0.3 when the deprecation window closes.
 
 from __future__ import annotations
 
-import warnings
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -17,8 +16,12 @@ import pytest
 # Silence DeprecationWarning for this whole module (legacy env-var usage is
 # intentional back-compat coverage; the back-compat shim's 3-test suite at
 # packages/core/tests/test_cache_env_back_compat.py is the canonical proof
-# the warning fires).
-warnings.filterwarnings("ignore", category=DeprecationWarning, message=r"TRADEWINDS_CACHE_DIR")
+# the warning fires). Use pytestmark + filterwarnings — module-level
+# warnings.filterwarnings() does NOT survive pytest's per-test warning-filter
+# reset; pytestmark IS picked up by pytest's collection layer.
+pytestmark = pytest.mark.filterwarnings(
+    "ignore:TRADEWINDS_CACHE_DIR is deprecated:DeprecationWarning"
+)
 
 
 class TestAvailability:

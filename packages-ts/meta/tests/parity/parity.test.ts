@@ -66,7 +66,7 @@ describe("TS-W2 HARD parity gate (SC#1)", () => {
     describe(`case ${c.n}: ${c.station} ${c.from} → ${c.to}`, () => {
       if (!haveRecordings || !haveFixture) {
         // Plan 07's recordings are operator-gated; until the operator runs
-        // `TRADEWINDS_TS_LIVE=1 pnpm --filter mostlyright capture-parity`
+        // `MOSTLYRIGHT_TS_LIVE=1 pnpm --filter mostlyright capture-parity`
         // this case skips. Use `it.todo` so the missing-recording case is
         // visible in test output (NOT silently green).
         it.todo(

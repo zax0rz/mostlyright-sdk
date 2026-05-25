@@ -70,30 +70,14 @@ _TICKER_RE = re.compile(r"^(?!\.+$)[A-Za-z0-9._-]{1,128}$")
 def _cache_root() -> Path:
     """Resolve the trades cache root (without ``/v1``).
 
-    Resolves canonical ``MOSTLYRIGHT_CACHE_DIR`` env var first; falls back to
-    legacy ``TRADEWINDS_CACHE_DIR`` with a ``DeprecationWarning`` (Phase 12 W4
-    back-compat; legacy var scheduled removal in v0.3), else ``DEFAULT_ROOT``.
+    Delegates to :func:`mostlyright._internal._cache_dir.resolve_cache_root_without_v1`
+    (Phase 12 W4 + review-iter1 refactor) — single source of truth for the
+    canonical → legacy + warn → default resolution order across all 3 legacy
+    ``_cache_root()`` helpers.
     """
-    import warnings
+    from mostlyright._internal._cache_dir import resolve_cache_root_without_v1
 
-    from mostlyright._internal._cache_dir import _CANONICAL_ENV, _LEGACY_ENV, resolve_cache_dir
-
-    # Keep resolve_cache_dir discoverable to new callers + Phase 12 W4 import-gate.
-    _ = resolve_cache_dir
-
-    canonical = os.environ.get(_CANONICAL_ENV)
-    if canonical:
-        return Path(canonical).expanduser()
-    legacy = os.environ.get(_LEGACY_ENV)
-    if legacy:
-        warnings.warn(
-            f"{_LEGACY_ENV} is deprecated; use {_CANONICAL_ENV}. "
-            f"Support will be removed in v0.3. Run: mv ~/.tradewinds ~/.mostlyright",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return Path(legacy).expanduser()
-    return DEFAULT_ROOT
+    return resolve_cache_root_without_v1()
 
 
 def trades_cache_path(issuer: str, ticker: str, year: int, month: int) -> Path:

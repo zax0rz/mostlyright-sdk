@@ -119,38 +119,18 @@ def _cache_root() -> Path:
     """Cache root resolver — local to avoid importing mostlyright.weather.
 
     Returns the cache ROOT (without ``/v1``). Callers append ``/v1/{subdir}/...``
-    themselves. Resolves canonical ``MOSTLYRIGHT_CACHE_DIR`` env var first, falls
-    back to legacy ``TRADEWINDS_CACHE_DIR`` with a ``DeprecationWarning`` (W4
-    back-compat per Phase 12 plan), else the legacy default ``~/.mostlyright/cache``.
+    themselves. Delegates to :func:`mostlyright._internal._cache_dir.resolve_cache_root_without_v1`
+    (Phase 12 W4 + review-iter1 refactor) — single source of truth for the
+    resolution order + deprecation warning across all 3 legacy ``_cache_root()``
+    helpers.
 
     The :func:`mostlyright._internal._cache_dir.resolve_cache_dir` helper is the
     canonical shim for *new* callers that want the full cache directory
-    (``~/.mostlyright/cache/v1``); ``_cache_root()`` mirrors its resolution
-    order but preserves the legacy "root without /v1" contract for existing
-    call sites that build paths like ``_cache_root() / "v1" / "observations"``.
+    (``~/.mostlyright/cache/v1``).
     """
-    import os
-    import warnings
+    from mostlyright._internal._cache_dir import resolve_cache_root_without_v1
 
-    from mostlyright._internal._cache_dir import _CANONICAL_ENV, _LEGACY_ENV, resolve_cache_dir
-
-    # Touch resolve_cache_dir to keep the shim discoverable to readers + the
-    # Phase 12 W4 import-gate; not used directly because of the contract delta.
-    _ = resolve_cache_dir
-
-    canonical = os.environ.get(_CANONICAL_ENV)
-    if canonical:
-        return Path(canonical).expanduser()
-    legacy = os.environ.get(_LEGACY_ENV)
-    if legacy:
-        warnings.warn(
-            f"{_LEGACY_ENV} is deprecated; use {_CANONICAL_ENV}. "
-            f"Support will be removed in v0.3. Run: mv ~/.tradewinds ~/.mostlyright",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return Path(legacy).expanduser()
-    return Path.home() / ".mostlyright" / "cache"
+    return resolve_cache_root_without_v1()
 
 
 def _hash_cache_files(station: str) -> str:
