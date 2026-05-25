@@ -53,8 +53,6 @@ from datetime import date as _date
 from pathlib import Path
 from typing import Any
 
-import pandas as pd
-
 from mostlyright._internal._pairs import (
     build_pairs,
     date_range,
@@ -938,6 +936,11 @@ def _fetch_iem_mos_range(
     downstream callers null-safe).
     """
     from mostlyright.weather._fetchers._iem_mos import fetch_iem_mos
+
+    # Phase 17 Wave 4 iter-2 review HIGH: pandas is an optional dep
+    # ([parquet] / [research] extras), not a base dep. Lazy-import so the
+    # base ``import mostlyright`` keeps working without those extras.
+    import pandas as pd
 
     df = fetch_iem_mos(info.icao, from_date, to_date, model=model)
     groups: dict[str, list[dict[str, Any]]] = {}
