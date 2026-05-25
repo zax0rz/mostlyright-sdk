@@ -19,7 +19,6 @@ import asyncio
 from typing import Any
 
 import pytest
-
 from mostlyright.core.exceptions import NoLiveDataError
 from mostlyright.live import latest
 
@@ -29,7 +28,9 @@ def _run(coro: Any) -> Any:
     return asyncio.run(coro)
 
 
-def _awc_metar(obs_time: int, raw_ob: str = "KNYC 251200Z 18010KT 10SM CLR 20/10 A3010") -> dict[str, Any]:
+def _awc_metar(
+    obs_time: int, raw_ob: str = "KNYC 251200Z 18010KT 10SM CLR 20/10 A3010"
+) -> dict[str, Any]:
     """Minimal AWC METAR dict that `awc_to_observation` will accept."""
     return {
         "icaoId": "KNYC",
@@ -126,6 +127,7 @@ def test_latest_iem_source_selectable(monkeypatch: pytest.MonkeyPatch) -> None:
     async def fake_iem_latest(station: str) -> list[dict[str, Any]]:
         called["iem"] = True
         from mostlyright.weather._iem import iem_to_observation
+
         obs = iem_to_observation(_iem_csv_row(), observation_type_override="METAR")
         assert obs is not None
         obs["source"] = "iem.live"
@@ -237,8 +239,8 @@ def test_latest_iem_construction_does_not_raise(monkeypatch: pytest.MonkeyPatch)
     so the StationInfo construction inside `_fetch_iem_latest` actually runs.
     """
     from pathlib import Path
-
     from pathlib import Path as _PathType  # noqa: F401  (Path imported in outer scope)
+
     captured: dict[str, Any] = {}
 
     def fake_download(
@@ -278,7 +280,10 @@ def test_latest_iem_construction_does_not_raise(monkeypatch: pytest.MonkeyPatch)
     # even right after the 00:00 UTC rollover. Asserting both:
     # - start == yesterday (proves the previous-day inclusion)
     # - end == today      (proves we did NOT regress to (today, tomorrow))
-    from datetime import UTC, datetime as _dt, date as _date
+    from datetime import UTC
+    from datetime import date as _date
+    from datetime import datetime as _dt
+
     today_utc = _dt.now(UTC).date()
     yesterday_utc = _date.fromordinal(today_utc.toordinal() - 1)
     assert captured["start"] == yesterday_utc

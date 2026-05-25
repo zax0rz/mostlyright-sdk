@@ -51,9 +51,13 @@ def test_daily_extremes_empty_cache_returns_empty_list(monkeypatch):
 # Phase 3.2 — NWP forecast real implementation
 # ----------------------------------------------------------------------
 def test_nwp_models():
+    # Phase 17 Wave 2 expanded SUPPORTED_NWP_MODELS from 3 to 24
+    # (NCEP + ECMWF + MSC + HAFS + legacy). The original 3 are still
+    # members; the closed-set discipline is preserved (see Phase 17
+    # Wave 1 tests for the full enum length assertion).
     from mostlyright.forecasts import SUPPORTED_NWP_MODELS
 
-    assert frozenset({"hrrr", "gfs", "nbm"}) == SUPPORTED_NWP_MODELS
+    assert {"hrrr", "gfs", "nbm"}.issubset(SUPPORTED_NWP_MODELS)
 
 
 def test_nwp_unknown_model_raises():

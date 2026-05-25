@@ -21,10 +21,15 @@ def test_parse_idx_default_style_is_wgrib2_backward_compat() -> None:
     assert records_default[0].level == "2 m above ground"
 
 
-def test_parse_idx_eccodes_style_raises_not_implemented_in_wave1() -> None:
-    """eccodes body lands in Phase 17 PLAN-04."""
-    with pytest.raises(NotImplementedError, match="PLAN-04"):
-        parse_idx("anything", style="eccodes")
+def test_parse_idx_eccodes_style_implemented_after_plan04() -> None:
+    """Phase 17 PLAN-04 wires the eccodes JSON-lines parser.
+
+    Empty / whitespace-only text returns an empty record list — same
+    behavior as the wgrib2 branch. Detailed eccodes parsing is covered
+    in test_nwp_idx_eccodes.py.
+    """
+    assert parse_idx("", style="eccodes") == []
+    assert parse_idx("\n\n", style="eccodes") == []
 
 
 def test_parse_idx_invalid_style_raises_value_error() -> None:

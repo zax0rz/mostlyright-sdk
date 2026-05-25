@@ -106,6 +106,7 @@ async def _fetch_iem_latest(station: str) -> list[dict[str, Any]]:
     )
 
     from datetime import date as _date
+
     today = datetime.now(UTC).date()
     yesterday = _date.fromordinal(today.toordinal() - 1)
     tag = source_tag("iem")
