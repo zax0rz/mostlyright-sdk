@@ -47,7 +47,7 @@ def discover(*, city: str) -> pd.DataFrame:
         from mostlyright.core.exceptions import SourceUnavailableError
 
         raise SourceUnavailableError(
-            "mostlyright.discover requires pandas. Install with: pip install mostlyright[parquet]",
+            "mostlyright.discover requires pandas. Install with: pip install mostlyrightmd[parquet]",
             source="discover",
             retryable=False,
             underlying=str(exc),
@@ -56,7 +56,7 @@ def discover(*, city: str) -> pd.DataFrame:
     # Iter-1 + iter-2 codex HIGH: discover() is exported from the
     # `mostlyright` (core) package but the resolver depends on
     # `mostlyright.markets`, which is shipped as a separate distribution
-    # (`mostlyright-markets`). The `_compose` module itself imports
+    # (`mostlyrightmd-markets`). The `_compose` module itself imports
     # cleanly (the markets imports inside it are LAZY at call time), so
     # wrapping only the top-level `from mostlyright._compose import ...`
     # (the iter-1 fix) was not enough — the actual `ModuleNotFoundError`
@@ -74,9 +74,9 @@ def discover(*, city: str) -> pd.DataFrame:
             from mostlyright.core.exceptions import SourceUnavailableError
 
             raise SourceUnavailableError(
-                "mostlyright.discover requires the sibling `mostlyright-markets` "
+                "mostlyright.discover requires the sibling `mostlyrightmd-markets` "
                 "distribution (for the Kalshi + Polymarket city catalogs). "
-                "Install with: pip install mostlyright-markets",
+                "Install with: pip install mostlyrightmd-markets",
                 source="discover",
                 retryable=False,
                 underlying=str(exc),

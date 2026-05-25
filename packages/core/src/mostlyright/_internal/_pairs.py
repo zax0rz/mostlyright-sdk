@@ -439,7 +439,7 @@ def pairs_to_dataframe(rows: list[dict[str, Any]]) -> Any:
         import pandas as pd
     except ImportError:
         raise ImportError(
-            "pandas is required for DataFrame output. Install with: pip install mostlyright[parquet]"
+            "pandas is required for DataFrame output. Install with: pip install mostlyrightmd[parquet]"
         ) from None
 
     if not rows:

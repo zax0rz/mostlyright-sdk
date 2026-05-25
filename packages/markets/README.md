@@ -1,4 +1,4 @@
-# mostlyright-markets
+# mostlyrightmd-markets
 
 Prediction market data for `mostlyright`: Kalshi, Polymarket.
 

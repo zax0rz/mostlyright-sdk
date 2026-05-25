@@ -118,9 +118,9 @@ jobs:
       - name: Sync workspace + per-package [polars] extras
         run: |
           uv sync --all-packages
-          uv sync --package mostlyright --extra polars
-          uv sync --package mostlyright-weather --extra polars
-          uv sync --package mostlyright-markets --extra polars
+          uv sync --package mostlyrightmd --extra polars
+          uv sync --package mostlyrightmd-weather --extra polars
+          uv sync --package mostlyrightmd-markets --extra polars
       - name: Show resolved polars version
         run: uv run python -c "import polars; print('polars', polars.__version__)"
       - name: Run full fast suite INCLUDING @pytest.mark.polars

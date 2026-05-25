@@ -4,9 +4,9 @@ Local-first Python SDK for quants researching prediction-market weather settleme
 
 ## Project structure
 
-- `packages/core/` → `mostlyright` PyPI distribution: `research()`, `snapshot`, shared `_internal/` utils. Also contains `mostlyright/_v02/` — the v0.2 foundations port (TimePoint, Schema, exceptions, formats; see [`docs/design.md`](docs/design.md)).
-- `packages/weather/` → `mostlyright-weather` PyPI distribution: AWC/IEM/GHCNh/NWS CLI clients + historical fetchers + cache
-- `packages/markets/` → `mostlyright-markets` PyPI distribution: Kalshi/Polymarket (v0.0.1 placeholder; v0.1.0 in Sprint 0.5)
+- `packages/core/` → `mostlyrightmd` PyPI distribution: `research()`, `snapshot`, shared `_internal/` utils. Also contains `mostlyright/_v02/` — the v0.2 foundations port (TimePoint, Schema, exceptions, formats; see [`docs/design.md`](docs/design.md)).
+- `packages/weather/` → `mostlyrightmd-weather` PyPI distribution: AWC/IEM/GHCNh/NWS CLI clients + historical fetchers + cache
+- `packages/markets/` → `mostlyrightmd-markets` PyPI distribution: Kalshi/Polymarket (v0.0.1 placeholder; v0.1.0 in Sprint 0.5)
 - `.planning/` → **THE canonical plan.** GSD-managed: ROADMAP.md (4 phases), PROJECT.md, REQUIREMENTS.md, STATE.md, per-phase PLAN.md + RESEARCH.md. **Lives in a separate private repo** ([mostlyrightmd/planning](https://github.com/mostlyrightmd/planning)) — see [PLANNING-SETUP.md](PLANNING-SETUP.md) to clone it alongside your SDK working copy.
 - `roadmap/` → Historical (lane-based Sprint 0 plan, archived to `roadmap/_archive/`).
 - `docs/` → Forward-looking design. [`docs/design.md`](docs/design.md) is the v0.2 foundations spec (originally drafted as standalone "mostlyright-mcp v1," merged into mostlyright 2026-05-21).

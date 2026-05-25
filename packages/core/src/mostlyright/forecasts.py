@@ -3,7 +3,7 @@
 Public dispatch surface for mostlyright NWP forecasts. The real fetch
 + decode + station-extraction pipeline lives in
 :mod:`mostlyright.weather.forecast_nwp` (shipped by the sibling
-``mostlyright-weather`` distribution) so this module stays importable
+``mostlyrightmd-weather`` distribution) so this module stays importable
 without the ``[nwp]`` optional extra installed.
 
 Live-path only in v0.1.0 — historical NWP backfill + ECMWF Tier-2
@@ -19,7 +19,7 @@ Surface:
 - :data:`SUPPORTED_NWP_MODELS` — frozen set of model ids we ship.
 
 The ``[nwp]`` optional extra
-(``pip install mostlyright-weather[nwp]``) adds ``cfgrib``, ``xarray``,
+(``pip install mostlyrightmd-weather[nwp]``) adds ``cfgrib``, ``xarray``,
 and ``scikit-learn``. Calling :func:`forecast_nwp` without it raises
 :class:`mostlyright.core.exceptions.SourceUnavailableError` carrying the
 install hint.
@@ -249,7 +249,7 @@ def forecast_nwp(
     except ImportError as exc:
         raise SourceUnavailableError(
             f"mostlyright.weather.forecast_nwp is not available: {exc}. "
-            "Install mostlyright-weather: pip install mostlyright-weather",
+            "Install mostlyrightmd-weather: pip install mostlyrightmd-weather",
             source=f"nwp.{model}",
             retryable=False,
             underlying=str(exc),

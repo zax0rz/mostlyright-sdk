@@ -59,7 +59,7 @@ def _require_pandas() -> Any:
 
         raise SourceUnavailableError(
             "mostlyright.markets.kalshi_trades requires pandas. Install with: "
-            "pip install mostlyright-markets[trades]",
+            "pip install mostlyrightmd-markets[trades]",
             source=_SOURCE,
             retryable=False,
             underlying=str(exc),

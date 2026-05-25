@@ -166,38 +166,38 @@ def test_markets_version_is_rc1() -> None:
 
 def test_markets_pins_core_to_matching_rc() -> None:
     # PKG-03: prevent a user from mixing mostlyright 0.0.x with
-    # mostlyright-markets 0.1.0rc1 (or vice versa). The Kalshi resolvers
+    # mostlyrightmd-markets 0.1.0rc1 (or vice versa). The Kalshi resolvers
     # use mostlyright.markets.catalog (this package) but the wider
     # settlement pipeline reads mostlyright.core.* schemas; a stale core
     # would silently serve the wrong column set.
     runtime_deps = _runtime_deps("markets")
     assert any(
-        d.startswith("mostlyright") and ">=0.1.0rc1" in d and "<0.2" in d for d in runtime_deps
+        d.startswith("mostlyrightmd") and ">=0.1.0rc1" in d and "<0.2" in d for d in runtime_deps
     ), (
-        "mostlyright-markets runtime deps must constrain mostlyright to "
+        "mostlyrightmd-markets runtime deps must constrain mostlyright to "
         "matching rc (>=0.1.0rc1,<0.2) — see PKG-03 in PLAN.md Wave 5"
     )
 
 
 def test_weather_pins_core_to_matching_rc() -> None:
     # PKG-03: prevent a user from mixing mostlyright 0.0.x with
-    # mostlyright-weather 0.1.0rc1 (or vice versa) across the parity gate.
+    # mostlyrightmd-weather 0.1.0rc1 (or vice versa) across the parity gate.
     runtime_deps = _runtime_deps("weather")
     assert any(
-        d.startswith("mostlyright") and ">=0.1.0rc1" in d and "<0.2" in d for d in runtime_deps
+        d.startswith("mostlyrightmd") and ">=0.1.0rc1" in d and "<0.2" in d for d in runtime_deps
     ), (
-        "mostlyright-weather runtime deps must constrain mostlyright to "
+        "mostlyrightmd-weather runtime deps must constrain mostlyright to "
         "matching rc (>=0.1.0rc1,<0.2) — see PKG-03 in PLAN.md Wave 4"
     )
 
 
 def test_core_research_extra_pins_weather_to_matching_rc() -> None:
-    # Mirror of PKG-03 on the other side: `mostlyright[research]` must pull
-    # a matching-rc mostlyright-weather, not any 0.x.
+    # Mirror of PKG-03 on the other side: `mostlyrightmd[research]` must pull
+    # a matching-rc mostlyrightmd-weather, not any 0.x.
     research = _extras("core").get("research", [])
     assert any(
-        d.startswith("mostlyright-weather") and ">=0.1.0rc1" in d and "<0.2" in d for d in research
+        d.startswith("mostlyrightmd-weather") and ">=0.1.0rc1" in d and "<0.2" in d for d in research
     ), (
-        "mostlyright[research] extra must constrain mostlyright-weather to "
+        "mostlyrightmd[research] extra must constrain mostlyrightmd-weather to "
         "matching rc (>=0.1.0rc1,<0.2)"
     )

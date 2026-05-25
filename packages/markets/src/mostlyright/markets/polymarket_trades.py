@@ -54,7 +54,7 @@ def _require_pandas(source_label: str = "polymarket") -> Any:
 
         raise SourceUnavailableError(
             "mostlyright.markets.polymarket_trades requires pandas. Install with: "
-            "pip install mostlyright-markets[trades]",
+            "pip install mostlyrightmd-markets[trades]",
             source=source_label,
             retryable=False,
             underlying=str(exc),

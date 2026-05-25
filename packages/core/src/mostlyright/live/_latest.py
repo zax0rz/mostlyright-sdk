@@ -29,22 +29,22 @@ def _normalize_station(station: str) -> str:
 
 
 def _require_weather() -> None:
-    """Raise a friendly ImportError if the `mostlyright-weather` sibling
+    """Raise a friendly ImportError if the `mostlyrightmd-weather` sibling
     distribution isn't installed.
 
     `mostlyright.live` lives in `mostlyright-core` but the AWC/IEM fetchers
-    + parsers are in `mostlyright-weather`. Per CORE's pyproject note,
+    + parsers are in `mostlyrightmd-weather`. Per CORE's pyproject note,
     weather is intentionally NOT a runtime dep of core (would create a
     distribution cycle). Users who want `live` must install with the
-    `[research]` extra or `mostlyright-weather` directly.
+    `[research]` extra or `mostlyrightmd-weather` directly.
     """
     try:
         import mostlyright.weather  # noqa: F401
     except ImportError as exc:  # pragma: no cover - exercised on clean install only
         raise ImportError(
-            "mostlyright.live.stream/latest requires `mostlyright-weather`. "
-            "Install via `pip install mostlyright[research]` or `pip install "
-            "mostlyright-weather`."
+            "mostlyright.live.stream/latest requires `mostlyrightmd-weather`. "
+            "Install via `pip install mostlyrightmd[research]` or `pip install "
+            "mostlyrightmd-weather`."
         ) from exc
 
 

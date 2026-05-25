@@ -6,7 +6,7 @@ are limited to the standard library + numpy (a transitive dep of xarray
 that we let the ``[nwp]`` extra install). The heavy deps (``cfgrib``,
 ``xarray``, ``sklearn``) are imported inside :func:`open_grib2_dataset`
 and :func:`extract_stations`; calling either without
-``pip install mostlyright-weather[nwp]`` raises ``ImportError`` with a
+``pip install mostlyrightmd-weather[nwp]`` raises ``ImportError`` with a
 hint message — handled higher up in
 :mod:`mostlyright.weather.forecast_nwp`.
 

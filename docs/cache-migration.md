@@ -7,7 +7,7 @@ across SDKs even though each SDK keeps its own on-disk subdirectory.
 
 ## Old → New
 
-### Python SDK (`mostlyright` / `mostlyright-weather` / `mostlyright-markets`)
+### Python SDK (`mostlyrightmd` / `mostlyrightmdmd-weather` / `mostlyrightmd-markets`)
 
 | Old                            | New                              |
 |--------------------------------|----------------------------------|

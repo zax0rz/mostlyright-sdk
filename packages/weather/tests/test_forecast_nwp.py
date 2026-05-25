@@ -208,7 +208,7 @@ def test_forecast_nwp_without_extra_raises_source_unavailable_with_hint() -> Non
 
     with pytest.raises(SourceUnavailableError) as exc_info:
         forecast_nwp("KNYC", "hrrr", cycle=datetime(2026, 5, 23, 12, tzinfo=UTC), fxx=1)
-    assert "mostlyright-weather[nwp]" in str(exc_info.value)
+    assert "mostlyrightmd-weather[nwp]" in str(exc_info.value)
     assert exc_info.value.retryable is False
 
 

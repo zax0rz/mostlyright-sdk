@@ -75,7 +75,7 @@ class TestDiscoverCity:
     def test_missing_markets_pkg_raises_source_unavailable(self, monkeypatch):
         """Iter-2 codex HIGH: when `mostlyright.markets` is missing
         (because the user installed `mostlyright` without
-        `mostlyright-markets`), discover() must raise a friendly
+        `mostlyrightmd-markets`), discover() must raise a friendly
         SourceUnavailableError with the install hint — NOT a raw
         ModuleNotFoundError.
 
@@ -93,5 +93,5 @@ class TestDiscoverCity:
             )
 
         monkeypatch.setattr(_compose, "resolve_city", fake_resolve_city)
-        with pytest.raises(SourceUnavailableError, match="mostlyright-markets"):
+        with pytest.raises(SourceUnavailableError, match="mostlyrightmd-markets"):
             discover(city="NYC")

@@ -1,15 +1,15 @@
 [project]
-name = "mostlyright-workspace"
+name = "mostlyrightmd-workspace"
 version = "0.0.0"
-description = "uv workspace root for mostlyright packages (not published)"
+description = "uv workspace root for mostlyrightmd-* PyPI distros (not published). Python module: `import mostlyright`."
 requires-python = ">=3.11"
 # Declare the workspace members as deps so `uv sync` installs them in editable
 # mode by default (otherwise plain `uv sync` skips members; users would need
 # `uv sync --all-packages` and would hit ModuleNotFoundError on `import mostlyright`).
 dependencies = [
-    "mostlyright",
-    "mostlyright-weather",
-    "mostlyright-markets",
+    "mostlyrightmd",
+    "mostlyrightmd-weather",
+    "mostlyrightmd-markets",
 ]
 
 [build-system]
@@ -24,7 +24,7 @@ bypass-selection = true
 # Mark this workspace root as NOT a publishable package, even though it
 # still carries a `[project]` table (which we keep so `dependencies = [...]`
 # can auto-install the three workspace members on `uv sync`). Without this,
-# `uv build --all-packages` emits an extra `mostlyright_workspace-0.0.0.whl`
+# `uv build --all-packages` emits an extra `mostlyrightmd_workspace-0.0.0.whl`
 # alongside the three publishable wheels — codex Wave 4 iter-2 HIGH on
 # tests/test_wheel_layout.py.
 package = false
@@ -33,9 +33,9 @@ package = false
 members = ["packages/core", "packages/weather", "packages/markets"]
 
 [tool.uv.sources]
-mostlyright = { workspace = true }
-mostlyright-weather = { workspace = true }
-mostlyright-markets = { workspace = true }
+mostlyrightmd = { workspace = true }
+mostlyrightmd-weather = { workspace = true }
+mostlyrightmd-markets = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -47,7 +47,7 @@ dev = [
     # wave-1-core port from mostlyright-mcp; kept in workspace dev so future tests
     # across packages can use hypothesis without further setup.
     "hypothesis>=6.100",
-    # pandas + pyarrow are runtime deps under the `parquet` extra of `mostlyright`
+    # pandas + pyarrow are runtime deps under the `parquet` extra of `mostlyrightmd`
     # (DataFrame return values), but they are MANDATORY for the test suite:
     # _v02 tests import pandas at collection time, and Sprint 0 parity fixtures
     # are parquet files. Putting them in dev so `uv run pytest -m "not live"`
@@ -60,7 +60,7 @@ dev = [
     # 5 cleanly-portable modules go through. polars is the second backend
     # the [polars] extra wires up. Both are dev deps so the cross-backend
     # test matrix runs locally + in CI without forcing every user to
-    # install polars on a default `pip install mostlyright`.
+    # install polars on a default `pip install mostlyrightmd`.
     "narwhals>=1.20,<2.0",
     "polars>=1.0,<2.0",
 ]

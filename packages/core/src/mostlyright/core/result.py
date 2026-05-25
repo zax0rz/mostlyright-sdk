@@ -121,7 +121,7 @@ class TradewindsResult:
             raise ImportError(
                 "TradewindsResult.frame_as_pandas() requires polars to be "
                 "installed when wrapping a polars DataFrame. Install with: "
-                "pip install mostlyright[polars]"
+                "pip install mostlyrightmd[polars]"
             ) from exc
 
         if isinstance(self.frame, pl.DataFrame):

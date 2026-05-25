@@ -2,8 +2,8 @@
 
 The ``mostlyright`` namespace is shared across three PyPI distributions:
 - ``mostlyright`` (core, this package): owns the ``__init__.py`` with pkgutil declaration
-- ``mostlyright-weather``: ships ``mostlyright/weather/`` without a namespace-root ``__init__.py``
-- ``mostlyright-markets``: ships ``mostlyright/markets/`` without a namespace-root ``__init__.py``
+- ``mostlyrightmd-weather``: ships ``mostlyright/weather/`` without a namespace-root ``__init__.py``
+- ``mostlyrightmd-markets``: ships ``mostlyright/markets/`` without a namespace-root ``__init__.py``
 
 If this test fails after a change to ``packages/core/src/mostlyright/__init__.py``,
 check that the pkgutil ``extend_path`` line is still present. Removing it breaks
@@ -26,14 +26,14 @@ def test_path_extended_for_split_distribution():
 
 
 def test_weather_subpackage_importable():
-    """``import mostlyright.weather`` must succeed when mostlyright-weather is installed."""
+    """``import mostlyright.weather`` must succeed when mostlyrightmd-weather is installed."""
     import mostlyright.weather
 
     assert mostlyright.weather.__version__ == "0.1.0rc1"
 
 
 def test_markets_subpackage_importable():
-    """``import mostlyright.markets`` must succeed when mostlyright-markets is installed."""
+    """``import mostlyright.markets`` must succeed when mostlyrightmd-markets is installed."""
     import mostlyright.markets
 
     assert mostlyright.markets.__version__ == "0.0.1"

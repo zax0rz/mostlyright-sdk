@@ -55,7 +55,7 @@ def require_narwhals() -> Any:
     if _nw is None:
         raise SourceUnavailableError(
             "narwhals is required for cross-backend operations. "
-            "Install with: pip install mostlyright[polars]"
+            "Install with: pip install mostlyrightmd[polars]"
         )
     return _nw
 

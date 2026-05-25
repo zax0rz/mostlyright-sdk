@@ -9,12 +9,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) once it ships
 
 ### Changed
 
-- **npm scope:** `@mostlyright/{codegen,core,markets,weather}` → `@mostlyrightmd/{codegen,core,markets,weather}`. The unscoped meta package `mostlyright` is unchanged. Rationale: matches GitHub org `mostlyrightmd` (the `mostlyright` org name was unavailable). PyPI packages (`mostlyright`, `mostlyright-weather`, `mostlyright-markets`) are unaffected (PyPI is a flat namespace; no scope concept).
+- **npm scope:** `@mostlyright/{codegen,core,markets,weather}` → `@mostlyrightmd/{codegen,core,markets,weather}`. The unscoped meta package `mostlyright` is unchanged. Rationale: matches GitHub org `mostlyrightmd` (the `mostlyright` org name was unavailable). Python PyPI distribution names handled separately below (see Phase 13 pre-flight rename).
+- **PyPI distribution names** (Phase 13 pre-flight): `mostlyright` → `mostlyrightmd`, `mostlyright-weather` → `mostlyrightmd-weather`, `mostlyright-markets` → `mostlyrightmd-markets`. **Python module names UNCHANGED** — `import mostlyright`, `from mostlyright.weather import ...`, `from mostlyright.markets import ...` continue to work exactly as before. Only the PyPI install name moves. Rationale: legacy `pypi.org/project/mostlyright` already publishes Robert Tarabcak's `mostlyright==0.14.1` (the parity baseline this SDK is byte-equivalent to); publishing a fresh `0.1.0rc1` under that name would version-shadow as PEP 440 orders `0.14.1 > 0.1.0rc1`, so `pip install mostlyright` would resolve to the legacy package. New `mostlyrightmd*` names start cleanly at `0.1.0rc1`. Aligns PyPI namespace with the `@mostlyrightmd/*` npm scope and the `mostlyrightmd/mostlyright-sdk` GH coordinates.
 
 ### Migration
 
 - TS users: `npm uninstall @mostlyright/<pkg> && npm install @mostlyrightmd/<pkg>` (when published) — N/A pre-publish.
-- No-op for Python users.
+- Python users: install command becomes `pip install mostlyrightmd[parquet]` / `pip install mostlyrightmd-weather[parquet]` / `pip install mostlyrightmd-markets[polymarket]`. **Imports do NOT change** — keep writing `import mostlyright as tw`.
 
 ## v1.0.0 (Pending — Phase 17 + Phase 16)
 

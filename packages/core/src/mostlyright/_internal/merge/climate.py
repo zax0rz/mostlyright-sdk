@@ -11,7 +11,7 @@ Modifications:
   home). The values are byte-identical to the dict in
   ``mostlyright.weather._climate`` (Wave 3A lift). They are NOT
   imported from there because that would create a core -> weather
-  cycle: ``mostlyright-weather`` depends on ``mostlyright`` (core).
+  cycle: ``mostlyrightmd-weather`` depends on ``mostlyright`` (core).
   Cross-package consumers should re-export the constant from this
   module — there is exactly one canonical definition.
 

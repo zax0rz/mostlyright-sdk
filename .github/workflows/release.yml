@@ -7,7 +7,8 @@ name: Release (PyPI trusted publishing)
 #
 # Setup checklist (one-time, before the first tagged release):
 #   1. Register the project as a "pending publisher" on PyPI for each of
-#      mostlyright, mostlyright-weather, mostlyright-markets.
+#      mostlyrightmd, mostlyrightmd-weather, mostlyrightmd-markets
+#      against owner=mostlyrightmd, repo=mostlyright-sdk.
 #      https://docs.pypi.org/trusted-publishers/adding-a-publisher/
 #   2. Workflow ref must match: workflow filename `release.yml`,
 #      environment name `pypi`.
@@ -97,58 +98,58 @@ jobs:
           PY
 
   publish-core:
-    name: Publish mostlyright (core)
+    name: Publish mostlyrightmd (core)
     needs: version-guard
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/project/mostlyright/
+      url: https://pypi.org/project/mostlyrightmd/
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
         uses: astral-sh/setup-uv@v3
       - name: Set up Python
         run: uv python install 3.12
-      - name: Build mostlyright wheel + sdist
-        run: uv build --package mostlyright
+      - name: Build mostlyrightmd wheel + sdist
+        run: uv build --package mostlyrightmd
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
 
   publish-weather:
-    name: Publish mostlyright-weather
+    name: Publish mostlyrightmd-weather
     needs: version-guard
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/project/mostlyright-weather/
+      url: https://pypi.org/project/mostlyrightmd-weather/
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
         uses: astral-sh/setup-uv@v3
       - name: Set up Python
         run: uv python install 3.12
-      - name: Build mostlyright-weather wheel + sdist
-        run: uv build --package mostlyright-weather
+      - name: Build mostlyrightmd-weather wheel + sdist
+        run: uv build --package mostlyrightmd-weather
       - name: Verify Requires-Dist pin (CI-04 gate)
         run: uv run python scripts/check_wheel_metadata.py
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
 
   publish-markets:
-    name: Publish mostlyright-markets
+    name: Publish mostlyrightmd-markets
     needs: version-guard
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/project/mostlyright-markets/
+      url: https://pypi.org/project/mostlyrightmd-markets/
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
         uses: astral-sh/setup-uv@v3
       - name: Set up Python
         run: uv python install 3.12
-      - name: Build mostlyright-markets wheel + sdist
-        run: uv build --package mostlyright-markets
+      - name: Build mostlyrightmd-markets wheel + sdist
+        run: uv build --package mostlyrightmd-markets
       - name: Verify Requires-Dist pin (CI-04 gate)
         run: uv run python scripts/check_wheel_metadata.py
       - name: Publish to PyPI

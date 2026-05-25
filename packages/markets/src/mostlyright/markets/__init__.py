@@ -6,8 +6,8 @@ when Lane V ports the Kalshi metadata client from
 using endpoints documented in ``therminal/research/notes/research-kalshi-api.md``
 (no auth required for public market data).
 
-Sprint 0 ships ONLY ``mostlyright`` + ``mostlyright-weather`` at v0.1.0;
-``mostlyright-markets`` stays at v0.0.1 placeholder until Sprint 0.5.
+Sprint 0 ships ONLY ``mostlyright`` + ``mostlyrightmd-weather`` at v0.1.0;
+``mostlyrightmd-markets`` stays at v0.0.1 placeholder until Sprint 0.5.
 
 Roadmap:
 - Sprint 0.5: ``mostlyright.markets.kalshi.{series, events, markets, candles, research_by_market}``

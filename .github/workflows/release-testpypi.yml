@@ -9,15 +9,15 @@ name: Release (TestPyPI dry-run on rc tags)
 #     separate gates (operator can require manual approval for either)
 #
 # Setup checklist (one-time, before the first v*rc* tag):
-#   1. On test.pypi.org, register each of mostlyright / mostlyright-weather /
-#      mostlyright-markets as a "pending publisher":
-#        owner = helloiamvu (GH account that pushes the tag)
-#        repo = mostlyright
+#   1. On test.pypi.org, register each of mostlyrightmd / mostlyrightmd-weather /
+#      mostlyrightmd-markets as a "pending publisher":
+#        owner = mostlyrightmd (GitHub org that owns the repo, post Phase 12.1)
+#        repo = mostlyright-sdk
 #        workflow filename = release-testpypi.yml
 #        environment name = testpypi
 #      https://docs.pypi.org/trusted-publishers/adding-a-publisher/
 #   2. Create the GH repo Environment "testpypi" (Settings → Environments).
-#      Optionally add helloiamvu as required reviewer so accidental rc
+#      Optionally add an operator as required reviewer so accidental rc
 #      tag pushes don't auto-publish.
 #
 # After the first publish the pending entries on TestPyPI become permanent.
@@ -37,38 +37,38 @@ permissions:
 
 jobs:
   publish-core:
-    name: Publish mostlyright (core) → TestPyPI
+    name: Publish mostlyrightmd (core) → TestPyPI
     runs-on: ubuntu-latest
     environment:
       name: testpypi
-      url: https://test.pypi.org/project/mostlyright/
+      url: https://test.pypi.org/project/mostlyrightmd/
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
         uses: astral-sh/setup-uv@v3
       - name: Set up Python
         run: uv python install 3.12
-      - name: Build mostlyright wheel + sdist
-        run: uv build --package mostlyright
+      - name: Build mostlyrightmd wheel + sdist
+        run: uv build --package mostlyrightmd
       - name: Publish to TestPyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
 
   publish-weather:
-    name: Publish mostlyright-weather → TestPyPI
+    name: Publish mostlyrightmd-weather → TestPyPI
     runs-on: ubuntu-latest
     environment:
       name: testpypi
-      url: https://test.pypi.org/project/mostlyright-weather/
+      url: https://test.pypi.org/project/mostlyrightmd-weather/
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
         uses: astral-sh/setup-uv@v3
       - name: Set up Python
         run: uv python install 3.12
-      - name: Build mostlyright-weather wheel + sdist
-        run: uv build --package mostlyright-weather
+      - name: Build mostlyrightmd-weather wheel + sdist
+        run: uv build --package mostlyrightmd-weather
       - name: Verify Requires-Dist pin (CI-04 gate)
         run: uv run python scripts/check_wheel_metadata.py
       - name: Publish to TestPyPI
@@ -77,19 +77,19 @@ jobs:
           repository-url: https://test.pypi.org/legacy/
 
   publish-markets:
-    name: Publish mostlyright-markets → TestPyPI
+    name: Publish mostlyrightmd-markets → TestPyPI
     runs-on: ubuntu-latest
     environment:
       name: testpypi
-      url: https://test.pypi.org/project/mostlyright-markets/
+      url: https://test.pypi.org/project/mostlyrightmd-markets/
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
         uses: astral-sh/setup-uv@v3
       - name: Set up Python
         run: uv python install 3.12
-      - name: Build mostlyright-markets wheel + sdist
-        run: uv build --package mostlyright-markets
+      - name: Build mostlyrightmd-markets wheel + sdist
+        run: uv build --package mostlyrightmd-markets
       - name: Verify Requires-Dist pin (CI-04 gate)
         run: uv run python scripts/check_wheel_metadata.py
       - name: Publish to TestPyPI

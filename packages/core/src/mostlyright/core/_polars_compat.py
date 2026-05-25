@@ -41,7 +41,7 @@ def require_polars() -> Any:
     if _pl is None:
         raise SourceUnavailableError(
             "polars backend requested but the optional [polars] extra "
-            "is not installed. Install with: pip install mostlyright[polars]"
+            "is not installed. Install with: pip install mostlyrightmd[polars]"
         )
     return _pl
 

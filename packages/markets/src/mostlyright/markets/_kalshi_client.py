@@ -69,7 +69,7 @@ _MAX_TRADES_PAGES: int = 10_000
 
 
 #: User-Agent banner. Sites occasionally block blank UAs as bot traffic.
-_USER_AGENT: str = "mostlyright-markets/0.2 (+https://github.com/helloiamvu/tradewinds)"
+_USER_AGENT: str = "mostlyrightmd-markets/0.2 (+https://github.com/mostlyrightmd/mostlyright-sdk)"
 
 
 def _request(

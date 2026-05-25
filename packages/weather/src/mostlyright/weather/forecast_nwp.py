@@ -700,7 +700,7 @@ def forecast_nwp(
     except ImportError as exc:
         raise SourceUnavailableError(
             f"NWP forecast for model={model!r} requires the [nwp] optional "
-            "extra. Install with: pip install mostlyright-weather[nwp]",
+            "extra. Install with: pip install mostlyrightmd-weather[nwp]",
             source=f"nwp.{model}",
             retryable=False,
             underlying=str(exc),
@@ -710,7 +710,7 @@ def forecast_nwp(
     except ImportError as exc:
         raise SourceUnavailableError(
             f"NWP forecast for model={model!r} requires the [nwp] optional "
-            "extra. Install with: pip install mostlyright-weather[nwp]",
+            "extra. Install with: pip install mostlyrightmd-weather[nwp]",
             source=f"nwp.{model}",
             retryable=False,
             underlying=str(exc),

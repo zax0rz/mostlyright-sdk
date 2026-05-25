@@ -6,12 +6,12 @@ Sprint 0 v0.1.0 ships:
 - ``mostlyright.snapshot`` — settlement-window math (LST, market_close_utc).
 
 Adjacent surfaces:
-- ``mostlyright.weather`` — observations + climate + forecasts (sibling package ``mostlyright-weather``).
-- ``mostlyright.markets`` — Kalshi + Polymarket metadata (sibling package ``mostlyright-markets``,
+- ``mostlyright.weather`` — observations + climate + forecasts (sibling package ``mostlyrightmd-weather``).
+- ``mostlyright.markets`` — Kalshi + Polymarket metadata (sibling package ``mostlyrightmd-markets``,
   ships v0.1.0 in Sprint 0.5).
 
 Namespace note: ``mostlyright`` is a split-distribution namespace package. Core owns this
-``__init__.py``; sibling distributions ``mostlyright-weather`` and ``mostlyright-markets`` ship
+``__init__.py``; sibling distributions ``mostlyrightmd-weather`` and ``mostlyrightmd-markets`` ship
 subdirectories (``mostlyright/weather/``, ``mostlyright/markets/``) WITHOUT their own
 namespace-root ``__init__.py``. The pkgutil declaration below extends ``__path__`` so Python's
 import machinery finds those subpackages from whichever site-packages location installed them.

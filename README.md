@@ -10,9 +10,9 @@ Local-first **Python + TypeScript** SDK for quants researching prediction-market
 
 | PyPI | Path | v0.1.0 status |
 |---|---|---|
-| `mostlyright` | [packages/core/](packages/core/) | rc1 ready (operator-gated PyPI publish) |
-| `mostlyright-weather` | [packages/weather/](packages/weather/) | rc1 ready |
-| `mostlyright-markets` | [packages/markets/](packages/markets/) | rc1 ready (Polymarket stubs; live engine in TS) |
+| `mostlyrightmd` (Python `import mostlyright`) | [packages/core/](packages/core/) | rc1 ready (operator-gated PyPI publish) |
+| `mostlyrightmd-weather` | [packages/weather/](packages/weather/) | rc1 ready |
+| `mostlyrightmd-markets` | [packages/markets/](packages/markets/) | rc1 ready (Polymarket stubs; live engine in TS) |
 
 ### TypeScript (npm)
 
@@ -28,7 +28,7 @@ See [`docs/ts-quickstart.md`](docs/ts-quickstart.md) for TS Node/browser quickst
 ## Quickstart (alpha1) — <5 minutes
 
 ```bash
-pip install "mostlyright[parquet]==0.1.0a1" "mostlyright-weather[parquet]==0.1.0a1"
+pip install "mostlyrightmd[parquet]==0.1.0a1" "mostlyrightmd-weather[parquet]==0.1.0a1"
 python -c "import mostlyright as tw; print(tw.research('KNYC', '2025-01-06', '2025-01-12').head())"
 ```
 

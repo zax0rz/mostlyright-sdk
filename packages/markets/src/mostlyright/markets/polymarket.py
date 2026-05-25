@@ -405,7 +405,7 @@ def _require_pandas() -> Any:
 
         raise SourceUnavailableError(
             "mostlyright.markets.polymarket requires pandas. Install with: "
-            "pip install mostlyright-markets[polymarket]",
+            "pip install mostlyrightmd-markets[polymarket]",
             source="polymarket_gamma",
             retryable=False,
             underlying=str(exc),
@@ -422,8 +422,8 @@ def _require_weather() -> None:
 
         raise SourceUnavailableError(
             "mostlyright.markets.polymarket settlement requires the sibling "
-            "mostlyright-weather package (for daily_extremes). Install with: "
-            "pip install mostlyright-markets[polymarket]",
+            "mostlyrightmd-weather package (for daily_extremes). Install with: "
+            "pip install mostlyrightmd-markets[polymarket]",
             source="polymarket_gamma",
             retryable=False,
             underlying=str(exc),
@@ -722,7 +722,7 @@ def polymarket_settle(
         )
 
     # Pull the daily extreme for the resolution station + date.
-    # Codex iter-1 P2: mostlyright-weather (sibling package) is required
+    # Codex iter-1 P2: mostlyrightmd-weather (sibling package) is required
     # for daily_extremes -> cache I/O. The guard raises a friendly
     # SourceUnavailableError when the [polymarket] extra isn't installed.
     _require_weather()

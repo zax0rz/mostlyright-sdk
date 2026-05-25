@@ -1,4 +1,4 @@
-# mostlyright-weather
+# mostlyrightmd-weather
 
 Weather data sources for `mostlyright`: AWC, IEM, GHCNh, NWS CLI.
 
