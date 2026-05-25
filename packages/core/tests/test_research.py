@@ -370,13 +370,47 @@ class TestRegistryCoverage:
                 assert offset is not None, f"_lst_offset returned None for {variant!r}"
 
 
-class TestIncludeForecastRaises:
-    def test_include_forecast_true_raises_not_implemented(self, tmp_cache_env: Path) -> None:
-        """Phase 1 is observations + climate only; forecast is Phase 3.2."""
+class TestIncludeForecastWired:
+    """Phase 17 PLAN-09 wired ``include_forecast=True`` (Mode 1 IEM MOS +
+    optional Mode 2 NWP). The pre-Phase-17 ``NotImplementedError`` stub
+    is gone; this test is kept to flag any regression that re-raises it.
+    """
+
+    def test_include_forecast_true_no_longer_raises_not_implemented(
+        self, tmp_cache_env: Path
+    ) -> None:
+        """Phase 17 PLAN-09 replaced the stub with the Mode 1 wiring.
+
+        The actual end-to-end call hits the live IEM MOS endpoint so it
+        is operator-gated (live tests). We only check that the
+        function-call entry point no longer surfaces
+        ``NotImplementedError`` for ``include_forecast=True``.
+        """
+        from unittest.mock import patch
+
         from mostlyright import research
 
-        with pytest.raises(NotImplementedError, match="include_forecast"):
-            research("KNYC", "2025-01-06", "2025-01-12", include_forecast=True)
+        # Mock the underlying MOS fetcher so this stays a unit test.
+        with patch("mostlyright.weather._fetchers._iem_mos.fetch_iem_mos") as mock_fetch:
+            import pandas as pd
+
+            mock_fetch.return_value = pd.DataFrame()
+            # The call may still raise other downstream errors (the
+            # mocked-empty MOS path is fine; observation fetch may hit
+            # the network — that's a different layer). What we assert
+            # is the absence of the legacy NotImplementedError.
+            try:
+                research("KNYC", "2025-01-06", "2025-01-12", include_forecast=True)
+            except NotImplementedError as exc:
+                if "include_forecast" in str(exc):
+                    raise AssertionError(
+                        "Phase 17 PLAN-09 removed the include_forecast=True "
+                        "NotImplementedError stub; regression detected."
+                    ) from exc
+            except Exception:
+                # Any other exception (network, cache, etc.) is fine —
+                # we only guard the absence of the legacy stub.
+                pass
 
 
 class TestUnknownStation:

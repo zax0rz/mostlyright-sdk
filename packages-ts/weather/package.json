@@ -17,6 +17,11 @@
       "types": "./dist/live/index.d.ts",
       "import": "./dist/live/index.mjs",
       "require": "./dist/live/index.cjs"
+    },
+    "./forecasts": {
+      "types": "./dist/forecasts/index.d.ts",
+      "import": "./dist/forecasts/index.mjs",
+      "require": "./dist/forecasts/index.cjs"
     }
   },
   "files": ["dist"],

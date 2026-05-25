@@ -107,9 +107,7 @@ def test_fetch_forecasts_iem_archive_wired_via_iem_mos() -> None:
         a = IEMAdapter()
         df = a.fetch_forecasts("iem.archive", "KNYC", "2025-01-01", "2025-01-02")
         assert isinstance(df, pd.DataFrame)
-        mock_fetch.assert_called_once_with(
-            "KNYC", "2025-01-01", "2025-01-02", model="nbe"
-        )
+        mock_fetch.assert_called_once_with("KNYC", "2025-01-01", "2025-01-02", model="nbe")
 
 
 def test_fetch_forecasts_iem_live_deferred_to_v02() -> None:

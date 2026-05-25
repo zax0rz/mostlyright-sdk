@@ -106,3 +106,17 @@ export {
   type StreamOptions,
 } from "./live/index.js";
 export { LiveStreamError, NoLiveDataError } from "@mostlyright/core";
+
+// Phase 17 PLAN-11 — IEM MOS forecast fetcher + NWP stub (v1.0 TS lane).
+// Available via the root barrel AND via the `@mostlyright/weather/forecasts`
+// subpath (subpath bundle stays lean for browser callers; root pulls all).
+export {
+  forecastNwp,
+  iemMosForecasts,
+  type ForecastNwpOptions,
+  type IemMosModel,
+  type IemMosOptions,
+  type IemMosRow,
+  type IemMosSource,
+  type NwpModel,
+} from "./forecasts/index.js";

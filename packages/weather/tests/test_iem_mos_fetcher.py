@@ -29,7 +29,9 @@ def _make_mock_client(payload: dict | None, status: int = 200) -> MagicMock:
         else:
             resp.raise_for_status = MagicMock(
                 side_effect=httpx.HTTPStatusError(
-                    f"{status}", request=None, response=None  # type: ignore[arg-type]
+                    f"{status}",
+                    request=None,
+                    response=None,  # type: ignore[arg-type]
                 )
             )
         return resp
@@ -67,9 +69,19 @@ def test_fetch_iem_mos_canonical_columns_present() -> None:
         "KNYC", "2026-05-01", "2026-05-01", model="nbe", client=_make_mock_client(None)
     )
     expected = {
-        "station", "issued_at", "valid_at", "forecast_hour", "model",
-        "temp_c", "dew_point_c", "wind_speed_ms", "wind_dir_deg",
-        "precip_probability", "sky_cover_pct", "source", "retrieved_at",
+        "station",
+        "issued_at",
+        "valid_at",
+        "forecast_hour",
+        "model",
+        "temp_c",
+        "dew_point_c",
+        "wind_speed_ms",
+        "wind_dir_deg",
+        "precip_probability",
+        "sky_cover_pct",
+        "source",
+        "retrieved_at",
     }
     assert expected.issubset(set(df.columns))
 
@@ -162,9 +174,7 @@ def test_fetch_iem_mos_missing_field_yields_none() -> None:
 
 def test_fetch_iem_mos_invalid_date_format_rejected() -> None:
     with pytest.raises(ValueError, match="ISO YYYY-MM-DD"):
-        fetch_iem_mos(
-            "KNYC", "not-a-date", "2026-05-01", client=_make_mock_client(None)
-        )
+        fetch_iem_mos("KNYC", "not-a-date", "2026-05-01", client=_make_mock_client(None))
 
 
 def test_parse_mos_row_missing_runtime_returns_none() -> None:

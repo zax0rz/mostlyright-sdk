@@ -94,12 +94,8 @@ class IEMAdapter:
         if source == "iem.archive":
             return fetch_iem_mos(station, from_date, to_date, model="nbe")
         if source == "iem.live":
-            raise NotImplementedError(
-                "iem.live MOS deferred to v0.2; use source='iem.archive'."
-            )
-        raise ValueError(
-            f"source must be one of {{'iem.archive', 'iem.live'}}; got {source!r}"
-        )
+            raise NotImplementedError("iem.live MOS deferred to v0.2; use source='iem.archive'.")
+        raise ValueError(f"source must be one of {{'iem.archive', 'iem.live'}}; got {source!r}")
 
     @staticmethod
     def from_rows(

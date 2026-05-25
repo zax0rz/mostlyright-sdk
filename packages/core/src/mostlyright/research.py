@@ -53,6 +53,8 @@ from datetime import date as _date
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
+
 from mostlyright._internal._pairs import (
     build_pairs,
     date_range,
@@ -914,6 +916,140 @@ def _prefetch_sources(
 
 
 # ----------------------------------------------------------------------
+# Phase 17 PLAN-09: research(include_forecast=True) helpers
+# ----------------------------------------------------------------------
+def _fetch_iem_mos_range(
+    info: StationInfo,
+    from_date: str,
+    to_date: str,
+    *,
+    model: str = "nbe",
+) -> dict[str, list[dict[str, Any]]]:
+    """Mode 1 — fetch IEM MOS forecasts grouped by settlement date (ISO).
+
+    Wraps ``mostlyright.weather._fetchers._iem_mos.fetch_iem_mos`` and pivots
+    its tabular DataFrame to the ``{date_iso: [forecast_row, ...]}`` shape
+    that ``build_pairs(forecasts_by_date=...)`` expects. Each row in the
+    grouped output carries both the canonical IEM MOS columns AND the
+    legacy ``temperature_f`` / ``valid_at`` / ``issued_at`` keys that
+    ``_aggregate_fcst_temps_iem`` + ``_select_best_run`` consume.
+
+    Returns an empty dict when IEM MOS yields zero rows (defensive — keeps
+    downstream callers null-safe).
+    """
+    from mostlyright.weather._fetchers._iem_mos import fetch_iem_mos
+
+    df = fetch_iem_mos(info.icao, from_date, to_date, model=model)
+    groups: dict[str, list[dict[str, Any]]] = {}
+    if df is None or df.empty:
+        return groups
+    for _, row in df.iterrows():
+        ftime = row.get("valid_at")
+        if ftime is None or (isinstance(ftime, float) and ftime != ftime):
+            continue
+        try:
+            ftime_dt = pd.to_datetime(ftime, utc=True)
+        except Exception:
+            continue
+        date_iso = ftime_dt.strftime("%Y-%m-%d")
+        # Build a forecast row that build_pairs_row understands. IEM MOS
+        # already carries ``valid_at``; we also normalize it to the
+        # ISO-string form ``_aggregate_fcst_temps_iem`` compares against.
+        issued_at = row.get("issued_at")
+        try:
+            issued_iso = (
+                pd.to_datetime(issued_at, utc=True).strftime("%Y-%m-%dT%H:%M:%SZ")
+                if issued_at is not None
+                else None
+            )
+        except Exception:
+            issued_iso = None
+        try:
+            valid_iso = ftime_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+        except Exception:
+            valid_iso = None
+        temp_c = row.get("temp_c")
+        temperature_f: float | None = None
+        if temp_c is not None and not (isinstance(temp_c, float) and temp_c != temp_c):
+            try:
+                temperature_f = float(temp_c) * 9.0 / 5.0 + 32.0
+            except (TypeError, ValueError):
+                temperature_f = None
+        pop_prob = row.get("precip_probability")
+        pop_6hr_pct: float | None = None
+        if pop_prob is not None and not (isinstance(pop_prob, float) and pop_prob != pop_prob):
+            try:
+                pop_6hr_pct = float(pop_prob) * 100.0
+            except (TypeError, ValueError):
+                pop_6hr_pct = None
+        fcst_row: dict[str, Any] = {
+            "model": row.get("model"),
+            "issued_at": issued_iso,
+            "valid_at": valid_iso,
+            "temperature_f": temperature_f,
+            "pop_6hr_pct": pop_6hr_pct,
+            "qpf_6hr_in": None,  # IEM MOS doesn't expose qpf in the v1 schema
+        }
+        groups.setdefault(date_iso, []).append(fcst_row)
+    return groups
+
+
+def _fetch_nwp_models_range(
+    info: StationInfo,
+    from_date: str,
+    to_date: str,
+    forecast_models: list[str],
+) -> dict[str, dict[str, list[dict[str, Any]]]]:
+    """Mode 2 — fetch per-model NWP forecasts (one 12Z cycle per day).
+
+    Iterates each model in ``forecast_models``, fetches a single
+    representative 12Z cycle per LST date in ``[from_date, to_date]``, and
+    returns ``{model: {date_iso: [forecast_row, ...]}}``. Per-cycle
+    exceptions are logged and the iteration continues — a single
+    upstream failure does not abort the whole batch.
+
+    Cycle-per-day is a simplifying choice for v0.1.0 Mode 2 — the user
+    can still get sub-daily by calling ``forecast_nwp`` directly. Phase
+    17 CONTEXT decision 7 records this choice.
+    """
+    from mostlyright.weather.forecast_nwp import forecast_nwp
+
+    groups: dict[str, dict[str, list[dict[str, Any]]]] = {}
+    try:
+        from_dt = datetime.fromisoformat(from_date).replace(tzinfo=UTC)
+        to_dt = datetime.fromisoformat(to_date).replace(tzinfo=UTC, hour=23, minute=59, second=59)
+    except ValueError as exc:
+        raise ValueError(
+            f"_fetch_nwp_models_range: from_date / to_date must be ISO "
+            f"YYYY-MM-DD; got from_date={from_date!r} to_date={to_date!r}"
+        ) from exc
+
+    for model in forecast_models:
+        groups[model] = {}
+        cur = from_dt.replace(hour=12, minute=0, second=0, microsecond=0)
+        while cur <= to_dt:
+            date_iso = cur.strftime("%Y-%m-%d")
+            try:
+                df = forecast_nwp(
+                    station=info.icao,
+                    model=model,
+                    cycle=cur,
+                    fxx=12,
+                )
+                if df is not None and not df.empty:
+                    groups[model][date_iso] = df.to_dict(orient="records")
+            except Exception as exc:
+                logger.warning(
+                    "research: NWP %s cycle %s failed: %s",
+                    model,
+                    cur.isoformat(),
+                    exc,
+                )
+            cur += timedelta(days=1)
+    return groups
+
+
+# ----------------------------------------------------------------------
 # Phase 3.4: opt-in QC engine wiring
 # ----------------------------------------------------------------------
 def _run_qc_and_write_sidecar(
@@ -1085,6 +1221,7 @@ def research(
     include_trades: bool = False,
     include_forecast: bool = False,
     forecast_model: str | None = None,
+    forecast_models: list[str] | None = None,
     as_dataframe: bool = True,
     tz_override: str | None = None,
     qc: bool = False,
@@ -1251,13 +1388,22 @@ def research(
     if from_date is None or to_date is None:
         raise ValueError("research(station=...) requires both from_date and to_date")
 
-    if include_forecast:
-        raise NotImplementedError(
-            "include_forecast=True is not supported in Phase 1 (v0.1.0). "
-            "Forecast wiring lands in Phase 3.2 (multi-forecast live path)."
-        )
-
     info = _resolve_station(station)
+
+    # Phase 17 PLAN-09: include_forecast=True wires Mode 1 (IEM MOS) +
+    # optional Mode 2 (per-NWP-model). Mode 1 emits the additive
+    # ``fcst_*`` columns the v0.14.1 schema reserves; Mode 2 emits
+    # ``fcst_*_nwp_<model>`` columns on top. include_forecast=False
+    # leaves both dicts empty so build_pairs() sees forecasts_by_date=None
+    # AND nwp_forecasts_by_model_date=None — byte-equivalent baseline.
+    iem_mos_by_date: dict[str, list[dict[str, Any]]] = {}
+    nwp_by_model_date: dict[str, dict[str, list[dict[str, Any]]]] = {}
+    if include_forecast:
+        iem_mos_by_date = _fetch_iem_mos_range(info, from_date, to_date)
+        if forecast_models:
+            nwp_by_model_date = _fetch_nwp_models_range(
+                info, from_date, to_date, list(forecast_models)
+            )
 
     # Inclusive settlement dates (LST). Validates the ISO format eagerly.
     dates = date_range(from_date, to_date)
@@ -1327,14 +1473,20 @@ def research(
         if obs_date:
             climate_by_date[obs_date] = r
 
+    # PLAN-09: when include_forecast=False, pass None for both forecast
+    # dicts so build_pairs/build_pairs_row hit the parity-preserving paths
+    # (no fcst_* population beyond the default-None scaffolding). When
+    # include_forecast=True, hand over the IEM MOS Mode 1 dict and (if
+    # forecast_models was provided) the Mode 2 per-model NWP dict.
     rows = build_pairs(
         info.code,
         dates,
         obs_by_date,
         climate_by_date,
-        forecasts_by_date=None,  # Phase 1 Wave 2 - Mode 1 only.
+        forecasts_by_date=iem_mos_by_date if include_forecast else None,
         forecast_model=forecast_model,
         tz_override=tz_override,
+        nwp_forecasts_by_model_date=nwp_by_model_date if include_forecast else None,
     )
     # Phase 6 W3-T2 + W3-T3: backend / return_type already validated at
     # the top of research() (codex iter-2 P2 fix). Here we only need the
