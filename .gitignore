@@ -45,6 +45,15 @@ tests/fixtures/drift/drift-report.md
 Thumbs.db
 .claude/scheduled_tasks.lock
 
+# Planning artifacts — local GSD planning workspace; NOT for public consumption.
+# Untracked since the repo went public (Phase 13 W0 cleanup commit, 2026-05-25).
+# Operators keep these on disk for ongoing GSD workflow; nothing in `.planning/`
+# should be required to build or run the SDK.
+.planning/
+
+# Dev-only TODO scratchpad (replaced by GSD TODOS in .planning/)
+TODOS.md
+
 # TypeScript / pnpm workspace (packages-ts/)
 node_modules/
 coverage/
