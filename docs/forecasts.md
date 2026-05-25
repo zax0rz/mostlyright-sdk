@@ -132,26 +132,40 @@ write code against the signature today and the runtime will arrive
 later. The `Storms()` resolver + URL patterns + basin-position QC rule
 already ship in v1.0.
 
-HAFS fetches will require a storm parameter. Use the storm id (e.g.
-`"09l"`) for historical access, or the storm name (e.g. `"laura"`) for
-currently-active storms:
+The active-storm resolver already ships in v1.0 (the `Storms()` cache
++ `get_active_storms()` text-table parser):
 
 ```python
 from mostlyright.weather._fetchers._hafs_storms import get_active_storms
 
 storms = get_active_storms()
 # {"09l": "laura", "10l": "marco"}
+```
 
-# Planned signature — raises NwpModelNotAvailableError in v1.0:
+The `Storms()` resolver caches the active list for 1 hour. Pass
+`bust_cache=True` to force re-fetch.
+
+**v1.0 call shape (today).** `forecast_nwp` has no `storm=` parameter
+yet, so the gate that fires on a HAFS call is the reserved-models gate:
+
+```python
 from mostlyright.forecasts import forecast_nwp
+forecast_nwp(station="KNYC", model="hafs")  # → NwpModelNotAvailableError
+```
+
+**Future call shape (when fetch+decode lands).** The follow-up wiring
+will add a `storm=` argument resolvable as either a storm id (e.g.
+`"09l"`, historical) or a storm name (e.g. `"laura"`, currently
+active). The signature is forward-looking pseudocode — not callable
+today:
+
+```python
+# Future signature; not callable in v1.0.
 df = forecast_nwp(
     station="KNYC", model="hafs", storm="laura",
     cycle=datetime(2026, 9, 1, 12, tzinfo=UTC), fxx=range(0, 25),
 )
 ```
-
-The `Storms()` resolver caches the active list for 1 hour. Pass
-`bust_cache=True` to force re-fetch.
 
 ## Historical Backfill
 
