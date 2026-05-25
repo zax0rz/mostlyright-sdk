@@ -100,15 +100,29 @@ export async function fetchIemLatest(station: string): Promise<LiveObservation[]
     );
   }
   const startIso = todayUtcIso();
-  // IEM's `day2=` is EXCLUSIVE — pass the same date for a one-day window.
-  // (Earlier code passed `nextDayIso(startIso)` which `download_iem_asos`
-  // would internally treat as TWO days under exact_window mode.)
-  const url = buildIemUrl(stationCode, startIso, startIso, 3);
-  const response = await fetchWithRetry(url);
-  const csv = await response.text();
-  const obs = parseIemCsv(csv, { observationTypeOverride: "METAR" });
+  // IEM's `day2=` is EXCLUSIVE. Unlike Python `download_iem_asos(exact_window=True)`,
+  // which internally advances `day2` for IEM's exclusive-end semantics, here
+  // we call `buildIemUrl` directly — so we must pass tomorrow ourselves to
+  // request a one-day window `[today, today+1)`. Passing `startIso` for both
+  // would produce an empty zero-day request that always returns no rows.
+  const endIso = nextDayIso(startIso);
+  // Mirror Python's METAR + SPECI fetch: IEM strips the SPECI keyword from
+  // the raw METAR text and serves SPECIs only via report_type=4, so a
+  // routine-only fetch would miss intra-hour specials and the `latest()`
+  // pick could return an older METAR when a fresher SPECI exists.
   const tag = sourceTag("iem");
-  return obs.map((row) => asLiveObservation(row, tag));
+  const rows: LiveObservation[] = [];
+  for (const reportType of [3, 4] as const) {
+    const url = buildIemUrl(stationCode, startIso, endIso, reportType);
+    const response = await fetchWithRetry(url);
+    const csv = await response.text();
+    const override = reportType === 3 ? "METAR" : "SPECI";
+    const obs = parseIemCsv(csv, { observationTypeOverride: override });
+    for (const row of obs) {
+      rows.push(asLiveObservation(row, tag));
+    }
+  }
+  return rows;
 }
 
 /** Dispatch to the per-source fetch. */

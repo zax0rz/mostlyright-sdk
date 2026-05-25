@@ -1,11 +1,13 @@
-// Phase 11 — internal `live/*` barrel.
+// Phase 11 — `@tradewinds/weather/live` subpath barrel.
 //
-// This file is the in-package barrel; the public entry point is the main
-// `@tradewinds/weather` barrel (`src/index.ts`), which re-exports
-// everything below. There is intentionally NO `@tradewinds/weather/live`
-// subpath export in the published package today — adding one needs both
-// a `package.json` `exports` map entry and a separate tsup entry, which
-// is deferred to a v0.2.x ergonomics pass.
+// This file is BOTH the in-package barrel AND the published subpath entry
+// point — `package.json` declares `"./live"` in its `exports` map and
+// `tsup.config.ts` emits `src/live/index.ts` as a separate dist bundle
+// (`dist/live/index.{mjs,cjs,d.ts}`). The main `@tradewinds/weather`
+// barrel re-exports the same surface, so both of these work:
+//
+//   import { stream } from "@tradewinds/weather/live"  // narrow subpath
+//   import { stream } from "@tradewinds/weather"       // main barrel
 //
 // Three surfaces:
 //  - `stream()`     — AsyncGenerator yielding fresh observations on a polite-floor cadence

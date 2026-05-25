@@ -281,3 +281,45 @@ def test_latest_iem_construction_does_not_raise(monkeypatch: pytest.MonkeyPatch)
     today_utc = _dt.now(UTC).date()
     assert captured["start"] == today_utc
     assert captured["end"] == today_utc
+
+
+def test_latest_iem_fetches_metar_and_speci(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Regression for iter-3 codex finding: IEM strips the SPECI keyword
+    from raw METAR text and serves SPECIs ONLY via report_type=4. Without
+    a separate report_type=4 fetch, the IEM live path silently misses
+    intra-hour specials and `_pick_most_recent` could return a stale METAR.
+
+    Fix issues BOTH report_type=3 and report_type=4 per poll. This test
+    captures the report_type values passed to `download_iem_asos` and
+    asserts BOTH appear.
+    """
+    from pathlib import Path
+
+    seen_report_types: list[int] = []
+
+    def fake_download(
+        station: Any,
+        start: Any,
+        end: Any,
+        dest_dir: Path,
+        **kwargs: Any,
+    ) -> list[Path]:
+        seen_report_types.append(kwargs.get("report_type"))
+        return []
+
+    def fake_parse(path: Path, observation_type_override: str | None = None) -> list[Any]:
+        return []
+
+    monkeypatch.setattr(
+        "tradewinds.weather._fetchers.iem_asos.download_iem_asos",
+        fake_download,
+    )
+    monkeypatch.setattr(
+        "tradewinds.weather._iem.parse_iem_file",
+        fake_parse,
+    )
+    with pytest.raises(NoLiveDataError):
+        _run(latest("KNYC", source="iem"))
+
+    assert 3 in seen_report_types  # routine METAR fetch
+    assert 4 in seen_report_types  # SPECI fetch — the regression target

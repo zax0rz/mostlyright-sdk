@@ -28,8 +28,29 @@ def _normalize_station(station: str) -> str:
     return s
 
 
+def _require_weather() -> None:
+    """Raise a friendly ImportError if the `tradewinds-weather` sibling
+    distribution isn't installed.
+
+    `tradewinds.live` lives in `tradewinds-core` but the AWC/IEM fetchers
+    + parsers are in `tradewinds-weather`. Per CORE's pyproject note,
+    weather is intentionally NOT a runtime dep of core (would create a
+    distribution cycle). Users who want `live` must install with the
+    `[research]` extra or `tradewinds-weather` directly.
+    """
+    try:
+        import tradewinds.weather  # noqa: F401
+    except ImportError as exc:  # pragma: no cover - exercised on clean install only
+        raise ImportError(
+            "tradewinds.live.stream/latest requires `tradewinds-weather`. "
+            "Install via `pip install tradewinds[research]` or `pip install "
+            "tradewinds-weather`."
+        ) from exc
+
+
 async def _fetch_awc_latest(station: str) -> list[dict[str, Any]]:
     """Poll AWC once for the given station and return parsed observation rows."""
+    _require_weather()
     from tradewinds.weather._awc import awc_to_observation
     from tradewinds.weather._fetchers.awc import fetch_awc_metars
 
@@ -49,10 +70,17 @@ async def _fetch_awc_latest(station: str) -> list[dict[str, Any]]:
 async def _fetch_iem_latest(station: str) -> list[dict[str, Any]]:
     """Poll IEM once for the given station and return parsed observation rows.
 
-    Uses the exact-window IEM ASOS path with ``today_utc`` → ``today_utc + 1``
-    and ``skip_cache=True`` so the live poll never poisons the canonical
-    year-aligned parquet cache used by ``research()``.
+    Issues TWO HTTP requests per poll — one for routine METARs
+    (``report_type=3``) and one for SPECI specials (``report_type=4``).
+    IEM strips the ``SPECI`` keyword from the raw METAR text and serves
+    SPECIs only via ``report_type=4``, so fetching only routine METARs
+    would miss intra-hour specials and `_pick_most_recent` could return
+    an older METAR when a fresher SPECI exists. Both requests use the
+    exact-window single-day path with ``skip_cache=True`` so the live
+    poll never poisons the canonical year-aligned parquet cache used by
+    ``research()``.
     """
+    _require_weather()
     import tempfile
     from pathlib import Path
 
@@ -83,26 +111,26 @@ async def _fetch_iem_latest(station: str) -> list[dict[str, Any]]:
 
     with tempfile.TemporaryDirectory(prefix="tw-live-iem-") as tmp:
         dest_dir = Path(tmp)
+        # Issue both report types — routine METARs (3) AND SPECI specials (4).
         # Pass `today` for BOTH start and end. `download_iem_asos(...,
         # exact_window=True)` treats `end` as INCLUSIVE and internally
         # advances `day2` by one day for IEM's exclusive-end semantics —
-        # so passing (today, today) gives a single-day [today, today+1)
-        # request. Earlier code passed `tomorrow` here which actually
-        # asked for [today, today+2), doubling the CSV window per poll.
-        paths = await asyncio.to_thread(
-            download_iem_asos,
-            station_info,
-            today,
-            today,
-            dest_dir,
-            skip_cache=True,
-            report_type=3,
-            exact_window=True,
-        )
-        for path in paths:
-            for obs in parse_iem_file(path, observation_type_override="METAR"):
-                obs["source"] = tag
-                rows.append(obs)
+        # so (today, today) gives a single-day [today, today+1) request.
+        for report_type, override in ((3, "METAR"), (4, "SPECI")):
+            paths = await asyncio.to_thread(
+                download_iem_asos,
+                station_info,
+                today,
+                today,
+                dest_dir,
+                skip_cache=True,
+                report_type=report_type,
+                exact_window=True,
+            )
+            for path in paths:
+                for obs in parse_iem_file(path, observation_type_override=override):
+                    obs["source"] = tag
+                    rows.append(obs)
     return rows
 
 

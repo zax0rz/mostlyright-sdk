@@ -167,4 +167,64 @@ describe("latest()", () => {
     // Verify no HTTP request was issued (validation happens before fetch).
     expect(fetchSpy).not.toHaveBeenCalled();
   });
+
+  it("IEM path uses exclusive day2 (one-day window per poll)", async () => {
+    // Regression for iter-3 codex finding: `fetchIemLatest` previously passed
+    // day1==day2 to `buildIemUrl`, but the IEM endpoint treats day2 as
+    // EXCLUSIVE — that produced a zero-day request returning no data. Fix
+    // passes `nextDayIso(today)` so we get `[today, today+1)` inclusive-start
+    // exclusive-end, the expected one-day window.
+    const captured: string[] = [];
+    fetchSpy.mockImplementation(async (input) => {
+      const url = typeof input === "string" ? input : (input as URL).toString();
+      captured.push(url);
+      return new Response("", { status: 200 });
+    });
+    // Empty CSV → NoLiveDataError, but we only care that the URL got built
+    // with day1 < day2.
+    await expect(latest("KNYC", { source: "iem" })).rejects.toThrow();
+    expect(captured.length).toBeGreaterThan(0);
+    const u = new URL(captured[0]!);
+    const y1 = Number(u.searchParams.get("year1"));
+    const m1 = Number(u.searchParams.get("month1"));
+    const d1 = Number(u.searchParams.get("day1"));
+    const y2 = Number(u.searchParams.get("year2"));
+    const m2 = Number(u.searchParams.get("month2"));
+    const d2 = Number(u.searchParams.get("day2"));
+    // day2 must be strictly AFTER day1 (one-day window).
+    const start = new Date(Date.UTC(y1, m1 - 1, d1));
+    const end = new Date(Date.UTC(y2, m2 - 1, d2));
+    expect(end.getTime() - start.getTime()).toBe(86_400_000);
+  });
+
+  it("IEM path issues report_type=3 AND report_type=4 (METAR + SPECI)", async () => {
+    // Regression for iter-3 codex finding: IEM strips the SPECI keyword
+    // from raw METAR text and serves SPECIs only via report_type=4.
+    // Routine-only (report_type=3) fetches miss intra-hour specials and
+    // `latest()` could return an older METAR when a fresher SPECI exists.
+    // Fix issues BOTH requests per poll.
+    const reportTypes: number[] = [];
+    fetchSpy.mockImplementation(async (input) => {
+      const url = typeof input === "string" ? input : (input as URL).toString();
+      const rt = Number(new URL(url).searchParams.get("report_type"));
+      reportTypes.push(rt);
+      return new Response("", { status: 200 });
+    });
+    await expect(latest("KNYC", { source: "iem" })).rejects.toThrow();
+    expect(reportTypes).toContain(3);
+    expect(reportTypes).toContain(4);
+  });
+
+  it("public subpath `@tradewinds/weather/live` is importable", async () => {
+    // Regression for iter-3 codex finding: the `live/` barrel was reachable
+    // only via the main `@tradewinds/weather` import; the documented
+    // `@tradewinds/weather/live` subpath was NOT in `package.json` exports
+    // and was NOT a tsup entry. Phase 11 iter-3 added both — verify the
+    // subpath resolves and re-exports the same surface.
+    const mod = await import("@tradewinds/weather/live");
+    expect(typeof mod.stream).toBe("function");
+    expect(typeof mod.latest).toBe("function");
+    expect(mod.SUPPORTED_SOURCES).toEqual(["awc", "iem"]);
+    expect(mod.POLITE_FLOORS_S).toEqual({ awc: 30, iem: 60 });
+  });
 });
