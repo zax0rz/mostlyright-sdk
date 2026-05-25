@@ -28,6 +28,12 @@ on:
   push:
     tags:
       - "v*rc*"
+      # `!vts-*` excludes the TypeScript rc-tag namespace (handled by
+      # release-ts.yml). Without it, `vts-0.1.0rc1` matches `v*rc*` and
+      # triggers a redundant TestPyPI publish that builds wheels from the
+      # CURRENT pyproject.toml version (not the tag) — Phase 13 W2 canary
+      # burned mostlyrightmd-weather==0.1.0rc1 on TestPyPI this way.
+      - "!vts-*"
 
 # Trusted publishing requires id-token write permission per
 # https://docs.pypi.org/trusted-publishers/using-a-publisher/.

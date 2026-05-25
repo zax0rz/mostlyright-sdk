@@ -42,15 +42,14 @@ jobs:
           fetch-depth: 0 # changesets reads commit history
 
       - uses: pnpm/action-setup@v4
-        with:
-          # pnpm 10 ships improved npm OIDC trusted-publishing support.
-          # The repo lockfile currently records pnpm@9.12.0 in package.json;
-          # the CI lane runs 10 anyway for releases because `pnpm publish
-          # --provenance` requires the newer npm-CLI delegation path. If
-          # the OIDC exchange fails despite this pin, fall back to the
-          # `NODE_AUTH_TOKEN` secret path (operator-gated).
-          # Codex iter-3 P1.
-          version: 10
+        # Phase 13 W2 npm-canary fix: the previous `with: version: 10` block
+        # conflicted with `packageManager: "pnpm@9.12.0"` in package.json —
+        # pnpm/action-setup@v4 errors out with ERR_PNPM_BAD_PM_VERSION on
+        # version mismatch. Drop the explicit `version:` and let the action
+        # follow `packageManager` (pnpm 9.12.0). If npm OIDC trusted
+        # publishing turns out to require pnpm 10 in practice, bump
+        # `packageManager` in root package.json + refresh pnpm-lock.yaml
+        # rather than re-introducing the conflict here.
 
       - uses: actions/setup-node@v4
         with:

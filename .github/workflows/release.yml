@@ -21,8 +21,13 @@ on:
       # Final v* tags only (e.g. v0.1.0, v0.1.1). Release candidate tags
       # matching v*rc* are routed to release-testpypi.yml instead, so this
       # workflow does NOT publish rc wheels to prod pypi.org.
+      # `!vts-*` excludes the TypeScript release-tag namespace (handled by
+      # release-ts.yml). Without it, a `vts-0.1.0` tag would match `v*` and
+      # trigger a prod PyPI publish of the current pyproject.toml version —
+      # silent cross-language footgun caught during Phase 13 W2 canary push.
       - "v*"
       - "!v*rc*"
+      - "!vts-*"
 
 # Trusted publishing requires id-token write permission per
 # https://docs.pypi.org/trusted-publishers/using-a-publisher/.
