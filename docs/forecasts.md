@@ -4,8 +4,15 @@ Mostlyright supports two complementary forecast surfaces:
 
 1. **IEM MOS** (Model Output Statistics) — text/JSON, parity-compatible,
    the default for `research(include_forecast=True)`.
-2. **NWP (Numerical Weather Prediction)** — gridded GRIB2 from ~20
-   models via NOAA Big Data Program / ECMWF Open Data / MSC Datamart.
+2. **NWP (Numerical Weather Prediction)** — gridded GRIB2 via NOAA Big
+   Data Program / ECMWF Open Data / MSC Datamart. **24 models are
+   declared in `schema.forecast_nwp.v1`; 11 NCEP-family models are
+   wired end-to-end in v1.0** (HRRR, HRRRAK, GFS, GEFS, GDAS, NBM, RAP,
+   RRFS, RTMA, URMA, CFS). The remaining 13 (ECMWF×4, MSC×5, HAFS, NAM,
+   HREF, HiResW) ship URL patterns, QC rules, and idx-style dispatch
+   but `forecast_nwp()` raises `NwpModelNotAvailableError` for them
+   until end-to-end fetch+decode wiring lands in a follow-up. See the
+   **Wiring status** column on each family table below.
 
 ## Quick Start
 
@@ -34,64 +41,88 @@ print(df[["date", "fcst_high_f", "fcst_high_f_nwp_hrrr", "fcst_high_f_nwp_gfs"]]
 via `settlement_date_for(observed_at, station)` so post-midnight tail
 rows roll into the correct calendar settlement.
 
-## Supported NWP Models (~20)
+## Supported NWP Models
+
+> **Wiring status legend** — `✓ wired` = fetch + decode + QC end-to-end
+> in v1.0. `reserved` = schema-declared (URL patterns, QC rules, idx
+> dispatch present) but `forecast_nwp()` raises
+> `NwpModelNotAvailableError` today. Reserved models flip to wired in
+> follow-up releases as their fetch+decode paths land.
 
 ### NCEP family (USA — NOAA BDP + NOMADS)
 
-| Model | Coverage | Cycle freq | Historical depth | Notes |
-|---|---|---|---|---|
-| `hrrr` | CONUS 3km | hourly | 2014-07-30 | High-resolution rapid refresh |
-| `hrrrak` | Alaska 3km | 3-hourly | 2018-01-01 | HRRR for Alaska |
-| `gfs` | Global 0.25° | 6-hourly | 2021-01-01 | Standard global model |
-| `gefs` | Global 0.5° ensemble (32 members) | 6-hourly | 2017-01-01 | Default member `c00`; opt in via `member=` |
-| `gdas` | Global 0.25° (short-range) | 6-hourly | 2021-01-01 | GFS analysis system |
-| `nbm` | Regional blend | hourly | 2020-01-01 | National Blend; `fxx=0` auto-bumps to `1` |
-| `rap` | CONUS 13km | hourly | 2020-01-01 | Rapid refresh |
-| `rrfs` | CONUS 3km | hourly | 2024-01-01 | HRRR successor (pre-operational) |
-| `rtma` | CONUS 2.5km analysis | hourly | 2024-01-01 | Real-time mesoscale analysis (`fxx=0` only) |
-| `urma` | CONUS 2.5km analysis | hourly | 2024-01-01 | Un-Restricted MA (`fxx=0` only) |
-| `cfs` | Global 1° (4-member) | 6-hourly | 2011-01-01 | Climate Forecast System |
+| Model | Wiring | Coverage | Cycle freq | Historical depth | Notes |
+|---|---|---|---|---|---|
+| `hrrr` | ✓ wired | CONUS 3km | hourly | 2014-07-30 | High-resolution rapid refresh |
+| `hrrrak` | ✓ wired | Alaska 3km | 3-hourly | 2018-01-01 | HRRR for Alaska |
+| `gfs` | ✓ wired | Global 0.25° | 6-hourly | 2021-01-01 | Standard global model |
+| `gefs` | ✓ wired | Global 0.5° ensemble (32 members) | 6-hourly | 2017-01-01 | Default member `c00`; opt in via `member=` |
+| `gdas` | ✓ wired | Global 0.25° (short-range) | 6-hourly | 2021-01-01 | GFS analysis system |
+| `nbm` | ✓ wired | Regional blend | hourly | 2020-01-01 | National Blend; `fxx=0` auto-bumps to `1` |
+| `rap` | ✓ wired | CONUS 13km | hourly | 2020-01-01 | Rapid refresh |
+| `rrfs` | ✓ wired | CONUS 3km | hourly | 2024-01-01 | HRRR successor (pre-operational) |
+| `rtma` | ✓ wired | CONUS 2.5km analysis | hourly | 2024-01-01 | Real-time mesoscale analysis (`fxx=0` only) |
+| `urma` | ✓ wired | CONUS 2.5km analysis | hourly | 2024-01-01 | Un-Restricted MA (`fxx=0` only) |
+| `cfs` | ✓ wired | Global 1° (4-member) | 6-hourly | 2011-01-01 | Climate Forecast System |
+
+All 11 NCEP-family models are end-to-end wired in v1.0.
 
 ### ECMWF family (Global — Open Data, 4 cloud mirrors)
 
-| Model | Cycle freq | Historical depth | Notes |
-|---|---|---|---|
-| `ecmwf_ifs_hres` | 6-hourly | 2022-01-01 | Deterministic IFS HRES |
-| `ecmwf_ifs_ens` | 6-hourly | 2022-01-01 | Ensemble IFS |
-| `ecmwf_aifs_single` | 6-hourly | 2024-02-25 | AI single |
-| `ecmwf_aifs_ens` | 6-hourly | 2024-02-25 | AI ensemble |
+| Model | Wiring | Cycle freq | Historical depth | Notes |
+|---|---|---|---|---|
+| `ecmwf_ifs_hres` | reserved | 6-hourly | 2022-01-01 | Deterministic IFS HRES |
+| `ecmwf_ifs_ens` | reserved | 6-hourly | 2022-01-01 | Ensemble IFS |
+| `ecmwf_aifs_single` | reserved | 6-hourly | 2024-02-25 | AI single |
+| `ecmwf_aifs_ens` | reserved | 6-hourly | 2024-02-25 | AI ensemble |
 
 ECMWF uses eccodes `.index` (JSON-lines) instead of wgrib2 `.idx`.
-mostlyright dispatches transparently via `IDX_STYLE_BY_MODEL`.
+mostlyright dispatches transparently via `IDX_STYLE_BY_MODEL`. The
+dispatch + URL patterns + QC tp-meters rule ship in v1.0; end-to-end
+`forecast_nwp(model="ecmwf_*")` raises `NwpModelNotAvailableError`
+until the eccodes decode path is wired in a follow-up.
 
 ### MSC Canadian family (Live-only, 24h Datamart retention)
 
-| Model | Cycle freq | Notes |
-|---|---|---|
-| `hrdps` | 6-hourly | 2.5km continental |
-| `rdps` | 6-hourly | 10km regional |
-| `gdps` | 12-hourly | 15km global |
-| `geps` | 12-hourly | 0.5° ensemble (aggregate or per-member) |
-| `reps` | 6-hourly | 10km regional ensemble (21 members) |
+| Model | Wiring | Cycle freq | Notes |
+|---|---|---|---|
+| `hrdps` | reserved | 6-hourly | 2.5km continental |
+| `rdps` | reserved | 6-hourly | 10km regional |
+| `gdps` | reserved | 12-hourly | 15km global |
+| `geps` | reserved | 12-hourly | 0.5° ensemble (aggregate or per-member) |
+| `reps` | reserved | 6-hourly | 10km regional ensemble (21 members) |
 
-**Historical NOT supported.** Calling MSC models with cycles outside
-the 24h Datamart window raises `HistoricalDepthError(archive_depth=None)`.
+URL patterns + 24h Datamart `LIVE_CYCLE_WINDOW` gating ship in v1.0;
+`forecast_nwp()` raises `NwpModelNotAvailableError` until MSC fetch is
+wired. When wired, calling MSC models with cycles outside the 24h
+Datamart window will raise `HistoricalDepthError(archive_depth=None)`.
 
 ### NOMADS-only + Legacy
 
-| Model | Cycle freq | Status |
-|---|---|---|
-| `hafs` | 6-hourly | Hurricane analysis (storm-following; requires `storm=` param) |
-| `nam` | 6-hourly | LEGACY — retiring 2026-08-31; emits `DeprecatedModelWarning` |
-| `href` | 6-hourly | LEGACY — retiring 2026-08-31 |
-| `hiresw` | 12-hourly | LEGACY — retiring 2026-08-31 |
+| Model | Wiring | Cycle freq | Status |
+|---|---|---|---|
+| `hafs` | reserved | 6-hourly | Hurricane analysis (storm-following; requires `storm=` param when wired) |
+| `nam` | reserved | 6-hourly | LEGACY — retiring 2026-08-31; emits `DeprecatedModelWarning` |
+| `href` | reserved | 6-hourly | LEGACY — retiring 2026-08-31 |
+| `hiresw` | reserved | 12-hourly | LEGACY — retiring 2026-08-31 |
 
-Use HRRR / RAP / RRFS as replacements for retiring models.
+URL patterns + QC families (HAFS basin-position, ensemble dispersion for
+HREF) ship in v1.0; `forecast_nwp()` raises `NwpModelNotAvailableError`
+for HAFS / NAM / HREF / HiResW today. Legacy models additionally emit
+`DeprecatedModelWarning` before the not-wired error. Use HRRR / RAP /
+RRFS as replacements for retiring models.
 
-## HAFS — Storm Resolution
+## HAFS — Storm Resolution (reserved in v1.0)
 
-HAFS fetches require a storm parameter. Use the storm id (e.g. `"09l"`)
-for historical access, or the storm name (e.g. `"laura"`) for
+**HAFS is schema-reserved in v1.0** — `forecast_nwp(model="hafs", ...)`
+raises `NwpModelNotAvailableError`. The interface contract below
+documents the shape end-to-end wiring will take in a follow-up release;
+write code against the signature today and the runtime will arrive
+later. The `Storms()` resolver + URL patterns + basin-position QC rule
+already ship in v1.0.
+
+HAFS fetches will require a storm parameter. Use the storm id (e.g.
+`"09l"`) for historical access, or the storm name (e.g. `"laura"`) for
 currently-active storms:
 
 ```python
@@ -100,6 +131,7 @@ from mostlyright.weather._fetchers._hafs_storms import get_active_storms
 storms = get_active_storms()
 # {"09l": "laura", "10l": "marco"}
 
+# Planned signature — raises NwpModelNotAvailableError in v1.0:
 from mostlyright.forecasts import forecast_nwp
 df = forecast_nwp(
     station="KNYC", model="hafs", storm="laura",
@@ -186,8 +218,8 @@ import { forecastNwp } from '@mostlyright/weather/forecasts';
 2026 (see Phase 17 CONTEXT decision 7). v1.1 re-evaluates browser WASM
 GRIB2 decoders.
 
-For TS NWP today, use the Python SDK (`mostlyright>=v1.0`) which has
-full Phase 17 NWP catalog support.
+For TS NWP today, use the Python SDK (`mostlyright>=v1.0`) which wires
+the NCEP family end-to-end (see the Wiring-status tables above).
 
 ## Rate Limits / Concurrency
 

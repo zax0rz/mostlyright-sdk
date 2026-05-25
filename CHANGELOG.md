@@ -11,28 +11,44 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) once it ships
 
 ### Headline Feature — Phase 17: Forecast Catalog Expansion
 
-Mostlyright's forecast surface grows from 3 live-only models (HRRR/GFS/NBM)
-to ~20 free-tier NWP models with historical backfill via AWS Big Data
+Mostlyright's forecast surface grows from 3 live-only models (HRRR / GFS
+/ NBM) to a 24-model `schema.forecast_nwp.v1` catalog with the NCEP
+family wired end-to-end and historical backfill via AWS Big Data
 Program. This is the headline v1.0 feature.
 
-**New NWP models supported (~20):**
-- **NCEP family**: HRRR (CONUS), HRRRAK (Alaska), GFS, GEFS (ensemble),
-  GDAS, NBM, RAP, RRFS, RTMA, URMA, CFS.
-- **ECMWF family**: IFS HRES, IFS ENS, AIFS single, AIFS ens (4 cloud
-  mirrors: google, aws-eu, ecmwf-origin, azure).
-- **MSC Canadian family** (live-only, 24h Datamart retention): HRDPS,
-  RDPS, GDPS, GEPS, REPS.
-- **NOMADS-only family**: HAFS (storm-following, with `Storms()` resolver).
-- **Legacy** (retiring 2026-08-31, ship with `DeprecatedModelWarning`):
-  NAM, HREF, HiResW.
+**Wiring status — 24 models declared, 11 wired in v1.0:**
+- **✓ Wired end-to-end (11 NCEP-family models)**: HRRR (CONUS), HRRRAK
+  (Alaska), GFS, GEFS (ensemble), GDAS, NBM, RAP, RRFS, RTMA, URMA, CFS.
+  These return real DataFrames from `forecast_nwp()` /
+  `research(include_forecast=True, forecast_models=[...])`.
+- **Reserved — URL patterns + QC rules + idx dispatch present;
+  `forecast_nwp()` raises `NwpModelNotAvailableError`** (deferred to a
+  follow-up release):
+  - ECMWF family (4): IFS HRES, IFS ENS, AIFS single, AIFS ens — 4
+    cloud mirrors (google, aws-eu, ecmwf-origin, azure) + eccodes
+    `.index` dispatch + tp-meters QC ship in v1.0; eccodes decode path
+    not yet wired.
+  - MSC Canadian family (5, live-only, 24h Datamart retention): HRDPS,
+    RDPS, GDPS, GEPS, REPS.
+  - HAFS (storm-following, `Storms()` resolver + basin-position QC
+    rule ship in v1.0; fetch path not yet wired).
+  - Legacy (retiring 2026-08-31; emits `DeprecatedModelWarning` before
+    the not-wired error): NAM, HREF, HiResW.
 
-**Historical backfill** via AWS BDP per-model depth:
+The full 24-model enum is locked in `schema.forecast_nwp.v1` so writing
+code today against a reserved model produces a clean
+`NwpModelNotAvailableError` instead of an empty DataFrame; the runtime
+arrives when the family's fetch+decode path is added (no schema bump).
+
+**Historical backfill** via AWS BDP per-model depth (wired models):
 - HRRR ≥ 2014-07-30
 - GFS ≥ 2021-01-01
 - GEFS ≥ 2017-01-01
 - NBM ≥ 2020-01-01
-- ECMWF IFS ≥ 2022-01-01
-- ECMWF AIFS ≥ 2024-02-25
+
+ECMWF IFS (≥ 2022-01-01) and ECMWF AIFS (≥ 2024-02-25) URL transitions
+are documented in `_url_transitions.py` for when the eccodes decode
+path is wired.
 
 **`research(include_forecast=True)` wired** (previously raised
 `NotImplementedError`):

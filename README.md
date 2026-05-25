@@ -126,11 +126,14 @@ DST handling, settlement-station mappings).
 
 `research(include_forecast=True)` populates forecast columns from IEM MOS
 (parity-compatible Mode 1) or per-model NWP (Mode 2 opt-in). Mostlyright
-supports ~20 NWP models including HRRR, GFS, GEFS, ECMWF IFS+AIFS, Canadian
-MSC (HRDPS/RDPS/GDPS/GEPS/REPS), HAFS (hurricane), CFS, RTMA/URMA.
-Historical backfill via AWS Big Data Program. See
-[`docs/forecasts.md`](docs/forecasts.md) for the full forecast catalog,
-QC rules, and historical-depth table.
+declares a 24-model `schema.forecast_nwp.v1` catalog with the **11 NCEP
+models wired end-to-end in v1.0** (HRRR, HRRRAK, GFS, GEFS, GDAS, NBM,
+RAP, RRFS, RTMA, URMA, CFS). The remaining 13 (ECMWF×4, MSC×5, HAFS,
+NAM, HREF, HiResW) ship URL patterns + QC rules but `forecast_nwp()`
+raises `NwpModelNotAvailableError` until end-to-end fetch+decode wiring
+lands. Historical backfill via AWS Big Data Program (wired models).
+See [`docs/forecasts.md`](docs/forecasts.md) for the full forecast
+catalog, wiring-status table, QC rules, and historical-depth schedule.
 
 TypeScript lane: `@mostlyright/weather/forecasts` ships `iemMosForecasts()`
 in v1.0; `forecastNwp()` is a v1.0 stub (deferred to v1.1 pending browser
