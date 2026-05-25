@@ -388,10 +388,14 @@ def _extract_records(
                     end=rec.byte_end,
                     client=client,
                 )
-            except (httpx.HTTPStatusError, httpx.RequestError) as exc:
-                # Codex iter-3 P2: byte-range failure is a transport
-                # error, not bad upstream data — give the next mirror a
-                # chance instead of raising GribIntegrityError.
+            except (httpx.HTTPStatusError, httpx.RequestError, RuntimeError) as exc:
+                # Phase 3.2 Codex iter-3 P2: byte-range failure is a
+                # transport error, not bad upstream data — give the next
+                # mirror a chance instead of raising GribIntegrityError.
+                # Phase 17 iter-2: RuntimeError now covers
+                # ``assert_range_honored`` aborts (mirror returns 200 OK
+                # with the full body instead of 206 Partial Content) —
+                # same recovery strategy: try the next mirror.
                 raise _MirrorTransportFailed(key[0], str(exc)) from exc
             record_path = (
                 tmp / f"{rec.record_no}_{rec.variable}_{rec.level.replace(' ', '_')}.grib2"

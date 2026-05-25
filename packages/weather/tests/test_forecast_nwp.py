@@ -480,6 +480,62 @@ class TestCodexP2Followups:
         finally:
             client.close()
 
+    def test_mirror_returning_200_full_body_routes_via_mirror_transport_failed(self) -> None:
+        """Phase 17 iter-2: assert_range_honored RuntimeError -> mirror fallback.
+
+        Phase 17 PLAN-01 added a 200-OK-with-full-body abort in
+        ``fetch_byte_range`` (a misconfigured mirror that ignores the
+        ``Range:`` header). That abort is a ``RuntimeError`` — without
+        the iter-2 fix, it would escape the byte-range try/except in
+        ``_extract_records`` and abort ``forecast_nwp`` outright instead
+        of falling through to the next mirror.
+
+        This test confirms the new ``RuntimeError`` clause routes
+        through ``_MirrorTransportFailed`` so the outer mirror loop
+        can continue to NOMADS / Google / Azure on the next iteration.
+        """
+        from datetime import datetime
+
+        from mostlyright.weather._fetchers._nwp_archive import build_fetch_plan
+        from mostlyright.weather._fetchers._nwp_idx import IdxRecord
+        from mostlyright.weather.forecast_nwp import (
+            _extract_records,
+            _MirrorTransportFailed,
+        )
+
+        plan = build_fetch_plan(
+            model="hrrr",
+            mirror="aws_bdp",
+            cycle=datetime(2026, 5, 23, 12, tzinfo=UTC),
+            fxx=1,
+        )
+        records = [
+            IdxRecord(1, 0, 99, "d=", "TMP", "2 m above ground", "1 hour fcst"),
+        ]
+
+        # A mirror that returns 200 OK with the FULL file body instead of
+        # the requested byte range — the failure mode FORECAST-05 guards.
+        def two_hundred_full_body(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, content=b"FULL_FILE_BODY")
+
+        client = httpx.Client(transport=httpx.MockTransport(two_hundred_full_body))
+        try:
+            with pytest.raises(_MirrorTransportFailed) as exc_info:
+                _extract_records(
+                    plan=plan,
+                    filtered_records=records,
+                    variable_map={"temp_k_2m": ("TMP", "2 m above ground")},
+                    station_coords=[(40.7, -74.0)],
+                    column_values={"temp_k_2m": [None]},
+                    distances_km=[None],
+                    model="hrrr",
+                    client=client,
+                )
+            # The underlying RuntimeError message documents the abort cause.
+            assert "Range request not honored" in exc_info.value.underlying
+        finally:
+            client.close()
+
     def test_issued_at_and_valid_at_are_utc_aware_when_caller_passes_non_utc(self) -> None:
         """Codex iter-3 P2: issued_at/valid_at must be UTC even if input was offset.
 
