@@ -1,7 +1,7 @@
 name: Schema Drift Gate
 
 # TS-W0 / CROSS-SDK-SYNC.md §1 — runs the canonical exporter +
-# @tradewinds/codegen on every PR/push that could affect generated schemas
+# @mostlyright/codegen on every PR/push that could affect generated schemas
 # or TS generated bindings. Fails on any diff in `schemas/` or
 # `packages-ts/*/src/**/generated/` — drift is fixed by re-running the
 # exporter + codegen locally and committing the result.
@@ -12,15 +12,15 @@ name: Schema Drift Gate
 on:
   push:
     paths:
-      - "packages/core/src/tradewinds/core/schemas/**"
-      - "packages/core/src/tradewinds/core/merge.py"
-      - "packages/core/src/tradewinds/_internal/_stations.py"
-      - "packages/core/src/tradewinds/_internal/merge/**"
-      - "packages/core/src/tradewinds/international.py"
-      - "packages/core/src/tradewinds/qc.py"
-      - "packages/markets/src/tradewinds/markets/catalog/kalshi_stations.py"
-      - "packages/markets/src/tradewinds/markets/_per_event_station.py"
-      - "packages/markets/src/tradewinds/markets/polymarket_city_stations.json"
+      - "packages/core/src/mostlyright/core/schemas/**"
+      - "packages/core/src/mostlyright/core/merge.py"
+      - "packages/core/src/mostlyright/_internal/_stations.py"
+      - "packages/core/src/mostlyright/_internal/merge/**"
+      - "packages/core/src/mostlyright/international.py"
+      - "packages/core/src/mostlyright/qc.py"
+      - "packages/markets/src/mostlyright/markets/catalog/kalshi_stations.py"
+      - "packages/markets/src/mostlyright/markets/_per_event_station.py"
+      - "packages/markets/src/mostlyright/markets/polymarket_city_stations.json"
       - "scripts/export_schemas.py"
       - "schemas/**"
       - "packages-ts/codegen/**"
@@ -28,15 +28,15 @@ on:
       - ".github/workflows/schema-drift.yml"
   pull_request:
     paths:
-      - "packages/core/src/tradewinds/core/schemas/**"
-      - "packages/core/src/tradewinds/core/merge.py"
-      - "packages/core/src/tradewinds/_internal/_stations.py"
-      - "packages/core/src/tradewinds/_internal/merge/**"
-      - "packages/core/src/tradewinds/international.py"
-      - "packages/core/src/tradewinds/qc.py"
-      - "packages/markets/src/tradewinds/markets/catalog/kalshi_stations.py"
-      - "packages/markets/src/tradewinds/markets/_per_event_station.py"
-      - "packages/markets/src/tradewinds/markets/polymarket_city_stations.json"
+      - "packages/core/src/mostlyright/core/schemas/**"
+      - "packages/core/src/mostlyright/core/merge.py"
+      - "packages/core/src/mostlyright/_internal/_stations.py"
+      - "packages/core/src/mostlyright/_internal/merge/**"
+      - "packages/core/src/mostlyright/international.py"
+      - "packages/core/src/mostlyright/qc.py"
+      - "packages/markets/src/mostlyright/markets/catalog/kalshi_stations.py"
+      - "packages/markets/src/mostlyright/markets/_per_event_station.py"
+      - "packages/markets/src/mostlyright/markets/polymarket_city_stations.json"
       - "scripts/export_schemas.py"
       - "schemas/**"
       - "packages-ts/codegen/**"

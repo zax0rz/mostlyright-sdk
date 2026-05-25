@@ -7,7 +7,7 @@ name: Release (PyPI trusted publishing)
 #
 # Setup checklist (one-time, before the first tagged release):
 #   1. Register the project as a "pending publisher" on PyPI for each of
-#      tradewinds, tradewinds-weather, tradewinds-markets.
+#      mostlyright, mostlyright-weather, mostlyright-markets.
 #      https://docs.pypi.org/trusted-publishers/adding-a-publisher/
 #   2. Workflow ref must match: workflow filename `release.yml`,
 #      environment name `pypi`.
@@ -97,58 +97,58 @@ jobs:
           PY
 
   publish-core:
-    name: Publish tradewinds (core)
+    name: Publish mostlyright (core)
     needs: version-guard
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/project/tradewinds/
+      url: https://pypi.org/project/mostlyright/
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
         uses: astral-sh/setup-uv@v3
       - name: Set up Python
         run: uv python install 3.12
-      - name: Build tradewinds wheel + sdist
-        run: uv build --package tradewinds
+      - name: Build mostlyright wheel + sdist
+        run: uv build --package mostlyright
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
 
   publish-weather:
-    name: Publish tradewinds-weather
+    name: Publish mostlyright-weather
     needs: version-guard
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/project/tradewinds-weather/
+      url: https://pypi.org/project/mostlyright-weather/
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
         uses: astral-sh/setup-uv@v3
       - name: Set up Python
         run: uv python install 3.12
-      - name: Build tradewinds-weather wheel + sdist
-        run: uv build --package tradewinds-weather
+      - name: Build mostlyright-weather wheel + sdist
+        run: uv build --package mostlyright-weather
       - name: Verify Requires-Dist pin (CI-04 gate)
         run: uv run python scripts/check_wheel_metadata.py
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
 
   publish-markets:
-    name: Publish tradewinds-markets
+    name: Publish mostlyright-markets
     needs: version-guard
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/project/tradewinds-markets/
+      url: https://pypi.org/project/mostlyright-markets/
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
         uses: astral-sh/setup-uv@v3
       - name: Set up Python
         run: uv python install 3.12
-      - name: Build tradewinds-markets wheel + sdist
-        run: uv build --package tradewinds-markets
+      - name: Build mostlyright-markets wheel + sdist
+        run: uv build --package mostlyright-markets
       - name: Verify Requires-Dist pin (CI-04 gate)
         run: uv run python scripts/check_wheel_metadata.py
       - name: Publish to PyPI

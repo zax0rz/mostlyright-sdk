@@ -43,11 +43,11 @@ jobs:
 
       - name: Capture current research() output → drift/
         env:
-          TRADEWINDS_TS_LIVE: "1"
-        run: pnpm --filter tradewinds drift-capture
+          MOSTLYRIGHT_TS_LIVE: "1"
+        run: pnpm --filter mostlyright drift-capture
 
       - name: Compare drift/ vs ts/ JSON fixtures (soft-fail watchdog)
-        run: pnpm --filter tradewinds drift-compare
+        run: pnpm --filter mostlyright drift-compare
 
       - name: Check for drift report
         id: report
