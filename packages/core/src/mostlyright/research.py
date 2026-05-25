@@ -1037,27 +1037,70 @@ def _fetch_nwp_models_range(
             f"YYYY-MM-DD; got from_date={from_date!r} to_date={to_date!r}"
         ) from exc
 
+    # Phase 17 Wave 4 iter-4 review HIGH:
+    # (a) Mode 2 high/low must span the settlement window — a single
+    #     ``fxx=12`` row collapses high/low to the same point forecast.
+    #     Iterate fxx hours so build_pairs_row max/min produces a real
+    #     range.
+    # (b) RTMA / URMA are analysis products that reject any non-zero
+    #     ``fxx`` at build_fetch_plan. Special-case them to fxx=0 instead
+    #     of letting the broad ``except Exception`` silently swallow the
+    #     ValueError and return empty NWP columns.
+    _ANALYSIS_MODELS = {"rtma", "urma"}
+    # 12 hours of forecast lead from a 12Z cycle covers the LST settlement
+    # window for US stations (00..12 LST roughly maps to 12Z..24Z UTC).
+    # Hourly models (HRRR/NBM/RAP) get the full 12-hour sweep; other
+    # cadences get whatever the upstream provides at their cycle.
+    _FORECAST_FXX_RANGE = list(range(0, 13))
     for model in forecast_models:
         groups[model] = {}
         cur = from_dt.replace(hour=12, minute=0, second=0, microsecond=0)
         while cur <= to_dt:
             date_iso = cur.strftime("%Y-%m-%d")
-            try:
-                df = forecast_nwp(
-                    station=info.icao,
-                    model=model,
-                    cycle=cur,
-                    fxx=12,
-                )
-                if df is not None and not df.empty:
-                    groups[model][date_iso] = df.to_dict(orient="records")
-            except Exception as exc:
-                logger.warning(
-                    "research: NWP %s cycle %s failed: %s",
-                    model,
-                    cur.isoformat(),
-                    exc,
-                )
+            if model in _ANALYSIS_MODELS:
+                # Analysis products: single fxx=0 row is the only valid call.
+                try:
+                    df = forecast_nwp(
+                        station=info.icao,
+                        model=model,
+                        cycle=cur,
+                        fxx=0,
+                    )
+                    if df is not None and not df.empty:
+                        groups[model][date_iso] = df.to_dict(orient="records")
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(
+                        "research: NWP %s cycle %s fxx=0 failed: %s",
+                        model,
+                        cur.isoformat(),
+                        exc,
+                    )
+            else:
+                # Forecast models: iterate fxx so high/low can compute over
+                # a real range of valid times.
+                per_fxx_rows: list[dict[str, Any]] = []
+                for fxx in _FORECAST_FXX_RANGE:
+                    try:
+                        df = forecast_nwp(
+                            station=info.icao,
+                            model=model,
+                            cycle=cur,
+                            fxx=fxx,
+                        )
+                        if df is not None and not df.empty:
+                            per_fxx_rows.extend(df.to_dict(orient="records"))
+                    except Exception as exc:  # noqa: BLE001
+                        # Continue past per-fxx failures so a single
+                        # missing record doesn't drop the whole day.
+                        logger.warning(
+                            "research: NWP %s cycle %s fxx=%d failed: %s",
+                            model,
+                            cur.isoformat(),
+                            fxx,
+                            exc,
+                        )
+                if per_fxx_rows:
+                    groups[model][date_iso] = per_fxx_rows
             cur += timedelta(days=1)
     return groups
 
