@@ -131,10 +131,32 @@ def test_check_historical_depth_postdepth_passes() -> None:
     check_historical_depth("hrrr", datetime(2026, 1, 1, tzinfo=UTC))
 
 
-def test_check_historical_depth_msc_always_raises() -> None:
+def test_check_historical_depth_msc_historical_raises() -> None:
+    """Live-only models (MSC family, archive_depth=None) raise for
+    truly historical cycles. Phase 17 Wave 3 iter-5: a CURRENT cycle
+    is now accepted (see ``test_check_historical_depth_msc_live_passes``)
+    so the assertion targets a 30-day-old cycle that is unambiguously
+    outside ``LIVE_CYCLE_WINDOW``.
+    """
+    from datetime import timedelta
+
+    historical = datetime.now(UTC) - timedelta(days=30)
     with pytest.raises(HistoricalDepthError) as exc_info:
-        check_historical_depth("hrdps", datetime(2026, 5, 24, 12, tzinfo=UTC))
+        check_historical_depth("hrdps", historical)
     assert exc_info.value.archive_depth is None
+
+
+def test_check_historical_depth_msc_live_passes() -> None:
+    """Phase 17 Wave 3 iter-5 review: live-only models must accept
+    recent cycles. Previously ``check_historical_depth`` raised for ANY
+    cycle when ``archive_depth=None`` — incorrectly rejecting current
+    cycles the mirror still holds.
+    """
+    from datetime import timedelta
+
+    one_hour_ago = datetime.now(UTC) - timedelta(hours=1)
+    # Should NOT raise.
+    check_historical_depth("hrdps", one_hour_ago)
 
 
 # ---------------------------------------------------------------------------
