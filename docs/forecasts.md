@@ -49,9 +49,13 @@ rows roll into the correct calendar settlement.
 
 > **Wiring status legend** — `✓ wired` = fetch + decode + QC end-to-end
 > in v1.0. `reserved` = schema-declared (URL patterns, QC rules, idx
-> dispatch present) but `forecast_nwp()` raises
-> `NwpModelNotAvailableError` today. Reserved models flip to wired in
-> follow-up releases as their fetch+decode paths land.
+> dispatch present) but `forecast_nwp()` raises today. The exact
+> exception class is family-specific: MSC×5 raise
+> `HistoricalDepthError(archive_depth=None)` (live-only contract,
+> special-cased before the reserved-models gate); ECMWF×4 / HAFS /
+> NAM / HREF / HiResW raise `NwpModelNotAvailableError`. Reserved
+> models flip to wired in follow-up releases as their fetch+decode
+> paths land.
 
 ### NCEP family (USA — NOAA BDP + NOMADS)
 
