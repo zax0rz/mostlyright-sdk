@@ -125,12 +125,13 @@ RRFS as replacements for retiring models.
 
 ## HAFS — Storm Resolution (reserved in v1.0)
 
-**HAFS is schema-reserved in v1.0** — `forecast_nwp(model="hafs", ...)`
-raises `NwpModelNotAvailableError`. The interface contract below
-documents the shape end-to-end wiring will take in a follow-up release;
-write code against the signature today and the runtime will arrive
-later. The `Storms()` resolver + URL patterns + basin-position QC rule
-already ship in v1.0.
+**HAFS is schema-reserved in v1.0** — calling
+`forecast_nwp(station=..., model="hafs")` raises
+`NwpModelNotAvailableError` via the reserved-models gate. The `storm=`
+kwarg and storm-following fetch path land in a follow-up release;
+until then, only the v1.0 call shape shown below is callable. The
+`Storms()` resolver + URL patterns + basin-position QC rule already
+ship in v1.0.
 
 The active-storm resolver already ships in v1.0 (the `Storms()` cache
 + `get_active_storms()` text-table parser):
