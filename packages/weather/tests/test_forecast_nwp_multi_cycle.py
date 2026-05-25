@@ -153,8 +153,7 @@ def test_forecast_nwp_cycle_range_honors_backend_polars() -> None:
             # outer-most call's wrap happens exactly once on the
             # concatenated frame (Finding 3 contract).
             assert kwargs.get("backend") == "pandas", (
-                f"recursive call must use backend='pandas'; got "
-                f"backend={kwargs.get('backend')!r}"
+                f"recursive call must use backend='pandas'; got backend={kwargs.get('backend')!r}"
             )
             assert kwargs.get("return_type") == "dataframe", (
                 f"recursive call must use return_type='dataframe'; got "
@@ -189,8 +188,7 @@ def test_forecast_nwp_cycle_range_honors_backend_polars() -> None:
         f"expected TradewindsResult wrapper; got {type(result).__name__}"
     )
     assert isinstance(result.frame, polars.DataFrame), (
-        f"expected polars.DataFrame inside wrapper; got "
-        f"{type(result.frame).__name__}"
+        f"expected polars.DataFrame inside wrapper; got {type(result.frame).__name__}"
     )
 
 
@@ -236,8 +234,7 @@ def test_forecast_nwp_cycle_range_empty_honors_backend_polars() -> None:
         )
 
     assert isinstance(result, TradewindsResult), (
-        f"expected TradewindsResult wrapper on empty result; got "
-        f"{type(result).__name__}"
+        f"expected TradewindsResult wrapper on empty result; got {type(result).__name__}"
     )
     assert isinstance(result.frame, polars.DataFrame), (
         f"expected polars.DataFrame inside wrapper on empty result; got "

@@ -1068,10 +1068,7 @@ def _fetch_nwp_models_range(
 
     for _m in forecast_models:
         if _m not in SUPPORTED_NWP_MODELS:
-            raise ValueError(
-                f"NWP model must be one of {sorted(SUPPORTED_NWP_MODELS)}; "
-                f"got {_m!r}"
-            )
+            raise ValueError(f"NWP model must be one of {sorted(SUPPORTED_NWP_MODELS)}; got {_m!r}")
         if _m not in _WIRED_NWP_MODELS:
             raise NwpModelNotAvailableError(
                 f"NWP model {_m!r} is reserved in schema.forecast_nwp.v1 "
@@ -1539,9 +1536,7 @@ def research(
         # passes it directly to fetch_iem_mos which validates against
         # SUPPORTED_MOS_MODELS.
         iem_model = (forecast_model or "nbe").lower()
-        iem_mos_by_date = _fetch_iem_mos_range(
-            info, from_date, to_date, model=iem_model
-        )
+        iem_mos_by_date = _fetch_iem_mos_range(info, from_date, to_date, model=iem_model)
         if forecast_models:
             nwp_by_model_date = _fetch_nwp_models_range(
                 info, from_date, to_date, list(forecast_models)

@@ -309,8 +309,7 @@ def build_pairs_row(
             iem_records = [
                 r
                 for r in iem_records
-                if (m := r.get("model")) is not None
-                and str(m).upper() == target_model
+                if (m := r.get("model")) is not None and str(m).upper() == target_model
             ]
 
         fcst_high: float | None = None
