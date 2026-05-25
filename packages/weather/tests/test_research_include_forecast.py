@@ -298,3 +298,154 @@ def test_research_backward_compat_no_kwargs(monkeypatch: pytest.MonkeyPatch, tmp
     assert isinstance(df, pd.DataFrame)
     assert "station" in df.columns
     assert "cli_high_f" in df.columns
+
+
+# ----------------------------------------------------------------------
+# Phase 17 Wave 4 iter-2 review HIGH regression tests
+# ----------------------------------------------------------------------
+def test_fetch_nwp_models_range_fetches_00z_and_12z_with_full_lead(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Finding 1 — _fetch_nwp_models_range must request both 00Z and 12Z
+    cycles for each settlement date (plus the prior day's 12Z) and must
+    iterate fxx through hours that cover the LST late-evening portion of
+    the settlement window. A single 12Z + fxx=0..12 sweep only covers
+    ~12Z..24Z UTC and misses the early-morning LST low + late-evening
+    LST high for any non-UTC-aligned station like KNYC.
+    """
+    from mostlyright._internal._stations import STATIONS
+    from mostlyright.research import _fetch_nwp_models_range
+
+    info = STATIONS["NYC"]
+
+    seen_calls: list[dict[str, Any]] = []
+
+    def _spy(*args: Any, **kwargs: Any) -> pd.DataFrame:
+        seen_calls.append(
+            {
+                "cycle": kwargs.get("cycle"),
+                "fxx": kwargs.get("fxx"),
+                "model": kwargs.get("model"),
+            }
+        )
+        return pd.DataFrame()
+
+    with patch("mostlyright.weather.forecast_nwp.forecast_nwp", side_effect=_spy):
+        _ = _fetch_nwp_models_range(info, "2025-01-06", "2025-01-06", ["hrrr"])
+
+    # Collect the (cycle_hour_utc, cycle_date_offset) signatures.
+    cycle_hours_utc = {c["cycle"].hour for c in seen_calls}
+    cycle_dates = {c["cycle"].date().isoformat() for c in seen_calls}
+
+    # Both 00Z and 12Z must be among the requested cycle hours.
+    assert 0 in cycle_hours_utc, (
+        f"00Z cycle missing from requested cycles; got hours={sorted(cycle_hours_utc)!r}"
+    )
+    assert 12 in cycle_hours_utc, (
+        f"12Z cycle missing from requested cycles; got hours={sorted(cycle_hours_utc)!r}"
+    )
+    # Prior-day 12Z is part of the LST envelope.
+    assert "2025-01-05" in cycle_dates, (
+        f"prior day's 12Z cycle missing; got dates={sorted(cycle_dates)!r}"
+    )
+    assert "2025-01-06" in cycle_dates, (
+        f"current day cycle missing; got dates={sorted(cycle_dates)!r}"
+    )
+
+    # At least one (cycle, fxx) call has a valid_time that lands in the
+    # KNYC late-evening LST window. KNYC LST settlement spans roughly
+    # 05Z..05Z; the high typically lands ~ 19-22 LST = 00Z-03Z next day.
+    # The current-day 12Z + fxx=22 hits 10Z next day, but the prior-day
+    # 12Z + fxx=12..16 lands at 00Z..04Z current day — that's the
+    # late-evening LST window relative to the prior LST day. For the
+    # 2025-01-06 settlement window specifically, the current-day 00Z +
+    # fxx >= 22 lands at >= 22Z = 17 LST = late-evening for KNYC.
+    late_evening_hits = [
+        c
+        for c in seen_calls
+        if c["cycle"].hour == 0
+        and c["cycle"].date().isoformat() == "2025-01-06"
+        and c["fxx"] is not None
+        and 22 <= c["fxx"] <= 24
+    ]
+    assert late_evening_hits, (
+        "expected at least one cycle=2025-01-06T00Z + fxx in [22, 24] to "
+        f"cover the LST late-evening window; got calls={seen_calls!r}"
+    )
+
+
+def test_research_invalid_forecast_model_raises_value_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Any
+) -> None:
+    """Finding 2 — research(forecast_models=['hrr']) (typo) must raise
+    ValueError up-front instead of silently swallowing the model
+    validation error inside the per-fxx loop and producing empty
+    fcst_*_nwp_<model> columns.
+    """
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
+
+    obs_rows = [_fake_obs_row("NYC", "2025-01-06T18:00:00Z", 40.0)]
+    climate_rows = [_fake_climate_row("NYC", "2025-01-06", 45.0, 30.0)]
+
+    with (
+        patch(
+            "mostlyright.research._fetch_observations_range",
+            return_value=obs_rows,
+        ),
+        patch(
+            "mostlyright.research._fetch_climate_range",
+            return_value=climate_rows,
+        ),
+        patch("mostlyright.research._all_caches_warm", return_value=True),
+        patch(
+            "mostlyright.weather._fetchers._iem_mos.fetch_iem_mos",
+            return_value=_fake_iem_mos_df(),
+        ),
+    ):
+        with pytest.raises(ValueError, match="NWP model must be"):
+            _ = mostlyright.research(
+                "KNYC",
+                "2025-01-06",
+                "2025-01-06",
+                include_forecast=True,
+                forecast_models=["hrr"],  # typo
+            )
+
+
+def test_research_reserved_forecast_model_raises_not_available(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Any
+) -> None:
+    """Finding 2 — research(forecast_models=['ecmwf_ifs_hres']) must
+    raise NwpModelNotAvailableError up-front. ECMWF Tier-2 is reserved
+    in the schema enum but not wired in v0.1.0.
+    """
+    from mostlyright.core.exceptions import NwpModelNotAvailableError
+
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
+
+    obs_rows = [_fake_obs_row("NYC", "2025-01-06T18:00:00Z", 40.0)]
+    climate_rows = [_fake_climate_row("NYC", "2025-01-06", 45.0, 30.0)]
+
+    with (
+        patch(
+            "mostlyright.research._fetch_observations_range",
+            return_value=obs_rows,
+        ),
+        patch(
+            "mostlyright.research._fetch_climate_range",
+            return_value=climate_rows,
+        ),
+        patch("mostlyright.research._all_caches_warm", return_value=True),
+        patch(
+            "mostlyright.weather._fetchers._iem_mos.fetch_iem_mos",
+            return_value=_fake_iem_mos_df(),
+        ),
+    ):
+        with pytest.raises(NwpModelNotAvailableError):
+            _ = mostlyright.research(
+                "KNYC",
+                "2025-01-06",
+                "2025-01-06",
+                include_forecast=True,
+                forecast_models=["ecmwf_ifs_hres"],
+            )

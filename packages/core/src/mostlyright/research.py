@@ -1013,19 +1013,74 @@ def _fetch_nwp_models_range(
     to_date: str,
     forecast_models: list[str],
 ) -> dict[str, dict[str, list[dict[str, Any]]]]:
-    """Mode 2 — fetch per-model NWP forecasts (one 12Z cycle per day).
+    """Mode 2 — fetch per-model NWP forecasts covering the LST settlement window.
 
-    Iterates each model in ``forecast_models``, fetches a single
-    representative 12Z cycle per LST date in ``[from_date, to_date]``, and
-    returns ``{model: {date_iso: [forecast_row, ...]}}``. Per-cycle
-    exceptions are logged and the iteration continues — a single
-    upstream failure does not abort the whole batch.
+    Iterates each model in ``forecast_models``. For each LST settlement
+    date in ``[from_date, to_date]`` fetches enough ``(cycle, fxx)`` pairs
+    to envelop the full LST 00..23:59 window in UTC:
 
-    Cycle-per-day is a simplifying choice for v0.1.0 Mode 2 — the user
-    can still get sub-daily by calling ``forecast_nwp`` directly. Phase
-    17 CONTEXT decision 7 records this choice.
+    - **Forecast models** (HRRR/GFS/NBM/RAP/RRFS/GEFS/GDAS/CFS/HRRRAK):
+      pull the prior day's 12Z cycle + the current day's 00Z + 12Z
+      cycles, each with ``fxx=0..24``. That ~36-hour envelope dominates
+      any LST settlement day in the US tz range (UTC-10 .. UTC-4) so
+      build_pairs_row's max/min compute over the real settlement window
+      regardless of station tz.
+    - **Analysis products** (RTMA / URMA): only ``fxx=0`` is valid — they
+      reject non-zero forecast hours at ``build_fetch_plan``. Pull the
+      current day's 12Z cycle only (one analysis row per LST date is the
+      simplifying convention).
+
+    Returns ``{model: {date_iso: [forecast_row, ...]}}``. Per-cycle
+    network / GRIB / mirror-availability exceptions are logged and the
+    iteration continues — a single upstream failure does not abort the
+    whole batch. VALIDATION errors (unknown / reserved model) are NOT
+    swallowed — they're raised up-front before any HTTP fires, so a
+    typo'd ``forecast_models=["hrr"]`` surfaces as a ``ValueError``
+    instead of silently producing empty NWP columns.
+
+    Raises:
+        ValueError: ``from_date`` / ``to_date`` not ISO YYYY-MM-DD, OR
+            any entry in ``forecast_models`` is not in
+            :data:`SUPPORTED_NWP_MODELS`.
+        NwpModelNotAvailableError: any entry in ``forecast_models`` is in
+            ``SUPPORTED_NWP_MODELS`` but not yet wired (e.g. ECMWF Tier-2,
+            HAFS, MSC family, legacy NAM/HREF/HiResW).
     """
-    from mostlyright.weather.forecast_nwp import forecast_nwp
+    # Phase 17 Wave 4 iter-2 review HIGH (Finding 2): validate the model
+    # list UP-FRONT, before the per-cycle loop. The loop's per-fxx except
+    # clause used to swallow ``ValueError("NWP model must be ...")`` and
+    # ``NwpModelNotAvailableError`` along with network errors, so a typo
+    # silently produced an empty NWP dict + empty fcst_*_nwp columns.
+    # Import the wired set + exception classes lazily — they live in the
+    # weather package which is an optional sibling here.
+    import httpx  # local import: only needed for the narrowed except below
+
+    from mostlyright.core.exceptions import (
+        GribIntegrityError,
+        NoLiveForNwpError,
+        NwpModelNotAvailableError,
+    )
+    from mostlyright.weather._fetchers._nwp_archive import SUPPORTED_NWP_MODELS
+    from mostlyright.weather.forecast_nwp import (
+        _WIRED_NWP_MODELS,
+        forecast_nwp,
+    )
+
+    for _m in forecast_models:
+        if _m not in SUPPORTED_NWP_MODELS:
+            raise ValueError(
+                f"NWP model must be one of {sorted(SUPPORTED_NWP_MODELS)}; "
+                f"got {_m!r}"
+            )
+        if _m not in _WIRED_NWP_MODELS:
+            raise NwpModelNotAvailableError(
+                f"NWP model {_m!r} is reserved in schema.forecast_nwp.v1 "
+                "but not wired in v0.1.0 (deferred to v0.2 — ECMWF Tier-2, "
+                "HAFS, MSC family, and legacy NAM/HREF/HiResW require "
+                "additional wiring).",
+                model=_m,
+                available_in="v0.2",
+            )
 
     groups: dict[str, dict[str, list[dict[str, Any]]]] = {}
     try:
@@ -1037,38 +1092,44 @@ def _fetch_nwp_models_range(
             f"YYYY-MM-DD; got from_date={from_date!r} to_date={to_date!r}"
         ) from exc
 
-    # Phase 17 Wave 4 iter-4 review HIGH:
-    # (a) Mode 2 high/low must span the settlement window — a single
-    #     ``fxx=12`` row collapses high/low to the same point forecast.
-    #     Iterate fxx hours so build_pairs_row max/min produces a real
-    #     range.
-    # (b) RTMA / URMA are analysis products that reject any non-zero
-    #     ``fxx`` at build_fetch_plan. Special-case them to fxx=0 instead
-    #     of letting the broad ``except Exception`` silently swallow the
-    #     ValueError and return empty NWP columns.
+    # Phase 17 Wave 4 iter-2 review HIGH (Finding 1): a single 12Z cycle
+    # with fxx=0..12 only covers ~12Z..24Z UTC. For an Eastern-tz station
+    # like KNYC, LST settlement spans roughly 05Z..05Z, so the early-
+    # morning low + late-evening high straddle the prior/next UTC days.
+    # Fetch the prior day's 12Z, current day's 00Z, and current day's
+    # 12Z cycles with fxx=0..24 each — that ~36h envelope dominates any
+    # US-tz LST settlement day (UTC-10 Hawaii .. UTC-4 EDT).
     _ANALYSIS_MODELS = {"rtma", "urma"}
-    # 12 hours of forecast lead from a 12Z cycle covers the LST settlement
-    # window for US stations (00..12 LST roughly maps to 12Z..24Z UTC).
-    # Hourly models (HRRR/NBM/RAP) get the full 12-hour sweep; other
-    # cadences get whatever the upstream provides at their cycle.
-    _FORECAST_FXX_RANGE = list(range(0, 13))
+    _FORECAST_FXX_RANGE = list(range(0, 25))
     for model in forecast_models:
         groups[model] = {}
         cur = from_dt.replace(hour=12, minute=0, second=0, microsecond=0)
         while cur <= to_dt:
             date_iso = cur.strftime("%Y-%m-%d")
             if model in _ANALYSIS_MODELS:
-                # Analysis products: single fxx=0 row is the only valid call.
+                # Analysis products: only fxx=0 is valid. Pull one 12Z
+                # analysis per settlement date (single representative
+                # snapshot is the documented v0.1.0 convention for
+                # nowcast products).
+                cycles_for_day = [(cur, 0)]
                 try:
                     df = forecast_nwp(
                         station=info.icao,
                         model=model,
-                        cycle=cur,
-                        fxx=0,
+                        cycle=cycles_for_day[0][0],
+                        fxx=cycles_for_day[0][1],
                     )
                     if df is not None and not df.empty:
                         groups[model][date_iso] = df.to_dict(orient="records")
-                except Exception as exc:  # noqa: BLE001
+                except (
+                    NoLiveForNwpError,
+                    GribIntegrityError,
+                    httpx.HTTPError,
+                    httpx.RequestError,
+                ) as exc:
+                    # Network / mirror availability / GRIB integrity:
+                    # transient. Validation errors do NOT land here —
+                    # they're raised up-front above.
                     logger.warning(
                         "research: NWP %s cycle %s fxx=0 failed: %s",
                         model,
@@ -1076,29 +1137,44 @@ def _fetch_nwp_models_range(
                         exc,
                     )
             else:
-                # Forecast models: iterate fxx so high/low can compute over
-                # a real range of valid times.
+                # Forecast models: span prior-day 12Z + current-day 00Z + 12Z,
+                # each with fxx=0..24, to envelop the full LST settlement
+                # window regardless of station tz.
+                cycles_for_day = [
+                    (cur - timedelta(days=1), None),  # prior day 12Z
+                    (cur.replace(hour=0), None),  # current day 00Z
+                    (cur, None),  # current day 12Z
+                ]
                 per_fxx_rows: list[dict[str, Any]] = []
-                for fxx in _FORECAST_FXX_RANGE:
-                    try:
-                        df = forecast_nwp(
-                            station=info.icao,
-                            model=model,
-                            cycle=cur,
-                            fxx=fxx,
-                        )
-                        if df is not None and not df.empty:
-                            per_fxx_rows.extend(df.to_dict(orient="records"))
-                    except Exception as exc:  # noqa: BLE001
-                        # Continue past per-fxx failures so a single
-                        # missing record doesn't drop the whole day.
-                        logger.warning(
-                            "research: NWP %s cycle %s fxx=%d failed: %s",
-                            model,
-                            cur.isoformat(),
-                            fxx,
-                            exc,
-                        )
+                for c, _ in cycles_for_day:
+                    for fxx in _FORECAST_FXX_RANGE:
+                        try:
+                            df = forecast_nwp(
+                                station=info.icao,
+                                model=model,
+                                cycle=c,
+                                fxx=fxx,
+                            )
+                            if df is not None and not df.empty:
+                                per_fxx_rows.extend(df.to_dict(orient="records"))
+                        except (
+                            NoLiveForNwpError,
+                            GribIntegrityError,
+                            httpx.HTTPError,
+                            httpx.RequestError,
+                        ) as exc:
+                            # Narrow except: only transient / network /
+                            # GRIB-integrity errors. ValueError +
+                            # NwpModelNotAvailableError propagate — they
+                            # cannot be reached here because the model
+                            # list is validated up-front.
+                            logger.warning(
+                                "research: NWP %s cycle %s fxx=%d failed: %s",
+                                model,
+                                c.isoformat(),
+                                fxx,
+                                exc,
+                            )
                 if per_fxx_rows:
                     groups[model][date_iso] = per_fxx_rows
             cur += timedelta(days=1)

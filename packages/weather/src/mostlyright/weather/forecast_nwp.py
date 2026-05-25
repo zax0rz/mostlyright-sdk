@@ -624,6 +624,13 @@ def forecast_nwp(
         per_cycle_frames: list[pd.DataFrame] = []
         for _c in cycles_to_fetch:
             try:
+                # Phase 17 Wave 4 iter-2 review HIGH (Finding 3): force the
+                # per-cycle recursive call to return a raw pandas DataFrame
+                # regardless of the caller's backend / return_type. We
+                # concatenate pandas frames here and then route the final
+                # result through ``_maybe_wrap_forecast`` below so the
+                # outer caller's backend/return_type contract is honored
+                # exactly once.
                 cycle_df = forecast_nwp(
                     station=station,
                     model=model,
@@ -631,6 +638,8 @@ def forecast_nwp(
                     fxx=fxx if fxx is not None else (0 if model in {"rtma", "urma"} else 1),
                     mirror=mirror,
                     client=client,
+                    backend="pandas",
+                    return_type="dataframe",
                 )
                 if cycle_df is not None and not cycle_df.empty:
                     per_cycle_frames.append(cycle_df)
@@ -649,8 +658,20 @@ def forecast_nwp(
                 )
                 continue
         if not per_cycle_frames:
-            return _pd.DataFrame()
-        return _pd.concat(per_cycle_frames, ignore_index=True)
+            # Phase 17 Wave 4 iter-2 review HIGH (Finding 3): even the
+            # empty-result path must honor backend/return_type so polars /
+            # TradewindsResult callers don't get a raw pandas DataFrame
+            # back when every cycle failed.
+            return _maybe_wrap_forecast(
+                _pd.DataFrame(),
+                backend=backend,
+                return_type=return_type,
+            )
+        return _maybe_wrap_forecast(
+            _pd.concat(per_cycle_frames, ignore_index=True),
+            backend=backend,
+            return_type=return_type,
+        )
 
     # If the caller supplied a single cycle, validate its archive depth
     # BEFORE the [nwp] extra imports so callers without cfgrib still see

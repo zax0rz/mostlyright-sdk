@@ -120,3 +120,126 @@ def test_forecast_nwp_single_cycle_path_still_works() -> None:
         # The test's only assertion is that the PLAN-09 placeholder
         # NotImplementedError is gone (handled above).
         pass
+
+
+# ----------------------------------------------------------------------
+# Phase 17 Wave 4 iter-2 review HIGH — Finding 3 regression
+# ----------------------------------------------------------------------
+def test_forecast_nwp_cycle_range_honors_backend_polars() -> None:
+    """Finding 3 — the multi-cycle (cycle_range_start/end) path concats
+    per-cycle pandas DataFrames then must route the result through
+    ``_maybe_wrap_forecast`` so backend / return_type are honored. Prior
+    to the fix, the multi-cycle path returned a raw ``pd.concat(...)``
+    even when the caller passed ``backend='polars'`` /
+    ``return_type='wrapper'``.
+
+    Skipped if the [polars] optional extra is not installed.
+    """
+    import pytest
+
+    polars = pytest.importorskip("polars")
+    from mostlyright.core.result import TradewindsResult
+
+    start = datetime(2025, 6, 1, 0, 0, tzinfo=UTC)
+    end = datetime(2025, 6, 1, 2, 0, tzinfo=UTC)
+
+    real_forecast_nwp = forecast_nwp
+
+    def _fake_single(*args: object, **kwargs: object) -> pd.DataFrame:
+        cycle = kwargs.get("cycle")
+        # Per-cycle recursive call (no cycle_range kwargs).
+        if cycle is not None and kwargs.get("cycle_range_start") is None:
+            # Recursive call MUST be forced to pandas+dataframe so the
+            # outer-most call's wrap happens exactly once on the
+            # concatenated frame (Finding 3 contract).
+            assert kwargs.get("backend") == "pandas", (
+                f"recursive call must use backend='pandas'; got "
+                f"backend={kwargs.get('backend')!r}"
+            )
+            assert kwargs.get("return_type") == "dataframe", (
+                f"recursive call must use return_type='dataframe'; got "
+                f"return_type={kwargs.get('return_type')!r}"
+            )
+            return pd.DataFrame([_row(cycle)])
+        return real_forecast_nwp(*args, **kwargs)  # type: ignore[arg-type]
+
+    with (
+        patch(
+            "mostlyright.weather._fetchers._nwp_cycle_chunks.check_historical_depth",
+            return_value=None,
+        ),
+        patch(
+            "mostlyright.weather.forecast_nwp.forecast_nwp",
+            side_effect=_fake_single,
+        ),
+    ):
+        result = real_forecast_nwp(
+            station="KNYC",
+            model="hrrr",
+            cycle_range_start=start,
+            cycle_range_end=end,
+            backend="polars",
+            return_type="wrapper",
+        )
+
+    # backend='polars' + return_type='wrapper' → TradewindsResult holding
+    # a polars DataFrame. Before the fix this returned a raw pandas
+    # DataFrame from pd.concat(...).
+    assert isinstance(result, TradewindsResult), (
+        f"expected TradewindsResult wrapper; got {type(result).__name__}"
+    )
+    assert isinstance(result.frame, polars.DataFrame), (
+        f"expected polars.DataFrame inside wrapper; got "
+        f"{type(result.frame).__name__}"
+    )
+
+
+def test_forecast_nwp_cycle_range_empty_honors_backend_polars() -> None:
+    """Finding 3 — even when every cycle yields an empty frame, the
+    backend / return_type contract must be honored. Prior to the fix
+    the ``if not per_cycle_frames: return _pd.DataFrame()`` short-circuit
+    leaked a raw pandas DataFrame.
+    """
+    import pytest
+
+    polars = pytest.importorskip("polars")
+    from mostlyright.core.result import TradewindsResult
+
+    start = datetime(2025, 6, 1, 0, 0, tzinfo=UTC)
+    end = datetime(2025, 6, 1, 1, 0, tzinfo=UTC)
+
+    real_forecast_nwp = forecast_nwp
+
+    def _fake_empty(*args: object, **kwargs: object) -> pd.DataFrame:
+        if kwargs.get("cycle") is not None and kwargs.get("cycle_range_start") is None:
+            # Empty per-cycle frame; outer wrap must still honor backend.
+            return pd.DataFrame()
+        return real_forecast_nwp(*args, **kwargs)  # type: ignore[arg-type]
+
+    with (
+        patch(
+            "mostlyright.weather._fetchers._nwp_cycle_chunks.check_historical_depth",
+            return_value=None,
+        ),
+        patch(
+            "mostlyright.weather.forecast_nwp.forecast_nwp",
+            side_effect=_fake_empty,
+        ),
+    ):
+        result = real_forecast_nwp(
+            station="KNYC",
+            model="hrrr",
+            cycle_range_start=start,
+            cycle_range_end=end,
+            backend="polars",
+            return_type="wrapper",
+        )
+
+    assert isinstance(result, TradewindsResult), (
+        f"expected TradewindsResult wrapper on empty result; got "
+        f"{type(result).__name__}"
+    )
+    assert isinstance(result.frame, polars.DataFrame), (
+        f"expected polars.DataFrame inside wrapper on empty result; got "
+        f"{type(result.frame).__name__}"
+    )
