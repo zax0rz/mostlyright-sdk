@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v0.1.0
 milestone_name: — `@tradewinds/*` on npm)
-status: Phase 9 (Markets Trade History — Kalshi + Polymarket) code-complete + review-clean. Phases 6 + 7 + 8 already on main. Python v0.1.0rc1 publish remains operator-gated. 8/8 TS phases code-complete (npm publish operator-gated).
-stopped_at: "Phase 9 ready to merge to main on top of 6+7+8 (5 review iterations; codex + python-architect + ts-architect all PASS)"
-last_updated: "2026-05-25T09:00:00.000Z"
-last_activity: "2026-05-25 - Phase 9 Markets Trade History code-complete (5-iter review; real Kalshi _dollars/_fp shapes + CLOB host for Polymarket prices-history + Retry-After cap + polite-floor inherit + [trades] extra)"
+status: Phase 10 (Composable research() — selectors + discover() v0.2 surface) code-complete + review-clean. Phases 6 + 7 + 8 + 9 already on main. Python v0.1.0rc1 publish remains operator-gated. 8/8 TS phases code-complete (npm publish operator-gated).
+stopped_at: "Phase 10 ready to merge to main on top of 6+7+8+9 (3 review iterations; codex + python+ts architects all PASS)"
+last_updated: "2026-05-25T03:00:00.000Z"
+last_activity: "2026-05-25 - Phase 10 (composable research() selector validation + cross-issuer slug alias table + discover() ergonomic surface) code-complete; v0.3 deliverable is the multi-station JOIN + trade attachment"
 progress:
   total_phases: 22
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 27
-  completed_plans: 22
-  percent: 81
+  completed_plans: 23
+  percent: 85
 ---
 
 # Project State
@@ -31,6 +31,48 @@ Status: Phase 6 + Phase 7 + Phase 8 all merged to main. Phase 6 shipped via 5-it
 Last activity: 2026-05-25 - Phase 6 (TradewindsResult wrapper + pandas 3 dual-lock + opt-in polars backend) merged on top of Phase 7 + 8.
 
 Progress: Python [██████████] 100% v0.1 (12/12 phases) + **Phase 6 v0.2** + **Phase 7** + **Phase 8** | TS [8/8 phases shipped — TS-W0 → TS-W7 code-complete; 1228 TS tests; npm publish operator-gated]
+
+## Phase 10 closeout (2026-05-25) — Composable research() (validation surface)
+
+Merge commit pending. Ships the composable `research()` dispatcher + `discover()` ergonomic surface for Python and TS. Phase 10 v0.2 deliverable is the **validation + dispatch surface only**; the multi-station / multi-issuer JOIN + trade-attachment is explicitly deferred to v0.3 with a clear `NotImplementedError` pointing callers at `discover()` + the station-path workaround.
+
+**Requirements shipped (9/9 validation surface):**
+- COMPOSE-01: mutually-exclusive `station=` / `city=` / `contract=` / `contracts=` selectors at the dispatch layer. Validated in both Python (`_compose.validate_selectors`) and TS (`compose.validateSelectors`).
+- COMPOSE-02: `contract="kalshi:KXHIGHNY-25MAY26-T79"` resolves through Phase 8 catalog + alias tables (`_KALSHI_TICKER_ALIASES`) to KNYC. v0.2 surfaces resolution + raises NotImplementedError for the actual JOIN; v0.3 wires the data fetch.
+- COMPOSE-03: validation accepts `contracts=[...]` + `include_trades=True`; v0.3 delivers the multi-issuer DataFrame + computed `basis_f`.
+- COMPOSE-04: `research(city="NYC")` validated + resolved to (KNYC, KLGA, KJFK, KEWR); v0.3 delivers the multi-station rows.
+- COMPOSE-05: `station_override=` validated to require `contract=`. `StationOverrideWarning` (Python `UserWarning` subclass) + TS structured-warning object emitted via `onWarning?` callback.
+- COMPOSE-06: `sources=` (plural) vs `source=` (singular) mutually exclusive; v0.2 raises NotImplementedError pointing callers at `tradewinds.mode2.research_by_source` for Mode 2 today.
+- COMPOSE-07: `discover(city=...)` ergonomic surface (Python: `tradewinds.discover`; TS: `tradewinds/@tradewinds/meta.discover`). Returns per-station table with `settles_for` annotations. Cross-issuer slug alias table (`_CITY_SLUG_ALIASES` / `CITY_SLUG_ALIASES`) ensures EITHER slug form (NYC/nyc, CHI/chicago, LAX/los_angeles, etc.) surfaces the full settlement neighborhood.
+- COMPOSE-08: paired TS evolution. `ResearchOptions` extended with `city`/`contract`/`contracts`/`stationOverride`/`sources`/`source`/`includeTrades`/`onWarning`. TS compose lives in `@tradewinds/meta` (not `@tradewinds/core`) to avoid the markets→core dependency cycle.
+- COMPOSE-09: backwards compatibility preserved. Existing `research(station, from_date, to_date)` signature works unchanged. `tests/test_parity.py` byte-equivalent.
+
+**Review discipline:** 3-iteration loop (terminated early; all reviewers PASS).
+- iter-1: 3 HIGH closed — Kalshi NY ticker alias (KXHIGHNY → NYC catalog key), discover() ImportError handling, sources= / source= silent bypass. Plus python-architect's slug-asymmetry HIGH × 3 (cross-issuer alias table closes all three).
+- iter-2: 1 HIGH closed (codex) — discover() lazy-ImportError leak past the iter-1 wrapper. TS+Python architects PASS.
+- iter-3: codex PASS.
+
+**Test coverage delta:**
+- Python: 1904 → **1971** (+67 new — test_compose 47 + test_discover 12 + research-signature 8).
+- TS meta: 87 → **135** (+48 new in compose.test.ts).
+- TS workspace total: 1275 → **1323**.
+- Parity gate green (5 fixtures byte-equivalent).
+- 5 TS packages typecheck clean.
+
+**Files modified (Python + TS, paired):**
+- packages/core/src/tradewinds/_compose.py (new) — dispatcher, alias tables, resolvers, StationOverrideWarning.
+- packages/core/src/tradewinds/discover.py (new) — per-station ergonomic table; SourceUnavailableError on lazy markets-ImportError.
+- packages/core/src/tradewinds/research.py — signature widened; selector + cross-arg validation; v0.3 NotImplementedError for non-station selectors + sources/source.
+- packages/core/src/tradewinds/__init__.py — re-export `discover`.
+- packages/core/tests/test_compose.py + test_discover.py (new).
+- packages-ts/meta/src/compose.ts (new; lives in meta to avoid cycle).
+- packages-ts/meta/src/discover.ts (new).
+- packages-ts/meta/src/research.ts — ResearchOptions extended; validation in research() body.
+- packages-ts/meta/src/index.ts — re-exports.
+- packages-ts/meta/tsconfig.json + vitest.config.ts — subpath aliases for vitest.
+- packages-ts/meta/tests/compose.test.ts (new).
+
+**Unblocks:** v0.3 multi-station JOIN + trade-attachment work on top of this validated dispatch surface.
 
 ## Phase 6 — Pandas 3 + Optional Polars Backend closeout (2026-05-25)
 

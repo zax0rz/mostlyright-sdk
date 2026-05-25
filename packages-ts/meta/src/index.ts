@@ -38,4 +38,23 @@ export {
   type SourceMismatchRole,
 } from "./mode2.js";
 
+// Phase 10: composable research() dispatcher + discover() ergonomic
+// surface. Lives in @tradewinds/meta because compose.ts pulls in both
+// @tradewinds/core (cache, station registry) and @tradewinds/markets
+// (Kalshi catalog + Polymarket catalog + denylist) — keeping it in
+// core would create a cycle (markets depends on core).
+export {
+  SELECTOR_NAMES,
+  annotateSettlesFor,
+  buildOverrideWarning,
+  resolveCity,
+  resolveContract,
+  validateSelectors,
+  type SelectorArgs,
+  type SelectorName,
+  type StationOverrideWarning,
+} from "./compose.js";
+
+export { discover, type DiscoverResult, type DiscoverRow } from "./discover.js";
+
 export const version = "0.0.0";

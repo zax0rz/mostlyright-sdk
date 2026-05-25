@@ -1072,10 +1072,17 @@ def _run_qc_and_write_sidecar(
 
 
 def research(
-    station: str,
-    from_date: str,
-    to_date: str,
+    station: str | None = None,
+    from_date: str | None = None,
+    to_date: str | None = None,
     *,
+    city: str | None = None,
+    contract: str | None = None,
+    contracts: list[str] | tuple[str, ...] | None = None,
+    station_override: str | None = None,
+    sources: list[str] | tuple[str, ...] | None = None,
+    source: str | None = None,
+    include_trades: bool = False,
     include_forecast: bool = False,
     forecast_model: str | None = None,
     as_dataframe: bool = True,
@@ -1158,6 +1165,96 @@ def research(
     from tradewinds.core._backend_dispatch import validate_backend_kwargs
 
     validate_backend_kwargs(backend, return_type)  # type: ignore[arg-type]
+
+    # Phase 10 selector validation. Backwards-compat: the original
+    # `station, from_date, to_date` positional signature still works —
+    # detected when `station` is provided AND no new selector is.
+    # New selectors (`city=`, `contract=`, `contracts=`) dispatch to
+    # the composable code path; passing >1 selector raises here.
+    _has_city = city is not None and city != ""
+    _has_contract = contract is not None and contract != ""
+    _has_contracts = contracts is not None and len(contracts) > 0
+    _has_station = station is not None and station != ""
+    _selector_count = sum([_has_station, _has_city, _has_contract, _has_contracts])
+    if _selector_count == 0:
+        raise ValueError(
+            "research(): exactly one of station=, city=, contract=, contracts= "
+            "must be provided"
+        )
+    if _selector_count > 1:
+        provided = [
+            n
+            for n, v in (
+                ("station", _has_station),
+                ("city", _has_city),
+                ("contract", _has_contract),
+                ("contracts", _has_contracts),
+            )
+            if v
+        ]
+        raise ValueError(
+            f"research(): selectors are mutually exclusive; got {provided!r}"
+        )
+
+    # `sources=` (plural) vs `source=` (singular) are mutually exclusive.
+    if sources is not None and source is not None:
+        raise ValueError("research(): sources= and source= are mutually exclusive")
+
+    # Iter-1 codex HIGH: sources= / source= are validated at the
+    # mutual-exclusion boundary but the actual data-selection wiring lands
+    # in v0.3. The station-path silently runs the full multi-source merge
+    # regardless of these kwargs, which would be silent data-selection
+    # corruption. Surface a clear NotImplementedError pointing callers at
+    # `tradewinds.mode2.research_by_source` (the Mode-2-pin path) until
+    # the kwargs are wired into the station-path dispatch.
+    if sources is not None or source is not None:
+        raise NotImplementedError(
+            "research(): sources= and source= validation surface is shipped in "
+            "Phase 10 v0.2 but the data-selection wiring lands in v0.3. For "
+            "Mode 2 single-source pinning today, use "
+            "`tradewinds.mode2.research_by_source(station, source, ...)` "
+            "directly. Mode 1 multi-source subset (sources=[...]) ships in v0.3."
+        )
+
+    # `station_override=` only makes sense when paired with `contract=`.
+    if station_override is not None and not _has_contract:
+        raise ValueError(
+            "research(): station_override= requires contract= "
+            "(not standalone station=/city=/contracts=)"
+        )
+
+    # `include_trades=True` requires a contract/contracts selector. The
+    # station/city paths don't carry an issuer:ticker, so there's nothing
+    # to fetch trades for.
+    if include_trades and not (_has_contract or _has_contracts):
+        raise ValueError(
+            "research(): include_trades=True requires contract= or contracts= "
+            "(station/city selectors have no trade timeseries to attach)"
+        )
+
+    # Phase 10 v0.2 scope: the new selectors (city/contract/contracts) are
+    # validated at the dispatch boundary but the actual multi-station /
+    # multi-issuer join + trade-attachment is deferred to v0.3. Surface a
+    # clear NotImplementedError with the actionable workaround so quants
+    # can still proceed via the station-path immediately.
+    if _has_city or _has_contract or _has_contracts:
+        raise NotImplementedError(
+            "research(): the city=/contract=/contracts= selectors are validated "
+            "(mutual exclusion + station_override semantics + include_trades "
+            "preconditions) in Phase 10 v0.2 but the multi-station / "
+            "multi-issuer JOIN + trade-attachment lands in v0.3. For now, "
+            "use `discover(city=...)` to find the station and then call "
+            "`research(station=..., from_date=..., to_date=...)` directly. "
+            "Selector dispatch + validation surface is stable; the data-join "
+            "implementation is the v0.3 deliverable."
+        )
+
+    # ── Backwards-compat station path ─────────────────────────────────
+    # station-path validation: from_date + to_date REQUIRED.
+    if from_date is None or to_date is None:
+        raise ValueError(
+            "research(station=...) requires both from_date and to_date"
+        )
 
     if include_forecast:
         raise NotImplementedError(
