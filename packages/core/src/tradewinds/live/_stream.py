@@ -16,6 +16,7 @@ import logging
 from collections.abc import AsyncIterator
 from typing import Any
 
+from tradewinds._internal._bounds import validate_icao_for_path
 from tradewinds.live._latest import _fetch_latest, _pick_most_recent
 from tradewinds.live._sources import (
     validate_poll_seconds,
@@ -63,6 +64,16 @@ async def stream(
     """
     src = validate_source(source)
     cadence = validate_poll_seconds(poll_seconds, src)
+    # Validate the station upfront — `_fetch_latest` raises ValueError on a
+    # malformed ICAO (e.g. ``"KN&data=foo"`` for IEM). Running this guard
+    # BEFORE entering the poll loop means caller code gets the diagnostic
+    # immediately instead of an empty stream that silently spins. We use the
+    # same path-component validator the fetcher uses internally so the two
+    # checks agree on what's malformed.
+    icao = station.strip().upper()
+    if len(icao) == 3:
+        icao = f"K{icao}"
+    validate_icao_for_path(icao[1:] if icao.startswith("K") and len(icao) == 4 else icao)
     last_observed_at: str | None = None
 
     while True:
@@ -70,7 +81,15 @@ async def stream(
             rows = await _fetch_latest(station, src)
         except asyncio.CancelledError:
             raise
-        except Exception:  # noqa: BLE001 — fetcher exceptions must NOT abort stream
+        # Only swallow transient/runtime errors from the fetcher path.
+        # ValueError + TypeError + AssertionError are programmer-error
+        # signals (bad station codes, contract violations from upstream-
+        # response munging, dispatch-table holes) and must NOT be silently
+        # converted to empty ticks — the caller would be stuck in an
+        # infinite empty-yield loop instead of getting the diagnostic.
+        except (ValueError, TypeError, AssertionError):
+            raise
+        except Exception:  # noqa: BLE001 — transient fetcher exceptions must NOT abort
             log.exception(
                 "live.stream: poll failed for station=%s source=%s — continuing",
                 station,

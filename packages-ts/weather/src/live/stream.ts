@@ -96,6 +96,19 @@ export async function* stream(
   const src: LiveSource = validateSource(opts.source ?? undefined);
   const cadenceS = validatePollSeconds(opts.pollSeconds ?? undefined, src);
   const cadenceMs = cadenceS * 1000;
+  // Validate the station upfront — the IEM path throws on a malformed ICAO
+  // (e.g. "KN&data=foo"). Without this guard, the stream's blanket catch
+  // would swallow that ValueError and silently spin forever instead of
+  // telling the caller their station is invalid.
+  const icaoUpper = station.trim().toUpperCase();
+  const stationCheck = icaoUpper.length === 3 ? `K${icaoUpper}` : icaoUpper;
+  const STATION_CODE_RE = /^[A-Z]{3,4}$/;
+  if (!STATION_CODE_RE.test(stationCheck)) {
+    throw new Error(
+      `station=${JSON.stringify(stationCheck)} does not match STATION_CODE_RE; ` +
+        `refusing to start stream.`,
+    );
+  }
   let lastObservedAt: string | null = null;
 
   while (true) {
@@ -103,8 +116,17 @@ export async function* stream(
     let rows: LiveObservation[] = [];
     try {
       rows = await fetchLatest(station, src);
-    } catch {
-      // Fetcher errors must NOT abort the stream — wait for the next tick.
+    } catch (err) {
+      // Only swallow transient/runtime errors. Validation-shaped errors
+      // (Error message starts with `station=` from STATION_CODE_RE, or
+      // is an `Error` with `validation` semantics) propagate so the
+      // caller sees the diagnostic instead of an infinite empty-yield loop.
+      // Heuristic: re-raise any `Error` whose message contains
+      // "STATION_CODE_RE" (the only place the fetcher throws synchronously
+      // before any HTTP). Everything else (network, 5xx, parse) is swallowed.
+      if (err instanceof Error && /STATION_CODE_RE/.test(err.message)) {
+        throw err;
+      }
       // (We deliberately don't log here; the underlying fetchers already
       // log their own failures and a `console.error` from the SDK would
       // spam browser consoles.)

@@ -405,3 +405,19 @@ def test_stream_source_tag_on_row_iem(
     )
     rows = _run(_collect_n(stream("KNYC", source="iem"), 1))
     assert rows[0]["source"] == "iem.live"
+
+
+def test_stream_raises_on_malformed_station_immediately() -> None:
+    """Regression for iter-4 codex finding: stream's blanket Exception catch
+    used to swallow ValueErrors from the per-source fetcher's validation,
+    leaving the caller in an infinite empty-yield loop instead of getting
+    the diagnostic. Fix: validate station upfront + only swallow transient
+    errors (not ValueError/TypeError/AssertionError).
+    """
+
+    async def drive() -> None:
+        async for _ in stream("KN&data=foo", source="iem"):
+            return
+
+    with pytest.raises(ValueError):
+        _run(drive())

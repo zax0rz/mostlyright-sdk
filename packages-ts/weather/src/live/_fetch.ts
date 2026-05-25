@@ -68,6 +68,18 @@ function nextDayIso(iso: string): string {
   return `${ny}-${nm}-${nd}`;
 }
 
+/** Subtract one day from a `YYYY-MM-DD` UTC ISO string. */
+function previousDayIso(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  // biome-ignore lint/style/noNonNullAssertion: split-by-`-` on a YYYY-MM-DD literal always yields 3 parts
+  const dt = new Date(Date.UTC(y!, m! - 1, d!));
+  dt.setUTCDate(dt.getUTCDate() - 1);
+  const py = dt.getUTCFullYear();
+  const pm = String(dt.getUTCMonth() + 1).padStart(2, "0");
+  const pd = String(dt.getUTCDate()).padStart(2, "0");
+  return `${py}-${pm}-${pd}`;
+}
+
 /**
  * Poll IEM once for the given station and return parsed observation rows.
  *
@@ -99,13 +111,15 @@ export async function fetchIemLatest(station: string): Promise<LiveObservation[]
       )} does not match STATION_CODE_RE (3-4 uppercase letters); refusing to use as IEM URL component`,
     );
   }
-  const startIso = todayUtcIso();
-  // IEM's `day2=` is EXCLUSIVE. Unlike Python `download_iem_asos(exact_window=True)`,
-  // which internally advances `day2` for IEM's exclusive-end semantics, here
-  // we call `buildIemUrl` directly — so we must pass tomorrow ourselves to
-  // request a one-day window `[today, today+1)`. Passing `startIso` for both
-  // would produce an empty zero-day request that always returns no rows.
-  const endIso = nextDayIso(startIso);
+  const todayIso = todayUtcIso();
+  // Include the PREVIOUS UTC day in the lookup window (iter-4 codex fix):
+  // shortly after 00:00 UTC the current-day window is empty (IEM has no
+  // observations ingested yet) but a minutes-old METAR exists for the
+  // prior UTC day. A today-only fetch would always return empty in that
+  // window. With (yesterday, tomorrow), the IEM endpoint serves the full
+  // [yesterday 00:00Z, tomorrow 00:00Z) span (day2 is exclusive).
+  const startIso = previousDayIso(todayIso);
+  const endIso = nextDayIso(todayIso);
   // Mirror Python's METAR + SPECI fetch: IEM strips the SPECI keyword from
   // the raw METAR text and serves SPECIs only via report_type=4, so a
   // routine-only fetch would miss intra-hour specials and the `latest()`

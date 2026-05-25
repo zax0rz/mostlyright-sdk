@@ -191,10 +191,46 @@ describe("latest()", () => {
     const y2 = Number(u.searchParams.get("year2"));
     const m2 = Number(u.searchParams.get("month2"));
     const d2 = Number(u.searchParams.get("day2"));
-    // day2 must be strictly AFTER day1 (one-day window).
+    // After iter-4 codex P2 (previous-day fallback), the window is
+    // (yesterday, tomorrow) → a TWO-day span that includes both prev-UTC
+    // and current-UTC observations. Iter-3 used a ONE-day window which
+    // returned empty right after the 00:00Z rollover. Both invariants
+    // still hold: day2 > day1 (no zero-day request) AND the window covers
+    // the current UTC date.
     const start = new Date(Date.UTC(y1, m1 - 1, d1));
     const end = new Date(Date.UTC(y2, m2 - 1, d2));
-    expect(end.getTime() - start.getTime()).toBe(86_400_000);
+    expect(end.getTime()).toBeGreaterThan(start.getTime());
+    const spanDays = (end.getTime() - start.getTime()) / 86_400_000;
+    expect(spanDays).toBe(2);
+  });
+
+  it("IEM path includes the previous UTC day in the lookup window", async () => {
+    // Regression for iter-4 codex P2: a today-only window returns no rows
+    // shortly after 00:00 UTC because IEM hasn't ingested the new day's
+    // METARs yet. The fix prefixes the window with the previous UTC day so
+    // a minutes-old prior-day METAR still surfaces as "latest".
+    const captured: string[] = [];
+    fetchSpy.mockImplementation(async (input) => {
+      const url = typeof input === "string" ? input : (input as URL).toString();
+      captured.push(url);
+      return new Response("", { status: 200 });
+    });
+    await expect(latest("KNYC", { source: "iem" })).rejects.toThrow();
+    const u = new URL(captured[0]!);
+    const start = new Date(
+      Date.UTC(
+        Number(u.searchParams.get("year1")),
+        Number(u.searchParams.get("month1")) - 1,
+        Number(u.searchParams.get("day1")),
+      ),
+    );
+    const today = new Date();
+    const todayUtc = new Date(
+      Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()),
+    );
+    // start must be < todayUtc (i.e., it's the previous UTC day).
+    expect(start.getTime()).toBeLessThan(todayUtc.getTime());
+    expect(todayUtc.getTime() - start.getTime()).toBe(86_400_000);
   });
 
   it("IEM path issues report_type=3 AND report_type=4 (METAR + SPECI)", async () => {
@@ -215,13 +251,20 @@ describe("latest()", () => {
     expect(reportTypes).toContain(4);
   });
 
-  it("public subpath `@tradewinds/weather/live` is importable", async () => {
+  it("`live/index` barrel re-exports the documented surface", async () => {
     // Regression for iter-3 codex finding: the `live/` barrel was reachable
     // only via the main `@tradewinds/weather` import; the documented
     // `@tradewinds/weather/live` subpath was NOT in `package.json` exports
-    // and was NOT a tsup entry. Phase 11 iter-3 added both — verify the
-    // subpath resolves and re-exports the same surface.
-    const mod = await import("@tradewinds/weather/live");
+    // and was NOT a tsup entry. Phase 11 iter-3 added both.
+    //
+    // We use a SOURCE-RELATIVE import here (not the bare subpath) because
+    // self-imports through the package's own `exports` map resolve to
+    // `dist/live/...` during `tsc --noEmit`, which doesn't exist until
+    // after build (iter-4 codex P1). The barrel surface itself is the
+    // thing we're asserting — its consumability via the subpath is
+    // validated separately by the dist-output existence check in the
+    // package build step (`tsup` emits `dist/live/index.{mjs,cjs,d.ts}`).
+    const mod = await import("../../src/live/index.js");
     expect(typeof mod.stream).toBe("function");
     expect(typeof mod.latest).toBe("function");
     expect(mod.SUPPORTED_SOURCES).toEqual(["awc", "iem"]);

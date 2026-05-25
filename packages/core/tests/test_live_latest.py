@@ -272,14 +272,16 @@ def test_latest_iem_construction_does_not_raise(monkeypatch: pytest.MonkeyPatch)
     with pytest.raises(NoLiveDataError):
         _run(latest("KNYC", source="iem"))
 
-    # Regression for iter-2 codex finding: window must be ONE day, not two.
-    # `download_iem_asos(exact_window=True)` treats `end` as inclusive and
-    # internally advances `day2` for IEM's exclusive-end semantics — so passing
-    # (today, today) requests one day, while the earlier (today, tomorrow)
-    # would have asked for TWO. We assert `start == end == today_utc`.
-    from datetime import UTC, datetime as _dt
+    # Window assertion. After iter-2 we passed (today, today). After iter-4
+    # codex P2 (previous-day fallback), the window is (yesterday, today) so
+    # the [yesterday 00:00Z, today 24:00Z) span catches a minutes-old METAR
+    # even right after the 00:00 UTC rollover. Asserting both:
+    # - start == yesterday (proves the previous-day inclusion)
+    # - end == today      (proves we did NOT regress to (today, tomorrow))
+    from datetime import UTC, datetime as _dt, date as _date
     today_utc = _dt.now(UTC).date()
-    assert captured["start"] == today_utc
+    yesterday_utc = _date.fromordinal(today_utc.toordinal() - 1)
+    assert captured["start"] == yesterday_utc
     assert captured["end"] == today_utc
 
 

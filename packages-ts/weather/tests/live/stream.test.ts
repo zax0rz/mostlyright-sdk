@@ -350,4 +350,15 @@ describe("stream()", () => {
     // the `{once: true}` flag, not the explicit removeEventListener call).
     expect(addCalls - removeCalls).toBeLessThanOrEqual(2);
   });
+
+  it("stream throws synchronously on malformed station codes (not swallowed)", async () => {
+    // Regression for iter-4 codex finding: stream's `catch { rows = [] }`
+    // swallowed validation errors from the IEM fetcher, leaving the caller
+    // in an infinite empty-yield loop instead of getting the diagnostic.
+    // Fix: validate the station upfront before entering the poll loop, AND
+    // re-throw any `STATION_CODE_RE` error if it surfaces from the fetcher.
+    // First-call validation is the cleanest path — fail at the first `.next()`.
+    const agen = stream("KN&data=foo", { source: "iem" });
+    await expect(agen.next()).rejects.toThrow(/STATION_CODE_RE/);
+  });
 });

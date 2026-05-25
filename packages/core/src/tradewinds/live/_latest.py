@@ -105,22 +105,28 @@ async def _fetch_iem_latest(station: str) -> list[dict[str, Any]]:
         longitude=0.0,
     )
 
+    from datetime import date as _date
     today = datetime.now(UTC).date()
+    yesterday = _date.fromordinal(today.toordinal() - 1)
     tag = source_tag("iem")
     rows: list[dict[str, Any]] = []
 
     with tempfile.TemporaryDirectory(prefix="tw-live-iem-") as tmp:
         dest_dir = Path(tmp)
-        # Issue both report types — routine METARs (3) AND SPECI specials (4).
-        # Pass `today` for BOTH start and end. `download_iem_asos(...,
-        # exact_window=True)` treats `end` as INCLUSIVE and internally
-        # advances `day2` by one day for IEM's exclusive-end semantics —
-        # so (today, today) gives a single-day [today, today+1) request.
+        # Issue both report types — routine METARs (3) AND SPECI specials (4) —
+        # across TWO UTC days [yesterday, today]. The previous-day inclusion is
+        # the iter-4 codex fix: shortly after 00:00 UTC, the current-day
+        # window has no observations yet (IEM hasn't ingested the day's first
+        # METAR), so a today-only fetch would always return empty even when a
+        # minutes-old METAR exists from the prior UTC day. `download_iem_asos(
+        # exact_window=True)` treats `end` as INCLUSIVE and advances `day2` by
+        # one day internally for IEM's exclusive-end semantics — so
+        # (yesterday, today) gives a two-day [yesterday, today+1) window.
         for report_type, override in ((3, "METAR"), (4, "SPECI")):
             paths = await asyncio.to_thread(
                 download_iem_asos,
                 station_info,
-                today,
+                yesterday,
                 today,
                 dest_dir,
                 skip_cache=True,
