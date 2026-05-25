@@ -4,10 +4,10 @@
     "outDir": "./dist",
     "baseUrl": ".",
     "paths": {
-      "@tradewinds/core": ["../core/src/index.ts"],
-      "@tradewinds/weather": ["../weather/src/index.ts"],
-      "@tradewinds/markets": ["../markets/src/index.ts"],
-      "@tradewinds/markets/polymarket": ["../markets/src/polymarket/index.ts"]
+      "@mostlyright/core": ["../core/src/index.ts"],
+      "@mostlyright/weather": ["../weather/src/index.ts"],
+      "@mostlyright/markets": ["../markets/src/index.ts"],
+      "@mostlyright/markets/polymarket": ["../markets/src/polymarket/index.ts"]
     }
   },
   "include": ["src/**/*", "tests/**/*"],

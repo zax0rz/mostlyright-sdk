@@ -1,4 +1,4 @@
-// CacheStore — pluggable key/value contract for the @tradewinds/core cache
+// CacheStore — pluggable key/value contract for the @mostlyright/core cache
 // layer. Three concrete implementations land in TS-W3:
 //   - MemoryStore — Map-backed, no persistence (Cloudflare Workers default).
 //   - FsStore — node:fs/promises + proper-lockfile (Node default).
@@ -50,5 +50,5 @@ export interface CacheStore {
  * and IndexedDBStore (`navigator.locks.request(...)` name).
  */
 export function lockKeyFor(key: string): string {
-  return `tradewinds:cache:lock:${key}`;
+  return `mostlyright:cache:lock:${key}`;
 }

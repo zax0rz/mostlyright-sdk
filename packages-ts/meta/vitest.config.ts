@@ -10,7 +10,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // in the same worker.
 
 // Alias workspace siblings to their source files so vitest can resolve
-// @tradewinds/core, @tradewinds/weather, @tradewinds/markets without a
+// @mostlyright/core, @mostlyright/weather, @mostlyright/markets without a
 // pre-build step. Build still uses dist via the consumers' exports map.
 // See TS-W0 iter-1 HIGH 5.
 export default defineConfig({
@@ -18,57 +18,57 @@ export default defineConfig({
     alias: [
       // Order matters — most-specific (subpath) FIRST. Vite's alias resolver
       // walks the array in order and uses the first match, so a bare
-      // "@tradewinds/core" entry above the subpaths would shadow them.
+      // "@mostlyright/core" entry above the subpaths would shadow them.
       {
-        find: "@tradewinds/core/internal/bounds",
+        find: "@mostlyright/core/internal/bounds",
         replacement: resolve(__dirname, "../core/src/internal/bounds.ts"),
       },
       {
-        find: "@tradewinds/core/internal/convert",
+        find: "@mostlyright/core/internal/convert",
         replacement: resolve(__dirname, "../core/src/internal/convert.ts"),
       },
       {
-        find: "@tradewinds/core/internal/merge",
+        find: "@mostlyright/core/internal/merge",
         replacement: resolve(__dirname, "../core/src/internal/merge/index.ts"),
       },
       {
-        find: "@tradewinds/core/internal/pairs",
+        find: "@mostlyright/core/internal/pairs",
         replacement: resolve(__dirname, "../core/src/internal/pairs.ts"),
       },
       {
-        find: "@tradewinds/core/internal/cache",
+        find: "@mostlyright/core/internal/cache",
         replacement: resolve(__dirname, "../core/src/internal/cache/index.ts"),
       },
       {
-        find: "@tradewinds/core/temporal",
+        find: "@mostlyright/core/temporal",
         replacement: resolve(__dirname, "../core/src/temporal/index.ts"),
       },
       {
-        find: "@tradewinds/core/formats",
+        find: "@mostlyright/core/formats",
         replacement: resolve(__dirname, "../core/src/formats/index.ts"),
       },
       {
-        find: "@tradewinds/core/discovery",
+        find: "@mostlyright/core/discovery",
         replacement: resolve(__dirname, "../core/src/discovery/index.ts"),
       },
       {
-        find: "@tradewinds/core/qc",
+        find: "@mostlyright/core/qc",
         replacement: resolve(__dirname, "../core/src/qc/index.ts"),
       },
       {
-        find: "@tradewinds/core",
+        find: "@mostlyright/core",
         replacement: resolve(__dirname, "../core/src/index.ts"),
       },
       {
-        find: "@tradewinds/weather",
+        find: "@mostlyright/weather",
         replacement: resolve(__dirname, "../weather/src/index.ts"),
       },
       {
-        find: "@tradewinds/markets/polymarket",
+        find: "@mostlyright/markets/polymarket",
         replacement: resolve(__dirname, "../markets/src/polymarket/index.ts"),
       },
       {
-        find: "@tradewinds/markets",
+        find: "@mostlyright/markets",
         replacement: resolve(__dirname, "../markets/src/index.ts"),
       },
     ],

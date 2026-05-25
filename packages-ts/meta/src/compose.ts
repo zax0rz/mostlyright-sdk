@@ -1,5 +1,5 @@
 // Phase 10 — composable research() dispatcher (TS port of
-// packages/core/src/tradewinds/_compose.py).
+// packages/core/src/mostlyright/_compose.py).
 //
 // Translates the new selectors (`city`, `contract`, `contracts`) into
 // resolution metadata + station lists. Pure logic, no I/O.
@@ -8,8 +8,8 @@ import {
   KALSHI_SETTLEMENT_STATIONS,
   type KalshiStation,
   POLYMARKET_CITY_STATIONS,
-} from "@tradewinds/markets";
-import { POLYMARKET_KNOWN_WRONG_STATIONS } from "@tradewinds/markets/polymarket";
+} from "@mostlyright/markets";
+import { POLYMARKET_KNOWN_WRONG_STATIONS } from "@mostlyright/markets/polymarket";
 
 /** The four mutually-exclusive selector names. */
 export const SELECTOR_NAMES = ["station", "city", "contract", "contracts"] as const;

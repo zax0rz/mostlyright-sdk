@@ -1,7 +1,7 @@
 // TS-W4 Plan 02 Task 1 — diff + diff2 tests (RED phase).
 //
-// Mirrors Python `tradewinds.transforms.diff` / `diff2` (packages/core/src/
-// tradewinds/transforms.py:48-55). `diff(rows, col, n)` → derived column
+// Mirrors Python `mostlyright.transforms.diff` / `diff2` (packages/core/src/
+// mostlyright/transforms.py:48-55). `diff(rows, col, n)` → derived column
 // `{col}_diff_{n}`; `diff2(rows, col)` → derived column `{col}_diff2` and
 // MUST drop the intermediate `{col}_diff_1` so the output carries only the
 // second-difference column (Python returns a single Series).

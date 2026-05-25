@@ -1,4 +1,4 @@
-// Barrel for @tradewinds/core/discovery — TS-W6.
+// Barrel for @mostlyright/core/discovery — TS-W6.
 //
 // Five waves shipped at this subpath:
 //
@@ -9,7 +9,7 @@
 //   Wave 5: describe(schemaId) + featureCatalog() + climateGaps stub.
 //
 // Discovery lives at the subpath (NOT the root barrel) to keep the
-// @tradewinds/core main bundle under its 25 KB size-limit gate
+// @mostlyright/core main bundle under its 25 KB size-limit gate
 // (TS-BUNDLE-01). Same pattern as transforms / temporal / formats / qc /
 // validator — see iter-4 H8 lesson in `packages-ts/core/src/index.ts`.
 //
@@ -24,7 +24,7 @@
 //     describe,
 //     featureCatalog,
 //     climateGaps,
-//   } from "@tradewinds/core/discovery";
+//   } from "@mostlyright/core/discovery";
 //   import type {
 //     AvailabilityResult,
 //     KeyEnumerableStore,
@@ -35,7 +35,7 @@
 //     BuildSnapshotOptions,
 //     DataVersion,
 //     DataVersionComponents,
-//   } from "@tradewinds/core/discovery";
+//   } from "@mostlyright/core/discovery";
 
 export { availability } from "./availability.js";
 export type {

@@ -1,6 +1,6 @@
 // TS-W3 Plan 04 Task 1 — TimePoint unit tests (RED phase).
 //
-// Mirrors `packages/core/src/tradewinds/core/temporal/timepoint.py`. Asserts
+// Mirrors `packages/core/src/mostlyright/core/temporal/timepoint.py`. Asserts
 // that the TS port rejects naive/date-only/NaN/Infinity inputs loudly at
 // construction and exposes parity accessors (toUTCDate, toISOString, asZone,
 // equals/before/after, TimePoint.now()).

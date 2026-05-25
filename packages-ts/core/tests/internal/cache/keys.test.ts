@@ -7,16 +7,16 @@ import { cacheKeyForClimate, cacheKeyForObservations } from "../../../src/intern
 describe("cacheKeyForObservations", () => {
   it("emits the canonical key shape", () => {
     expect(cacheKeyForObservations("KNYC", 2025, 1)).toBe(
-      "tradewinds:v1:observations:KNYC:2025:01",
+      "mostlyright:v1:observations:KNYC:2025:01",
     );
     expect(cacheKeyForObservations("KNYC", 2025, 12)).toBe(
-      "tradewinds:v1:observations:KNYC:2025:12",
+      "mostlyright:v1:observations:KNYC:2025:12",
     );
   });
 
   it("upper-cases station identifiers", () => {
     expect(cacheKeyForObservations("knyc", 2025, 12)).toBe(
-      "tradewinds:v1:observations:KNYC:2025:12",
+      "mostlyright:v1:observations:KNYC:2025:12",
     );
   });
 
@@ -45,16 +45,16 @@ describe("cacheKeyForObservations", () => {
   // for the same `(station, year, month)` triplet do not collide.
   it("appends optional source segment when provided", () => {
     expect(cacheKeyForObservations("KNYC", 2025, 1, "iem")).toBe(
-      "tradewinds:v1:observations:KNYC:2025:01:iem",
+      "mostlyright:v1:observations:KNYC:2025:01:iem",
     );
     expect(cacheKeyForObservations("KNYC", 2025, 12, "ghcnh")).toBe(
-      "tradewinds:v1:observations:KNYC:2025:12:ghcnh",
+      "mostlyright:v1:observations:KNYC:2025:12:ghcnh",
     );
   });
 
   it("omitting source preserves the legacy 3-arg key shape (back-compat)", () => {
     expect(cacheKeyForObservations("KNYC", 2025, 1)).toBe(
-      "tradewinds:v1:observations:KNYC:2025:01",
+      "mostlyright:v1:observations:KNYC:2025:01",
     );
   });
 
@@ -71,11 +71,11 @@ describe("cacheKeyForObservations", () => {
 
 describe("cacheKeyForClimate", () => {
   it("emits the canonical key shape (year-only)", () => {
-    expect(cacheKeyForClimate("KNYC", 2025)).toBe("tradewinds:v1:climate:KNYC:2025");
+    expect(cacheKeyForClimate("KNYC", 2025)).toBe("mostlyright:v1:climate:KNYC:2025");
   });
 
   it("upper-cases station identifiers", () => {
-    expect(cacheKeyForClimate("knyc", 2025)).toBe("tradewinds:v1:climate:KNYC:2025");
+    expect(cacheKeyForClimate("knyc", 2025)).toBe("mostlyright:v1:climate:KNYC:2025");
   });
 
   it("rejects out-of-range years", () => {

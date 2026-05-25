@@ -1,6 +1,6 @@
 // TS-W4 Plan 04 Task 1 — spread cross-feature tests (RED phase).
 //
-// Mirrors Python `tradewinds.transforms.spread` (packages/core/src/tradewinds/
+// Mirrors Python `mostlyright.transforms.spread` (packages/core/src/mostlyright/
 // transforms.py:103-105). Pairwise difference between two numeric columns,
 // emitting a derived `{colA}_minus_{colB}` column. Strict numeric coercion
 // (matches Wave 2 lag/diff strictness): strings like '10' do NOT auto-parse.

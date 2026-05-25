@@ -1,7 +1,7 @@
 // TS-W4 Plan 04 Task 1 — windChill + heatIndex tests (RED phase).
 //
-// Mirrors Python `tradewinds.transforms.wind_chill` and `heat_index` at
-// `packages/core/src/tradewinds/transforms.py:108-147`. The NWS reference-
+// Mirrors Python `mostlyright.transforms.wind_chill` and `heat_index` at
+// `packages/core/src/mostlyright/transforms.py:108-147`. The NWS reference-
 // table assertions are LOAD-BEARING acceptance criteria for TS-TRANSFORM-02:
 //
 //   - windChill(20°F, 15 mph) → 6 °F   (NWS chart)

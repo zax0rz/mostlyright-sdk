@@ -1,8 +1,8 @@
 // Phase 9 — shared row + result types for the trades surface.
 //
-// Mirrors the Python DataFrames in `tradewinds.markets.{kalshi_trades,
+// Mirrors the Python DataFrames in `mostlyright.markets.{kalshi_trades,
 // polymarket_trades}` row-for-row. The TS surface returns plain JS
-// objects (frozen `readonly` arrays) since `@tradewinds/markets` does
+// objects (frozen `readonly` arrays) since `@mostlyright/markets` does
 // not depend on a DataFrame library.
 
 /** Source string carried per row — load-bearing invariant for cross-frame joins.

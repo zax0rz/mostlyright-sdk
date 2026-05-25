@@ -5,8 +5,8 @@
 //   <root>/<sanitized-key>.json
 //
 // Where `<root>` defaults to
-// `$TRADEWINDS_CACHE_DIR ?? $HOME/.tradewinds/cache-ts` (per TS-CACHE-02 —
-// distinct from Python's `.tradewinds/cache` so the JSON envelopes here
+// `$TRADEWINDS_CACHE_DIR ?? $HOME/.mostlyright/cache-ts` (per TS-CACHE-02 —
+// distinct from Python's `.mostlyright/cache` so the JSON envelopes here
 // can't shadow Python's parquet files).
 //
 // Atomic write: payload is written to `<path>.tmp` then renamed onto
@@ -36,14 +36,14 @@ import type { CacheEntry, CacheSetOptions, CacheStore } from "./types.js";
  * can `vi.stubEnv("TRADEWINDS_CACHE_DIR", ...)` between cases without a
  * module reload.
  *
- * Per TS-CACHE-02: defaults to `~/.tradewinds/cache-ts` — DISTINCT from
- * Python's `~/.tradewinds/cache` so JSON envelopes here can't shadow
+ * Per TS-CACHE-02: defaults to `~/.mostlyright/cache-ts` — DISTINCT from
+ * Python's `~/.mostlyright/cache` so JSON envelopes here can't shadow
  * Python's parquet files.
  */
 export function defaultFsRoot(): string {
   const env = process.env.TRADEWINDS_CACHE_DIR;
   if (env !== undefined && env.length > 0) return env;
-  return join(homedir(), ".tradewinds", "cache-ts");
+  return join(homedir(), ".mostlyright", "cache-ts");
 }
 
 export interface FsStoreOptions {

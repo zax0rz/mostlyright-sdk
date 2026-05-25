@@ -3,7 +3,7 @@
 // Verifies the meta package's root barrel (`packages-ts/meta/src/index.ts`)
 // re-exports the Mode 2 surface so downstream consumers can do:
 //
-//   import { researchBySource, type Mode2Source } from "tradewinds";
+//   import { researchBySource, type Mode2Source } from "mostlyright";
 //
 // without a deep import. The bundle-size discipline (TS-BUNDLE-01) is
 // enforced by `size-limit` post-build — this file only verifies the

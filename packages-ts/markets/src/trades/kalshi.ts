@@ -1,5 +1,5 @@
 // Phase 9 — Kalshi trades public surface (TRADES-01..03, TS port of
-// packages/markets/src/tradewinds/markets/kalshi_trades.py).
+// packages/markets/src/mostlyright/markets/kalshi_trades.py).
 //
 // Row shapes mirror the Python DataFrames column-for-column. Every row
 // carries `source: "kalshi"` so cross-frame joins preserve source

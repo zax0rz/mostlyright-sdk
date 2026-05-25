@@ -1,7 +1,7 @@
 // IEM ASOS historical METAR fetcher — yearly-chunked CSV downloads.
 //
 // Byte-faithful TS port of Python
-// `packages/weather/src/tradewinds/weather/_fetchers/iem_asos.py::download_iem_asos`,
+// `packages/weather/src/mostlyright/weather/_fetchers/iem_asos.py::download_iem_asos`,
 // with the following deliberate adaptations:
 //
 //  1. No disk cache. Python writes per-station CSVs under
@@ -25,8 +25,8 @@
 // `.planning/research/TS-CORS-MATRIX.md` §IEM-ASOS. Works in browsers,
 // Node 20+, Cloudflare Workers, Deno.
 
-import { fetchWithRetry } from "@tradewinds/core";
-import type { FetchWithRetryOptions } from "@tradewinds/core";
+import { fetchWithRetry } from "@mostlyright/core";
+import type { FetchWithRetryOptions } from "@mostlyright/core";
 
 import { type IsoDate, yearlyChunksExclusiveEnd } from "./_iem_chunks.js";
 
@@ -43,7 +43,7 @@ export const IEM_POLITE_DELAY_MS = 1000;
 /**
  * Station code regex (3-4 uppercase letters). Mirrors the inline pattern
  * used by `iem-cli.ts::validateIcao` and the shared `STATION_CODE_RE` from
- * `@tradewinds/core/internal/bounds`. Inlined here so the fetcher does not
+ * `@mostlyright/core/internal/bounds`. Inlined here so the fetcher does not
  * transitively pull in the validators barrel — keeps the per-fetcher
  * dep graph narrow per the TS-W1 review pattern.
  */

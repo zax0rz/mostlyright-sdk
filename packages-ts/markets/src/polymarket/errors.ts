@@ -1,7 +1,7 @@
 // TS-W5 — Polymarket-specific errors. All subclass TradewindsError so they
 // gain toDict() and the standard request-id/error-code payload shape.
 
-import { TradewindsError } from "@tradewinds/core";
+import { TradewindsError } from "@mostlyright/core";
 
 /** Event payload is malformed (bad event id, oversized description, bad URL). */
 export class PolymarketEventError extends TradewindsError {

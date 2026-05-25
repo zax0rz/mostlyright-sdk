@@ -1,6 +1,6 @@
 // TS-W6 Wave 4 — DataVersion reproducibility token via Web Crypto SHA-256.
 //
-// Ports Python `tradewinds.discovery.DataVersion.from_components` byte-for-byte:
+// Ports Python `mostlyright.discovery.DataVersion.from_components` byte-for-byte:
 // the canonical concatenation is `sdkVersion|sortedSchemaIds|sortedSources|codeSha|dataSha`,
 // SHA-256 hex of the UTF-8 encoded string is the token.
 //

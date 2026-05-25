@@ -1,6 +1,6 @@
 // Schema-derived bounds and validation helpers.
 //
-// Ported from `packages/core/src/tradewinds/_internal/_bounds.py`.
+// Ported from `packages/core/src/mostlyright/_internal/_bounds.py`.
 // Constants from specs/observation.json. Shared by AWC, GHCNh, and IEM parsers.
 
 // Pressure bounds (observation.json: sea_level_pressure_mb)

@@ -1,7 +1,7 @@
 // validateRows — public schema validation API with Python-vocabulary
 // violations + source-identity invariant.
 //
-// Mirrors `packages/core/src/tradewinds/core/validator.py`. The wire-vocab
+// Mirrors `packages/core/src/mostlyright/core/validator.py`. The wire-vocab
 // `violations[].rule` strings MUST match Python EXACTLY for cross-language
 // MCP serialization parity. Vocabulary:
 //   - unknown_schema_id
@@ -113,7 +113,7 @@ function isIsoDateTime(v: unknown): boolean {
 /**
  * Per-schema canonical source — mirrors Python `_registered_source` on
  * each Schema subclass (truth lives in
- * `packages/core/src/tradewinds/core/schemas/*.py`).
+ * `packages/core/src/mostlyright/core/schemas/*.py`).
  *
  * Drift in this map produces silent cross-language source-identity
  * violations: a TS producer stamped `cli.archive` would falsely fail

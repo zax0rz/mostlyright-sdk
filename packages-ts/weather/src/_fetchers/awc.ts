@@ -1,7 +1,7 @@
 // AWC METAR HTTP fetcher — live observations from aviationweather.gov.
 //
 // Ported byte-faithfully from
-// `packages/weather/src/tradewinds/weather/_fetchers/awc.py::fetch_awc_metars`.
+// `packages/weather/src/mostlyright/weather/_fetchers/awc.py::fetch_awc_metars`.
 //
 // =============================================================================
 // CORS posture: NONE (per .planning/research/TS-CORS-MATRIX.md)
@@ -32,7 +32,7 @@
 // exhausted retries — NEVER throws (matches Python `fetch_awc_metars` so the
 // caller can degrade gracefully when AWC is down).
 
-import { type FetchWithRetryOptions, TherminalError, fetchWithRetry } from "@tradewinds/core";
+import { type FetchWithRetryOptions, TherminalError, fetchWithRetry } from "@mostlyright/core";
 
 /** Canonical AWC METAR endpoint. */
 export const AWC_METAR_URL = "https://aviationweather.gov/api/data/metar";

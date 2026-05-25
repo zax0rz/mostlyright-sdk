@@ -1,7 +1,7 @@
 // TS-W4 Plan 02 Task 1 — diff + diff2 transforms.
 //
-// Pure row→row ports of Python `tradewinds.transforms.diff` and `diff2`
-// (packages/core/src/tradewinds/transforms.py:48-55). The TS port operates
+// Pure row→row ports of Python `mostlyright.transforms.diff` and `diff2`
+// (packages/core/src/mostlyright/transforms.py:48-55). The TS port operates
 // on `ReadonlyArray<Row>` and adds a single derived column per call:
 //   - diff  → `{col}_diff_{n}`
 //   - diff2 → `{col}_diff2`    (NOT `{col}_diff_1` + `{col}_diff2`)

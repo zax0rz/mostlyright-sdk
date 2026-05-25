@@ -1,6 +1,6 @@
 // TS-W4 Plan 02 Task 1 — lag transform tests (RED phase).
 //
-// Mirrors Python `tradewinds.transforms.lag` (packages/core/src/tradewinds/
+// Mirrors Python `mostlyright.transforms.lag` (packages/core/src/mostlyright/
 // transforms.py:43-45). The TS port operates on `ReadonlyArray<Row>` and
 // adds a derived column `{col}_lag_{n}` to each output row; the input array
 // MUST NOT be mutated.

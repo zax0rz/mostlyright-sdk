@@ -1,6 +1,6 @@
 // JSON format — records-form / empty-frame-envelope serialization.
 //
-// Mirrors `packages/core/src/tradewinds/core/formats/json.py`. Non-empty rows
+// Mirrors `packages/core/src/mostlyright/core/formats/json.py`. Non-empty rows
 // emit the records form (`[{col1:v1,col2:v2},...]`); empty rows emit the
 // envelope `{columns: [...], data: []}` so column names survive a roundtrip.
 //

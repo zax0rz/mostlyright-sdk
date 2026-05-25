@@ -1,5 +1,5 @@
 // Phase 8 — per-issuer denylist. Hand-paired with Python
-// `tradewinds.markets.polymarket.KNOWN_WRONG_STATIONS` (NOT codegen;
+// `mostlyright.markets.polymarket.KNOWN_WRONG_STATIONS` (NOT codegen;
 // see .planning/phases/08-.../PLAN.md §"TS Parity" for rationale —
 // the constant is small enough that exporter wiring would cost more
 // than it saves, and the alphabetized JSON exporter side-effect would

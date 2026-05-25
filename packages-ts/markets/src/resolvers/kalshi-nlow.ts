@@ -5,7 +5,7 @@
 // the NWS CLI `min_temp_f` value for a specific station on a specific
 // date.
 //
-// Ported byte-faithful from packages/markets/src/tradewinds/markets/catalog/kalshi_nlow.py.
+// Ported byte-faithful from packages/markets/src/mostlyright/markets/catalog/kalshi_nlow.py.
 
 import { KALSHI_SETTLEMENT_STATIONS } from "../data/generated/kalshi-stations.js";
 import { ContractIdError } from "./kalshi-nhigh.js";

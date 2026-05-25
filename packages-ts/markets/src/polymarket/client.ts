@@ -1,16 +1,16 @@
 // TS-W5 Wave 1 — Polymarket Gamma API client.
 //
-// Port of `packages/markets/src/tradewinds/markets/_polymarket_client.py`.
+// Port of `packages/markets/src/mostlyright/markets/_polymarket_client.py`.
 // HTTP fetch + 0.2s politeness sleep + retry on 429/5xx + offset-paginated
 // discovery up to 10000 events. Gamma's Cloudfront edge 403s on blank
-// User-Agent, so we always set a tradewinds UA.
+// User-Agent, so we always set a mostlyright UA.
 
-import { NotFoundError, fetchWithRetry } from "@tradewinds/core";
+import { NotFoundError, fetchWithRetry } from "@mostlyright/core";
 
 const GAMMA_BASE = "https://gamma-api.polymarket.com";
 const PAGE_SIZE = 100;
 const MAX_EVENTS = 10_000;
-const DEFAULT_USER_AGENT = "tradewinds-ts/0.1.0 (+https://github.com/Tarabcak/tradewinds)";
+const DEFAULT_USER_AGENT = "mostlyright-ts/0.1.0 (+https://github.com/Tarabcak/mostlyright)";
 const DEFAULT_SLEEP_BETWEEN_MS = 200; // 0.2 s
 const RETRY_STATUSES: ReadonlySet<number> = new Set([429, 500, 502, 503, 504]);
 

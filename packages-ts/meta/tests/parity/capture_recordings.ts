@@ -11,7 +11,7 @@
  * the parity test (Plan 08).
  *
  * Usage:
- *   TRADEWINDS_TS_LIVE=1 pnpm --filter tradewinds capture-parity
+ *   TRADEWINDS_TS_LIVE=1 pnpm --filter mostlyright capture-parity
  */
 import * as crypto from "node:crypto";
 import * as fs from "node:fs";

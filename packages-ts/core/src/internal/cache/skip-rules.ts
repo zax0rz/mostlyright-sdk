@@ -1,6 +1,6 @@
 // Cache-skip rule predicates — pure functions over inputs.
 //
-// Mirrors `packages/weather/src/tradewinds/weather/cache.py`:
+// Mirrors `packages/weather/src/mostlyright/weather/cache.py`:
 //   - `_is_current_lst_month` / `_is_current_lst_year`
 //   - `_is_live_source`
 //

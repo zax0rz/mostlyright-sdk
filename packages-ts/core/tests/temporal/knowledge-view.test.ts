@@ -1,6 +1,6 @@
 // TS-W3 Plan 04 Task 2 — KnowledgeView unit tests (RED phase).
 //
-// Mirrors `packages/core/src/tradewinds/core/temporal/knowledge_view.py`.
+// Mirrors `packages/core/src/mostlyright/core/temporal/knowledge_view.py`.
 // Asserts: filter invariant (<= asOf), defensive copy on .rows(), eager
 // validation of knowledge_time presence/typing at construction.
 

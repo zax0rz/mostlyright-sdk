@@ -1,9 +1,9 @@
-// Barrel for @tradewinds/core/transforms — TS-W4 Plan 02 + 03 + 04.
+// Barrel for @mostlyright/core/transforms — TS-W4 Plan 02 + 03 + 04.
 //
-// Pure functions porting Python `tradewinds.transforms` (lag/diff/diff2/
+// Pure functions porting Python `mostlyright.transforms` (lag/diff/diff2/
 // rolling/calendar_features/spread/wind_chill/heat_index) plus
-// `tradewinds.preprocessing.clip_outliers`. Lives at the subpath, NOT the
-// root barrel, to keep the @tradewinds/core main bundle under its 25 KB
+// `mostlyright.preprocessing.clip_outliers`. Lives at the subpath, NOT the
+// root barrel, to keep the @mostlyright/core main bundle under its 25 KB
 // size-limit gate (TS-BUNDLE-01). Same pattern as temporal / formats /
 // validator — see iter-4 H8 lesson in `packages-ts/core/src/index.ts`.
 //
@@ -12,8 +12,8 @@
 //   import {
 //     lag, diff, diff2, rolling, calendarFeatures,
 //     spread, windChill, heatIndex, clipOutliers, PHYSICS_BOUNDS,
-//   } from "@tradewinds/core/transforms";
-//   import type { RollingFn, ClipOutliersOptions } from "@tradewinds/core/transforms";
+//   } from "@mostlyright/core/transforms";
+//   import type { RollingFn, ClipOutliersOptions } from "@mostlyright/core/transforms";
 
 export { lag } from "./lag.js";
 export { diff, diff2 } from "./diff.js";

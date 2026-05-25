@@ -304,7 +304,7 @@ describe("validateRows — allowSourceDrift guards", () => {
 });
 
 describe("validateRows — canonical source map parity with Python (iter-1 C2)", () => {
-  // Truth lives in `packages/core/src/tradewinds/core/schemas/*.py` —
+  // Truth lives in `packages/core/src/mostlyright/core/schemas/*.py` —
   // each Schema subclass's `_registered_source: ClassVar[str]`. Any
   // drift here falsely fails Python-stamped frames in the TS validator
   // (or vice versa). These tests pin the literal canonical source for

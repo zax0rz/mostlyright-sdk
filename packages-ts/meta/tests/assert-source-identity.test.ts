@@ -1,6 +1,6 @@
 // Tests for `assertSourceIdentity` + `isMode2Source` + `MODE2_SOURCES`.
 //
-// Mirrors the Python `tradewinds.mode2.assert_source_identity` test
+// Mirrors the Python `mostlyright.mode2.assert_source_identity` test
 // surface (defense-in-depth source-identity check at the Mode 2
 // dispatch layer). Snake_case `toDict()` keys are asserted explicitly
 // — wire-format parity with Python: `schema_source`, `data_source`,
@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { SourceMismatchError } from "@tradewinds/core";
+import { SourceMismatchError } from "@mostlyright/core";
 
 import {
   MODE2_SOURCES,

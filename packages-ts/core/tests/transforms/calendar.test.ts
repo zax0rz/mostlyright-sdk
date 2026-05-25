@@ -1,7 +1,7 @@
 // TS-W4 Plan 03 Task 1 — calendarFeatures transform tests.
 //
-// Mirrors Python `tradewinds.transforms.calendar_features`
-// (packages/core/src/tradewinds/transforms.py:71-100). The TS port operates
+// Mirrors Python `mostlyright.transforms.calendar_features`
+// (packages/core/src/mostlyright/transforms.py:71-100). The TS port operates
 // on `ReadonlyArray<Row>` and appends 8 cyclical-pair columns
 // (month_sin/cos, dow_sin/cos, hour_sin/cos, day_of_year_sin/cos) computed
 // from `dateCol`. TZ-aware extraction via `Intl.DateTimeFormat`.

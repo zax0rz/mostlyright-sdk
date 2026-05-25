@@ -26,9 +26,9 @@ const SOURCE_RE = /^[a-z0-9_-]+$/;
  *
  * Examples:
  *   `cacheKeyForObservations("KNYC", 2025, 1)` →
- *     `"tradewinds:v1:observations:KNYC:2025:01"`.
+ *     `"mostlyright:v1:observations:KNYC:2025:01"`.
  *   `cacheKeyForObservations("KNYC", 2025, 1, "iem")` →
- *     `"tradewinds:v1:observations:KNYC:2025:01:iem"`.
+ *     `"mostlyright:v1:observations:KNYC:2025:01:iem"`.
  *
  * The `source` segment (optional, lowercase alphanumeric / hyphen /
  * underscore) namespaces per-source pre-merge chunks so IEM ASOS and
@@ -49,7 +49,7 @@ export function cacheKeyForObservations(
   }
   const yyyy = String(year).padStart(4, "0");
   const mm = String(month).padStart(2, "0");
-  const base = `tradewinds:v1:observations:${station.toUpperCase()}:${yyyy}:${mm}`;
+  const base = `mostlyright:v1:observations:${station.toUpperCase()}:${yyyy}:${mm}`;
   if (source === undefined) return base;
   if (typeof source !== "string" || !SOURCE_RE.test(source)) {
     throw new RangeError(
@@ -63,12 +63,12 @@ export function cacheKeyForObservations(
  * Build the canonical climate cache key (annual).
  *
  * Example: `cacheKeyForClimate("KNYC", 2025)` →
- * `"tradewinds:v1:climate:KNYC:2025"`.
+ * `"mostlyright:v1:climate:KNYC:2025"`.
  */
 export function cacheKeyForClimate(station: string, year: number): string {
   if (!Number.isInteger(year) || year < MIN_YEAR || year > MAX_YEAR) {
     throw new RangeError(`year out of range: ${year}`);
   }
   const yyyy = String(year).padStart(4, "0");
-  return `tradewinds:v1:climate:${station.toUpperCase()}:${yyyy}`;
+  return `mostlyright:v1:climate:${station.toUpperCase()}:${yyyy}`;
 }

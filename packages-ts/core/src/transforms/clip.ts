@@ -1,7 +1,7 @@
 // TS-W4 Plan 04 Task 2 — clipOutliers (winsorize) + PHYSICS_BOUNDS.
 //
-// Pure row→row port of Python `tradewinds.preprocessing.clip_outliers` at
-// packages/core/src/tradewinds/preprocessing.py:49-91. The v0.1.0 canonical
+// Pure row→row port of Python `mostlyright.preprocessing.clip_outliers` at
+// packages/core/src/mostlyright/preprocessing.py:49-91. The v0.1.0 canonical
 // surface (supersedes the older `transforms.clip_outliers`).
 //
 // Decision tree (mirrors Python preprocessing.py:75-91):
@@ -22,7 +22,7 @@
 /**
  * Physics-based clipping defaults for canonical observation columns.
  *
- * Mirrors Python `tradewinds.preprocessing.PHYSICS_BOUNDS` (preprocessing.py:34-46).
+ * Mirrors Python `mostlyright.preprocessing.PHYSICS_BOUNDS` (preprocessing.py:34-46).
  * Values are `[min, max]` tuples in canonical units (°C for temp, m/s and kt
  * for wind, hPa for pressure, percent for humidity, mm for precip).
  *
@@ -53,7 +53,7 @@ export interface ClipOutliersOptions {
 /**
  * Winsorize a numeric column.
  *
- * Mirrors Python `tradewinds.preprocessing.clip_outliers`. Returns rows with
+ * Mirrors Python `mostlyright.preprocessing.clip_outliers`. Returns rows with
  * a derived `{col}_clipped` column; the source `col` is preserved unchanged.
  *
  * Decision tree:

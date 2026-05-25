@@ -1,16 +1,16 @@
 // AWC METAR parser — maps raw AWC JSON record to `Observation` row.
 //
 // Ported byte-faithfully from
-// `packages/weather/src/tradewinds/weather/_awc.py::awc_to_observation`.
+// `packages/weather/src/mostlyright/weather/_awc.py::awc_to_observation`.
 //
 // Output `source` is `"awc"` — matching the row-level enum
 // (`source: "awc" | "iem" | "ghcnh"` per
 // `packages-ts/core/src/schemas/generated/observation_qc.v1.ts`) and the
-// Python parser (`packages/weather/src/tradewinds/weather/_awc.py:320`).
+// Python parser (`packages/weather/src/mostlyright/weather/_awc.py:320`).
 // The `.live` / `.archive` suffix is a CATALOG / orchestrator source-id
 // (a higher layer concern), NOT a row-level field.
 //
-// Bounds + conversion constants are imported from `@tradewinds/core/internal/{bounds,convert}`
+// Bounds + conversion constants are imported from `@mostlyright/core/internal/{bounds,convert}`
 // (subpath exports added in TS-W1 iter-1 HIGH 4). Any change to the
 // constants in core propagates here automatically — no drift.
 
@@ -30,8 +30,8 @@ import {
   boundedFloat,
   boundedFloatMin,
   boundedInt,
-} from "@tradewinds/core/internal/bounds";
-import { celsiusToFahrenheit, hpaToInhg } from "@tradewinds/core/internal/convert";
+} from "@mostlyright/core/internal/bounds";
+import { celsiusToFahrenheit, hpaToInhg } from "@mostlyright/core/internal/convert";
 
 import type { AwcMetarRaw } from "../_fetchers/awc.js";
 

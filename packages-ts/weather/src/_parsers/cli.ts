@@ -1,15 +1,15 @@
 // IEM CLI daily climate report parser.
 //
-// Ported from `packages/weather/src/tradewinds/weather/_climate.py` —
+// Ported from `packages/weather/src/mostlyright/weather/_climate.py` —
 // THE Kalshi settlement source. Report-type priority determines dedup:
 // `final` (3.0) overwrites `preliminary` (1.0), but a second `final`
 // never overwrites the first (strict `>`, first-seen wins at equal
 // priority). The overnight `final` IS the Kalshi settlement value.
 //
-// `CLIMATE_REPORT_TYPE_PRIORITY` is consumed from `@tradewinds/core`'s
+// `CLIMATE_REPORT_TYPE_PRIORITY` is consumed from `@mostlyright/core`'s
 // codegen output — do not re-define here.
 
-import { CLIMATE_REPORT_TYPE_PRIORITY } from "@tradewinds/core";
+import { CLIMATE_REPORT_TYPE_PRIORITY } from "@mostlyright/core";
 
 import type { CliRawRecord } from "../_fetchers/iem-cli.js";
 
@@ -35,7 +35,7 @@ export interface ClimateObservation {
   /**
    * Numeric priority for dedup (final=3, ncei_final=2.5, correction=2,
    * preliminary=1, estimated=0). Sourced from
-   * `CLIMATE_REPORT_TYPE_PRIORITY` in `@tradewinds/core` codegen.
+   * `CLIMATE_REPORT_TYPE_PRIORITY` in `@mostlyright/core` codegen.
    */
   report_type_priority: number;
   /** Always `"iem"` for CLI records. */
@@ -245,7 +245,7 @@ export function parseCliResponse(
 }
 
 // Backward-compat re-export. mergeClimate canonically lives at
-// @tradewinds/core/internal/merge as of TS-W2 Plan 04. Existing imports
-// from @tradewinds/weather continue to work; new code should prefer
-// `import { mergeClimate } from "@tradewinds/core/internal/merge"`.
-export { mergeClimate } from "@tradewinds/core/internal/merge";
+// @mostlyright/core/internal/merge as of TS-W2 Plan 04. Existing imports
+// from @mostlyright/weather continue to work; new code should prefer
+// `import { mergeClimate } from "@mostlyright/core/internal/merge"`.
+export { mergeClimate } from "@mostlyright/core/internal/merge";

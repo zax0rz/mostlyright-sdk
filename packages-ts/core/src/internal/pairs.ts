@@ -1,7 +1,7 @@
 // buildPairs + _obsAggregates + pairsToRows — settlement-day row builder.
 //
 // Byte-faithful TS port of Python
-// `packages/core/src/tradewinds/_internal/_pairs.py::build_pairs` (Mode 1
+// `packages/core/src/mostlyright/_internal/_pairs.py::build_pairs` (Mode 1
 // subset — no forecast wiring; all fcst_* columns unconditionally null).
 //
 // The full Python `_select_best_run` / `_aggregate_fcst_temps_*` paths

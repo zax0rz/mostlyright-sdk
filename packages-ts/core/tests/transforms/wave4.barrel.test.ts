@@ -1,6 +1,6 @@
 // TS-W4 Plan 04 Task 3 — Wave 4 barrel re-export tests.
 //
-// Asserts the @tradewinds/core/transforms barrel surfaces Wave 4's
+// Asserts the @mostlyright/core/transforms barrel surfaces Wave 4's
 // spread / windChill / heatIndex / clipOutliers / PHYSICS_BOUNDS alongside
 // Wave 2's lag/diff/diff2/rolling and Wave 3's calendarFeatures. End-to-end
 // smoke: imports from the barrel path consumers use, then exercises each
@@ -22,7 +22,7 @@ function num(v: number | null): number {
   return v;
 }
 
-describe("@tradewinds/core/transforms — Wave 4 barrel exports", () => {
+describe("@mostlyright/core/transforms — Wave 4 barrel exports", () => {
   it("spread / windChill / heatIndex / clipOutliers are exported", () => {
     expect(typeof spread).toBe("function");
     expect(typeof windChill).toBe("function");

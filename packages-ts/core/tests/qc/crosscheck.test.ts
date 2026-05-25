@@ -1,7 +1,7 @@
 // TS-W4 Plan 06 Task 1 — crosscheckIemGhcnh inner-join + tolerance.
 //
-// Mirrors Python `tradewinds.qc.crosscheck_iem_ghcnh` at
-// `packages/core/src/tradewinds/qc.py:191-228`. Strict `>` boundary
+// Mirrors Python `mostlyright.qc.crosscheck_iem_ghcnh` at
+// `packages/core/src/mostlyright/qc.py:191-228`. Strict `>` boundary
 // (NOT `>=`) per qc.py:228. camelCase output keys per TS-idiom Parity-Ticket.
 
 import { describe, expect, it } from "vitest";

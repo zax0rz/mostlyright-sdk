@@ -26,28 +26,28 @@ describe("FsStore", () => {
 
   describe("defaultFsRoot()", () => {
     it("honors TRADEWINDS_CACHE_DIR env override", () => {
-      vi.stubEnv("TRADEWINDS_CACHE_DIR", "/tmp/custom-tradewinds");
+      vi.stubEnv("TRADEWINDS_CACHE_DIR", "/tmp/custom-mostlyright");
       try {
-        expect(defaultFsRoot()).toBe("/tmp/custom-tradewinds");
+        expect(defaultFsRoot()).toBe("/tmp/custom-mostlyright");
       } finally {
         vi.unstubAllEnvs();
       }
     });
 
-    it("falls back to $HOME/.tradewinds/cache-ts when env unset", () => {
+    it("falls back to $HOME/.mostlyright/cache-ts when env unset", () => {
       vi.stubEnv("TRADEWINDS_CACHE_DIR", "");
       try {
-        expect(defaultFsRoot()).toBe(join(homedir(), ".tradewinds", "cache-ts"));
+        expect(defaultFsRoot()).toBe(join(homedir(), ".mostlyright", "cache-ts"));
       } finally {
         vi.unstubAllEnvs();
       }
     });
 
-    it("does NOT match the Python cache root (.tradewinds/cache)", () => {
+    it("does NOT match the Python cache root (.mostlyright/cache)", () => {
       vi.stubEnv("TRADEWINDS_CACHE_DIR", "");
       try {
         const tsRoot = defaultFsRoot();
-        const pyRoot = join(homedir(), ".tradewinds", "cache");
+        const pyRoot = join(homedir(), ".mostlyright", "cache");
         expect(tsRoot).not.toBe(pyRoot);
         expect(tsRoot).toContain("cache-ts");
       } finally {
@@ -79,7 +79,7 @@ describe("FsStore", () => {
   describe("key sanitization", () => {
     it("colons in keys do not escape the root", async () => {
       const store = new FsStore({ root: scratchDir });
-      const key = "tradewinds:v1:observations:KNYC:2025:01";
+      const key = "mostlyright:v1:observations:KNYC:2025:01";
       await store.set(key, "value");
       const got = await store.get(key);
       expect(got).toBe("value");
@@ -88,7 +88,7 @@ describe("FsStore", () => {
       // so `:` becomes `%3A` rather than being collapsed to `__`.
       const expectedPath = join(
         scratchDir,
-        "tradewinds%3Av1%3Aobservations%3AKNYC%3A2025%3A01.json",
+        "mostlyright%3Av1%3Aobservations%3AKNYC%3A2025%3A01.json",
       );
       const content = await readFile(expectedPath, "utf8");
       expect(JSON.parse(content)).toEqual({ value: "value" });

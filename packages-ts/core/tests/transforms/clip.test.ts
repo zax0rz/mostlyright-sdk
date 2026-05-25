@@ -1,7 +1,7 @@
 // TS-W4 Plan 04 Task 2 — clipOutliers tests (RED phase).
 //
-// Mirrors Python `tradewinds.preprocessing.clip_outliers` at packages/core/
-// src/tradewinds/preprocessing.py:49-91. Decision tree:
+// Mirrors Python `mostlyright.preprocessing.clip_outliers` at packages/core/
+// src/mostlyright/preprocessing.py:49-91. Decision tree:
 //
 //   1. opts.bounds set            → clip to explicit [lo, hi]
 //   2. PHYSICS_BOUNDS.has(col)    → clip to physics defaults

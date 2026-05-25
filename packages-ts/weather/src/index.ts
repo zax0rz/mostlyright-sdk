@@ -1,4 +1,4 @@
-// @tradewinds/weather — weather fetchers + parsers.
+// @mostlyright/weather — weather fetchers + parsers.
 //
 // TS-W1 ships AWC (Wave 3) + IEM CLI (Wave 4). TS-W2 Plan 01 adds IEM ASOS
 // (yearly-chunk historical METARs) + the IEM CSV parser. Subsequent TS-W2
@@ -7,7 +7,7 @@
 export const version = "0.0.0";
 
 export function helloWeather(): string {
-  return "hello @tradewinds/weather";
+  return "hello @mostlyright/weather";
 }
 
 // TS-W1 Wave 3 — AWC live METARs.

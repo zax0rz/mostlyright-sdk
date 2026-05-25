@@ -1,6 +1,6 @@
 // CSV format — pandas-style serialization without an index column.
 //
-// Mirrors `packages/core/src/tradewinds/core/formats/csv.py`:
+// Mirrors `packages/core/src/mostlyright/core/formats/csv.py`:
 //   - dumps emits header row + value rows, no index column
 //   - loads parses header + rows back into Array<Record<string,string>>
 //   - all values stringify to "" if null/undefined (matches pandas NaN

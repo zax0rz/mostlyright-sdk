@@ -1,4 +1,4 @@
-import { MemoryStore } from "@tradewinds/core/internal/cache";
+import { MemoryStore } from "@mostlyright/core/internal/cache";
 import { describe, expect, it } from "vitest";
 
 import {

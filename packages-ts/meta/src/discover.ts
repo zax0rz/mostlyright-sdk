@@ -1,5 +1,5 @@
 // Phase 10 — discover({city}) ergonomic surface (TS port of
-// packages/core/src/tradewinds/discover.py).
+// packages/core/src/mostlyright/discover.py).
 //
 // Pre-research lookup. Shows quants which station settles which issuer's
 // market for a given city so they can pick the right selector before

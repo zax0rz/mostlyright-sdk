@@ -196,8 +196,8 @@ describe("availability", () => {
         },
         async listKeys(_prefix: string) {
           return [
-            "tradewinds:v1:observations:NYC:2025:01:iem",
-            "tradewinds:v1:observations:NYC:2025:02:iem",
+            "mostlyright:v1:observations:NYC:2025:01:iem",
+            "mostlyright:v1:observations:NYC:2025:02:iem",
           ];
         },
       };

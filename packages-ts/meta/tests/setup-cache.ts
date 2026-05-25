@@ -12,7 +12,7 @@ import { beforeEach } from "vitest";
 
 // Per-worker tmp dir — each setup-cache.ts module load creates a fresh one.
 // process.env is per-process, so this isolates workers from each other AND
-// from the user's $HOME/.tradewinds/cache-ts.
+// from the user's $HOME/.mostlyright/cache-ts.
 const workerRoot = mkdtempSync(join(tmpdir(), `tw-meta-test-w${process.pid}-`));
 process.env.TRADEWINDS_CACHE_DIR = workerRoot;
 

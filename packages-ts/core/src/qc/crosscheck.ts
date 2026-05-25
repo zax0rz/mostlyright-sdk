@@ -1,7 +1,7 @@
 // TS-W4 Plan 06 — crosscheckIemGhcnh: disagreement detection between IEM +
 // GHCNh temperature readings. Mirrors Python
-// `tradewinds.qc.crosscheck_iem_ghcnh` at
-// `packages/core/src/tradewinds/qc.py:191-228`.
+// `mostlyright.qc.crosscheck_iem_ghcnh` at
+// `packages/core/src/mostlyright/qc.py:191-228`.
 //
 // Inner-joins by composite key `(station, eventTime)`. For matched pairs
 // where both temp_c values are finite numbers and the absolute delta
@@ -18,8 +18,8 @@
 // conversion to snake_case happens at the JSON serializer boundary
 // (TS-W3 Plan 07 `jsonDumps`).
 //
-// Lives at the `@tradewinds/core/qc` subpath (NOT root barrel) to keep
-// the main `@tradewinds/core` bundle under its 25 KB size-limit gate.
+// Lives at the `@mostlyright/core/qc` subpath (NOT root barrel) to keep
+// the main `@mostlyright/core` bundle under its 25 KB size-limit gate.
 
 /** Options for {@link crosscheckIemGhcnh}. */
 export interface CrosscheckOptions {

@@ -1,6 +1,6 @@
 // KnowledgeView — temporal filtering by `knowledge_time`.
 //
-// Mirrors `packages/core/src/tradewinds/core/temporal/knowledge_view.py`.
+// Mirrors `packages/core/src/mostlyright/core/temporal/knowledge_view.py`.
 // A plain class (not an iterator subclass, not a DataFrame accessor) that
 // filters its `rows()` output to entries where `knowledge_time <= asOf`.
 //

@@ -15,7 +15,7 @@ import {
   MemoryStore,
   cacheKeyForClimate,
   cacheKeyForObservations,
-} from "@tradewinds/core/internal/cache";
+} from "@mostlyright/core/internal/cache";
 import { research } from "../src/research.js";
 
 interface CliMockRecord {
@@ -204,7 +204,7 @@ describe("research() cache integration (TS-W3 Plan 06)", () => {
   // TS-CACHE-02 contract `(station, year, month)`), not a year-sentinel
   // `:01:rt=N` shape. This regression guard asserts:
   //   1. IEM writes carry a key matching the canonical per-month shape
-  //      `tradewinds:v1:observations:STATION:YYYY:MM:iem`.
+  //      `mostlyright:v1:observations:STATION:YYYY:MM:iem`.
   //   2. The legacy `:rt=N` suffix is NEVER emitted.
   //   3. A query spanning multiple months produces a separate cache.set
   //      per month (3 months → 3 IEM-source writes).
@@ -230,9 +230,9 @@ describe("research() cache integration (TS-W3 Plan 06)", () => {
     // Per-month IEM writes for each of {Jan, Feb, Mar} 2023. We assert each
     // canonical key shape is present somewhere in the write stream.
     const expected = [
-      "tradewinds:v1:observations:NYC:2023:01:iem",
-      "tradewinds:v1:observations:NYC:2023:02:iem",
-      "tradewinds:v1:observations:NYC:2023:03:iem",
+      "mostlyright:v1:observations:NYC:2023:01:iem",
+      "mostlyright:v1:observations:NYC:2023:02:iem",
+      "mostlyright:v1:observations:NYC:2023:03:iem",
     ];
     for (const want of expected) {
       expect(writtenKeys, `missing expected IEM per-month key=${want}`).toContain(want);
@@ -265,11 +265,11 @@ describe("research() cache integration (TS-W3 Plan 06)", () => {
     const writtenKeys = setSpy.mock.calls.map((c) => String(c[0]));
 
     // 2025-01 IEM key written (NOT skipped — past month, outside volatile window).
-    expect(writtenKeys).toContain("tradewinds:v1:observations:NYC:2025:01:iem");
+    expect(writtenKeys).toContain("mostlyright:v1:observations:NYC:2025:01:iem");
     // 2025-02 IEM key NOT written — inside 30-day volatile window relative to now.
-    expect(writtenKeys).not.toContain("tradewinds:v1:observations:NYC:2025:02:iem");
+    expect(writtenKeys).not.toContain("mostlyright:v1:observations:NYC:2025:02:iem");
     // 2025-03 IEM key NOT written — current LST month.
-    expect(writtenKeys).not.toContain("tradewinds:v1:observations:NYC:2025:03:iem");
+    expect(writtenKeys).not.toContain("mostlyright:v1:observations:NYC:2025:03:iem");
   });
 
   // iter-7 H14: GHCNh archive chunks are now cacheable. The previous code
@@ -361,15 +361,15 @@ describe("research() cache integration (TS-W3 Plan 06)", () => {
 
     // Both source-namespaced keys present, disjoint.
     expect(keys, "missing IEM per-month key").toContain(
-      "tradewinds:v1:observations:NYC:2023:01:iem",
+      "mostlyright:v1:observations:NYC:2023:01:iem",
     );
     expect(keys, "missing GHCNh per-month key").toContain(
-      "tradewinds:v1:observations:NYC:2023:01:ghcnh",
+      "mostlyright:v1:observations:NYC:2023:01:ghcnh",
     );
 
     // No collision: the un-namespaced legacy key MUST NOT appear.
     expect(keys, "legacy non-namespaced observations key leaked").not.toContain(
-      "tradewinds:v1:observations:NYC:2023:01",
+      "mostlyright:v1:observations:NYC:2023:01",
     );
   });
 
@@ -401,11 +401,11 @@ describe("research() cache integration (TS-W3 Plan 06)", () => {
     const readKeys = getSpy.mock.calls.map((c) => String(c[0]));
 
     // No IEM/GHCNh observation key for 2026-01 may be written.
-    expect(writtenKeys).not.toContain("tradewinds:v1:observations:NYC:2026:01:iem");
-    expect(writtenKeys).not.toContain("tradewinds:v1:observations:NYC:2026:01:ghcnh");
+    expect(writtenKeys).not.toContain("mostlyright:v1:observations:NYC:2026:01:iem");
+    expect(writtenKeys).not.toContain("mostlyright:v1:observations:NYC:2026:01:ghcnh");
     // And no read attempts for those keys either.
-    expect(readKeys).not.toContain("tradewinds:v1:observations:NYC:2026:01:iem");
-    expect(readKeys).not.toContain("tradewinds:v1:observations:NYC:2026:01:ghcnh");
+    expect(readKeys).not.toContain("mostlyright:v1:observations:NYC:2026:01:iem");
+    expect(readKeys).not.toContain("mostlyright:v1:observations:NYC:2026:01:ghcnh");
   });
 
   it("C14: current UTC month → no IEM/GHCNh cache.set (covers UTC-rollover tail)", async () => {
@@ -425,8 +425,8 @@ describe("research() cache integration (TS-W3 Plan 06)", () => {
     await research("NYC", "2025-01-01", "2025-01-01", { cache: store, now });
 
     const writtenKeys = setSpy.mock.calls.map((c) => String(c[0]));
-    expect(writtenKeys).not.toContain("tradewinds:v1:observations:NYC:2025:01:iem");
-    expect(writtenKeys).not.toContain("tradewinds:v1:observations:NYC:2025:01:ghcnh");
+    expect(writtenKeys).not.toContain("mostlyright:v1:observations:NYC:2025:01:iem");
+    expect(writtenKeys).not.toContain("mostlyright:v1:observations:NYC:2025:01:ghcnh");
   });
 
   it("C14: past UTC month that is still current LST month → still gated by shouldSkipCacheForCurrentLstMonth", async () => {
@@ -451,8 +451,8 @@ describe("research() cache integration (TS-W3 Plan 06)", () => {
     // for LAX, so `shouldSkipCacheForCurrentLstMonth` MUST fire and block
     // the write. The combined skipCache predicate stays true → no IEM
     // write for 2025-01.
-    expect(writtenKeys).not.toContain("tradewinds:v1:observations:LAX:2025:01:iem");
-    expect(writtenKeys).not.toContain("tradewinds:v1:observations:LAX:2025:01:ghcnh");
+    expect(writtenKeys).not.toContain("mostlyright:v1:observations:LAX:2025:01:iem");
+    expect(writtenKeys).not.toContain("mostlyright:v1:observations:LAX:2025:01:ghcnh");
   });
 
   it("C14: past UTC month + past LST month → cacheable (existing behavior preserved)", async () => {
@@ -469,7 +469,7 @@ describe("research() cache integration (TS-W3 Plan 06)", () => {
     await research("NYC", "2023-01-15", "2023-01-15", { cache: store, now });
 
     const writtenKeys = setSpy.mock.calls.map((c) => String(c[0]));
-    expect(writtenKeys).toContain("tradewinds:v1:observations:NYC:2023:01:iem");
+    expect(writtenKeys).toContain("mostlyright:v1:observations:NYC:2023:01:iem");
   });
 
   // iter-12 C15: climate (CLI) cache must skip future + not-strictly-past

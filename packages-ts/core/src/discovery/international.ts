@@ -1,6 +1,6 @@
 // TS-W6 Wave 2 — internationalDailyExtremes rollup.
 //
-// Ports Python `tradewinds.international.daily_extremes` semantics:
+// Ports Python `mostlyright.international.daily_extremes` semantics:
 //
 //   - For each row, parse `observed_at` as UTC, convert to the station's IANA
 //     local calendar date via `Intl.DateTimeFormat` (the only universally-

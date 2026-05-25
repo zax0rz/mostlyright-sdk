@@ -1,7 +1,7 @@
 // Shared calendar-year chunkers for IEM fetchers.
 //
 // Byte-faithful TS port of
-// `packages/weather/src/tradewinds/weather/_fetchers/_iem_chunks.py::yearly_chunks_exclusive_end`
+// `packages/weather/src/mostlyright/weather/_fetchers/_iem_chunks.py::yearly_chunks_exclusive_end`
 // (mostlyright PR #85 commit cf9eb85, 2026-05-12; Pattern 1).
 //
 // Only the EXCLUSIVE-end variant is ported here — the IEM ASOS download

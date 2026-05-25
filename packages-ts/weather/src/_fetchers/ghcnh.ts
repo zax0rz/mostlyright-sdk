@@ -1,7 +1,7 @@
 // NCEI GHCNh per-year PSV fetcher — single station-year and inclusive range.
 //
 // Byte-faithful TS port of Python
-// `packages/weather/src/tradewinds/weather/_fetchers/ghcnh.py::download_ghcnh`
+// `packages/weather/src/mostlyright/weather/_fetchers/ghcnh.py::download_ghcnh`
 // and `download_ghcnh_range`, with the following deliberate adaptations:
 //
 //  1. No disk cache. Python writes per-station PSVs under
@@ -22,8 +22,8 @@
 // `.planning/research/TS-CORS-MATRIX.md` §GHCNh — OPEN. Works in browsers,
 // Node 20+, Cloudflare Workers, Deno.
 
-import { NotFoundError, fetchWithRetry } from "@tradewinds/core";
-import type { FetchWithRetryOptions } from "@tradewinds/core";
+import { NotFoundError, fetchWithRetry } from "@mostlyright/core";
+import type { FetchWithRetryOptions } from "@mostlyright/core";
 
 /** NCEI GHCNh public archive base URL (no trailing slash). Mirrors Python `GHCNH_BASE_URL`. */
 export const GHCNH_BASE_URL =

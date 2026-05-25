@@ -1,7 +1,7 @@
 // IEM CLI (NWS climate) historical fetcher — settlement-grade source.
 //
-// Ported from `packages/weather/src/tradewinds/weather/_fetchers/iem_cli.py`
-// (TS-W1 Wave 4). Uses the native `fetch` via `@tradewinds/core`'s
+// Ported from `packages/weather/src/mostlyright/weather/_fetchers/iem_cli.py`
+// (TS-W1 Wave 4). Uses the native `fetch` via `@mostlyright/core`'s
 // `fetchWithRetry`, so this module runs in browsers, Node 20+, Cloudflare
 // Workers, and Deno.
 //
@@ -12,8 +12,8 @@
 // that want a window filter the parsed records downstream — IEM's cli.py
 // endpoint does not support partial-year requests.
 
-import { NotFoundError, fetchWithRetry } from "@tradewinds/core";
-import type { FetchWithRetryOptions } from "@tradewinds/core";
+import { NotFoundError, fetchWithRetry } from "@mostlyright/core";
+import type { FetchWithRetryOptions } from "@mostlyright/core";
 
 /** IEM cli.py JSON endpoint. Mirrors Python `IEM_CLI_BASE_URL`. */
 export const IEM_CLI_BASE_URL = "https://mesonet.agron.iastate.edu/json/cli.py";
@@ -26,7 +26,7 @@ export const IEM_CLI_POLITE_DELAY_MS = 1000;
 
 /**
  * Station code regex (3-4 uppercase letters). Mirrors
- * `STATION_CODE_RE` in `@tradewinds/core/internal/bounds`. Inlined here
+ * `STATION_CODE_RE` in `@mostlyright/core/internal/bounds`. Inlined here
  * because that helper is intentionally a deep-import in core; we don't
  * want fetchers transitively pulling in the validators barrel.
  *

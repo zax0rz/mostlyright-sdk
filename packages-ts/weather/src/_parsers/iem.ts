@@ -1,7 +1,7 @@
 // IEM METAR CSV parser — string-body in, Observation rows out.
 //
 // Byte-faithful TS port of Python
-// `packages/weather/src/tradewinds/weather/_iem.py::iem_to_observation`
+// `packages/weather/src/mostlyright/weather/_iem.py::iem_to_observation`
 // + `parse_iem_file`. The TS port consumes the CSV body in-memory (a
 // string returned by `downloadIemAsos`); the Python version walks a file
 // handle but the semantics are identical.
@@ -49,8 +49,8 @@ import {
   boundedFloat,
   boundedFloatMin,
   boundedInt,
-} from "@tradewinds/core/internal/bounds";
-import { fahrenheitToCelsius } from "@tradewinds/core/internal/convert";
+} from "@mostlyright/core/internal/bounds";
+import { fahrenheitToCelsius } from "@mostlyright/core/internal/convert";
 
 import { type Observation, icaoToStationCode, mapCloudCover } from "./awc.js";
 

@@ -6,12 +6,12 @@
 // fetchFn-injection pattern from packages-ts/markets/src/polymarket/
 // client.ts so vitest can mock the HTTP layer.
 
-import { fetchWithRetry } from "@tradewinds/core";
+import { fetchWithRetry } from "@mostlyright/core";
 
 export const KALSHI_API_BASE = "https://api.elections.kalshi.com/trade-api/v2";
 
 const DEFAULT_SLEEP_BETWEEN_MS = 100; // 0.1 s
-const DEFAULT_USER_AGENT = "tradewinds-ts/0.2.0 (+https://github.com/helloiamvu/tradewinds)";
+const DEFAULT_USER_AGENT = "mostlyright-ts/0.2.0 (+https://github.com/helloiamvu/tradewinds)";
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_TRADES_PAGE_LIMIT = 1000;
 const DEFAULT_MAX_TRADES_PAGES = 10_000;

@@ -48,13 +48,13 @@ describe("fetchWithRetry — success path", () => {
     await fetchWithRetry("https://example.test/ok", {
       method: "POST",
       headers: { "X-Trace": "abc" },
-      userAgent: "tradewinds-test/1.0",
+      userAgent: "mostlyright-test/1.0",
     });
     const init = fetchSpy.mock.calls[0]?.[1] as RequestInit;
     expect(init.method).toBe("POST");
     const headers = init.headers as Record<string, string>;
     expect(headers["X-Trace"]).toBe("abc");
-    expect(headers["User-Agent"]).toBe("tradewinds-test/1.0");
+    expect(headers["User-Agent"]).toBe("mostlyright-test/1.0");
   });
 });
 

@@ -1,7 +1,7 @@
-// UTC-aware timestamp wrapper for tradewinds.core (TS-W3 Plan 04 Task 1).
+// UTC-aware timestamp wrapper for mostlyright.core (TS-W3 Plan 04 Task 1).
 //
-// Mirrors `packages/core/src/tradewinds/core/temporal/timepoint.py`.
-// Every timestamp in tradewinds.core is UTC-aware. TimePoint rejects:
+// Mirrors `packages/core/src/mostlyright/core/temporal/timepoint.py`.
+// Every timestamp in mostlyright.core is UTC-aware. TimePoint rejects:
 //  - naive ISO strings (no Z, no +HH:MM, no -HH:MM offset)
 //  - date-only ISO strings (e.g. "2026-05-21" — no time component)
 //  - date-only ISO strings with a timezone suffix (e.g. "2026-05-21Z" or
@@ -54,7 +54,7 @@ const FRACTIONAL_SECONDS = /[T ]\d{2}:\d{2}:\d{2}\.(\d+)(?:Z|[+-])/;
 /**
  * UTC-aware timestamp wrapper.
  *
- * Equivalent to Python's `tradewinds.core.TimePoint`. Constructed from either
+ * Equivalent to Python's `mostlyright.core.TimePoint`. Constructed from either
  * a `Date` (rejects NaN/Infinity) or a tz-aware ISO 8601 string (rejects
  * naive / date-only inputs). Internally stored as an epoch-ms Date (for
  * display/timezone ops) PLUS an epoch-µs `bigint` (used for comparisons).
@@ -288,7 +288,7 @@ export class TimePoint {
     //
     // `#epochMicros % 1_000_000n` is the µs-within-the-second component
     // for any non-negative epoch. For pre-epoch timestamps (rare in
-    // tradewinds — design.md says UTC and ≥ 2018), BigInt's `%` rounds
+    // mostlyright — design.md says UTC and ≥ 2018), BigInt's `%` rounds
     // toward zero, which would produce a negative remainder. Python's
     // `%` rounds toward negative infinity (always non-negative for a
     // positive divisor). Normalize by adding the divisor back if the
