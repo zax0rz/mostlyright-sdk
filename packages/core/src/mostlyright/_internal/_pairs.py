@@ -299,9 +299,19 @@ def build_pairs_row(
         iem_records = [r for r in forecasts if r.get("issued_at")]
         om_records = [r for r in forecasts if not r.get("issued_at")]
 
-        # Apply forecast_model filter to IEM MOS records before run selection
+        # Apply forecast_model filter to IEM MOS records before run selection.
+        # Phase 17 Wave 4 iter-3 review HIGH: case-insensitive match because
+        # _iem_mos.fetch_iem_mos emits ``model.upper()`` (e.g. ``"NBE"``)
+        # while the user-facing kwarg is lowercase. A naive ``==`` filter
+        # would drop every row and produce all-null forecast columns.
         if forecast_model is not None:
-            iem_records = [r for r in iem_records if r.get("model") == forecast_model]
+            target_model = forecast_model.upper()
+            iem_records = [
+                r
+                for r in iem_records
+                if (m := r.get("model")) is not None
+                and str(m).upper() == target_model
+            ]
 
         fcst_high: float | None = None
         fcst_low: float | None = None

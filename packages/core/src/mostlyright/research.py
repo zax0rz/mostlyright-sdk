@@ -1412,7 +1412,17 @@ def research(
     iem_mos_by_date: dict[str, list[dict[str, Any]]] = {}
     nwp_by_model_date: dict[str, dict[str, list[dict[str, Any]]]] = {}
     if include_forecast:
-        iem_mos_by_date = _fetch_iem_mos_range(info, from_date, to_date)
+        # Phase 17 Wave 4 iter-3 review HIGH: thread forecast_model through to
+        # the fetcher so callers asking for ``forecast_model="gfs"`` get a
+        # GFS pull, not a default-NBE pull whose rows then get filtered out
+        # by build_pairs_row's model-name match. ``forecast_model`` is the
+        # user-facing case (lowercase IEM MOS model id); _fetch_iem_mos_range
+        # passes it directly to fetch_iem_mos which validates against
+        # SUPPORTED_MOS_MODELS.
+        iem_model = (forecast_model or "nbe").lower()
+        iem_mos_by_date = _fetch_iem_mos_range(
+            info, from_date, to_date, model=iem_model
+        )
         if forecast_models:
             nwp_by_model_date = _fetch_nwp_models_range(
                 info, from_date, to_date, list(forecast_models)
