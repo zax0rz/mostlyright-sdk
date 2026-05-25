@@ -21,6 +21,77 @@ from typing import Any
 _SELECTOR_NAMES: tuple[str, ...] = ("station", "city", "contract", "contracts")
 
 
+#: Kalshi short-ticker → canonical city slug. Real Kalshi tickers use
+#: variable-length city suffixes: ``KXHIGHNY-...`` (NY → NYC),
+#: ``KXHIGHCHI-...`` (CHI → CHI), ``KXHIGHLAX-...`` (LAX → LAX). The
+#: ``KALSHI_SETTLEMENT_STATIONS`` catalog is keyed by the canonical
+#: 3-letter city slug; this alias table normalizes the variable-length
+#: Kalshi suffix to the catalog key before lookup. Phase 10 iter-1 codex
+#: HIGH: without this, ``kalshi:KXHIGHNY-25MAY26-T79`` (the actual
+#: ROADMAP example) would fail to resolve.
+_KALSHI_TICKER_ALIASES: dict[str, str] = {
+    "NY": "NYC",
+    # All other Kalshi cities use the canonical 3-letter slug as their
+    # ticker suffix verbatim (identity mapping is implicit).
+}
+
+
+#: Kalshi-short ↔ Polymarket-long city slug alias. Architect iter-1 HIGH:
+#: ``resolve_city`` and ``annotate_settles_for`` need to recognize BOTH
+#: forms so a single call with EITHER input surfaces the cross-issuer
+#: settlement neighborhood. Without this, ``resolve_city("LAX")`` would
+#: miss Polymarket's KLAX entry (Polymarket keys it as ``los_angeles``);
+#: ``resolve_city("chicago")`` would miss Kalshi's KMDW (Kalshi keys it
+#: as ``CHI``). Bi-directional table — looked up either way.
+_CITY_SLUG_ALIASES: dict[str, tuple[str, str]] = {
+    # short_kalshi: (long_polymarket, canonical_kalshi_upper)
+    "nyc": ("nyc", "NYC"),
+    "chi": ("chicago", "CHI"),
+    "lax": ("los_angeles", "LAX"),
+    "mia": ("miami", "MIA"),
+    "den": ("denver", "DEN"),
+    "bos": ("boston", "BOS"),
+    "aus": ("austin", "AUS"),
+    "dca": ("washington_dc", "DCA"),
+    "phl": ("philadelphia", "PHL"),
+    "sfo": ("san_francisco", "SFO"),
+    "sea": ("seattle", "SEA"),
+    "atl": ("atlanta", "ATL"),
+    "hou": ("houston", "HOU"),
+    "dal": ("dallas", "DAL"),
+    "phx": ("phoenix", "PHX"),
+    "msp": ("minneapolis", "MSP"),
+    "dtw": ("detroit", "DTW"),
+}
+
+# Build reverse lookup so passing the Polymarket long form also surfaces
+# the Kalshi short form.
+_CITY_SLUG_ALIASES_REVERSE: dict[str, tuple[str, str]] = {
+    long_poly: (short_kalshi, kalshi_upper)
+    for short_kalshi, (long_poly, kalshi_upper) in _CITY_SLUG_ALIASES.items()
+}
+
+
+def _normalize_city_slugs(city: str) -> tuple[str, str]:
+    """Return ``(polymarket_slug_lower, kalshi_slug_upper)`` for ``city``.
+
+    Accepts either form (``"nyc"`` or ``"NYC"``, ``"chicago"`` or ``"CHI"``)
+    and returns both canonical forms so callers can probe either catalog.
+
+    Falls back to ``(city.lower(), city.upper())`` for cities not in the
+    alias table (international cities the user might pass).
+    """
+    lower = city.lower()
+    upper = city.upper()
+    if lower in _CITY_SLUG_ALIASES:
+        long_poly, kalshi_upper = _CITY_SLUG_ALIASES[lower]
+        return long_poly, kalshi_upper
+    if lower in _CITY_SLUG_ALIASES_REVERSE:
+        short_kalshi, kalshi_upper = _CITY_SLUG_ALIASES_REVERSE[lower]
+        return lower, kalshi_upper
+    return lower, upper
+
+
 class StationOverrideWarning(UserWarning):
     """Emitted when ``station_override=`` deliberately mismatches the
     contract's canonical settlement station.
@@ -125,11 +196,18 @@ def resolve_contract(contract_id: str) -> tuple[str, str]:
         # (e.g. KXHIGHNYC-25MAY26-T79 → KXHIGHNYC). Pull the city portion
         # by trimming at the first '-'.
         city_only = normalized.split("-", 1)[0]
+        # Extract the variable-length city suffix and normalize via the
+        # Kalshi-ticker alias table so KXHIGHNY → NY → NYC (the canonical
+        # catalog key). Iter-1 codex HIGH.
         if city_only.startswith("KHIGH") and len(city_only) > 5:
-            r = kalshi_nhigh.resolve(city_only, _date.today())
+            short = city_only[5:]
+            canonical = _KALSHI_TICKER_ALIASES.get(short, short)
+            r = kalshi_nhigh.resolve(f"KHIGH{canonical}", _date.today())
             return r.settlement_station, "kalshi"
         if city_only.startswith("KLOW") and len(city_only) > 4:
-            r = kalshi_nlow.resolve(city_only, _date.today())
+            short = city_only[4:]
+            canonical = _KALSHI_TICKER_ALIASES.get(short, short)
+            r = kalshi_nlow.resolve(f"KLOW{canonical}", _date.today())
             return r.settlement_station, "kalshi"
         raise ValueError(
             f"unsupported kalshi contract format: {raw!r}; "
@@ -179,19 +257,22 @@ def resolve_city(city: str) -> tuple[str, ...]:
     )
     from tradewinds.markets.polymarket import KNOWN_WRONG_STATIONS as POLY_WRONG
 
+    # Iter-1 python-architect HIGH: normalize via the cross-issuer slug
+    # alias table so a single call (with either "NYC" or "nyc", "CHI" or
+    # "chicago", "LAX" or "los_angeles") surfaces the full cross-issuer
+    # settlement neighborhood from BOTH catalogs.
+    poly_slug, kalshi_slug = _normalize_city_slugs(city)
     out: list[str] = []
-    city_upper = city.upper()
-    city_lower = city.lower()
-    if city_upper in KALSHI_SETTLEMENT_STATIONS:
-        out.append(KALSHI_SETTLEMENT_STATIONS[city_upper].station)
+    if kalshi_slug in KALSHI_SETTLEMENT_STATIONS:
+        out.append(KALSHI_SETTLEMENT_STATIONS[kalshi_slug].station)
     poly = load_polymarket_city_stations()
-    if city_lower in poly:
+    if poly_slug in poly:
         # Preserve insertion order across the measure keys.
         for measure in ("default", "high", "low"):
-            st = poly[city_lower].get(measure)
+            st = poly[poly_slug].get(measure)
             if st and st not in out:
                 out.append(st)
-    for st in sorted(POLY_WRONG.get(city_lower, frozenset())):
+    for st in sorted(POLY_WRONG.get(poly_slug, frozenset())):
         if st not in out:
             out.append(st)
     if not out:
@@ -224,16 +305,17 @@ def annotate_settles_for(station: str, city: str | None) -> list[str]:
         KALSHI_SETTLEMENT_STATIONS,
     )
 
-    city_upper = city.upper()
-    city_lower = city.lower()
+    # Iter-1 python-architect HIGH: use cross-issuer slug alias so the
+    # annotation works regardless of which slug-form the caller passed.
+    poly_slug, kalshi_slug = _normalize_city_slugs(city)
     if (
-        city_upper in KALSHI_SETTLEMENT_STATIONS
-        and KALSHI_SETTLEMENT_STATIONS[city_upper].station == station
+        kalshi_slug in KALSHI_SETTLEMENT_STATIONS
+        and KALSHI_SETTLEMENT_STATIONS[kalshi_slug].station == station
     ):
-        out.append(f"kalshi:{city_upper}")
+        out.append(f"kalshi:{kalshi_slug}")
     poly = load_polymarket_city_stations()
-    if city_lower in poly and station in poly[city_lower].values():
-        out.append(f"polymarket:{city_lower}")
+    if poly_slug in poly and station in poly[poly_slug].values():
+        out.append(f"polymarket:{poly_slug}")
     return sorted(out)
 
 

@@ -828,6 +828,17 @@ export async function research(
   if (opts.sources !== undefined && opts.source !== undefined) {
     throw new Error("research(): sources and source are mutually exclusive");
   }
+  // Iter-1 codex HIGH: sources / source validation is shipped in Phase 10
+  // v0.2 but the data-selection wiring lands in v0.3. Without this guard
+  // the station-path runs the full multi-source merge regardless — silent
+  // data-selection corruption.
+  if (opts.sources !== undefined || opts.source !== undefined) {
+    throw new Error(
+      "research(): sources / source validation surface is shipped in Phase 10 v0.2 " +
+        "but the data-selection wiring lands in v0.3. For Mode 2 single-source pinning " +
+        "today, use `researchBySource(station, source, ...)` from @tradewinds/meta.",
+    );
+  }
   if (opts.stationOverride !== undefined && !hasContract) {
     throw new Error(
       "research(): stationOverride requires contract (not standalone station/city/contracts)",

@@ -1200,6 +1200,22 @@ def research(
     if sources is not None and source is not None:
         raise ValueError("research(): sources= and source= are mutually exclusive")
 
+    # Iter-1 codex HIGH: sources= / source= are validated at the
+    # mutual-exclusion boundary but the actual data-selection wiring lands
+    # in v0.3. The station-path silently runs the full multi-source merge
+    # regardless of these kwargs, which would be silent data-selection
+    # corruption. Surface a clear NotImplementedError pointing callers at
+    # `tradewinds.mode2.research_by_source` (the Mode-2-pin path) until
+    # the kwargs are wired into the station-path dispatch.
+    if sources is not None or source is not None:
+        raise NotImplementedError(
+            "research(): sources= and source= validation surface is shipped in "
+            "Phase 10 v0.2 but the data-selection wiring lands in v0.3. For "
+            "Mode 2 single-source pinning today, use "
+            "`tradewinds.mode2.research_by_source(station, source, ...)` "
+            "directly. Mode 1 multi-source subset (sources=[...]) ships in v0.3."
+        )
+
     # `station_override=` only makes sense when paired with `contract=`.
     if station_override is not None and not _has_contract:
         raise ValueError(

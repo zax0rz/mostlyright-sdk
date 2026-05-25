@@ -44,11 +44,22 @@ class TestDiscoverCity:
         kord_row = df[df["station"] == "KORD"].iloc[0]
         assert "polymarket:chicago" in kord_row["settles_for"]
 
-    def test_chicago_polymarket_KMDW_in_denylist_empty_settles(self):
-        """KMDW is in Polymarket's chicago denylist — empty settles_for."""
+    def test_chicago_KMDW_cross_issuer_kalshi_polymarket_denylist(self):
+        """Iter-1 python-architect HIGH: KMDW is Kalshi's Chicago station
+        AND in Polymarket's chicago denylist. Cross-issuer alias surfaces
+        it correctly — kalshi:CHI annotation present (NOT empty)."""
         df = discover(city="chicago")
         kmdw_row = df[df["station"] == "KMDW"].iloc[0]
-        assert kmdw_row["settles_for"] == []
+        # The cross-issuer alias resolves "chicago" → kalshi "CHI" → KMDW.
+        # The denylist surfacing now correctly shows KMDW belongs to Kalshi.
+        assert "kalshi:CHI" in kmdw_row["settles_for"]
+
+    def test_chicago_and_CHI_return_same_cross_issuer_table(self):
+        """Both slug forms produce the same full cross-issuer neighborhood
+        (the iter-1 architect bite-y test)."""
+        long_form = discover(city="chicago")
+        short_form = discover(city="CHI")
+        assert sorted(long_form["station"].tolist()) == sorted(short_form["station"].tolist())
 
     def test_empty_city_raises(self):
         with pytest.raises(ValueError, match="non-empty str"):

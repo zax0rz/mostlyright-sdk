@@ -54,7 +54,25 @@ def discover(*, city: str) -> "pd.DataFrame":
             underlying=str(exc),
         ) from None
 
-    from tradewinds._compose import annotate_settles_for, resolve_city
+    # Iter-1 codex HIGH: discover() is exported from the `tradewinds`
+    # (core) package but the resolver depends on `tradewinds.markets`,
+    # which is shipped as a separate distribution (`tradewinds-markets`).
+    # A clean install of `tradewinds` alone would fail at this point.
+    # Surface a clear SourceUnavailableError pointing the operator at
+    # the install hint rather than letting an ImportError bubble up.
+    try:
+        from tradewinds._compose import annotate_settles_for, resolve_city
+    except ImportError as exc:
+        from tradewinds.core.exceptions import SourceUnavailableError
+
+        raise SourceUnavailableError(
+            "tradewinds.discover requires the sibling `tradewinds-markets` "
+            "distribution (for the Kalshi + Polymarket city catalogs). "
+            "Install with: pip install tradewinds-markets",
+            source="discover",
+            retryable=False,
+            underlying=str(exc),
+        ) from None
 
     stations = resolve_city(city)
     rows: list[dict[str, Any]] = [

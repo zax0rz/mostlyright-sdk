@@ -86,6 +86,16 @@ class TestResolveContract:
         station, _ = resolve_contract("kalshi:KXLOWCHI-25MAY26-T50")
         assert station == "KMDW"
 
+    def test_kalshi_NY_short_ticker_aliases_to_NYC(self):
+        """Iter-1 codex HIGH: real Kalshi NYC ticker `KXHIGHNY-...` uses
+        2-letter NY suffix (not NYC). The alias table normalizes."""
+        station, _ = resolve_contract("kalshi:KXHIGHNY-25MAY26-T79")
+        assert station == "KNYC"
+
+    def test_kalshi_LOW_NY_short_ticker_aliases_to_NYC(self):
+        station, _ = resolve_contract("kalshi:KXLOWNY-25MAY26-T50")
+        assert station == "KNYC"
+
     def test_kalshi_bad_prefix_raises(self):
         with pytest.raises(ValueError, match="unsupported kalshi contract"):
             resolve_contract("kalshi:BOGUSNYC")
@@ -154,6 +164,35 @@ class TestResolveCity:
         stations = resolve_city("NYC")
         assert stations.count("KNYC") == 1
         assert stations.count("KLGA") == 1
+
+    def test_LAX_cross_issuer_alias_surfaces_polymarket(self):
+        """Iter-1 python-architect HIGH: cross-issuer slug alias
+        ensures `resolve_city("LAX")` (Kalshi short) ALSO finds
+        Polymarket's los_angeles entry."""
+        stations = resolve_city("LAX")
+        assert "KLAX" in stations
+        # Polymarket maps los_angeles → KLAX (same as Kalshi LAX).
+        # Verify the cross-issuer query annotates it (via separate test).
+        annotations = annotate_settles_for("KLAX", "LAX")
+        assert "polymarket:los_angeles" in annotations
+        assert "kalshi:LAX" in annotations
+
+    def test_los_angeles_cross_issuer_alias_surfaces_kalshi(self):
+        """Reverse: `resolve_city("los_angeles")` (Polymarket long) ALSO
+        finds Kalshi's LAX entry."""
+        stations = resolve_city("los_angeles")
+        assert "KLAX" in stations
+        annotations = annotate_settles_for("KLAX", "los_angeles")
+        assert "kalshi:LAX" in annotations
+        assert "polymarket:los_angeles" in annotations
+
+    def test_washington_dc_cross_issuer_alias(self):
+        """DCA (Kalshi) ↔ washington_dc (Polymarket) alias."""
+        stations = resolve_city("DCA")
+        assert "KDCA" in stations
+        stations_long = resolve_city("washington_dc")
+        # Both forms surface KDCA.
+        assert "KDCA" in stations_long
 
 
 # ---------------------------------------------------------------------------
@@ -243,6 +282,31 @@ class TestResearchSignatureValidation:
                 from_date="2025-01-06",
                 to_date="2025-01-12",
                 sources=["iem.archive"],
+                source="iem.archive",
+            )
+
+    def test_sources_only_raises_notimplemented_v03(self):
+        """Iter-1 codex HIGH: sources= silently bypassed the data-fetch
+        wiring. v0.2 now raises NotImplementedError directing callers at
+        researchBySource for Mode-2 today + v0.3 for sources=[]."""
+        from tradewinds import research
+
+        with pytest.raises(NotImplementedError, match="v0.3"):
+            research(
+                station="NYC",
+                from_date="2025-01-06",
+                to_date="2025-01-12",
+                sources=["iem.archive"],
+            )
+
+    def test_source_only_raises_notimplemented_v03(self):
+        from tradewinds import research
+
+        with pytest.raises(NotImplementedError, match="research_by_source"):
+            research(
+                station="NYC",
+                from_date="2025-01-06",
+                to_date="2025-01-12",
                 source="iem.archive",
             )
 

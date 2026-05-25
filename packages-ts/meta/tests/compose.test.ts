@@ -67,6 +67,14 @@ describe("resolveContract", () => {
     expect(resolveContract("kalshi:KXLOWCHI-25MAY26-T50")).toEqual(["KMDW", "kalshi"]);
   });
 
+  it("kalshi:KXHIGHNY-25MAY26-T79 → KNYC (iter-1 codex HIGH alias)", () => {
+    expect(resolveContract("kalshi:KXHIGHNY-25MAY26-T79")).toEqual(["KNYC", "kalshi"]);
+  });
+
+  it("kalshi:KXLOWNY-25MAY26-T50 → KNYC (iter-1 codex HIGH alias)", () => {
+    expect(resolveContract("kalshi:KXLOWNY-25MAY26-T50")).toEqual(["KNYC", "kalshi"]);
+  });
+
   it("kalshi:KHIGHCHI → KMDW (Kalshi uses Midway)", () => {
     expect(resolveContract("kalshi:KHIGHCHI")).toEqual(["KMDW", "kalshi"]);
   });
@@ -120,6 +128,32 @@ describe("resolveCity", () => {
     const stations = resolveCity("NYC");
     expect(stations.filter((s) => s === "KNYC").length).toBe(1);
     expect(stations.filter((s) => s === "KLGA").length).toBe(1);
+  });
+
+  it("LAX (Kalshi short) surfaces Polymarket los_angeles entry", () => {
+    const stations = resolveCity("LAX");
+    expect(stations).toContain("KLAX");
+    const annotations = annotateSettlesFor("KLAX", "LAX");
+    expect(annotations).toContain("kalshi:LAX");
+    expect(annotations).toContain("polymarket:los_angeles");
+  });
+
+  it("los_angeles (Polymarket long) surfaces Kalshi LAX entry", () => {
+    const stations = resolveCity("los_angeles");
+    expect(stations).toContain("KLAX");
+    const annotations = annotateSettlesFor("KLAX", "los_angeles");
+    expect(annotations).toContain("kalshi:LAX");
+    expect(annotations).toContain("polymarket:los_angeles");
+  });
+
+  it("chicago and CHI return overlapping cross-issuer neighborhoods", () => {
+    const chicagoLong = resolveCity("chicago");
+    const chiShort = resolveCity("CHI");
+    // Both forms surface KMDW (Kalshi) AND KORD (Polymarket).
+    expect(chicagoLong).toContain("KMDW");
+    expect(chicagoLong).toContain("KORD");
+    expect(chiShort).toContain("KMDW");
+    expect(chiShort).toContain("KORD");
   });
 });
 
@@ -197,6 +231,18 @@ describe("research() Phase 10 signature validation", () => {
         source: "iem.archive",
       }),
     ).rejects.toThrow(/mutually exclusive/);
+  });
+
+  it("sources alone raises v0.3 deferred (iter-1 codex HIGH)", async () => {
+    await expect(
+      research("KNYC", "2025-01-06", "2025-01-12", { sources: ["iem.archive"] }),
+    ).rejects.toThrow(/v0.3/);
+  });
+
+  it("source alone raises v0.3 deferred (iter-1 codex HIGH)", async () => {
+    await expect(
+      research("KNYC", "2025-01-06", "2025-01-12", { source: "iem.archive" }),
+    ).rejects.toThrow(/researchBySource/);
   });
 
   it("stationOverride requires contract", async () => {

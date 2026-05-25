@@ -16,6 +16,65 @@ export const SELECTOR_NAMES = ["station", "city", "contract", "contracts"] as co
 export type SelectorName = (typeof SELECTOR_NAMES)[number];
 
 /**
+ * Kalshi short-ticker → canonical city slug. Real Kalshi tickers use
+ * variable-length city suffixes: `KXHIGHNY-...` (NY → NYC),
+ * `KXHIGHCHI-...` (CHI → CHI). The `KALSHI_SETTLEMENT_STATIONS` catalog
+ * is keyed by the canonical 3-letter slug; this alias normalizes the
+ * variable-length Kalshi suffix to the catalog key before lookup.
+ */
+const KALSHI_TICKER_ALIASES: Record<string, string> = {
+  NY: "NYC",
+};
+
+/**
+ * Kalshi-short ↔ Polymarket-long city slug alias. Iter-1 python-architect
+ * HIGH: without this, `resolveCity("LAX")` would miss Polymarket's KLAX
+ * (keyed as `los_angeles`); `resolveCity("chicago")` would miss Kalshi's
+ * KMDW (keyed as `CHI`). Bi-directional probe surfaces the full
+ * cross-issuer settlement neighborhood regardless of which slug form
+ * the caller passed.
+ */
+const CITY_SLUG_ALIASES: Record<string, readonly [string, string]> = {
+  // short_kalshi (lower) → [polymarket_long, kalshi_upper]
+  nyc: ["nyc", "NYC"],
+  chi: ["chicago", "CHI"],
+  lax: ["los_angeles", "LAX"],
+  mia: ["miami", "MIA"],
+  den: ["denver", "DEN"],
+  bos: ["boston", "BOS"],
+  aus: ["austin", "AUS"],
+  dca: ["washington_dc", "DCA"],
+  phl: ["philadelphia", "PHL"],
+  sfo: ["san_francisco", "SFO"],
+  sea: ["seattle", "SEA"],
+  atl: ["atlanta", "ATL"],
+  hou: ["houston", "HOU"],
+  dal: ["dallas", "DAL"],
+  phx: ["phoenix", "PHX"],
+  msp: ["minneapolis", "MSP"],
+  dtw: ["detroit", "DTW"],
+};
+
+const CITY_SLUG_ALIASES_REVERSE: Record<string, readonly [string, string]> = (() => {
+  const out: Record<string, readonly [string, string]> = {};
+  for (const [shortLower, [longPoly, kalshiUpper]] of Object.entries(CITY_SLUG_ALIASES)) {
+    out[longPoly] = [shortLower, kalshiUpper];
+  }
+  return out;
+})();
+
+/** Return `[polymarket_slug_lower, kalshi_slug_upper]` for `city`. */
+function normalizeCitySlugs(city: string): readonly [string, string] {
+  const lower = city.toLowerCase();
+  const upper = city.toUpperCase();
+  const direct = CITY_SLUG_ALIASES[lower];
+  if (direct !== undefined) return direct;
+  const reverse = CITY_SLUG_ALIASES_REVERSE[lower];
+  if (reverse !== undefined) return [lower, reverse[1]];
+  return [lower, upper];
+}
+
+/**
  * Structured warning emitted when `stationOverride` deliberately
  * mismatches the contract's canonical settlement station. The output
  * row carries `settlementMismatch: true`.
@@ -89,16 +148,19 @@ export function resolveContract(contractId: string): readonly [string, string] {
       normalized = `K${normalized.slice(2)}`;
     }
     const cityOnly = normalized.split("-", 1)[0] ?? "";
-    let cityTicker: string | null = null;
+    let cityTickerRaw: string | null = null;
     if (cityOnly.startsWith("KHIGH") && cityOnly.length > 5) {
-      cityTicker = cityOnly.slice(5);
+      cityTickerRaw = cityOnly.slice(5);
     } else if (cityOnly.startsWith("KLOW") && cityOnly.length > 4) {
-      cityTicker = cityOnly.slice(4);
+      cityTickerRaw = cityOnly.slice(4);
     } else {
       throw new Error(
         `unsupported kalshi contract format: ${JSON.stringify(raw)}; expected KHIGH<CITY>* / KXHIGH<CITY>* / KLOW<CITY>* / KXLOW<CITY>* prefix`,
       );
     }
+    // Iter-1 codex HIGH: normalize variable-length Kalshi ticker suffix
+    // (NY → NYC, etc.) via the alias table before the catalog lookup.
+    const cityTicker = KALSHI_TICKER_ALIASES[cityTickerRaw] ?? cityTickerRaw;
     const entry: KalshiStation | undefined = KALSHI_SETTLEMENT_STATIONS[cityTicker];
     if (entry === undefined) {
       throw new Error(`unknown Kalshi city ticker: ${JSON.stringify(cityTicker)}`);
@@ -126,22 +188,23 @@ export function resolveCity(city: string): readonly string[] {
   if (typeof city !== "string" || !city) {
     throw new Error(`city must be a non-empty string; got ${JSON.stringify(city)}`);
   }
+  // Iter-1 python-architect HIGH: cross-issuer slug alias surfaces the
+  // full settlement neighborhood for either input form.
+  const [polySlug, kalshiSlug] = normalizeCitySlugs(city);
   const out: string[] = [];
-  const cityUpper = city.toUpperCase();
-  const cityLower = city.toLowerCase();
 
-  const kalshi = KALSHI_SETTLEMENT_STATIONS[cityUpper];
+  const kalshi = KALSHI_SETTLEMENT_STATIONS[kalshiSlug];
   if (kalshi !== undefined && !out.includes(kalshi.station)) {
     out.push(kalshi.station);
   }
-  const poly = POLYMARKET_CITY_STATIONS[cityLower];
+  const poly = POLYMARKET_CITY_STATIONS[polySlug];
   if (poly !== undefined) {
     for (const measure of ["default", "high", "low"] as const) {
       const st = poly[measure];
       if (typeof st === "string" && !out.includes(st)) out.push(st);
     }
   }
-  const wrong = POLYMARKET_KNOWN_WRONG_STATIONS[cityLower];
+  const wrong = POLYMARKET_KNOWN_WRONG_STATIONS[polySlug];
   if (wrong !== undefined) {
     const sortedWrong = [...wrong].sort();
     for (const st of sortedWrong) {
@@ -161,18 +224,19 @@ export function resolveCity(city: string): readonly string[] {
  */
 export function annotateSettlesFor(station: string, city: string | null): readonly string[] {
   if (city === null) return [];
+  // Iter-1 python-architect HIGH: cross-issuer slug alias annotates both
+  // issuers regardless of slug form.
+  const [polySlug, kalshiSlug] = normalizeCitySlugs(city);
   const out: string[] = [];
-  const cityUpper = city.toUpperCase();
-  const cityLower = city.toLowerCase();
-  const kalshi = KALSHI_SETTLEMENT_STATIONS[cityUpper];
+  const kalshi = KALSHI_SETTLEMENT_STATIONS[kalshiSlug];
   if (kalshi !== undefined && kalshi.station === station) {
-    out.push(`kalshi:${cityUpper}`);
+    out.push(`kalshi:${kalshiSlug}`);
   }
-  const poly = POLYMARKET_CITY_STATIONS[cityLower];
+  const poly = POLYMARKET_CITY_STATIONS[polySlug];
   if (poly !== undefined) {
     for (const measure of ["default", "high", "low"] as const) {
       if (poly[measure] === station) {
-        out.push(`polymarket:${cityLower}`);
+        out.push(`polymarket:${polySlug}`);
         break;
       }
     }
