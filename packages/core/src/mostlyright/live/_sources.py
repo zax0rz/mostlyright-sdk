@@ -54,9 +54,7 @@ def validate_source(source: str | None) -> str:
         return SUPPORTED_SOURCES[0]
     normalized = source.strip().lower()
     if normalized not in SUPPORTED_SOURCES:
-        raise ValueError(
-            f"unknown live source {source!r}; supported: {SUPPORTED_SOURCES!r}"
-        )
+        raise ValueError(f"unknown live source {source!r}; supported: {SUPPORTED_SOURCES!r}")
     return normalized
 
 
@@ -88,8 +86,7 @@ def validate_poll_seconds(poll_seconds: float | None, source: str) -> float:
         )
     if poll_seconds < floor:
         raise ValueError(
-            f"poll_seconds={poll_seconds} below polite floor "
-            f"{floor}s for source={source!r}"
+            f"poll_seconds={poll_seconds} below polite floor {floor}s for source={source!r}"
         )
     return float(poll_seconds)
 

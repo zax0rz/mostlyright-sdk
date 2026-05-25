@@ -728,7 +728,9 @@ class TestSourceCacheAndPartialIEM:
         # Stub _is_current_lst_year deterministically: 2026 is "current",
         # 2025 is historical. The orchestrator must call download_cli with
         # skip_cache=True for 2026 and skip_cache=False for 2025.
-        monkeypatch.setattr("mostlyright.weather._fetchers.iem_cli.download_cli", _fake_download_cli)
+        monkeypatch.setattr(
+            "mostlyright.weather._fetchers.iem_cli.download_cli", _fake_download_cli
+        )
 
         def _fake_current(_station: str, year: int) -> bool:
             return year == 2026
@@ -783,7 +785,9 @@ class TestSourceCacheAndPartialIEM:
             )
             return p
 
-        monkeypatch.setattr("mostlyright.weather._fetchers.iem_cli.download_cli", _fake_download_cli)
+        monkeypatch.setattr(
+            "mostlyright.weather._fetchers.iem_cli.download_cli", _fake_download_cli
+        )
 
         # Anchor "now" at 2026-05-22 (the GSD project date). 2025 is past,
         # 2026 is current UTC, 2027 would be future.

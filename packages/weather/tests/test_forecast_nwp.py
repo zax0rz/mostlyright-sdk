@@ -59,10 +59,30 @@ class TestForecastNwpDispatch:
         with pytest.raises(ValueError, match="NWP model must be"):
             forecast_nwp("KNYC", "bogus")
 
-    def test_supported_models_unchanged(self) -> None:
+    def test_supported_models_phase17_plan03(self) -> None:
+        """Phase 17 PLAN-03 extended the public surface to include NCEP.
+
+        PLAN-03 NCEP family (HRRRAK + GEFS + GDAS + RAP + RRFS + RTMA +
+        URMA + CFS) is wired end-to-end. ECMWF / MSC / HAFS / legacy are
+        predeclared in the schema enum so callers see the same surface
+        as PLAN-04 / -05 / -06 land their fetch + decode wiring.
+        """
         from mostlyright.forecasts import SUPPORTED_NWP_MODELS
 
-        assert frozenset({"hrrr", "gfs", "nbm"}) == SUPPORTED_NWP_MODELS
+        # The 3 v0.1.0 entries survive.
+        assert {"hrrr", "gfs", "nbm"} <= SUPPORTED_NWP_MODELS
+        # The 8 NCEP family entries are present.
+        expected_ncep = {
+            "hrrrak",
+            "gefs",
+            "gdas",
+            "rap",
+            "rrfs",
+            "rtma",
+            "urma",
+            "cfs",
+        }
+        assert expected_ncep <= SUPPORTED_NWP_MODELS
 
     def test_to_dict_includes_model(self) -> None:
         err = NwpModelNotAvailableError("msg", model="ecmwf_ifs_hres", available_in="v0.2")

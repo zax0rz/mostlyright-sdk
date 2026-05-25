@@ -34,10 +34,12 @@ __all__ = [
     "NoLiveForNwpError",
     "NwpError",
     "NwpModelNotAvailableError",
+    "NwpModelRetiredError",
     "PayloadTooLargeError",
     "SchemaValidationError",
     "SourceMismatchError",
     "SourceUnavailableError",
+    "StormNotFoundError",
     "TemporalDriftError",
     "TradewindsError",
     # ``MostlyRightMCPError`` is intentionally NOT in ``__all__``. It is
@@ -548,6 +550,83 @@ class DeprecatedModelWarning(DeprecationWarning):
     can promote it to an error via ``warnings.filterwarnings("error",
     category=DeprecatedModelWarning)``.
     """
+
+
+class StormNotFoundError(NwpError):
+    """A HAFS storm query (id or name) doesn't match any active storm.
+
+    Phase 17 PLAN-06 / FORECAST-14. Carries the query and the list of
+    currently-active storm IDs so callers can present a useful error.
+    Historical HAFS access requires passing the canonical storm_id
+    directly (Storms() only knows currently-active storms).
+    """
+
+    default_error_code = "NWP_STORM_NOT_FOUND"
+
+    def __init__(
+        self,
+        message: str = "",
+        *,
+        query: str = "",
+        active_storms: list[str] | None = None,
+        request_id: str | None = None,
+        error_code: str | None = None,
+    ) -> None:
+        super().__init__(
+            message,
+            error_code=error_code,
+            source="nwp.hafs",
+            request_id=request_id,
+        )
+        self.query: str = query
+        self.active_storms: list[str] = list(active_storms or [])
+
+    def _payload(self) -> dict[str, Any]:
+        payload = super()._payload()
+        payload.update(query=self.query, active_storms=list(self.active_storms))
+        return payload
+
+
+class NwpModelRetiredError(NwpError):
+    """Caller asked for a model past its retirement date.
+
+    Phase 17 PLAN-06 / FORECAST-06: NAM / HREF / HiResW retire 2026-08-31
+    per NWS scn26-47 (Herbie issue #540). The retirement date is loaded
+    from :data:`mostlyright.weather._fetchers._url_transitions.LEGACY_MODELS_RETIRE`.
+    Carries ``replacement_suggestions`` so callers can wire a graceful
+    fallback (HRRR / RAP / RRFS).
+    """
+
+    default_error_code = "NWP_MODEL_RETIRED"
+
+    def __init__(
+        self,
+        message: str = "",
+        *,
+        model: str = "",
+        retired_on: datetime | None = None,
+        replacement_suggestions: list[str] | None = None,
+        request_id: str | None = None,
+        error_code: str | None = None,
+    ) -> None:
+        super().__init__(
+            message,
+            error_code=error_code,
+            source=f"nwp.{model}",
+            request_id=request_id,
+        )
+        self.model: str = model
+        self.retired_on: datetime | None = retired_on
+        self.replacement_suggestions: list[str] = list(replacement_suggestions or [])
+
+    def _payload(self) -> dict[str, Any]:
+        payload = super()._payload()
+        payload.update(
+            model=self.model,
+            retired_on=self.retired_on.isoformat() if self.retired_on else None,
+            replacement_suggestions=list(self.replacement_suggestions),
+        )
+        return payload
 
 
 # ----------------------------------------------------------------------

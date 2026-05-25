@@ -26,7 +26,6 @@ import asyncio
 from typing import Any
 
 import pytest
-
 from mostlyright.live import POLITE_FLOORS_S, stream
 
 

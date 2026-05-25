@@ -89,7 +89,7 @@ async def stream(
         # infinite empty-yield loop instead of getting the diagnostic.
         except (ValueError, TypeError, AssertionError):
             raise
-        except Exception:  # noqa: BLE001 — transient fetcher exceptions must NOT abort
+        except Exception:
             log.exception(
                 "live.stream: poll failed for station=%s source=%s — continuing",
                 station,

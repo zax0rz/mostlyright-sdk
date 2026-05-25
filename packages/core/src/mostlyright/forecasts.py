@@ -45,10 +45,81 @@ if TYPE_CHECKING:
 __all__ = ["SUPPORTED_NWP_MODELS", "forecast_nwp"]
 
 
-#: NWP models mostlyright ships in v0.1.0. ECMWF Tier-2 (4 models) is
-#: predeclared in :data:`mostlyright.core.schemas.forecast_nwp.NWP_MODEL_VALUES`
-#: and raises :class:`NwpModelNotAvailableError` when requested in v0.1.
-SUPPORTED_NWP_MODELS: frozenset[str] = frozenset({"hrrr", "gfs", "nbm"})
+#: NWP models that the public ``mostlyright.forecast_nwp`` surface
+#: actually wires end-to-end. Phase 17 PLAN-03 expanded this from
+#: ``{hrrr, gfs, nbm}`` to the full NCEP family (HRRRAK + GEFS + GDAS +
+#: RAP + RRFS + RTMA + URMA + CFS) — 11 total.
+#:
+#: ECMWF Tier-2 (4 models), MSC Canadian family (5), and HAFS / legacy
+#: NAM / HREF / HiResW (4) are predeclared in
+#: :data:`mostlyright.core.schemas.forecast_nwp.NWP_MODEL_VALUES` and
+#: raise :class:`NwpModelNotAvailableError` until their Wave-2 plans
+#: (PLAN-04 / -05 / -06) land their fetch + decode wiring. The
+#: internal SSRF allow-list :data:`mostlyright.weather._fetchers._nwp_archive.SUPPORTED_NWP_MODELS`
+#: covers the full 24-name predeclared enum so URL construction is safe
+#: when those plans flip the public-surface bit one model at a time.
+SUPPORTED_NWP_MODELS: frozenset[str] = frozenset(
+    {
+        # v0.1.0 (Phase 3.2)
+        "hrrr",
+        "gfs",
+        "nbm",
+        # Phase 17 PLAN-04 ECMWF family
+        "ecmwf_ifs_hres",
+        "ecmwf_ifs_ens",
+        "ecmwf_aifs_single",
+        "ecmwf_aifs_ens",
+        # Phase 17 PLAN-03 NCEP family
+        "hrrrak",
+        "gefs",
+        "gdas",
+        "rap",
+        "rrfs",
+        "rtma",
+        "urma",
+        "cfs",
+        # Phase 17 PLAN-05 MSC Canadian family (24h Datamart retention guards
+        # against historical use via HistoricalDepthError)
+        "hrdps",
+        "rdps",
+        "gdps",
+        "geps",
+        "reps",
+        # Phase 17 PLAN-06 HAFS + legacy (NAM/HREF/HiResW retire 2026-08-31)
+        "hafs",
+        "nam",
+        "href",
+        "hiresw",
+    }
+)
+
+
+#: NWP models that have end-to-end fetch + decode wiring on the public
+#: surface today. The :data:`SUPPORTED_NWP_MODELS` set above is the full
+#: predeclared catalog (24 entries) — Phase 17 PLAN-03 wires NCEP,
+#: PLAN-04/-05/-06 wire ECMWF/MSC/HAFS one plan at a time. Models in
+#: ``SUPPORTED_NWP_MODELS`` but NOT in ``_WIRED_NWP_MODELS`` raise
+#: :class:`NwpModelNotAvailableError` from :func:`forecast_nwp` so
+#: callers see a clean error instead of falling through to a
+#: half-wired fetch path. Update this set as later plans flip the
+#: end-to-end wiring on for their model families.
+_WIRED_NWP_MODELS: frozenset[str] = frozenset(
+    {
+        # v0.1.0 (Phase 3.2)
+        "hrrr",
+        "gfs",
+        "nbm",
+        # Phase 17 PLAN-03 NCEP family
+        "hrrrak",
+        "gefs",
+        "gdas",
+        "rap",
+        "rrfs",
+        "rtma",
+        "urma",
+        "cfs",
+    }
+)
 
 
 def forecast_nwp(
@@ -100,14 +171,18 @@ def forecast_nwp(
             f"(or reserved in {sorted(NWP_MODEL_VALUES)} for v0.2); "
             f"got {model!r}"
         )
-    # Surface NwpModelNotAvailableError eagerly for reserved models so a
-    # user without [nwp] still gets the right error (rather than
-    # SourceUnavailableError about missing cfgrib).
-    if model in NWP_MODEL_VALUES and model not in SUPPORTED_NWP_MODELS:
+    # Surface NwpModelNotAvailableError eagerly for predeclared-but-not-
+    # yet-wired models so a user calling, e.g., ``forecast_nwp("KNYC",
+    # "ecmwf_ifs_hres")`` sees a clean reserved-model error rather than
+    # falling through to a half-wired fetch path. ``SUPPORTED_NWP_MODELS``
+    # is the full predeclared catalog (24 entries); ``_WIRED_NWP_MODELS``
+    # is the strict subset with end-to-end fetch+decode wiring today.
+    # PLAN-04 / -05 / -06 flip later families into the wired set.
+    if model in SUPPORTED_NWP_MODELS and model not in _WIRED_NWP_MODELS:
         raise NwpModelNotAvailableError(
             f"NWP model {model!r} is reserved in schema.forecast_nwp.v1 "
-            "but not implemented in v0.1.0 (deferred to v0.2 — ECMWF "
-            "Tier-2 requires hosted infrastructure).",
+            "but not yet wired end-to-end (Phase 17 PLAN-04 / -05 / -06 "
+            "land ECMWF / MSC / HAFS / legacy fetch + decode).",
             model=model,
             available_in="v0.2",
         )

@@ -20,8 +20,16 @@ CYCLE = datetime(2026, 5, 23, 12, tzinfo=UTC)
 
 
 def test_supported_enums_are_closed_sets() -> None:
-    assert frozenset({"hrrr", "gfs", "nbm"}) == SUPPORTED_NWP_MODELS
-    assert frozenset({"aws_bdp", "nomads"}) == SUPPORTED_NWP_MIRRORS
+    # Phase 17 PLAN-03..06 extended the closed catalog. The three v0.1.0
+    # models + the two original mirrors are still members, but the sets
+    # now also carry the Phase-17 additions. The closed-set discipline
+    # is preserved — caller-supplied values still get rejected if they
+    # are NOT in these frozensets (see negative-path tests below).
+    assert {"hrrr", "gfs", "nbm"}.issubset(SUPPORTED_NWP_MODELS)
+    assert {"aws_bdp", "nomads"}.issubset(SUPPORTED_NWP_MIRRORS)
+    # Final post-Phase-17 count: 24 models, 7 mirrors.
+    assert len(SUPPORTED_NWP_MODELS) == 24
+    assert len(SUPPORTED_NWP_MIRRORS) == 7
 
 
 def test_default_mirror_chain_aws_first() -> None:
@@ -65,13 +73,17 @@ def test_nomads_root_distinct_from_aws() -> None:
 
 
 def test_unsupported_model_raises_valueerror() -> None:
+    # Phase 17 expanded the supported set to 24; use a name that is NOT
+    # in the catalog at all (random-string sentinel).
     with pytest.raises(ValueError, match="model must be one of"):
-        build_fetch_plan(model="ecmwf_ifs_hres", mirror="aws_bdp", cycle=CYCLE, fxx=1)
+        build_fetch_plan(model="not_a_real_model", mirror="aws_bdp", cycle=CYCLE, fxx=1)
 
 
 def test_unsupported_mirror_raises_valueerror() -> None:
+    # ecmwf_data_portal is now a recognised mirror (PLAN-04). Use a
+    # synthetic mirror name to test the validation path.
     with pytest.raises(ValueError, match="mirror must be one of"):
-        build_fetch_plan(model="hrrr", mirror="ecmwf_data_portal", cycle=CYCLE, fxx=1)
+        build_fetch_plan(model="hrrr", mirror="not_a_real_mirror", cycle=CYCLE, fxx=1)
 
 
 def test_negative_fxx_rejected() -> None:

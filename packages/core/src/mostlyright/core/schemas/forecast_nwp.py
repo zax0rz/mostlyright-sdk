@@ -18,23 +18,46 @@ from typing import ClassVar
 
 from ..schema import ColumnSpec, Schema
 
-#: Models that ship in v0.1.0 + models reserved in the enum for v0.2.
-#: Reserving the enum day-one lets a future v0.2 release add ECMWF
-#: support without breaking schema-id stability.
+#: Models that ship in v0.1.0 + Phase 17 catalog expansion. Reserving
+#: the enum day-one (and adding Phase 17 entries additively) keeps
+#: ``schema_id`` stable while the catalog grows. Length 24 after Phase 17.
 NWP_MODEL_VALUES: tuple[str, ...] = (
+    # v0.1.0 (Phase 3.2)
     "hrrr",
     "gfs",
     "nbm",
+    # v0.2 reservations — Phase 17 PLAN-04 ships ECMWF support
     "ecmwf_ifs_hres",
     "ecmwf_ifs_ens",
     "ecmwf_aifs_single",
     "ecmwf_aifs_ens",
+    # Phase 17 PLAN-03: NCEP family (8 models)
+    "hrrrak",
+    "gefs",
+    "gdas",
+    "rap",
+    "rrfs",
+    "rtma",
+    "urma",
+    "cfs",
+    # Phase 17 PLAN-05: MSC Canadian family (5 models — 24h Datamart retention)
+    "hrdps",
+    "rdps",
+    "gdps",
+    "geps",
+    "reps",
+    # Phase 17 PLAN-06: NOMADS-only family (HAFS + legacy NAM/HREF/HiResW)
+    # NAM/HREF/HiResW retire 2026-08-31 per NWS scn26-47 (Herbie #540).
+    "hafs",
+    "nam",
+    "href",
+    "hiresw",
 )
 
 
 #: Mirrors that may appear in the ``mirror`` column. Reserves the four
 #: ECMWF mirrors so a v0.2 ECMWF lift can add rows without bumping
-#: ``schema_id``.
+#: ``schema_id``. Phase 17 PLAN-05 adds ``"msc"`` for Canadian Datamart.
 NWP_MIRROR_VALUES: tuple[str, ...] = (
     "aws_bdp",
     "gcp_bdp",
@@ -44,6 +67,8 @@ NWP_MIRROR_VALUES: tuple[str, ...] = (
     "ecmwf_aws",
     "ecmwf_azure",
     "ecmwf_gcp",
+    # Phase 17 PLAN-05
+    "msc",
 )
 
 
