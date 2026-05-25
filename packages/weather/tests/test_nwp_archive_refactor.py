@@ -91,6 +91,84 @@ def test_assert_range_honored_raises_on_416() -> None:
 
 
 # ---------------------------------------------------------------------------
+# fetch_byte_range integration with assert_range_honored (Codex iter-1 HIGH)
+# ---------------------------------------------------------------------------
+
+
+def test_fetch_byte_range_aborts_on_200_full_body(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A mirror that returns 200 OK with the full body MUST raise RuntimeError.
+
+    Phase 17 FORECAST-05 / Herbie ``core.py:1108-1115``. Without this
+    guard, a misconfigured mirror could silently return ~135 MB for what
+    the caller expected to be a 10 KB byte-range.
+    """
+    from mostlyright.weather._fetchers import _nwp_archive as nwp_archive
+
+    plan = build_fetch_plan(
+        model="hrrr",
+        mirror="aws_bdp",
+        cycle=datetime(2026, 5, 24, 12, tzinfo=UTC),
+        fxx=1,
+    )
+
+    class _FakeStreamCtx:
+        def __init__(self) -> None:
+            self.status_code = 200  # the failure mode we guard against
+            self.url = plan.grib2_url
+
+        def __enter__(self) -> _FakeStreamCtx:
+            return self
+
+        def __exit__(self, *exc_info: object) -> None:
+            return None
+
+        def raise_for_status(self) -> None:
+            return None  # 200 doesn't raise
+
+        def read(self) -> bytes:  # pragma: no cover — must NOT be called
+            raise AssertionError("read() must not be called after 200 OK guard")
+
+    class _FakeClient:
+        def __init__(self, *_a: object, **_kw: object) -> None: ...
+
+        def __enter__(self) -> _FakeClient:
+            return self
+
+        def __exit__(self, *exc_info: object) -> None:
+            return None
+
+        def stream(self, *_a: object, **_kw: object) -> _FakeStreamCtx:
+            return _FakeStreamCtx()
+
+    monkeypatch.setattr(nwp_archive.httpx, "Client", _FakeClient)
+
+    with pytest.raises(RuntimeError, match="Range request not honored"):
+        nwp_archive.fetch_byte_range(plan, start=0, end=1023)
+
+
+# ---------------------------------------------------------------------------
+# Per-model dispatch wiring (Codex iter-1 HIGH)
+# ---------------------------------------------------------------------------
+
+
+def test_build_fetch_plan_uses_idx_suffix_by_model() -> None:
+    """idx_url suffix comes from IDX_SUFFIX_BY_MODEL, not a hardcoded ``.idx``.
+
+    NCEP family stays ``.idx`` (byte-identical to pre-refactor). Wave 2
+    ECMWF entry would set this to ``.index``; the test verifies the
+    plumbing is in place.
+    """
+    plan = build_fetch_plan(
+        model="hrrr",
+        mirror="aws_bdp",
+        cycle=datetime(2026, 5, 24, 12, tzinfo=UTC),
+        fxx=1,
+    )
+    assert plan.idx_url == plan.grib2_url + ".idx"
+    assert plan.idx_url.endswith(IDX_SUFFIX_BY_MODEL["hrrr"][0])
+
+
+# ---------------------------------------------------------------------------
 # GFS URL regression — pre/post v16 cutover via shared transitions catalog
 # ---------------------------------------------------------------------------
 

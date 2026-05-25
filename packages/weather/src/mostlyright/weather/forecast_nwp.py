@@ -52,6 +52,8 @@ from mostlyright.core.schemas.forecast_nwp import (
 
 from ._fetchers._nwp_archive import (
     DEFAULT_MIRROR_CHAIN,
+    IDX_STYLE_BY_MODEL,
+    SOURCES_BY_MODEL,
     SUPPORTED_NWP_MIRRORS,
     SUPPORTED_NWP_MODELS,
     NwpFetchPlan,
@@ -292,8 +294,12 @@ def _try_fetch_records_for_mirror(
     plan = build_fetch_plan(model=model, mirror=mirror, cycle=cycle, fxx=fxx)
     try:
         idx_text = fetch_idx_text(plan, client=client)
+        # Phase 17 FORECAST-04: dispatch idx parser style per model.
+        # NCEP family is "wgrib2" (the parse_idx default) so this preserves
+        # byte-identical behavior; ECMWF Wave-2 plug-in uses "eccodes".
+        idx_style = IDX_STYLE_BY_MODEL.get(model, "wgrib2")
         records = compute_byte_end(
-            parse_idx(idx_text),
+            parse_idx(idx_text, style=idx_style),  # type: ignore[arg-type]
             content_length=fetch_grib2_content_length(plan, client=client),
         )
         content_length = (
@@ -550,7 +556,16 @@ def forecast_nwp(
         df = _empty_dataframe(model=model, grid_kind=grid_kind)
         return _maybe_wrap_forecast(df, backend=backend, return_type=return_type)
 
-    mirrors_to_try = (mirror,) if mirror is not None else DEFAULT_MIRROR_CHAIN
+    # Phase 17 FORECAST-02: prefer the per-model mirror chain from
+    # SOURCES_BY_MODEL so Wave 2 model families (HRRRAK, GEFS, ECMWF, MSC,
+    # HAFS, ...) get the right mirrors without touching this call-site.
+    # Falls back to DEFAULT_MIRROR_CHAIN for any model not yet registered
+    # — preserves byte-identical behavior for HRRR/GFS/NBM since their
+    # SOURCES_BY_MODEL entries match DEFAULT_MIRROR_CHAIN.
+    if mirror is not None:
+        mirrors_to_try: tuple[str, ...] = (mirror,)
+    else:
+        mirrors_to_try = SOURCES_BY_MODEL.get(model, DEFAULT_MIRROR_CHAIN)
 
     owns_client = client is None
     if owns_client:

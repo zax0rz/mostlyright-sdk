@@ -221,13 +221,19 @@ def build_fetch_plan(
     grib2_url = _build_grib2_url(model, mirror, cycle_utc, fxx)
     if grib2_url is None:  # pragma: no cover — guarded above
         raise ValueError(f"could not build URL for model={model!r} mirror={mirror!r}")
+    # Phase 17 FORECAST-03: idx suffix comes from the per-model registry so
+    # ECMWF (".index") and other models can plug in without code changes
+    # here. Wave 1 ships ".idx" for all NCEP models — byte-identical to the
+    # pre-refactor hardcoded suffix. The Wave 2 fallback-chain (try each
+    # suffix in order; first 2xx wins) lands when ECMWF goes live.
+    idx_suffix = IDX_SUFFIX_BY_MODEL.get(model, (".idx",))[0]
     return NwpFetchPlan(
         model=model,
         mirror=mirror,
         cycle=cycle_utc,
         fxx=fxx,
         grib2_url=grib2_url,
-        idx_url=grib2_url + ".idx",
+        idx_url=grib2_url + idx_suffix,
     )
 
 
@@ -321,19 +327,32 @@ def fetch_byte_range(
         ValueError: ``start < 0`` or ``end < start``.
         httpx.HTTPStatusError: Server returned non-2xx (S3 returns 416 for
             unsatisfiable ranges; 5xx for transient backend failures).
+        RuntimeError: Server returned 200 OK with the full file body
+            instead of 206 Partial Content — Phase 17 FORECAST-05 /
+            Herbie core.py:1108-1115. Some mirrors (misconfigured S3-
+            compatible endpoints) silently ignore the ``Range:`` header;
+            this guard aborts loud so disk usage doesn't balloon 1000x.
+            See :func:`assert_range_honored`.
     """
     if start < 0:
         raise ValueError(f"start must be >= 0 (got {start})")
     if end < start:
         raise ValueError(f"end must be >= start (got start={start}, end={end})")
     headers = {"Range": f"bytes={start}-{end}"}
+    # Stream so we can inspect the status before reading the body — a 200 OK
+    # full-body response could be hundreds of MB; we abort before reading.
     if client is None:
-        with httpx.Client(timeout=timeout) as fresh:
-            response = fresh.get(plan.grib2_url, headers=headers)
-    else:
-        response = client.get(plan.grib2_url, headers=headers, timeout=timeout)
-    response.raise_for_status()
-    return response.content
+        with (
+            httpx.Client(timeout=timeout) as fresh,
+            fresh.stream("GET", plan.grib2_url, headers=headers) as response,
+        ):
+            response.raise_for_status()
+            assert_range_honored(response, url=plan.grib2_url)
+            return response.read()
+    with client.stream("GET", plan.grib2_url, headers=headers, timeout=timeout) as response:
+        response.raise_for_status()
+        assert_range_honored(response, url=plan.grib2_url)
+        return response.read()
 
 
 MirrorKey = Literal["aws_bdp", "nomads"]

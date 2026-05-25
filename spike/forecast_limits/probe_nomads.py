@@ -44,7 +44,14 @@ class NomadsAbusiveUserBlocked(Exception):
 
 
 def detect_403_and_abort(status_code: int, url: str) -> None:
-    """Raise :class:`NomadsAbusiveUserBlocked` if ``status_code == 403``."""
+    """Raise :class:`NomadsAbusiveUserBlocked` if ``status_code == 403``.
+
+    Call this from the main thread AFTER the executor returns —
+    :class:`concurrent.futures.ThreadPoolExecutor` exceptions are caught
+    by the spike's :func:`fan_out` helper and converted into
+    :class:`RequestResult` instances with ``error`` set, so raising
+    inside ``_fetch_one`` would be invisible to the 403 fail-fast path.
+    """
     if status_code == 403:
         print(
             f"\n!!! NOMADS returned 403 for {url} — IP-ban posture per Herbie #371. "
@@ -84,18 +91,23 @@ def _trials() -> list[Trial]:
 
 
 def _fetch_one(trial: Trial) -> RequestResult:
+    """Always returns a RequestResult — NEVER raises inside the executor.
+
+    Raising inside the ThreadPoolExecutor would be caught by
+    :func:`fan_out` and silently converted into ``RequestResult(error=...)``,
+    masking the 403. We surface the 403 via ``status_code`` and let
+    :func:`run_spike` raise :class:`NomadsAbusiveUserBlocked` from the
+    main thread AFTER ``fan_out`` returns.
+    """
     t0 = time.monotonic()
     try:
         r = httpx.get(trial.url, timeout=60.0)
-        detect_403_and_abort(r.status_code, trial.url)
         return RequestResult(
             url=trial.url,
             status_code=r.status_code,
             elapsed_s=time.monotonic() - t0,
             body_size_bytes=len(r.content),
         )
-    except NomadsAbusiveUserBlocked:
-        raise
     except Exception as exc:
         return RequestResult(
             url=trial.url,
@@ -110,7 +122,10 @@ def run_spike(trial: Trial, n: int, repeats: int) -> SpikeResult:
     result = SpikeResult(n=n, repeats=repeats)
     for _ in range(repeats):
         batch = fan_out([trial.url] * n, max_workers=n, fetch=lambda _u: _fetch_one(trial))
-        # detect_403 may have been raised inside fan_out's executor; surface it.
+        # 403 fail-fast: detect at the main-thread boundary, NOT inside
+        # ``_fetch_one`` (which runs in the executor and would have its
+        # exception swallowed by ``fan_out``). Raising here aborts both
+        # the inner repeat loop and the outer per-N loop via ``main()``.
         for res in batch:
             if res.status_code == 403:
                 detect_403_and_abort(res.status_code, res.url)

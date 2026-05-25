@@ -113,17 +113,59 @@ class _MockResponse:
             )
 
 
+class _MockStreamResponse:
+    """Context-manager + .read() shim for httpx.Client.stream(...).
+
+    Mirrors the subset of :class:`httpx.Response` (under stream mode) that
+    :func:`mostlyright.weather._fetchers._nwp_archive.fetch_byte_range`
+    relies on after the Phase 17 PLAN-01 byte-range guard switched to
+    streaming. ``status_code`` defaults to 206 (Partial Content) so the
+    range-honored assertion in `fetch_byte_range` passes.
+    """
+
+    def __init__(
+        self,
+        *,
+        status_code: int = 206,
+        content: bytes = b"",
+        url: str = "",
+    ) -> None:
+        self.status_code = status_code
+        self._content = content
+        self.url = url
+
+    def __enter__(self) -> _MockStreamResponse:
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        return None
+
+    def raise_for_status(self) -> None:
+        if self.status_code >= 400:
+            raise httpx.HTTPStatusError(
+                f"{self.status_code}",
+                request=None,
+                response=None,  # type: ignore[arg-type]
+            )
+
+    def read(self) -> bytes:
+        return self._content
+
+
 class _MockClient:
     def __init__(
         self,
         *,
         get_response: _MockResponse | None = None,
         head_response: _MockResponse | None = None,
+        stream_response: _MockStreamResponse | None = None,
     ) -> None:
         self._get = get_response
         self._head = head_response
+        self._stream = stream_response
         self.get_calls: list[tuple[str, dict[str, str] | None]] = []
         self.head_calls: list[str] = []
+        self.stream_calls: list[tuple[str, str, dict[str, str] | None]] = []
 
     def get(
         self, url: str, headers: dict[str, str] | None = None, timeout: float | None = None
@@ -134,6 +176,17 @@ class _MockClient:
     def head(self, url: str, timeout: float | None = None) -> _MockResponse:
         self.head_calls.append(url)
         return self._head or _MockResponse(headers={"content-length": "0"})
+
+    def stream(
+        self,
+        method: str,
+        url: str,
+        *,
+        headers: dict[str, str] | None = None,
+        timeout: float | None = None,
+    ) -> _MockStreamResponse:
+        self.stream_calls.append((method, url, headers))
+        return self._stream or _MockStreamResponse(url=url)
 
 
 def test_fetch_idx_text_returns_body_and_calls_correct_url() -> None:
@@ -172,11 +225,17 @@ def test_fetch_grib2_content_length_non_int_raises() -> None:
 
 
 def test_fetch_byte_range_sends_correct_range_header() -> None:
+    """Phase 17 FORECAST-05: fetch_byte_range issues a streaming Range request.
+
+    The Range guard now happens in stream mode so a 200 OK full-body
+    response is detected BEFORE the body is read.
+    """
     plan = build_fetch_plan(model="hrrr", mirror="aws_bdp", cycle=CYCLE, fxx=1)
-    client = _MockClient(get_response=_MockResponse(content=b"GRIB"))
+    stream = _MockStreamResponse(status_code=206, content=b"GRIB", url=plan.grib2_url)
+    client = _MockClient(stream_response=stream)
     data = fetch_byte_range(plan, start=0, end=99, client=client)
     assert data == b"GRIB"
-    assert client.get_calls == [(plan.grib2_url, {"Range": "bytes=0-99"})]
+    assert client.stream_calls == [("GET", plan.grib2_url, {"Range": "bytes=0-99"})]
 
 
 def test_fetch_byte_range_rejects_negative_start() -> None:
