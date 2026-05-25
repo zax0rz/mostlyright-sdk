@@ -157,6 +157,8 @@ def _precip_mm_1h_rule(row: dict[str, Any]) -> QCStatus:
 
 
 def _pres_sfc_rule(row: dict[str, Any]) -> QCStatus:
+    """Phase 3.2 baseline: surface P <= 0 is non-physical (suspect);
+    outside [50000, 110000] Pa is sensor error (flagged)."""
     p = row.get("pressure_pa_surface")
     if p is None:
         return "clean"
@@ -164,12 +166,16 @@ def _pres_sfc_rule(row: dict[str, Any]) -> QCStatus:
         p = float(p)
     except (TypeError, ValueError):
         return "clean"
+    if p <= 0:
+        return "suspect"
     if p < 50_000 or p > 110_000:
         return "flagged"
     return "clean"
 
 
 def _mslp_rule(row: dict[str, Any]) -> QCStatus:
+    """Phase 3.2 baseline: MSLP <= 0 is non-physical (suspect);
+    outside [87000, 108500] Pa is sensor error (flagged)."""
     p = row.get("pressure_pa_mslp")
     if p is None:
         return "clean"
@@ -177,6 +183,8 @@ def _mslp_rule(row: dict[str, Any]) -> QCStatus:
         p = float(p)
     except (TypeError, ValueError):
         return "clean"
+    if p <= 0:
+        return "suspect"
     if p < 87_000 or p > 108_500:
         return "flagged"
     return "clean"
@@ -249,7 +257,8 @@ def _ecmwf_precip_m_rule(row: dict[str, Any]) -> QCStatus:
     return "clean"
 
 
-RULES_NWP_ECMWF: list[QCRule] = RULES_NWP_NCEP + [
+RULES_NWP_ECMWF: list[QCRule] = [
+    *RULES_NWP_NCEP,
     QCRule(
         "precip_m_total_max",
         "precip_m_total",
@@ -269,7 +278,8 @@ def _gefs_ensemble_dispersion_rule(row: dict[str, Any]) -> QCStatus:
     return "clean"
 
 
-RULES_NWP_GEFS: list[QCRule] = RULES_NWP_NCEP + [
+RULES_NWP_GEFS: list[QCRule] = [
+    *RULES_NWP_NCEP,
     QCRule(
         "ensemble_dispersion",
         "temp_k_2m",
@@ -297,7 +307,8 @@ def _hafs_basin_lat_rule(row: dict[str, Any]) -> QCStatus:
     return "clean"
 
 
-RULES_NWP_HAFS: list[QCRule] = RULES_NWP_NCEP + [
+RULES_NWP_HAFS: list[QCRule] = [
+    *RULES_NWP_NCEP,
     QCRule(
         "storm_lat_in_basin",
         "storm_lat_deg",
@@ -325,7 +336,8 @@ def _hrdps_domain_rule(row: dict[str, Any]) -> QCStatus:
     return "clean"
 
 
-RULES_NWP_MSC_HRDPS: list[QCRule] = RULES_NWP_NCEP + [
+RULES_NWP_MSC_HRDPS: list[QCRule] = [
+    *RULES_NWP_NCEP,
     QCRule(
         "hrdps_continental_domain",
         "grid_dist_km",

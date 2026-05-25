@@ -146,7 +146,10 @@ def test_apply_rules_empty_row_returns_clean() -> None:
 
 
 def test_qc_rule_is_frozen_dataclass() -> None:
+    """Frozen dataclasses raise FrozenInstanceError on mutation attempts."""
+    from dataclasses import FrozenInstanceError
+
     rule = RULES_NWP_NCEP[0]
     assert isinstance(rule, QCRule)
-    with pytest.raises(Exception):
+    with pytest.raises(FrozenInstanceError):
         rule.name = "mutated"  # type: ignore[misc]

@@ -943,6 +943,10 @@ def _fetch_iem_mos_range(
     groups: dict[str, list[dict[str, Any]]] = {}
     if df is None or df.empty:
         return groups
+    # Phase 17 Wave 4 iter-1 review HIGH: bucket by LST settlement date
+    # (not raw UTC date). A valid_at of 2025-01-07T02:00Z for a US station
+    # belongs to the 2025-01-06 settlement window — raw UTC bucketing
+    # would silently drop the row from settlement-date keyed lookups.
     for _, row in df.iterrows():
         ftime = row.get("valid_at")
         if ftime is None or (isinstance(ftime, float) and ftime != ftime):
@@ -951,7 +955,13 @@ def _fetch_iem_mos_range(
             ftime_dt = pd.to_datetime(ftime, utc=True)
         except Exception:
             continue
-        date_iso = ftime_dt.strftime("%Y-%m-%d")
+        try:
+            date_iso = settlement_date_for(
+                ftime_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                info.code,
+            )
+        except Exception:  # noqa: BLE001 — defensive against unknown station/tz
+            date_iso = ftime_dt.strftime("%Y-%m-%d")
         # Build a forecast row that build_pairs_row understands. IEM MOS
         # already carries ``valid_at``; we also normalize it to the
         # ISO-string form ``_aggregate_fcst_temps_iem`` compares against.
