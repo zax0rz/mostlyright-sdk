@@ -6,8 +6,8 @@ from datetime import UTC, datetime
 
 import pandas as pd
 import pytest
-from tradewinds.weather.catalog import get_adapter
-from tradewinds.weather.catalog.ghcnh import GHCNhAdapter
+from mostlyright.weather.catalog import get_adapter
+from mostlyright.weather.catalog.ghcnh import GHCNhAdapter
 
 
 def _row(**overrides):
@@ -82,7 +82,7 @@ def test_retrieved_at_naive_rejected():
 
 def test_adapter_output_passes_validator_with_drift():
     """GHCNh output must pass validator when caller supplies allow_source_drift."""
-    from tradewinds.core import validate_dataframe
+    from mostlyright.core import validate_dataframe
 
     df = GHCNhAdapter.from_rows([_row()])
     reg = validate_dataframe(

@@ -1,4 +1,4 @@
-"""Tests for tradewinds.weather._fetchers.ghcnh.
+"""Tests for mostlyright.weather._fetchers.ghcnh.
 
 Covers:
 - URL + filename pattern (must match monorepo-v0.14.1/ingest/sources/ghcnh_backfill.py)
@@ -18,7 +18,7 @@ from pathlib import Path
 
 import httpx
 import pytest
-from tradewinds.weather._fetchers.ghcnh import (
+from mostlyright.weather._fetchers.ghcnh import (
     GHCNH_BASE_URL,
     NCEI_POLITE_DELAY,
     download_ghcnh,
@@ -38,7 +38,7 @@ def _patch_sleep(monkeypatch: pytest.MonkeyPatch) -> list[float]:
         calls.append(delay)
 
     monkeypatch.setattr(
-        "tradewinds.weather._fetchers.ghcnh.time.sleep",
+        "mostlyright.weather._fetchers.ghcnh.time.sleep",
         _record,
     )
     return calls
@@ -237,7 +237,7 @@ class Test404Range:
             mock.get(url_ok_2022).respond(200, content=b"y2022")
             mock.get(url_missing_2023).respond(404)
             mock.get(url_ok_2024).respond(200, content=b"y2024")
-            with caplog.at_level(logging.WARNING, logger="tradewinds.weather._fetchers.ghcnh"):
+            with caplog.at_level(logging.WARNING, logger="mostlyright.weather._fetchers.ghcnh"):
                 paths = download_ghcnh_range(station, 2022, 2024, tmp_path)
 
         # Only the 2 successful years come back; 2023 is silently dropped.
@@ -256,7 +256,7 @@ class Test404Range:
         respx = pytest.importorskip("respx")
         _patch_sleep(monkeypatch)
         # _http.download_with_retry will retry then raise; suppress its sleeps too.
-        monkeypatch.setattr("tradewinds._internal._http.time.sleep", lambda _: None)
+        monkeypatch.setattr("mostlyright._internal._http.time.sleep", lambda _: None)
 
         station = "744860-94789"
         url_500 = f"{GHCNH_BASE_URL}/by-year/2022/psv/GHCNh_{station}_2022.psv"
@@ -463,14 +463,14 @@ class TestStationBoundaryValidation:
         ],
     )
     def test_download_ghcnh_rejects_traversal(self, tmp_path: Path, payload: str) -> None:
-        from tradewinds.weather._fetchers.ghcnh import download_ghcnh
+        from mostlyright.weather._fetchers.ghcnh import download_ghcnh
 
         with pytest.raises(ValueError, match="GHCNH_STATION_ID_RE"):
             download_ghcnh(payload, 2024, tmp_path)
 
     @pytest.mark.parametrize("payload", ["../evil", "USW/etc", "usw00094728"])
     def test_download_ghcnh_range_rejects_traversal(self, tmp_path: Path, payload: str) -> None:
-        from tradewinds.weather._fetchers.ghcnh import download_ghcnh_range
+        from mostlyright.weather._fetchers.ghcnh import download_ghcnh_range
 
         with pytest.raises(ValueError, match="GHCNH_STATION_ID_RE"):
             download_ghcnh_range(payload, 2023, 2024, tmp_path)

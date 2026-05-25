@@ -1,4 +1,4 @@
-// Barrel for @tradewinds/core/temporal — TS-W3 Plan 04.
+// Barrel for @mostlyright/core/temporal — TS-W3 Plan 04.
 //
 // Public API: TimePoint, KnowledgeView, LeakageDetector, assertNoLeakage.
 

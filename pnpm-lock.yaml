@@ -102,7 +102,7 @@ importers:
 
   packages-ts/markets:
     devDependencies:
-      '@tradewinds/core':
+      '@mostlyright/core':
         specifier: workspace:*
         version: link:../core
       tsup:
@@ -117,13 +117,13 @@ importers:
 
   packages-ts/meta:
     dependencies:
-      '@tradewinds/core':
+      '@mostlyright/core':
         specifier: workspace:*
         version: link:../core
-      '@tradewinds/markets':
+      '@mostlyright/markets':
         specifier: workspace:*
         version: link:../markets
-      '@tradewinds/weather':
+      '@mostlyright/weather':
         specifier: workspace:*
         version: link:../weather
     devDependencies:
@@ -145,7 +145,7 @@ importers:
 
   packages-ts/weather:
     devDependencies:
-      '@tradewinds/core':
+      '@mostlyright/core':
         specifier: workspace:*
         version: link:../core
       tsup:

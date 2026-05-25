@@ -1,6 +1,6 @@
-// Unit conversions for the tradewinds SDK.
+// Unit conversions for the mostlyright SDK.
 //
-// Ported from `packages/core/src/tradewinds/_internal/_convert.py`.
+// Ported from `packages/core/src/mostlyright/_internal/_convert.py`.
 //
 // CRITICAL: No rounding anywhere. Store float64 as-is. The Python module's
 // "no _go_round / no round / no math.floor(x + 0.5)" rule applies here too —

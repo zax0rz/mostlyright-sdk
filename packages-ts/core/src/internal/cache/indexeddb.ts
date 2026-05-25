@@ -1,6 +1,6 @@
 // IndexedDBStore — idb + Web Locks API CacheStore for browsers.
 //
-// Per TS-CACHE-02, the canonical IndexedDB DB name is `tradewinds-cache-v1`.
+// Per TS-CACHE-02, the canonical IndexedDB DB name is `mostlyright-cache-v1`.
 // Object store: `entries`. Schema: key = string, value = CacheEntry<T>.
 //
 // withLock prefers `navigator.locks.request(name, ...)` (Web Locks API,
@@ -18,7 +18,7 @@ import type { CacheEntry, CacheSetOptions, CacheStore } from "./types.js";
 import { lockKeyFor } from "./types.js";
 
 /** Canonical DB name. Re-exported via the cache barrel. */
-export const DB_NAME = "tradewinds-cache-v1";
+export const DB_NAME = "mostlyright-cache-v1";
 
 const STORE_NAME = "entries";
 const SCHEMA_VERSION = 1;

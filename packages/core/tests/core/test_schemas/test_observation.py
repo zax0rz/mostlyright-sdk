@@ -8,7 +8,7 @@ implementation and the design doc must fail loudly here.
 from __future__ import annotations
 
 import pytest
-from tradewinds.core.schemas import ObservationSchema
+from mostlyright.core.schemas import ObservationSchema
 
 # Each tuple: (column_name, dtype, units, nullable, enum_values_or_None)
 # Transcribed from docs/design.md §A Observations schema table.

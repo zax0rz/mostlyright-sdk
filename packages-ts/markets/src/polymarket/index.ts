@@ -1,4 +1,4 @@
-// Barrel for the Polymarket surface — exposed as @tradewinds/markets/polymarket.
+// Barrel for the Polymarket surface — exposed as @mostlyright/markets/polymarket.
 
 export { fetchEventById, fetchEvents } from "./client.js";
 export type { FetchEventsOptions, PolymarketEventRaw } from "./client.js";

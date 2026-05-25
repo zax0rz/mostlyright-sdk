@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from tradewinds._internal.merge.observations import merge_observations
+from mostlyright._internal.merge.observations import merge_observations
 
 
 def _make_obs(

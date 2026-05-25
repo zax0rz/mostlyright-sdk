@@ -8,13 +8,13 @@ import { describe, expect, it } from "vitest";
 import { lockKeyFor } from "../../../src/internal/cache/types.js";
 
 describe("lockKeyFor (standalone)", () => {
-  it("returns the canonical lock id with the tradewinds:cache:lock: prefix", () => {
-    expect(lockKeyFor("foo")).toBe("tradewinds:cache:lock:foo");
+  it("returns the canonical lock id with the mostlyright:cache:lock: prefix", () => {
+    expect(lockKeyFor("foo")).toBe("mostlyright:cache:lock:foo");
   });
 
   it("preserves the full key (no truncation, no normalization)", () => {
-    const longKey = "tradewinds:v1:observations:KNYC:2025:01";
-    expect(lockKeyFor(longKey)).toBe(`tradewinds:cache:lock:${longKey}`);
+    const longKey = "mostlyright:v1:observations:KNYC:2025:01";
+    expect(lockKeyFor(longKey)).toBe(`mostlyright:cache:lock:${longKey}`);
   });
 
   it("is pure (deterministic)", () => {
@@ -23,6 +23,6 @@ describe("lockKeyFor (standalone)", () => {
   });
 
   it("accepts the empty string", () => {
-    expect(lockKeyFor("")).toBe("tradewinds:cache:lock:");
+    expect(lockKeyFor("")).toBe("mostlyright:cache:lock:");
   });
 });

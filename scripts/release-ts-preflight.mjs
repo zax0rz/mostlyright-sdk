@@ -75,20 +75,25 @@ async function main() {
     process.exit(1);
   }
 
-  // 2. Rewrite peerDependencies on @tradewinds/core to match the
+  // 2. Rewrite peerDependencies on @mostlyright/core to match the
   //    expected version. pnpm publish rewrites `workspace:*` but leaves
-  //    plain peerDependencies untouched (codex iter-5 P1).
+  //    plain peerDependencies untouched (codex iter-5 P1; Phase 12 rename
+  //    moved the key from @tradewinds/core to @mostlyright/core).
+  const PEER_KEY = "@mostlyright/core";
   for (const pkg of ["packages-ts/weather", "packages-ts/markets"]) {
     const path = resolve(ROOT, pkg, "package.json");
     const pj = await readJson(path);
-    if (pj.peerDependencies?.["@tradewinds/core"] !== undefined) {
-      const old = pj.peerDependencies["@tradewinds/core"];
-      pj.peerDependencies["@tradewinds/core"] = `^${expected}`;
-      console.log(
-        `Rewrote ${pkg} peerDependencies['@tradewinds/core']: ${old} → ^${expected}`,
+    if (pj.peerDependencies?.[PEER_KEY] === undefined) {
+      console.error(
+        `Preflight aborted: ${pkg}/package.json missing peerDependencies['${PEER_KEY}']. ` +
+          "If the package was renamed again, update PEER_KEY in scripts/release-ts-preflight.mjs.",
       );
-      await writeJson(path, pj);
+      process.exit(1);
     }
+    const old = pj.peerDependencies[PEER_KEY];
+    pj.peerDependencies[PEER_KEY] = `^${expected}`;
+    console.log(`Rewrote ${pkg} peerDependencies['${PEER_KEY}']: ${old} → ^${expected}`);
+    await writeJson(path, pj);
   }
 
   console.log("Preflight green; safe to publish.");

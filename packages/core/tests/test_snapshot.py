@@ -2,11 +2,11 @@
 # Source SHA: 514fcdab227e845145ca32b989355647466231d9
 # Lift date: 2026-05-22
 # Modifications:
-#   - import-rename: mostlyright.snapshot -> tradewinds.snapshot
-#   - import-rename: mostlyright.models.observation -> tradewinds._internal.models.observation
-#   - import-rename: mostlyright.versioning -> tradewinds._internal.versioning
-#   - to_toon test runs unconditionally; tradewinds._internal._toon is in-tree
-"""Tests for src/tradewinds/snapshot.py — DataSnapshot + settlement window logic.
+#   - import-rename: mostlyright.snapshot -> mostlyright.snapshot
+#   - import-rename: mostlyright.models.observation -> mostlyright._internal.models.observation
+#   - import-rename: mostlyright.versioning -> mostlyright._internal.versioning
+#   - to_toon test runs unconditionally; mostlyright._internal._toon is in-tree
+"""Tests for src/mostlyright/snapshot.py — DataSnapshot + settlement window logic.
 
 TDD: Tests written FIRST. Implementation follows.
 """
@@ -19,10 +19,10 @@ from typing import TYPE_CHECKING
 import pytest
 
 if TYPE_CHECKING:
-    from tradewinds._internal.models.observation import Observation
+    from mostlyright._internal.models.observation import Observation
 
-from tradewinds._internal.versioning import DataVersion
-from tradewinds.snapshot import (
+from mostlyright._internal.versioning import DataVersion
+from mostlyright.snapshot import (
     _lst_offset,
     _parse_as_of,
     _station_code_normalized,
@@ -82,7 +82,7 @@ def _obs(
 
 def _make_obs(observed_at: str, station: str = "NYC") -> Observation:
     """Create an Observation from dict."""
-    from tradewinds._internal.models.observation import Observation
+    from mostlyright._internal.models.observation import Observation
 
     return Observation.from_dict(_obs(station=station, observed_at=observed_at))
 
@@ -484,7 +484,7 @@ class TestBuildSnapshot:
         assert loaded["data_version"] == "2024-07-04T10:00:00Z"
 
     def test_to_toon_returns_string(self) -> None:
-        """Always runs; tradewinds._internal._toon is in-tree (no find_spec gating).
+        """Always runs; mostlyright._internal._toon is in-tree (no find_spec gating).
 
         Rob PR #2 C3: previously gated behind ``find_spec`` so CI never
         invoked ``to_toon()`` even when the module was missing - CI green

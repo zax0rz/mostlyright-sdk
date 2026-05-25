@@ -1,4 +1,4 @@
-"""Tests for ``tradewinds._internal.merge.climate``.
+"""Tests for ``mostlyright._internal.merge.climate``.
 
 The v0.14.1 source ``_dedup_climate_rows`` (monorepo-v0.14.1/ingest/storage/
 parquet.py:477-494) had no dedicated unit-test class — it was exercised
@@ -29,7 +29,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from tradewinds._internal.merge.climate import REPORT_TYPE_PRIORITY, merge_climate
+from mostlyright._internal.merge.climate import REPORT_TYPE_PRIORITY, merge_climate
 
 
 def _row(
@@ -43,7 +43,7 @@ def _row(
 ) -> dict[str, Any]:
     """Build a climate row with the priority float populated from the mapping.
 
-    Mirrors how ``tradewinds.weather._climate.parse_cli_file`` populates
+    Mirrors how ``mostlyright.weather._climate.parse_cli_file`` populates
     ``report_type_priority`` before rows ever reach ``merge_climate``.
     """
     return {

@@ -1,4 +1,4 @@
-"""Tests for tradewinds._internal.models.availability — RangeInfo + DataAvailability.
+"""Tests for mostlyright._internal.models.availability — RangeInfo + DataAvailability.
 
 Lifted from monorepo-v0.14.1/tests/test_sdk_v3_availability.py — dataclass-only
 tests. Client-level availability() tests live alongside the client lift in a
@@ -15,7 +15,7 @@ import pytest
 
 
 def test_range_info_to_dict_has_expected_keys():
-    from tradewinds._internal.models.availability import RangeInfo
+    from mostlyright._internal.models.availability import RangeInfo
 
     r = RangeInfo(
         earliest="2020-01-01",
@@ -32,7 +32,7 @@ def test_range_info_to_dict_has_expected_keys():
 
 
 def test_range_info_all_none():
-    from tradewinds._internal.models.availability import RangeInfo
+    from mostlyright._internal.models.availability import RangeInfo
 
     r = RangeInfo(earliest=None, latest=None, count=None, freshness_hours=None)
     d = r.to_dict()
@@ -41,7 +41,7 @@ def test_range_info_all_none():
 
 
 def test_range_info_frozen():
-    from tradewinds._internal.models.availability import RangeInfo
+    from mostlyright._internal.models.availability import RangeInfo
 
     r = RangeInfo(earliest="2020-01-01", latest=None, count=None, freshness_hours=None)
     with pytest.raises((AttributeError, TypeError)):
@@ -50,7 +50,7 @@ def test_range_info_frozen():
 
 def test_range_info_freshness_hours_computed():
     """freshness_hours is calculated correctly from latest and as_of."""
-    from tradewinds._internal.models.availability import RangeInfo
+    from mostlyright._internal.models.availability import RangeInfo
 
     # freshness_hours = (as_of - latest).total_seconds() / 3600
     # This is computed by the REST route, not the model itself.
@@ -65,7 +65,7 @@ def test_range_info_freshness_hours_computed():
 
 
 def test_data_availability_to_dict_has_expected_keys():
-    from tradewinds._internal.models.availability import DataAvailability, RangeInfo
+    from mostlyright._internal.models.availability import DataAvailability, RangeInfo
 
     # Constructor call is part of the test (would raise if the dataclass
     # contract broke). The instance itself is not asserted against — the
@@ -86,7 +86,7 @@ def test_data_availability_to_dict_has_expected_keys():
 
 
 def test_data_availability_forecast_included_when_present():
-    from tradewinds._internal.models.availability import DataAvailability, RangeInfo
+    from mostlyright._internal.models.availability import DataAvailability, RangeInfo
 
     avail = DataAvailability(
         station="NYC",

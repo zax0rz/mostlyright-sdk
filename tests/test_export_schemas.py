@@ -165,7 +165,7 @@ def test_group_a_schemas_carry_required_keys(tmp_path: Path) -> None:
             continue
         payload = json.loads((out / rel).read_text(encoding="utf-8"))
         assert payload.get("$schema") == "https://json-schema.org/draft/2020-12/schema"
-        assert payload.get("$id", "").startswith("https://tradewinds.dev/schemas/")
+        assert payload.get("$id", "").startswith("https://mostlyright.dev/schemas/")
         assert payload.get("type") == "object"
         assert payload.get("version", "").startswith("v"), (
             f"{rel}: version field missing or malformed: {payload.get('version')!r}"

@@ -1,4 +1,4 @@
-"""Tests for ``tradewinds._internal.merge.observations``.
+"""Tests for ``mostlyright._internal.merge.observations``.
 
 Lifted from monorepo-v0.14.1/tests/test_parquet.py (TestMergeStaging cases
 that exercise ``_dedup_rows`` via the parquet round-trip). Rewired to call
@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from tradewinds._internal.merge.observations import (
+from mostlyright._internal.merge.observations import (
     SOURCE_PRIORITY,
     merge_observations,
 )

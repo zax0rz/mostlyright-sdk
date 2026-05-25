@@ -14,7 +14,7 @@
 //   - Tier 3: bail with KeyError — discover() drops the row, settle()
 //     surfaces PolymarketSettlementError.
 
-import { DeferredMarketError } from "@tradewinds/core";
+import { DeferredMarketError } from "@mostlyright/core";
 
 import { POLYMARKET_CITY_STATIONS } from "../data/generated/polymarket-city-stations.js";
 import type { PolymarketEventRaw } from "./client.js";

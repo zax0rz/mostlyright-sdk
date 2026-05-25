@@ -6,7 +6,7 @@
 // (settlement_source, settlement_station) tuple downstream code uses
 // to pull the right settlement row from the CLI catalog.
 //
-// Ported byte-faithful from packages/markets/src/tradewinds/markets/catalog/kalshi_nhigh.py.
+// Ported byte-faithful from packages/markets/src/mostlyright/markets/catalog/kalshi_nhigh.py.
 
 import { KALSHI_SETTLEMENT_STATIONS } from "../data/generated/kalshi-stations.js";
 

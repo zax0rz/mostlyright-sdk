@@ -1,4 +1,4 @@
-// Browser/MV3 entry for @tradewinds/core/internal/cache.
+// Browser/MV3 entry for @mostlyright/core/internal/cache.
 //
 // Iter-8 H15: the iter-1/iter-2 fixes (dynamic `await import('./fs.js')`
 // behind a runtime feature-detect + dropping the FsStore re-export from

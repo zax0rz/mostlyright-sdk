@@ -1,7 +1,7 @@
 // TS-W4 Plan 04 Task 1 — spread (pairwise cross-feature).
 //
-// Pure row→row port of Python `tradewinds.transforms.spread` (packages/core/
-// src/tradewinds/transforms.py:103-105). TS does NOT have pandas Series; we
+// Pure row→row port of Python `mostlyright.transforms.spread` (packages/core/
+// src/mostlyright/transforms.py:103-105). TS does NOT have pandas Series; we
 // operate on a `ReadonlyArray<Row>` and add a derived column
 // `{colA}_minus_{colB}` to each output row. Source rows are NOT mutated.
 //

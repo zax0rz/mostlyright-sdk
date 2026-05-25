@@ -64,10 +64,10 @@ jobs:
       - name: Run doctests (research / KnowledgeView / LeakageDetector / validate_dataframe)
         run: |
           uv run pytest --doctest-modules \
-            packages/core/src/tradewinds/research.py \
-            packages/core/src/tradewinds/core/temporal/knowledge_view.py \
-            packages/core/src/tradewinds/core/temporal/leakage.py \
-            packages/core/src/tradewinds/core/validator.py
+            packages/core/src/mostlyright/research.py \
+            packages/core/src/mostlyright/core/temporal/knowledge_view.py \
+            packages/core/src/mostlyright/core/temporal/leakage.py \
+            packages/core/src/mostlyright/core/validator.py
 
   # Phase 6 W1-T4: dual-pandas matrix. The Phase 1 parity gate was
   # captured on pandas 2.x; this job re-runs the fast suite on the latest
@@ -104,9 +104,9 @@ jobs:
   # Phase 6 W5-T1: cross-backend matrix. Installs the [polars] extra on
   # each member package (workspace root has no [polars] extra per codex
   # iter-1 P2 — the only correct invocation iterates the three member
-  # packages). Required on every PR touching tradewinds.research,
-  # tradewinds.mode2, tradewinds.transforms, tradewinds.preprocessing,
-  # tradewinds.core.result, or the catalog adapters.
+  # packages). Required on every PR touching mostlyright.research,
+  # mostlyright.mode2, mostlyright.transforms, mostlyright.preprocessing,
+  # mostlyright.core.result, or the catalog adapters.
   polars-suite:
     runs-on: ubuntu-latest
     steps:
@@ -118,9 +118,9 @@ jobs:
       - name: Sync workspace + per-package [polars] extras
         run: |
           uv sync --all-packages
-          uv sync --package tradewinds --extra polars
-          uv sync --package tradewinds-weather --extra polars
-          uv sync --package tradewinds-markets --extra polars
+          uv sync --package mostlyright --extra polars
+          uv sync --package mostlyright-weather --extra polars
+          uv sync --package mostlyright-markets --extra polars
       - name: Show resolved polars version
         run: uv run python -c "import polars; print('polars', polars.__version__)"
       - name: Run full fast suite INCLUDING @pytest.mark.polars
@@ -141,7 +141,7 @@ jobs:
         run: uv sync --all-packages
 
       # Phase 4 SC-1 coverage gate on the CORE SEMANTIC SURFACE of
-      # tradewinds.core (Validator + temporal primitives + exception
+      # mostlyright.core (Validator + temporal primitives + exception
       # hierarchy + merge + public format wrappers).
       #
       # Soft target: 85% branch (enforced, blocks the build).
@@ -152,7 +152,7 @@ jobs:
       # core/schemas/* (pure data) and core/formats/_toon* (internal TOON
       # encoder, ~557 LOC of defensive edge cases — direct coverage
       # deferred to Phase 5 MCP). The narrowed scope is acknowledged in
-      # the CHANGELOG; the SC-1 wording "tradewinds.core.*" should be
+      # the CHANGELOG; the SC-1 wording "mostlyright.core.*" should be
       # read as "core semantic surface", not "every byte under core/".
       #
       # 80% line coverage on catalog adapter wrappers is enforced by a
@@ -160,7 +160,7 @@ jobs:
       - name: Coverage gate (core semantic surface >= 85% branch, aspirational 90%)
         run: |
           uv run pytest -m "not live" \
-            --cov=packages/core/src/tradewinds/core \
+            --cov=packages/core/src/mostlyright/core \
             --cov-branch \
             --cov-fail-under=85 \
             --cov-report=term-missing:skip-covered \

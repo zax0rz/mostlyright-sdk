@@ -1,8 +1,8 @@
 // TS-W1 Wave 3 — AWC live-METAR fetcher + parser tests.
 //
 // Mirrors the parity surface of:
-//   - packages/weather/src/tradewinds/weather/_fetchers/awc.py::fetch_awc_metars
-//   - packages/weather/src/tradewinds/weather/_awc.py::awc_to_observation
+//   - packages/weather/src/mostlyright/weather/_fetchers/awc.py::fetch_awc_metars
+//   - packages/weather/src/mostlyright/weather/_awc.py::awc_to_observation
 //
 // `fetch` is mocked via `vi.spyOn(globalThis, "fetch")`. No msw / no recorded
 // fixtures (those land in TS-W2 once the parity gate ports VCR cassettes).

@@ -1,6 +1,6 @@
 // TS-W3 Plan 07 Task 1 — jsonDumps + jsonLoads tests.
 //
-// Mirrors `packages/core/src/tradewinds/core/formats/json.py`. The
+// Mirrors `packages/core/src/mostlyright/core/formats/json.py`. The
 // load-bearing requirement: empty-frame envelope `{columns, data}`
 // preserves column names through roundtrip — Python downstream readers
 // would break without it.

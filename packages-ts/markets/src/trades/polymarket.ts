@@ -1,10 +1,10 @@
 // Phase 9 — Polymarket trades public surface (TRADES-04..05, TS port of
-// packages/markets/src/tradewinds/markets/polymarket_trades.py).
+// packages/markets/src/mostlyright/markets/polymarket_trades.py).
 //
 // Uses the existing Gamma client pattern (fetchFn injection, 0.2 s polite
 // floor). Row shapes mirror Python column-for-column.
 
-import { fetchWithRetry } from "@tradewinds/core";
+import { fetchWithRetry } from "@mostlyright/core";
 
 import type { PolymarketHistoryRow, PolymarketSnapshotRow, TradesResult } from "./types.js";
 
@@ -13,7 +13,7 @@ const GAMMA_BASE = "https://gamma-api.polymarket.com";
 // (clob.polymarket.com), NOT Gamma. The `market` query parameter is the
 // CLOB token id (ERC-1155 asset id) — NOT a Gamma market/condition/event id.
 const CLOB_BASE = "https://clob.polymarket.com";
-const DEFAULT_USER_AGENT = "tradewinds-ts/0.2.0 (+https://github.com/helloiamvu/tradewinds)";
+const DEFAULT_USER_AGENT = "mostlyright-ts/0.2.0 (+https://github.com/helloiamvu/tradewinds)";
 const DEFAULT_SLEEP_BETWEEN_MS = 200;
 /** Source label for snapshot rows (Gamma-hosted). */
 const SOURCE_SNAPSHOT = "polymarket.gamma" as const;

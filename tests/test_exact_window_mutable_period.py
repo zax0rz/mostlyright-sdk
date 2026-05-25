@@ -41,9 +41,9 @@ def test_exact_window_crossing_current_lst_month_does_not_write_canonical(tmp_pa
     """exact_window across the current LST month must not pollute canonical cache."""
     cache_dir = tmp_path / "tw_cache"
     cache_dir.mkdir()
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(cache_dir))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(cache_dir))
 
-    from tradewinds.weather import obs
+    from mostlyright.weather import obs
 
     today = date.today()
     # Window spans last 14 days — guaranteed to include current LST month
@@ -85,9 +85,9 @@ def test_exact_window_partial_infix_for_mutable_month(tmp_path, monkeypatch):
     """
     cache_dir = tmp_path / "tw_cache"
     cache_dir.mkdir()
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(cache_dir))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(cache_dir))
 
-    from tradewinds.weather import obs
+    from mostlyright.weather import obs
 
     today = date.today()
     # Query that overshoots today_utc so the chunk gets the _partial infix.

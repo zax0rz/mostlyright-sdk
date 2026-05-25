@@ -1,4 +1,4 @@
-"""Phase 11 — `tradewinds.live.stream` async-generator unit tests (14 tests).
+"""Phase 11 — `mostlyright.live.stream` async-generator unit tests (14 tests).
 
 All tests monkeypatch `asyncio.sleep` to a no-op so the polite-floor cadence
 doesn't slow the suite. Per-source fetch is mocked at module-level so the
@@ -27,7 +27,7 @@ from typing import Any
 
 import pytest
 
-from tradewinds.live import POLITE_FLOORS_S, stream
+from mostlyright.live import POLITE_FLOORS_S, stream
 
 
 def _awc_metar(obs_time: int) -> dict[str, Any]:
@@ -66,7 +66,7 @@ def no_sleep(monkeypatch: pytest.MonkeyPatch) -> list[float]:
     async def fake_sleep(s: float) -> None:
         sleep_calls.append(s)
 
-    monkeypatch.setattr("tradewinds.live._stream.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("mostlyright.live._stream.asyncio.sleep", fake_sleep)
     return sleep_calls
 
 
@@ -82,7 +82,7 @@ def test_stream_yields_observations(monkeypatch: pytest.MonkeyPatch, no_sleep: l
         return [_awc_metar(1748174400)]
 
     monkeypatch.setattr(
-        "tradewinds.weather._fetchers.awc.fetch_awc_metars",
+        "mostlyright.weather._fetchers.awc.fetch_awc_metars",
         fake_awc,
     )
     rows = _run(_collect_n(stream("KNYC"), 1))
@@ -103,11 +103,11 @@ def test_stream_default_source_awc(monkeypatch: pytest.MonkeyPatch, no_sleep: li
         return []
 
     monkeypatch.setattr(
-        "tradewinds.weather._fetchers.awc.fetch_awc_metars",
+        "mostlyright.weather._fetchers.awc.fetch_awc_metars",
         fake_awc,
     )
     monkeypatch.setattr(
-        "tradewinds.live._latest._fetch_iem_latest",
+        "mostlyright.live._latest._fetch_iem_latest",
         fake_iem_latest,
     )
     _run(_collect_n(stream("KNYC"), 1))
@@ -136,11 +136,11 @@ def test_stream_iem_source(monkeypatch: pytest.MonkeyPatch, no_sleep: list[float
         ]
 
     monkeypatch.setattr(
-        "tradewinds.weather._fetchers.awc.fetch_awc_metars",
+        "mostlyright.weather._fetchers.awc.fetch_awc_metars",
         fake_awc,
     )
     monkeypatch.setattr(
-        "tradewinds.live._latest._fetch_iem_latest",
+        "mostlyright.live._latest._fetch_iem_latest",
         fake_iem_latest,
     )
     rows = _run(_collect_n(stream("KNYC", source="iem"), 1))
@@ -158,7 +158,7 @@ def test_stream_dedup_by_observed_at(
         return [_awc_metar(1748174400)]  # constant — same obsTime every tick
 
     monkeypatch.setattr(
-        "tradewinds.weather._fetchers.awc.fetch_awc_metars",
+        "mostlyright.weather._fetchers.awc.fetch_awc_metars",
         fake_awc,
     )
     # Collect 1 row; we want to prove that even though the stream polled
@@ -195,7 +195,7 @@ def test_stream_yields_new_observation_when_obs_time_advances(
         return [_awc_metar(1748174400 + 60 * counter["i"])]
 
     monkeypatch.setattr(
-        "tradewinds.weather._fetchers.awc.fetch_awc_metars",
+        "mostlyright.weather._fetchers.awc.fetch_awc_metars",
         fake_awc,
     )
     rows = _run(_collect_n(stream("KNYC"), 2))
@@ -228,7 +228,7 @@ def test_stream_polite_floor_awc_30s_default(
         return [_awc_metar(1748174400 + 60 * counter["i"])]
 
     monkeypatch.setattr(
-        "tradewinds.weather._fetchers.awc.fetch_awc_metars",
+        "mostlyright.weather._fetchers.awc.fetch_awc_metars",
         fake_awc,
     )
     _run(_collect_n(stream("KNYC"), 2))
@@ -254,7 +254,7 @@ def test_stream_polite_floor_iem_60s_default(
         ]
 
     monkeypatch.setattr(
-        "tradewinds.live._latest._fetch_iem_latest",
+        "mostlyright.live._latest._fetch_iem_latest",
         fake_iem,
     )
     _run(_collect_n(stream("KNYC", source="iem"), 2))
@@ -283,7 +283,7 @@ def test_stream_accepts_above_polite_floor(
         return [_awc_metar(1748174400 + 60 * counter["i"])]
 
     monkeypatch.setattr(
-        "tradewinds.weather._fetchers.awc.fetch_awc_metars",
+        "mostlyright.weather._fetchers.awc.fetch_awc_metars",
         fake_awc,
     )
     rows = _run(_collect_n(stream("KNYC", poll_seconds=120), 2))
@@ -334,7 +334,7 @@ def test_stream_empty_tick_does_not_abort(
         return [_awc_metar(1748174400)]  # valid on the 2nd poll
 
     monkeypatch.setattr(
-        "tradewinds.weather._fetchers.awc.fetch_awc_metars",
+        "mostlyright.weather._fetchers.awc.fetch_awc_metars",
         fake_awc,
     )
     rows = _run(_collect_n(stream("KNYC"), 1))
@@ -351,7 +351,7 @@ def test_stream_cancellation_via_break(
         return [_awc_metar(1748174400)]
 
     monkeypatch.setattr(
-        "tradewinds.weather._fetchers.awc.fetch_awc_metars",
+        "mostlyright.weather._fetchers.awc.fetch_awc_metars",
         fake_awc,
     )
 
@@ -377,7 +377,7 @@ def test_stream_source_tag_on_row_awc(
         return [_awc_metar(1748174400)]
 
     monkeypatch.setattr(
-        "tradewinds.weather._fetchers.awc.fetch_awc_metars",
+        "mostlyright.weather._fetchers.awc.fetch_awc_metars",
         fake_awc,
     )
     rows = _run(_collect_n(stream("KNYC"), 1))
@@ -400,7 +400,7 @@ def test_stream_source_tag_on_row_iem(
         ]
 
     monkeypatch.setattr(
-        "tradewinds.live._latest._fetch_iem_latest",
+        "mostlyright.live._latest._fetch_iem_latest",
         fake_iem,
     )
     rows = _run(_collect_n(stream("KNYC", source="iem"), 1))

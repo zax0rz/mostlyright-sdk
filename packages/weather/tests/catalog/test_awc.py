@@ -6,8 +6,8 @@ from datetime import UTC, datetime
 
 import pandas as pd
 import pytest
-from tradewinds.weather.catalog import get_adapter
-from tradewinds.weather.catalog.awc import AWCAdapter
+from mostlyright.weather.catalog import get_adapter
+from mostlyright.weather.catalog.awc import AWCAdapter
 
 
 def _row(**overrides):
@@ -90,7 +90,7 @@ def test_adapter_output_passes_validator_with_drift():
     The canonical schema is registered to iem.archive; AWC counts as drift
     and requires an explicit reason string.
     """
-    from tradewinds.core import validate_dataframe
+    from mostlyright.core import validate_dataframe
 
     df = AWCAdapter.from_rows([_row()])
     reg = validate_dataframe(

@@ -13,12 +13,12 @@ from typing import Any
 
 import httpx
 import pytest
-from tradewinds.markets._polymarket_client import (
+from mostlyright.markets._polymarket_client import (
     GAMMA_API_BASE,
     fetch_event_by_id,
     fetch_events,
 )
-from tradewinds.markets.polymarket import (
+from mostlyright.markets.polymarket import (
     POLYMARKET_RESOLUTION_SOURCE_TYPES,
     RESOLUTION_SOURCE_ALLOWLIST,
     PolymarketEventError,
@@ -272,7 +272,7 @@ class TestPolymarketSettleBoundaries:
             )
 
     def test_deferred_market_raises_deferred_error(self) -> None:
-        from tradewinds.international import DeferredMarketError
+        from mostlyright.international import DeferredMarketError
 
         event = {
             "id": _UUID4,
@@ -322,7 +322,7 @@ class TestPolymarketSettleResolutionPath:
         daily_extremes to return one row with tmax_c=22.5 and verify
         the settlement payload carries that value.
         """
-        from tradewinds.markets import polymarket as pm_module
+        from mostlyright.markets import polymarket as pm_module
 
         def fake_daily_extremes(station: str, from_date, to_date):
             assert station == "EGLL"
@@ -362,7 +362,7 @@ class TestPolymarketSettleResolutionPath:
         assert result["n_obs"] == 24
 
     def test_low_market_picks_tmin(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        from tradewinds.markets import polymarket as pm_module
+        from mostlyright.markets import polymarket as pm_module
 
         monkeypatch.setattr(
             pm_module,
@@ -391,7 +391,7 @@ class TestPolymarketSettleResolutionPath:
         assert result["observed_value_c"] == 5.0
 
     def test_no_data_raises_settlement_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        from tradewinds.markets import polymarket as pm_module
+        from mostlyright.markets import polymarket as pm_module
 
         monkeypatch.setattr(pm_module, "daily_extremes", lambda s, f, t: [])
         event = {
@@ -416,7 +416,7 @@ class TestArchitectIter1Fixes:
 
     def test_settlement_date_takes_last_yyyymmdd_in_slug(self) -> None:
         """HIGH-4: slug carrying creation-date + resolution-date picks the latter."""
-        from tradewinds.markets.polymarket import _settlement_date_from_slug
+        from mostlyright.markets.polymarket import _settlement_date_from_slug
 
         out = _settlement_date_from_slug("created-2026-01-01-resolves-2026-05-23")
         assert out.isoformat() == "2026-05-23"
@@ -442,7 +442,7 @@ class TestArchitectIter1Fixes:
         day-end — settle should refuse with TooEarlyToSettleError even though
         we're 27h past UTC end-of-day (which would have passed any 24h gate).
         """
-        from tradewinds.markets.polymarket import _station_local_end_of_day
+        from mostlyright.markets.polymarket import _station_local_end_of_day
 
         # Sanity: confirm KLAX local end-of-day is 7h after UTC midnight.
         eod_utc = _station_local_end_of_day("KLAX", date(2026, 5, 22))
@@ -459,8 +459,8 @@ class TestArchitectIter1Fixes:
         """
         from unittest.mock import patch
 
-        from tradewinds.international import DeferredMarketError
-        from tradewinds.markets import polymarket as pm_module
+        from mostlyright.international import DeferredMarketError
+        from mostlyright.markets import polymarket as pm_module
 
         # Bypass the resolver's gate so we hit the defense-in-depth path.
         with patch.object(
@@ -524,7 +524,7 @@ class TestCodexIter2Fixes:
 
     def test_city_derived_from_slug_without_explicit_city_field(self) -> None:
         """Real Gamma events have no `city` field; derive from slug."""
-        from tradewinds.markets.polymarket import _derive_city
+        from mostlyright.markets.polymarket import _derive_city
 
         city_map = {"london": {"default": "EGLL"}, "paris": {"high": "LFPG"}}
         city_keys = tuple(sorted(city_map.keys(), key=len, reverse=True))
@@ -537,7 +537,7 @@ class TestCodexIter2Fixes:
 
     def test_city_longest_match_wins(self) -> None:
         """``london_gatwick`` matches before ``london`` (longest-first)."""
-        from tradewinds.markets.polymarket import _derive_city
+        from mostlyright.markets.polymarket import _derive_city
 
         city_map = {
             "london": {"default": "EGLL"},
@@ -549,7 +549,7 @@ class TestCodexIter2Fixes:
 
     def test_city_derived_from_tags(self) -> None:
         """Events tagged via Gamma `tags` array also resolve."""
-        from tradewinds.markets.polymarket import _derive_city
+        from mostlyright.markets.polymarket import _derive_city
 
         city_keys = ("london",)
         ev = {
@@ -560,7 +560,7 @@ class TestCodexIter2Fixes:
         assert _derive_city(ev, city_keys) == "london"
 
     def test_no_city_match_returns_none(self) -> None:
-        from tradewinds.markets.polymarket import _derive_city
+        from mostlyright.markets.polymarket import _derive_city
 
         city_keys = ("london", "paris")
         ev = {"slug": "atlantis-temp-event", "title": "Atlantis weather"}

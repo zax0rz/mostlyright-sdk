@@ -16,13 +16,13 @@ from unittest.mock import patch
 
 import httpx
 import pytest
-from tradewinds.core.exceptions import (
+from mostlyright.core.exceptions import (
     GribIntegrityError,
     NoLiveForNwpError,
     NwpModelNotAvailableError,
     SourceUnavailableError,
 )
-from tradewinds.core.schemas.forecast_nwp import (
+from mostlyright.core.schemas.forecast_nwp import (
     NWP_MIRROR_VALUES,
     NWP_MODEL_VALUES,
     NWP_QC_STATUS_VALUES,
@@ -39,7 +39,7 @@ _HAS_NWP_EXTRA = all(
 # ---------------------------------------------------------------------------
 class TestForecastNwpDispatch:
     def test_reserved_ecmwf_model_raises_specific_error(self) -> None:
-        from tradewinds.forecasts import forecast_nwp
+        from mostlyright.forecasts import forecast_nwp
 
         with pytest.raises(NwpModelNotAvailableError) as exc_info:
             forecast_nwp("KNYC", "ecmwf_ifs_hres")
@@ -54,13 +54,13 @@ class TestForecastNwpDispatch:
 
     def test_typo_model_raises_value_error_not_nwp_error(self) -> None:
         """``model="bogus"`` is neither supported nor reserved."""
-        from tradewinds.forecasts import forecast_nwp
+        from mostlyright.forecasts import forecast_nwp
 
         with pytest.raises(ValueError, match="NWP model must be"):
             forecast_nwp("KNYC", "bogus")
 
     def test_supported_models_unchanged(self) -> None:
-        from tradewinds.forecasts import SUPPORTED_NWP_MODELS
+        from mostlyright.forecasts import SUPPORTED_NWP_MODELS
 
         assert frozenset({"hrrr", "gfs", "nbm"}) == SUPPORTED_NWP_MODELS
 
@@ -77,7 +77,7 @@ class TestForecastNwpDispatch:
 # ---------------------------------------------------------------------------
 class TestQcStatusForRow:
     def test_clean_row_is_clean(self) -> None:
-        from tradewinds.weather.forecast_nwp import _qc_status_for_row
+        from mostlyright.weather.forecast_nwp import _qc_status_for_row
 
         row = {
             "temp_k_2m": 290.0,
@@ -91,61 +91,61 @@ class TestQcStatusForRow:
         assert _qc_status_for_row(row) == "clean"
 
     def test_negative_absolute_temperature_is_suspect(self) -> None:
-        from tradewinds.weather.forecast_nwp import _qc_status_for_row
+        from mostlyright.weather.forecast_nwp import _qc_status_for_row
 
         row = {"temp_k_2m": -5.0}
         assert _qc_status_for_row(row) == "suspect"
 
     def test_temperature_below_world_record_is_flagged_not_suspect(self) -> None:
-        from tradewinds.weather.forecast_nwp import _qc_status_for_row
+        from mostlyright.weather.forecast_nwp import _qc_status_for_row
 
         row = {"temp_k_2m": 175.0}  # below world record but physically possible
         assert _qc_status_for_row(row) == "flagged"
 
     def test_dewpoint_greater_than_temperature_is_flagged(self) -> None:
-        from tradewinds.weather.forecast_nwp import _qc_status_for_row
+        from mostlyright.weather.forecast_nwp import _qc_status_for_row
 
         row = {"temp_k_2m": 280.0, "dewpoint_k_2m": 290.0}
         assert _qc_status_for_row(row) == "flagged"
 
     def test_extreme_humidity_is_flagged(self) -> None:
-        from tradewinds.weather.forecast_nwp import _qc_status_for_row
+        from mostlyright.weather.forecast_nwp import _qc_status_for_row
 
         assert _qc_status_for_row({"relative_humidity_pct_2m": 108.0}) == "flagged"
 
     def test_grossly_invalid_humidity_is_suspect(self) -> None:
-        from tradewinds.weather.forecast_nwp import _qc_status_for_row
+        from mostlyright.weather.forecast_nwp import _qc_status_for_row
 
         assert _qc_status_for_row({"relative_humidity_pct_2m": 200.0}) == "suspect"
 
     def test_negative_gust_is_suspect(self) -> None:
-        from tradewinds.weather.forecast_nwp import _qc_status_for_row
+        from mostlyright.weather.forecast_nwp import _qc_status_for_row
 
         assert _qc_status_for_row({"wind_gust_ms": -1.0}) == "suspect"
 
     def test_extreme_gust_is_flagged(self) -> None:
-        from tradewinds.weather.forecast_nwp import _qc_status_for_row
+        from mostlyright.weather.forecast_nwp import _qc_status_for_row
 
         assert _qc_status_for_row({"wind_gust_ms": 95.0}) == "flagged"
 
     def test_negative_precip_is_suspect(self) -> None:
-        from tradewinds.weather.forecast_nwp import _qc_status_for_row
+        from mostlyright.weather.forecast_nwp import _qc_status_for_row
 
         assert _qc_status_for_row({"precip_mm_1h": -1.0}) == "suspect"
 
     def test_extreme_precip_is_flagged(self) -> None:
-        from tradewinds.weather.forecast_nwp import _qc_status_for_row
+        from mostlyright.weather.forecast_nwp import _qc_status_for_row
 
         assert _qc_status_for_row({"precip_mm_1h": 400.0}) == "flagged"
 
     def test_null_fields_dont_trip_qc(self) -> None:
-        from tradewinds.weather.forecast_nwp import _qc_status_for_row
+        from mostlyright.weather.forecast_nwp import _qc_status_for_row
 
         assert _qc_status_for_row({}) == "clean"
         assert _qc_status_for_row({"temp_k_2m": None}) == "clean"
 
     def test_nan_fields_dont_trip_qc(self) -> None:
-        from tradewinds.weather.forecast_nwp import _qc_status_for_row
+        from mostlyright.weather.forecast_nwp import _qc_status_for_row
 
         assert _qc_status_for_row({"temp_k_2m": float("nan")}) == "clean"
 
@@ -156,7 +156,7 @@ class TestQcStatusForRow:
 @pytest.mark.skipif(not _HAS_NWP_EXTRA, reason="requires [nwp] extra installed")
 class TestForecastNwpMirrorFallback:
     def test_unknown_station_returns_empty_dataframe(self) -> None:
-        from tradewinds.weather.forecast_nwp import forecast_nwp
+        from mostlyright.weather.forecast_nwp import forecast_nwp
 
         df = forecast_nwp(
             "BOGUS_STATION",
@@ -170,13 +170,13 @@ class TestForecastNwpMirrorFallback:
         assert set(df.columns) == set(canonical)
 
     def test_naive_cycle_rejected(self) -> None:
-        from tradewinds.weather.forecast_nwp import forecast_nwp
+        from mostlyright.weather.forecast_nwp import forecast_nwp
 
         with pytest.raises(ValueError, match="cycle must be timezone-aware"):
             forecast_nwp("KNYC", "hrrr", cycle=datetime(2026, 5, 23, 12), fxx=1)
 
     def test_negative_fxx_rejected(self) -> None:
-        from tradewinds.weather.forecast_nwp import forecast_nwp
+        from mostlyright.weather.forecast_nwp import forecast_nwp
 
         with pytest.raises(ValueError, match="fxx must be non-negative"):
             forecast_nwp("KNYC", "hrrr", fxx=-1)
@@ -184,11 +184,11 @@ class TestForecastNwpMirrorFallback:
 
 @pytest.mark.skipif(_HAS_NWP_EXTRA, reason="this test verifies the absence-of-extra path")
 def test_forecast_nwp_without_extra_raises_source_unavailable_with_hint() -> None:
-    from tradewinds.weather.forecast_nwp import forecast_nwp
+    from mostlyright.weather.forecast_nwp import forecast_nwp
 
     with pytest.raises(SourceUnavailableError) as exc_info:
         forecast_nwp("KNYC", "hrrr", cycle=datetime(2026, 5, 23, 12, tzinfo=UTC), fxx=1)
-    assert "tradewinds-weather[nwp]" in str(exc_info.value)
+    assert "mostlyright-weather[nwp]" in str(exc_info.value)
     assert exc_info.value.retryable is False
 
 
@@ -197,7 +197,7 @@ def test_forecast_nwp_without_extra_raises_source_unavailable_with_hint() -> Non
 # ---------------------------------------------------------------------------
 class TestSchemaRegistration:
     def test_schema_registered_with_validator(self) -> None:
-        from tradewinds.core.validator import _SCHEMA_REGISTRY
+        from mostlyright.core.validator import _SCHEMA_REGISTRY
 
         assert "schema.forecast_nwp.v1" in _SCHEMA_REGISTRY
 
@@ -240,7 +240,7 @@ class TestSchemaRegistration:
 # ---------------------------------------------------------------------------
 class TestDefaultCycleFor:
     def test_hrrr_is_hourly(self) -> None:
-        from tradewinds.weather.forecast_nwp import _default_cycle_for
+        from mostlyright.weather.forecast_nwp import _default_cycle_for
 
         # Pretend "now" is 2026-05-23 12:00 UTC; fxx=1, 90-min upload
         # backoff -> target = 12:00 - 1h30m (backoff) - 1h (fxx) = 09:30
@@ -255,7 +255,7 @@ class TestDefaultCycleFor:
         )
 
     def test_gfs_is_six_hourly(self) -> None:
-        from tradewinds.weather.forecast_nwp import _default_cycle_for
+        from mostlyright.weather.forecast_nwp import _default_cycle_for
 
         # fxx=12 + 90-min backoff → target ≈ 2026-05-23 -1.5h → 22:30 prev day
         # → floor to 18:00 prev day.
@@ -263,7 +263,7 @@ class TestDefaultCycleFor:
         assert cycle.hour % 6 == 0
 
     def test_returned_cycle_is_utc_aware(self) -> None:
-        from tradewinds.weather.forecast_nwp import _default_cycle_for
+        from mostlyright.weather.forecast_nwp import _default_cycle_for
 
         cycle = _default_cycle_for("hrrr", fxx=1)
         assert cycle.tzinfo is not None
@@ -280,7 +280,7 @@ class TestMirrorFallback:
         NoLiveForNwpError. The actual httpx-error → None conversion is
         covered by ``test_all_mirrors_404_via_real_http_path`` below.
         """
-        from tradewinds.weather import forecast_nwp as fnwp_module
+        from mostlyright.weather import forecast_nwp as fnwp_module
 
         def fail_all(**kwargs: object) -> None:
             return None
@@ -310,7 +310,7 @@ class TestMirrorFallback:
         """
         if not _HAS_NWP_EXTRA:
             pytest.skip("requires [nwp] extra installed")
-        from tradewinds.weather.forecast_nwp import forecast_nwp
+        from mostlyright.weather.forecast_nwp import forecast_nwp
 
         def handler(request: httpx.Request) -> httpx.Response:
             return httpx.Response(404, text="not found")
@@ -337,7 +337,7 @@ class TestMirrorFallback:
 class TestStationAliasDedup:
     def test_nws_code_and_icao_alias_collapse_to_one_row(self) -> None:
         """``["NYC", "KNYC"]`` must NOT produce two rows for the same station."""
-        from tradewinds.weather.forecast_nwp import _resolve_stations
+        from mostlyright.weather.forecast_nwp import _resolve_stations
 
         out = _resolve_stations(["NYC", "KNYC"])
         # NYC resolves to StationInfo with icao=KNYC, then KNYC alias is dropped.
@@ -346,14 +346,14 @@ class TestStationAliasDedup:
         assert out[0][0] == "NYC"
 
     def test_distinct_stations_kept(self) -> None:
-        from tradewinds.weather.forecast_nwp import _resolve_stations
+        from mostlyright.weather.forecast_nwp import _resolve_stations
 
         out = _resolve_stations(["KNYC", "KLAX"])
         assert len(out) == 2
         assert {s for s, _, _ in out} == {"KNYC", "KLAX"}
 
     def test_unknown_station_skipped(self) -> None:
-        from tradewinds.weather.forecast_nwp import _resolve_stations
+        from mostlyright.weather.forecast_nwp import _resolve_stations
 
         out = _resolve_stations(["KNYC", "BOGUS"])
         assert len(out) == 1
@@ -366,7 +366,7 @@ class TestStationAliasDedup:
 class TestCfgribVariableNameError:
     def test_short_name_miss_carries_model_in_payload(self) -> None:
         """``_cfgrib_variable_name`` must populate ``model`` in raised errors."""
-        from tradewinds.weather.forecast_nwp import _cfgrib_variable_name
+        from mostlyright.weather.forecast_nwp import _cfgrib_variable_name
 
         class _StubDS:
             # cfgrib decoded record but used a different short-name AND
@@ -383,7 +383,7 @@ class TestCfgribVariableNameError:
         assert exc_info.value.to_dict()["model"] == "hrrr"
 
     def test_unknown_variable_no_table_entry_also_carries_model(self) -> None:
-        from tradewinds.weather.forecast_nwp import _cfgrib_variable_name
+        from mostlyright.weather.forecast_nwp import _cfgrib_variable_name
 
         class _StubDS:
             data_vars: ClassVar[dict[str, object]] = {"a": object(), "b": object()}
@@ -401,7 +401,7 @@ class TestCodexP2Followups:
         """``2026-05-23 14:00+02:00`` is the 12z cycle, not a (nonexistent) t14z."""
         from datetime import timedelta, timezone
 
-        from tradewinds.weather._fetchers._nwp_archive import build_fetch_plan
+        from mostlyright.weather._fetchers._nwp_archive import build_fetch_plan
 
         cet = timezone(timedelta(hours=2))
         plan = build_fetch_plan(
@@ -418,14 +418,14 @@ class TestCodexP2Followups:
         assert plan.cycle.hour == 12
 
     def test_empty_dataframe_carries_source_attr(self) -> None:
-        from tradewinds.weather.forecast_nwp import _empty_dataframe
+        from mostlyright.weather.forecast_nwp import _empty_dataframe
 
         df = _empty_dataframe(model="hrrr", grid_kind="lambert_conformal_conus")
         assert df.attrs.get("source") == "noaa_bdp"
 
     def test_empty_dataframe_carries_retrieved_at_attr(self) -> None:
         """Codex iter-2 P2: validator requires `retrieved_at` attr when empty."""
-        from tradewinds.weather.forecast_nwp import _empty_dataframe
+        from mostlyright.weather.forecast_nwp import _empty_dataframe
 
         df = _empty_dataframe(model="hrrr", grid_kind="lambert_conformal_conus")
         retrieved_at = df.attrs.get("retrieved_at")
@@ -442,9 +442,9 @@ class TestCodexP2Followups:
         """
         from datetime import datetime
 
-        from tradewinds.weather._fetchers._nwp_archive import build_fetch_plan
-        from tradewinds.weather._fetchers._nwp_idx import IdxRecord
-        from tradewinds.weather.forecast_nwp import (
+        from mostlyright.weather._fetchers._nwp_archive import build_fetch_plan
+        from mostlyright.weather._fetchers._nwp_idx import IdxRecord
+        from mostlyright.weather.forecast_nwp import (
             _extract_records,
             _MirrorTransportFailed,
         )
@@ -492,7 +492,7 @@ class TestCodexP2Followups:
             pytest.skip("requires [nwp] extra installed")
         from datetime import timedelta, timezone
 
-        from tradewinds.weather.forecast_nwp import forecast_nwp
+        from mostlyright.weather.forecast_nwp import forecast_nwp
 
         cet = timezone(timedelta(hours=2))
         # Unknown station path returns empty df but exercises the cycle
@@ -515,7 +515,7 @@ class TestCodexP2Followups:
         assert df.empty
 
     def test_empty_dataframe_nullable_numeric_columns_are_float64(self) -> None:
-        from tradewinds.weather.forecast_nwp import _empty_dataframe
+        from mostlyright.weather.forecast_nwp import _empty_dataframe
 
         df = _empty_dataframe(model="hrrr", grid_kind="lambert_conformal_conus")
         for col in (
@@ -532,7 +532,7 @@ class TestCodexP2Followups:
         """The early-return path on unknown stations also stamps attrs."""
         if not _HAS_NWP_EXTRA:
             pytest.skip("requires [nwp] extra installed")
-        from tradewinds.weather.forecast_nwp import forecast_nwp
+        from mostlyright.weather.forecast_nwp import forecast_nwp
 
         df = forecast_nwp(
             "BOGUS",
@@ -551,7 +551,7 @@ class TestCodexP2Followups:
 @pytest.mark.skipif(not _HAS_NWP_EXTRA, reason="requires [nwp] extra installed")
 def test_forecast_nwp_live_hrrr_knyc_one_hour() -> None:
     """Real fetch against NOAA BDP. Skipped in CI."""
-    from tradewinds.forecasts import forecast_nwp
+    from mostlyright.forecasts import forecast_nwp
 
     df = forecast_nwp("KNYC", "hrrr", fxx=1)
     assert not df.empty

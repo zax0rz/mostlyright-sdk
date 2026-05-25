@@ -1,7 +1,7 @@
 // GHCNh Source_Station_ID → station_code translator.
 //
 // Byte-faithful TS port of Python
-// `packages/weather/src/tradewinds/weather/_ghcnh.py::ghcnh_station_to_code`
+// `packages/weather/src/mostlyright/weather/_ghcnh.py::ghcnh_station_to_code`
 // (L133-145) and `_extract_station_code` (L148-155) + the `_SSID_COLUMNS`
 // tuple verbatim.
 //
@@ -9,7 +9,7 @@
 // we walk them in priority order and return the first ICAO-prefixed value
 // that resolves to a valid station code.
 
-import { STATION_CODE_RE } from "@tradewinds/core/internal/bounds";
+import { STATION_CODE_RE } from "@mostlyright/core/internal/bounds";
 
 import { icaoToStationCode } from "./awc.js";
 

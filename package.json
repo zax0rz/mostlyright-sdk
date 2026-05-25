@@ -1,8 +1,8 @@
 {
-  "name": "tradewinds-ts-workspace",
+  "name": "mostlyright-ts-workspace",
   "version": "0.0.0",
   "private": true,
-  "description": "Workspace root for @tradewinds/* TypeScript SDK packages. Not published.",
+  "description": "Workspace root for @mostlyright/* TypeScript SDK packages. Not published.",
   "packageManager": "pnpm@9.12.0",
   "engines": {
     "node": ">=20"
@@ -21,22 +21,22 @@
   },
   "size-limit": [
     {
-      "name": "@tradewinds/core (W1 surface, gzipped ESM)",
+      "name": "@mostlyright/core (W1 surface, gzipped ESM)",
       "path": "packages-ts/core/dist/index.mjs",
       "limit": "25 KB"
     },
     {
-      "name": "@tradewinds/weather (W1: AWC+CLI only, gzipped ESM)",
+      "name": "@mostlyright/weather (W1: AWC+CLI only, gzipped ESM)",
       "path": "packages-ts/weather/dist/index.mjs",
       "limit": "20 KB"
     },
     {
-      "name": "@tradewinds/markets (W1: Kalshi NHIGH/NLOW, gzipped ESM)",
+      "name": "@mostlyright/markets (W1: Kalshi NHIGH/NLOW, gzipped ESM)",
       "path": "packages-ts/markets/dist/index.mjs",
       "limit": "15 KB"
     },
     {
-      "name": "tradewinds meta (W1 subset, gzipped ESM)",
+      "name": "mostlyright meta (W1 subset, gzipped ESM)",
       "path": "packages-ts/meta/dist/index.mjs",
       "limit": "30 KB"
     }

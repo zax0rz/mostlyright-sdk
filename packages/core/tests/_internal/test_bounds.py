@@ -1,4 +1,4 @@
-"""Tests for tradewinds._internal._bounds.
+"""Tests for mostlyright._internal._bounds.
 
 Lifted from monorepo-v0.14.1 (where _bounds had no dedicated test file —
 coverage came from parser tests in test_awc.py, test_iem.py, test_ghcnh.py).
@@ -14,7 +14,7 @@ import logging
 from pathlib import Path
 
 import pytest
-from tradewinds._internal._bounds import (
+from mostlyright._internal._bounds import (
     MAX_RAW_METAR_LEN,
     MAX_VISIBILITY_MILES,
     MAX_WX_CODES_LEN,
@@ -95,19 +95,19 @@ class TestBoundedFloat:
         assert bounded_float(100.001, 0.0, 100.0) is None
 
     def test_out_of_bounds_logs_warning(self, caplog):
-        with caplog.at_level(logging.WARNING, logger="tradewinds._internal._bounds"):
+        with caplog.at_level(logging.WARNING, logger="mostlyright._internal._bounds"):
             result = bounded_float(200.0, 0.0, 100.0)
         assert result is None
         assert any("bounded_float" in rec.message for rec in caplog.records)
 
     def test_out_of_bounds_field_context_in_log(self, caplog):
-        with caplog.at_level(logging.WARNING, logger="tradewinds._internal._bounds"):
+        with caplog.at_level(logging.WARNING, logger="mostlyright._internal._bounds"):
             bounded_float(-100.0, 0.0, 100.0, field="temp_c")
         # Field name should be included in the log message
         assert any("temp_c" in rec.message for rec in caplog.records)
 
     def test_in_bounds_does_not_log(self, caplog):
-        with caplog.at_level(logging.WARNING, logger="tradewinds._internal._bounds"):
+        with caplog.at_level(logging.WARNING, logger="mostlyright._internal._bounds"):
             bounded_float(50.0, 0.0, 100.0, field="temp_c")
         assert not caplog.records
 
@@ -238,7 +238,7 @@ class TestValidateIcaoForPath:
 
     @pytest.mark.parametrize("code", ["KJFK", "KORD", "KDEN", "ABC", "EGLL"])
     def test_valid_icao_returned(self, code):
-        from tradewinds._internal._bounds import validate_icao_for_path
+        from mostlyright._internal._bounds import validate_icao_for_path
 
         assert validate_icao_for_path(code) == code
 
@@ -261,20 +261,20 @@ class TestValidateIcaoForPath:
         ],
     )
     def test_traversal_payloads_rejected(self, payload):
-        from tradewinds._internal._bounds import validate_icao_for_path
+        from mostlyright._internal._bounds import validate_icao_for_path
 
         with pytest.raises(ValueError, match="STATION_CODE_RE"):
             validate_icao_for_path(payload)
 
     @pytest.mark.parametrize("bad", [None, 123, b"KNYC", 1.5, ["KNYC"]])
     def test_non_string_rejected(self, bad):
-        from tradewinds._internal._bounds import validate_icao_for_path
+        from mostlyright._internal._bounds import validate_icao_for_path
 
         with pytest.raises(ValueError, match="must be a str"):
             validate_icao_for_path(bad)
 
     def test_field_in_error_message(self):
-        from tradewinds._internal._bounds import validate_icao_for_path
+        from mostlyright._internal._bounds import validate_icao_for_path
 
         with pytest.raises(ValueError, match="station_icao"):
             validate_icao_for_path("../evil", field="station_icao")
@@ -294,7 +294,7 @@ class TestValidateGhcnhIdForPath:
         ],
     )
     def test_valid_ids_returned(self, sid):
-        from tradewinds._internal._bounds import validate_ghcnh_id_for_path
+        from mostlyright._internal._bounds import validate_ghcnh_id_for_path
 
         assert validate_ghcnh_id_for_path(sid) == sid
 
@@ -316,14 +316,14 @@ class TestValidateGhcnhIdForPath:
         ],
     )
     def test_traversal_payloads_rejected(self, payload):
-        from tradewinds._internal._bounds import validate_ghcnh_id_for_path
+        from mostlyright._internal._bounds import validate_ghcnh_id_for_path
 
         with pytest.raises(ValueError, match="GHCNH_STATION_ID_RE"):
             validate_ghcnh_id_for_path(payload)
 
     @pytest.mark.parametrize("bad", [None, 123, b"744860-94789", ["x"]])
     def test_non_string_rejected(self, bad):
-        from tradewinds._internal._bounds import validate_ghcnh_id_for_path
+        from mostlyright._internal._bounds import validate_ghcnh_id_for_path
 
         with pytest.raises(ValueError, match="must be a str"):
             validate_ghcnh_id_for_path(bad)
@@ -333,7 +333,7 @@ class TestAssertPathUnder:
     """``assert_path_under`` is the defense-in-depth backstop."""
 
     def test_path_under_root_returns_resolved(self, tmp_path):
-        from tradewinds._internal._bounds import assert_path_under
+        from mostlyright._internal._bounds import assert_path_under
 
         root = tmp_path / "cache"
         root.mkdir()
@@ -342,7 +342,7 @@ class TestAssertPathUnder:
         assert result == target.resolve()
 
     def test_path_escaping_via_dotdot_rejected(self, tmp_path):
-        from tradewinds._internal._bounds import assert_path_under
+        from mostlyright._internal._bounds import assert_path_under
 
         root = tmp_path / "cache"
         root.mkdir()
@@ -352,7 +352,7 @@ class TestAssertPathUnder:
             assert_path_under(escape, root)
 
     def test_completely_unrelated_path_rejected(self, tmp_path):
-        from tradewinds._internal._bounds import assert_path_under
+        from mostlyright._internal._bounds import assert_path_under
 
         root = tmp_path / "cache"
         root.mkdir()
@@ -360,7 +360,7 @@ class TestAssertPathUnder:
             assert_path_under(Path("/tmp/elsewhere"), root)
 
     def test_field_in_error_message(self, tmp_path):
-        from tradewinds._internal._bounds import assert_path_under
+        from mostlyright._internal._bounds import assert_path_under
 
         root = tmp_path / "cache"
         root.mkdir()

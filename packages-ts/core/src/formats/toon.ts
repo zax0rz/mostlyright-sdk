@@ -1,8 +1,8 @@
 // TOON v3.0 tabular format — byte-equivalent to Python `encode_tabular`.
 //
 // Ports the encoder portions of
-// `packages/core/src/tradewinds/core/formats/_toon.py` and the tabular
-// loader from `packages/core/src/tradewinds/core/formats/toon.py`.
+// `packages/core/src/mostlyright/core/formats/_toon.py` and the tabular
+// loader from `packages/core/src/mostlyright/core/formats/toon.py`.
 //
 // Wire shape (single tabular block):
 //

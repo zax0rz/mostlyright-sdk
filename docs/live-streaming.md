@@ -1,9 +1,9 @@
-# Live streaming — `tradewinds.live.stream()` / `live.latest()`
+# Live streaming — `mostlyright.live.stream()` / `live.latest()`
 
-`tradewinds.live` is the **ticker** surface. Use it when you want a live
+`mostlyright.live` is the **ticker** surface. Use it when you want a live
 feed of fresh METARs from a single weather source — for dashboards, alerting,
 or any program that polls and reacts in real time. It is intentionally
-different from `tradewinds.research()`, which is the **database** surface.
+different from `mostlyright.research()`, which is the **database** surface.
 
 Both Python and TypeScript SDKs ship the same two surfaces with mirrored
 APIs.
@@ -29,10 +29,10 @@ picture. If you need fused data, use `research()` instead.
 ```python
 # Python
 import asyncio
-import tradewinds
+import mostlyright
 
 async def main() -> None:
-    async for row in tradewinds.live.stream("KNYC"):
+    async for row in mostlyright.live.stream("KNYC"):
         print(row["observed_at"], row["temp_f"])
 
 asyncio.run(main())
@@ -40,7 +40,7 @@ asyncio.run(main())
 
 ```ts
 // TypeScript
-import { stream } from "@tradewinds/weather";
+import { stream } from "@mostlyright/weather";
 
 for await (const row of stream("KNYC")) {
   console.log(row.observed_at, row.temp_f);
@@ -49,7 +49,7 @@ for await (const row of stream("KNYC")) {
 
 **Signature:**
 
-- Python: `tradewinds.live.stream(station, *, source=None, poll_seconds=None) -> AsyncIterator[dict]`
+- Python: `mostlyright.live.stream(station, *, source=None, poll_seconds=None) -> AsyncIterator[dict]`
 - TS: `stream(station: string, opts?: { source?, pollSeconds?, signal? }): AsyncGenerator<LiveObservation>`
 
 **Per-row contract:**
@@ -67,7 +67,7 @@ for await (const row of stream("KNYC")) {
 
 ```python
 # Python — one shot
-row = await tradewinds.live.latest("KNYC")
+row = await mostlyright.live.latest("KNYC")
 print(row["temp_f"])
 ```
 
@@ -79,7 +79,7 @@ console.log(row.temp_f);
 
 **Signature:**
 
-- Python: `tradewinds.live.latest(station, *, source=None) -> dict`
+- Python: `mostlyright.live.latest(station, *, source=None) -> dict`
 - TS: `latest(station: string, opts?: { source? }): Promise<LiveObservation>`
 
 `latest()` shares the per-tick fetch path with `stream()` but returns
@@ -110,7 +110,7 @@ If a downstream consumer cares about the channel, branching on
 
 ## 5. Polite floors
 
-`tradewinds.live` will not let you poll an upstream API faster than its
+`mostlyright.live` will not let you poll an upstream API faster than its
 polite floor:
 
 | Source | Floor (seconds) |
@@ -138,12 +138,12 @@ The floor exists for two reasons:
 
 ```python
 # Standard `async for` consume
-async for row in tradewinds.live.stream("KNYC"):
+async for row in mostlyright.live.stream("KNYC"):
     process(row)
 
 # Break out cleanly — the polite-floor sleep is `asyncio.sleep`, which
 # propagates `CancelledError`, so `break` exits without zombie tasks.
-async for row in tradewinds.live.stream("KNYC"):
+async for row in mostlyright.live.stream("KNYC"):
     process(row)
     if row["temp_f"] > 95:
         break
@@ -151,7 +151,7 @@ async for row in tradewinds.live.stream("KNYC"):
 # Run multiple stations in parallel — one task per station, polite
 # floors apply per-task (NOT pooled).
 async def watch(station: str) -> None:
-    async for row in tradewinds.live.stream(station):
+    async for row in mostlyright.live.stream(station):
         process(station, row)
 
 await asyncio.gather(watch("KNYC"), watch("KLAX"), watch("KORD"))
@@ -227,10 +227,10 @@ keep `source` for provenance.
 
 ```python
 import asyncio
-import tradewinds
+import mostlyright
 
 async def alert_when_hot(station: str, threshold_f: float) -> None:
-    async for row in tradewinds.live.stream(station):
+    async for row in mostlyright.live.stream(station):
         if row["temp_f"] and row["temp_f"] >= threshold_f:
             await page(f"{station} hit {row['temp_f']}F at {row['observed_at']}")
 
@@ -242,13 +242,13 @@ asyncio.run(alert_when_hot("KNYC", 95.0))
 ```python
 # Run from cron every 5 minutes, get one fresh row per invocation.
 import asyncio
-import tradewinds
+import mostlyright
 
 async def main() -> None:
     try:
-        row = await tradewinds.live.latest("KNYC")
+        row = await mostlyright.live.latest("KNYC")
         write_row_to_db(row)
-    except tradewinds.live.NoLiveDataError as e:
+    except mostlyright.live.NoLiveDataError as e:
         log.warning("no live data: %s", e.to_dict())
 
 asyncio.run(main())
@@ -258,7 +258,7 @@ asyncio.run(main())
 
 ```ts
 // Watch every Kalshi NHIGH-NY ICAO in parallel — one stream per station.
-import { stream } from "@tradewinds/weather";
+import { stream } from "@mostlyright/weather";
 
 const stations = ["KNYC", "KLGA", "KJFK", "KEWR"];
 

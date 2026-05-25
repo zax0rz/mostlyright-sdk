@@ -1,4 +1,4 @@
-// Barrel for @tradewinds/core/qc — TS-W4 Plan 05.
+// Barrel for @mostlyright/core/qc — TS-W4 Plan 05.
 //
 // Public API: QCEngine, QCRule, ALPHA_RULES, QC_ALPHA_RULES + the 5
 // per-rule evaluator functions (exposed for unit-testing + downstream
@@ -9,7 +9,7 @@
 // them so downstream consumers can introspect the rule registry without
 // reaching into internal paths.
 //
-// Lives at the subpath (NOT root barrel) to keep the @tradewinds/core
+// Lives at the subpath (NOT root barrel) to keep the @mostlyright/core
 // main bundle under its 25 KB size-limit gate (TS-BUNDLE-01); same
 // pattern as temporal / formats / transforms / validator.
 
@@ -28,7 +28,7 @@ export {
 // TS-W4 Plan 06 — crosscheckIemGhcnh: IEM/GHCNh disagreement detection.
 // Inner-joins by (station, eventTime); emits rows where
 // |tempCIem - tempCGhcnh| > tolC (default 2.0 °C; STRICT `>`).
-// Mirrors Python `tradewinds.qc.crosscheck_iem_ghcnh` at qc.py:191-228.
+// Mirrors Python `mostlyright.qc.crosscheck_iem_ghcnh` at qc.py:191-228.
 export {
   crosscheckIemGhcnh,
   type CrosscheckDisagreement,

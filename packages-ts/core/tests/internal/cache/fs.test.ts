@@ -6,7 +6,7 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { FsStore, defaultFsRoot } from "../../../src/internal/cache/fs.js";
+import { FsStore, _resetLegacyCacheDirWarn, defaultFsRoot } from "../../../src/internal/cache/fs.js";
 import { runCacheStoreContract } from "./_contract.js";
 
 describe("FsStore", () => {
@@ -25,29 +25,60 @@ describe("FsStore", () => {
   runCacheStoreContract(() => new FsStore({ root: scratchDir }));
 
   describe("defaultFsRoot()", () => {
-    it("honors TRADEWINDS_CACHE_DIR env override", () => {
-      vi.stubEnv("TRADEWINDS_CACHE_DIR", "/tmp/custom-tradewinds");
-      try {
-        expect(defaultFsRoot()).toBe("/tmp/custom-tradewinds");
-      } finally {
-        vi.unstubAllEnvs();
-      }
-    });
-
-    it("falls back to $HOME/.tradewinds/cache-ts when env unset", () => {
+    it("honors MOSTLYRIGHT_CACHE_DIR env override (canonical, post-Phase-12)", () => {
+      vi.stubEnv("MOSTLYRIGHT_CACHE_DIR", "/tmp/custom-mostlyright");
       vi.stubEnv("TRADEWINDS_CACHE_DIR", "");
       try {
-        expect(defaultFsRoot()).toBe(join(homedir(), ".tradewinds", "cache-ts"));
+        expect(defaultFsRoot()).toBe("/tmp/custom-mostlyright");
       } finally {
         vi.unstubAllEnvs();
       }
     });
 
-    it("does NOT match the Python cache root (.tradewinds/cache)", () => {
+    it("canonical wins when both env vars set; legacy NOT consulted", () => {
+      vi.stubEnv("MOSTLYRIGHT_CACHE_DIR", "/tmp/canonical");
+      vi.stubEnv("TRADEWINDS_CACHE_DIR", "/tmp/legacy");
+      try {
+        expect(defaultFsRoot()).toBe("/tmp/canonical");
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    });
+
+    it("falls back to legacy TRADEWINDS_CACHE_DIR with console.warn (back-compat)", () => {
+      vi.stubEnv("MOSTLYRIGHT_CACHE_DIR", "");
+      vi.stubEnv("TRADEWINDS_CACHE_DIR", "/tmp/legacy-only");
+      // Reset the one-time latch so this test sees the warn even if a prior test fired it.
+      _resetLegacyCacheDirWarn();
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      try {
+        expect(defaultFsRoot()).toBe("/tmp/legacy-only");
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining("TRADEWINDS_CACHE_DIR is deprecated"),
+        );
+      } finally {
+        warnSpy.mockRestore();
+        vi.unstubAllEnvs();
+        _resetLegacyCacheDirWarn();
+      }
+    });
+
+    it("falls back to $HOME/.mostlyright/cache-ts when env unset", () => {
+      vi.stubEnv("MOSTLYRIGHT_CACHE_DIR", "");
+      vi.stubEnv("TRADEWINDS_CACHE_DIR", "");
+      try {
+        expect(defaultFsRoot()).toBe(join(homedir(), ".mostlyright", "cache-ts"));
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    });
+
+    it("does NOT match the Python cache root (.mostlyright/cache)", () => {
+      vi.stubEnv("MOSTLYRIGHT_CACHE_DIR", "");
       vi.stubEnv("TRADEWINDS_CACHE_DIR", "");
       try {
         const tsRoot = defaultFsRoot();
-        const pyRoot = join(homedir(), ".tradewinds", "cache");
+        const pyRoot = join(homedir(), ".mostlyright", "cache");
         expect(tsRoot).not.toBe(pyRoot);
         expect(tsRoot).toContain("cache-ts");
       } finally {
@@ -79,7 +110,7 @@ describe("FsStore", () => {
   describe("key sanitization", () => {
     it("colons in keys do not escape the root", async () => {
       const store = new FsStore({ root: scratchDir });
-      const key = "tradewinds:v1:observations:KNYC:2025:01";
+      const key = "mostlyright:v1:observations:KNYC:2025:01";
       await store.set(key, "value");
       const got = await store.get(key);
       expect(got).toBe("value");
@@ -88,7 +119,7 @@ describe("FsStore", () => {
       // so `:` becomes `%3A` rather than being collapsed to `__`.
       const expectedPath = join(
         scratchDir,
-        "tradewinds%3Av1%3Aobservations%3AKNYC%3A2025%3A01.json",
+        "mostlyright%3Av1%3Aobservations%3AKNYC%3A2025%3A01.json",
       );
       const content = await readFile(expectedPath, "utf8");
       expect(JSON.parse(content)).toEqual({ value: "value" });

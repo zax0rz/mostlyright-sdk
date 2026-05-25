@@ -34,9 +34,9 @@ def test_knyc_5yr_backfill_under_12min(tmp_path, monkeypatch) -> None:
     """
     import time
 
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path / "cache"))
 
-    from tradewinds import research
+    from mostlyright import research
 
     t0 = time.monotonic()
     df = research(station="KNYC", from_date="2020-01-01", to_date="2024-12-31")
@@ -62,9 +62,9 @@ def test_other_station_regression_within_baseline(tmp_path, monkeypatch, station
     """
     import time
 
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path / "cache"))
 
-    from tradewinds import research
+    from mostlyright import research
 
     t0 = time.monotonic()
     research(station=station, from_date="2024-01-01", to_date="2024-12-31")
@@ -92,12 +92,12 @@ def test_prefetch_parallelism_ratio_under_check(tmp_path, monkeypatch) -> None:
     """
     import sys
 
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path / "cache"))
 
-    import tradewinds.research  # noqa: F401 — populates sys.modules
+    import mostlyright.research  # noqa: F401 — populates sys.modules
 
-    research_mod = sys.modules["tradewinds.research"]
-    from tradewinds._internal._stations import STATIONS
+    research_mod = sys.modules["mostlyright.research"]
+    from mostlyright._internal._stations import STATIONS
 
     info = STATIONS["NYC"]
     # Use a fully past year so prefetch actually runs (post-iter-1 fix skips

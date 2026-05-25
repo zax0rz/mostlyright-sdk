@@ -12,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 // (the re-export pulled node:fs/promises etc. into the browser
 // subbundle). Import directly from the fs module — production Node
 // callers should use the dedicated subpath
-// `@tradewinds/core/internal/cache/fs`.
+// `@mostlyright/core/internal/cache/fs`.
 import { FsStore } from "../../../src/internal/cache/fs.js";
 import {
   IndexedDBStore,

@@ -1,4 +1,4 @@
-"""Tests for ``tradewinds.core.result.TradewindsResult`` (Phase 6 W0)."""
+"""Tests for ``mostlyright.core.result.TradewindsResult`` (Phase 6 W0)."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 
 import pandas as pd
 import pytest
-from tradewinds.core import (
+from mostlyright.core import (
     KnowledgeView,
     LeakageError,
     SourceMismatchError,
@@ -16,7 +16,7 @@ from tradewinds.core import (
     assert_no_leakage,
     validate_dataframe,
 )
-from tradewinds.core.temporal.leakage import LeakageDetector
+from mostlyright.core.temporal.leakage import LeakageDetector
 
 # ----------------------- dataclass shape -----------------------
 

@@ -6,8 +6,8 @@ from datetime import UTC, datetime
 
 import pandas as pd
 import pytest
-from tradewinds.weather.catalog import get_adapter
-from tradewinds.weather.catalog.iem import IEMAdapter
+from mostlyright.weather.catalog import get_adapter
+from mostlyright.weather.catalog.iem import IEMAdapter
 
 
 def _row(**overrides):
@@ -165,7 +165,7 @@ def test_none_preserved_through_conversion():
 # ----------------------------------------------------------------------
 def test_adapter_output_passes_validator():
     """The full adapter -> validator chain must validate cleanly."""
-    from tradewinds.core import validate_dataframe
+    from mostlyright.core import validate_dataframe
 
     df = IEMAdapter.from_rows([_row(), _row(observed_at="2025-01-01T13:00:00Z")])
     reg = validate_dataframe(df, "schema.observation.v1")
@@ -177,7 +177,7 @@ def test_adapter_single_row_all_nulls_validator_dtype():
     """A single METAR row with no gust / no cloud-base must still produce a
     schema-conformant DataFrame (float64 dtype enforced via coerce_canonical_dtypes).
     """
-    from tradewinds.core import validate_dataframe
+    from mostlyright.core import validate_dataframe
 
     df = IEMAdapter.from_rows(
         [

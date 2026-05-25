@@ -1,16 +1,16 @@
 """PKG-02 + PKG-04: PEP 420 namespace integrity after ``uv build``.
 
 The three-package split relies on Python's implicit namespace-package
-(PEP 420) rules: only ``tradewinds`` (core) ships a top-level
-``tradewinds/__init__.py``; ``tradewinds-weather`` and
-``tradewinds-markets`` ship subdirectories WITHOUT their own namespace-root
+(PEP 420) rules: only ``mostlyright`` (core) ships a top-level
+``mostlyright/__init__.py``; ``mostlyright-weather`` and
+``mostlyright-markets`` ship subdirectories WITHOUT their own namespace-root
 ``__init__.py``. If a sibling distribution ever shipped a top-level
 ``__init__.py``, the first one installed would shadow the others and
-``import tradewinds.weather`` would break depending on install order.
+``import mostlyright.weather`` would break depending on install order.
 
 We build with ``uv build --all-packages`` (the command PLAN.md Task 4.1
 verifies and Task 4.2 prepares for publish). This used to emit a 4th
-``tradewinds_workspace-0.0.0`` wheel from the workspace root; the root
+``mostlyright_workspace-0.0.0`` wheel from the workspace root; the root
 pyproject now sets ``[tool.uv] package = false`` so the workspace is
 recognized as not-a-publishable-package, and ``--all-packages`` returns
 exactly the three publishable wheels. This test guards both halves:
@@ -37,7 +37,7 @@ def built_wheels() -> dict[str, Path]:
 
     Cleans ``dist/`` first so a stale 0.0.1 wheel cannot satisfy the
     pattern globs below and mask a missed version bump, AND so any
-    previously-built ``tradewinds_workspace-*.whl`` from before the
+    previously-built ``mostlyright_workspace-*.whl`` from before the
     ``[tool.uv] package = false`` fix cannot slip into the wheel
     inventory.
     """
@@ -57,14 +57,14 @@ def built_wheels() -> dict[str, Path]:
     wheels = list(DIST.glob("*.whl"))
     by_name: dict[str, Path] = {}
     for wheel in wheels:
-        if wheel.name.startswith("tradewinds_weather-"):
+        if wheel.name.startswith("mostlyright_weather-"):
             by_name["weather"] = wheel
-        elif wheel.name.startswith("tradewinds_markets-"):
+        elif wheel.name.startswith("mostlyright_markets-"):
             by_name["markets"] = wheel
-        elif wheel.name.startswith("tradewinds-"):
+        elif wheel.name.startswith("mostlyright-"):
             by_name["core"] = wheel
         else:
-            # Surface any unrecognized wheel (e.g. tradewinds_workspace-*)
+            # Surface any unrecognized wheel (e.g. mostlyright_workspace-*)
             # so the count assertion below fails with a clear name.
             by_name[f"UNEXPECTED:{wheel.name}"] = wheel
     return by_name
@@ -80,7 +80,7 @@ def test_exactly_three_published_wheels(built_wheels: dict[str, Path]) -> None:
 
     A previous version of this test only checked the three expected names
     were present; ``uv build --all-packages`` produced a 4th
-    ``tradewinds_workspace-0.0.0`` wheel that slipped through (codex Wave
+    ``mostlyright_workspace-0.0.0`` wheel that slipped through (codex Wave
     4 iter-1 HIGH). Now we assert ``dist/`` has exactly three .whl files
     and they are precisely the named packages.
     """
@@ -98,7 +98,7 @@ def test_exactly_three_published_wheels(built_wheels: dict[str, Path]) -> None:
         f"dist/ must contain exactly 3 wheels after a clean build; got "
         f"{[w.name for w in all_wheels]}"
     )
-    assert not list(DIST.glob("tradewinds_workspace-*.whl")), (
+    assert not list(DIST.glob("mostlyright_workspace-*.whl")), (
         "workspace meta-package wheel slipped into dist/; "
         "the root pyproject is a workspace marker only — not for publish"
     )
@@ -117,25 +117,25 @@ def test_only_core_ships_namespace_root(built_wheels: dict[str, Path]) -> None:
     weather_names = _names(built_wheels["weather"])
     markets_names = _names(built_wheels["markets"])
 
-    assert "tradewinds/__init__.py" in core_names, (
-        "core wheel MUST ship tradewinds/__init__.py (it owns the namespace root)"
+    assert "mostlyright/__init__.py" in core_names, (
+        "core wheel MUST ship mostlyright/__init__.py (it owns the namespace root)"
     )
-    assert "tradewinds/__init__.py" not in weather_names, (
-        "weather wheel must NOT ship tradewinds/__init__.py — install-order "
-        "shadowing would break `import tradewinds.weather` (PEP 420; PKG-02)"
+    assert "mostlyright/__init__.py" not in weather_names, (
+        "weather wheel must NOT ship mostlyright/__init__.py — install-order "
+        "shadowing would break `import mostlyright.weather` (PEP 420; PKG-02)"
     )
-    assert "tradewinds/__init__.py" not in markets_names, (
-        "markets wheel must NOT ship tradewinds/__init__.py — install-order "
-        "shadowing would break `import tradewinds.markets` (PEP 420; PKG-02)"
+    assert "mostlyright/__init__.py" not in markets_names, (
+        "markets wheel must NOT ship mostlyright/__init__.py — install-order "
+        "shadowing would break `import mostlyright.markets` (PEP 420; PKG-02)"
     )
 
 
 def test_sibling_subpackages_present(built_wheels: dict[str, Path]) -> None:
     weather_names = _names(built_wheels["weather"])
     markets_names = _names(built_wheels["markets"])
-    assert "tradewinds/weather/__init__.py" in weather_names, (
-        "weather wheel must ship tradewinds/weather/__init__.py (the subpackage marker)"
+    assert "mostlyright/weather/__init__.py" in weather_names, (
+        "weather wheel must ship mostlyright/weather/__init__.py (the subpackage marker)"
     )
-    assert "tradewinds/markets/__init__.py" in markets_names, (
-        "markets wheel must ship tradewinds/markets/__init__.py"
+    assert "mostlyright/markets/__init__.py" in markets_names, (
+        "markets wheel must ship mostlyright/markets/__init__.py"
     )

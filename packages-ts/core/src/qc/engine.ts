@@ -1,6 +1,6 @@
 // TS-W4 Plan 05 Task 2 — QCEngine: apply alpha rules; emit obsQcStatus bitfield.
 //
-// Mirrors Python `packages/core/src/tradewinds/qc.py:137-160`. The bitfield is a
+// Mirrors Python `packages/core/src/mostlyright/qc.py:137-160`. The bitfield is a
 // 32-bit signed integer (JS `|` semantics); the alpha rule set uses bits 0-4
 // of 32, leaving ample headroom. Phase 3.5+ additions to QC_ALPHA_RULES are
 // picked up automatically by qc/rules.ts (which registers the matching

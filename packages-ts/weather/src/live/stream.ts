@@ -1,6 +1,6 @@
 // Phase 11 — `stream()` async generator.
 //
-// Mirrors Python `tradewinds.live.stream`. Continuous poll loop over a
+// Mirrors Python `mostlyright.live.stream`. Continuous poll loop over a
 // single source. Yields each fresh observation exactly once (dedup by
 // `observed_at`), then sleeps for the polite-floor cadence.
 //

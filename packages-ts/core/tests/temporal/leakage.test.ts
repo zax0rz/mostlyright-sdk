@@ -1,6 +1,6 @@
 // TS-W3 Plan 04 Task 3 — assertNoLeakage + LeakageDetector tests.
 //
-// Mirrors `packages/core/src/tradewinds/core/temporal/leakage.py`. The wire
+// Mirrors `packages/core/src/mostlyright/core/temporal/leakage.py`. The wire
 // shape from `LeakageError.toDict()` MUST use snake_case keys (as_of,
 // violating_count, sample_violations) for Python-parity in MCP wire format.
 

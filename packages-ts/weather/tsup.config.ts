@@ -2,11 +2,11 @@ import { defineConfig } from "tsup";
 
 export default defineConfig({
   // Phase 11: emit the `live/` subpath as a separate entry so
-  // `import { stream } from "@tradewinds/weather/live"` resolves via the
+  // `import { stream } from "@mostlyright/weather/live"` resolves via the
   // `exports` map (`./live` → `./dist/live/index.{mjs,cjs,d.ts}`).
   entry: ["src/index.ts", "src/live/index.ts"],
   format: ["esm", "cjs", "iife"],
-  globalName: "tradewindsWeather",
+  globalName: "mostlyrightWeather",
   dts: true,
   sourcemap: true,
   clean: true,

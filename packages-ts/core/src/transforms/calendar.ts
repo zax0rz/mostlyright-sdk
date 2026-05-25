@@ -1,7 +1,7 @@
 // TS-W4 Plan 03 Task 1 — calendarFeatures transform.
 //
-// Pure row→row port of Python `tradewinds.transforms.calendar_features`
-// (packages/core/src/tradewinds/transforms.py:71-100). Adds 8 cyclical-pair
+// Pure row→row port of Python `mostlyright.transforms.calendar_features`
+// (packages/core/src/mostlyright/transforms.py:71-100). Adds 8 cyclical-pair
 // columns (month_sin/cos, dow_sin/cos, hour_sin/cos, day_of_year_sin/cos)
 // to each output row; source rows NOT mutated.
 //

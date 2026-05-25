@@ -1,7 +1,7 @@
 // Snapshot math — settlement-window and market-close arithmetic.
 //
-// Ported from `packages/core/src/tradewinds/snapshot.py` and
-// `packages/core/src/tradewinds/_internal/_pairs.py:market_close_utc`.
+// Ported from `packages/core/src/mostlyright/snapshot.py` and
+// `packages/core/src/mostlyright/_internal/_pairs.py:market_close_utc`.
 //
 // Key concepts:
 //  - LOCAL STANDARD TIME (LST): station's standard UTC offset, DST ignored.
@@ -17,7 +17,7 @@
 // ---------------------------------------------------------------------------
 //
 // Used to extract the LOCAL STANDARD TIME UTC offset via a January reference
-// moment. Ported from `tradewinds.snapshot._STATION_TZ`.
+// moment. Ported from `mostlyright.snapshot._STATION_TZ`.
 
 export const _STATION_TZ: Readonly<Record<string, string>> = Object.freeze({
   // Eastern (UTC-5 standard / UTC-4 DST)
@@ -118,7 +118,7 @@ export const _STATION_TZ: Readonly<Record<string, string>> = Object.freeze({
   KOA: "Pacific/Honolulu",
   // International (iter-6 H12): minimal set required to un-skip the
   // case-5 RJTT year-wrap cache behavior test. Python's
-  // `tradewinds.snapshot._resolve_tz` falls back to the broader STATIONS
+  // `mostlyright.snapshot._resolve_tz` falls back to the broader STATIONS
   // registry for intl ICAOs; the TS port hasn't ported that fallback
   // yet (tracked as TS-W6 — exhaustive intl-station tz coverage). This
   // entry closes H12 cleanly without pulling the whole STATIONS map in.

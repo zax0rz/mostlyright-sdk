@@ -1,7 +1,7 @@
 // TS-W4 Plan 02 Task 1 — lag transform.
 //
-// Pure row→row port of Python `tradewinds.transforms.lag` (packages/core/src/
-// tradewinds/transforms.py:43-45). TS does NOT have pandas Series; we operate
+// Pure row→row port of Python `mostlyright.transforms.lag` (packages/core/src/
+// mostlyright/transforms.py:43-45). TS does NOT have pandas Series; we operate
 // on a `ReadonlyArray<Row>` and add a derived column `{col}_lag_{n}` to each
 // output row. Source rows are NOT mutated.
 //

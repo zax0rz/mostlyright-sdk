@@ -1,7 +1,7 @@
 // TS-W4 Plan 04 Task 1 — NWS weather cross-features (wind chill + heat index).
 //
-// Pure scalar ports of Python `tradewinds.transforms.wind_chill` and
-// `heat_index` at packages/core/src/tradewinds/transforms.py:108-147.
+// Pure scalar ports of Python `mostlyright.transforms.wind_chill` and
+// `heat_index` at packages/core/src/mostlyright/transforms.py:108-147.
 //
 // **PARITY-NOTE (out-of-domain return value):**
 // Python returns `temp_f` UNCHANGED when outside the valid domain

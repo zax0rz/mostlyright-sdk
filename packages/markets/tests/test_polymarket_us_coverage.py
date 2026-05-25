@@ -10,9 +10,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 import pytest
-from tradewinds.markets._per_event_station import load_polymarket_city_stations
-from tradewinds.markets.polymarket import KNOWN_WRONG_STATIONS
-from tradewinds.markets.polymarket_city_citations import POLYMARKET_CITY_CITATIONS
+from mostlyright.markets._per_event_station import load_polymarket_city_stations
+from mostlyright.markets.polymarket import KNOWN_WRONG_STATIONS
+from mostlyright.markets.polymarket_city_citations import POLYMARKET_CITY_CITATIONS
 
 #: The Phase 8 US cities. Exact set — adding one requires a PLAN change.
 US_CITIES_PHASE_8 = frozenset(

@@ -58,15 +58,15 @@ describe("FsStore.listKeys", () => {
   });
 
   it("returns decoded keys with the requested prefix", async () => {
-    await store.set("tradewinds:v1:observations:KNYC:2025:01", { v: 1 });
-    await store.set("tradewinds:v1:observations:KNYC:2025:02", { v: 2 });
-    await store.set("tradewinds:v1:climate:KNYC:2024", { v: 3 });
-    await store.set("tradewinds:v1:observations:KLAX:2025:01", { v: 4 });
+    await store.set("mostlyright:v1:observations:KNYC:2025:01", { v: 1 });
+    await store.set("mostlyright:v1:observations:KNYC:2025:02", { v: 2 });
+    await store.set("mostlyright:v1:climate:KNYC:2024", { v: 3 });
+    await store.set("mostlyright:v1:observations:KLAX:2025:01", { v: 4 });
 
-    const obs = await store.listKeys("tradewinds:v1:observations:KNYC:");
+    const obs = await store.listKeys("mostlyright:v1:observations:KNYC:");
     expect([...obs].sort()).toEqual([
-      "tradewinds:v1:observations:KNYC:2025:01",
-      "tradewinds:v1:observations:KNYC:2025:02",
+      "mostlyright:v1:observations:KNYC:2025:01",
+      "mostlyright:v1:observations:KNYC:2025:02",
     ]);
   });
 
@@ -74,8 +74,8 @@ describe("FsStore.listKeys", () => {
     // Place a file the SDK didn't write — should be skipped silently.
     const { writeFile } = await import("node:fs/promises");
     await writeFile(join(root, "%E0%A4%A.json"), '{"value":null}', "utf8");
-    await store.set("tradewinds:v1:observations:KNYC:2025:01", { v: 1 });
-    const out = await store.listKeys("tradewinds:");
-    expect(out).toEqual(["tradewinds:v1:observations:KNYC:2025:01"]);
+    await store.set("mostlyright:v1:observations:KNYC:2025:01", { v: 1 });
+    const out = await store.listKeys("mostlyright:");
+    expect(out).toEqual(["mostlyright:v1:observations:KNYC:2025:01"]);
   });
 });

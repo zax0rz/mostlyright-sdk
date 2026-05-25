@@ -1,11 +1,11 @@
 // TS-W6 Wave 1 — availability(station, cache) reading from CacheStore.
 //
-// Ports Python `tradewinds.discovery.availability` semantics. Python walks the
+// Ports Python `mostlyright.discovery.availability` semantics. Python walks the
 // on-disk parquet hierarchy; TS uses the same canonical cache-key shape so the
 // CacheStore implementation (Memory / IndexedDB / Fs) is the persistence layer.
 //
 // The keys we scan match `cacheKeyForObservations(station, year, month, source?)`
-// and `cacheKeyForClimate(station, year)`. @tradewinds/meta's `research()` writes
+// and `cacheKeyForClimate(station, year)`. @mostlyright/meta's `research()` writes
 // cache entries under the 3-letter NWS code (`resolved.code` from
 // STATION_BY_ICAO / STATION_BY_CODE) for US stations — e.g. `KNYC` resolves to
 // `NYC` and the cache key reads `...:observations:NYC:...`. Codex iter-2 P2:
@@ -92,8 +92,8 @@ function normalizeStation(station: string): string {
   return upper;
 }
 
-const OBS_KEY_RE = /^tradewinds:v1:observations:([A-Z0-9]+):(\d{4}):(\d{2})(?::[a-z0-9_-]+)?$/;
-const CLIMATE_KEY_RE = /^tradewinds:v1:climate:([A-Z0-9]+):(\d{4})$/;
+const OBS_KEY_RE = /^mostlyright:v1:observations:([A-Z0-9]+):(\d{4}):(\d{2})(?::[a-z0-9_-]+)?$/;
+const CLIMATE_KEY_RE = /^mostlyright:v1:climate:([A-Z0-9]+):(\d{4})$/;
 
 /**
  * Options for `availability()`.
@@ -154,8 +154,8 @@ export async function availability(
   const upperInput = station.toUpperCase();
   const scanCodes = upperInput === stationCode ? [stationCode] : [stationCode, upperInput];
 
-  const obsPrefixes = scanCodes.map((c) => `tradewinds:v1:observations:${c}:`);
-  const climatePrefixes = scanCodes.map((c) => `tradewinds:v1:climate:${c}:`);
+  const obsPrefixes = scanCodes.map((c) => `mostlyright:v1:observations:${c}:`);
+  const climatePrefixes = scanCodes.map((c) => `mostlyright:v1:climate:${c}:`);
 
   const obsKeySets = await Promise.all(obsPrefixes.map((p) => cache.listKeys(p)));
   const climateKeySets = await Promise.all(climatePrefixes.map((p) => cache.listKeys(p)));

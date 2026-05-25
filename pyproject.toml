@@ -1,15 +1,15 @@
 [project]
-name = "tradewinds-workspace"
+name = "mostlyright-workspace"
 version = "0.0.0"
-description = "uv workspace root for tradewinds packages (not published)"
+description = "uv workspace root for mostlyright packages (not published)"
 requires-python = ">=3.11"
 # Declare the workspace members as deps so `uv sync` installs them in editable
 # mode by default (otherwise plain `uv sync` skips members; users would need
-# `uv sync --all-packages` and would hit ModuleNotFoundError on `import tradewinds`).
+# `uv sync --all-packages` and would hit ModuleNotFoundError on `import mostlyright`).
 dependencies = [
-    "tradewinds",
-    "tradewinds-weather",
-    "tradewinds-markets",
+    "mostlyright",
+    "mostlyright-weather",
+    "mostlyright-markets",
 ]
 
 [build-system]
@@ -24,7 +24,7 @@ bypass-selection = true
 # Mark this workspace root as NOT a publishable package, even though it
 # still carries a `[project]` table (which we keep so `dependencies = [...]`
 # can auto-install the three workspace members on `uv sync`). Without this,
-# `uv build --all-packages` emits an extra `tradewinds_workspace-0.0.0.whl`
+# `uv build --all-packages` emits an extra `mostlyright_workspace-0.0.0.whl`
 # alongside the three publishable wheels — codex Wave 4 iter-2 HIGH on
 # tests/test_wheel_layout.py.
 package = false
@@ -33,9 +33,9 @@ package = false
 members = ["packages/core", "packages/weather", "packages/markets"]
 
 [tool.uv.sources]
-tradewinds = { workspace = true }
-tradewinds-weather = { workspace = true }
-tradewinds-markets = { workspace = true }
+mostlyright = { workspace = true }
+mostlyright-weather = { workspace = true }
+mostlyright-markets = { workspace = true }
 
 [dependency-groups]
 dev = [
@@ -43,11 +43,11 @@ dev = [
     "pytest-cov>=5.0",
     "ruff>=0.5",
     "pre-commit>=3.7",
-    # Property-based testing for v0.2 foundations (tradewinds._v02). Added by the
+    # Property-based testing for v0.2 foundations (mostlyright._v02). Added by the
     # wave-1-core port from mostlyright-mcp; kept in workspace dev so future tests
     # across packages can use hypothesis without further setup.
     "hypothesis>=6.100",
-    # pandas + pyarrow are runtime deps under the `parquet` extra of `tradewinds`
+    # pandas + pyarrow are runtime deps under the `parquet` extra of `mostlyright`
     # (DataFrame return values), but they are MANDATORY for the test suite:
     # _v02 tests import pandas at collection time, and Sprint 0 parity fixtures
     # are parquet files. Putting them in dev so `uv run pytest -m "not live"`
@@ -60,7 +60,7 @@ dev = [
     # 5 cleanly-portable modules go through. polars is the second backend
     # the [polars] extra wires up. Both are dev deps so the cross-backend
     # test matrix runs locally + in CI without forcing every user to
-    # install polars on a default `pip install tradewinds`.
+    # install polars on a default `pip install mostlyright`.
     "narwhals>=1.20,<2.0",
     "polars>=1.0,<2.0",
 ]
@@ -100,7 +100,7 @@ addopts = "-q --strict-markers -m 'not live'"
 # Empirical: 94.20%. The 85% floor leaves headroom for v0.2 reorgs.
 #
 # SCOPE (honest naming per codex iter-4 HIGH): the gate covers the
-# CORE SEMANTIC SURFACE of tradewinds.core — the load-bearing logic in
+# CORE SEMANTIC SURFACE of mostlyright.core — the load-bearing logic in
 # Validator, temporal primitives (TimePoint / KnowledgeView /
 # LeakageDetector), exception hierarchy, merge, and the public format
 # wrappers (toon.py, json.py, parquet.py, csv.py, dataframe.py). It does
@@ -117,11 +117,11 @@ addopts = "-q --strict-markers -m 'not live'"
 #     internals is deferred to Phase 5 (MCP) when TOON starts going over
 #     the wire and the edge cases become user-visible. Documented as a
 #     known coverage gap in the Phase 4 changelog; the ROADMAP SC-1
-#     "≥90% on tradewinds.core.*" should be read as "core semantic
+#     "≥90% on mostlyright.core.*" should be read as "core semantic
 #     surface" not "every byte of every file under core/".
 [tool.coverage.run]
 branch = true
-source = ["packages/core/src/tradewinds/core"]
+source = ["packages/core/src/mostlyright/core"]
 omit = [
     "*/core/schemas/*",
     "*/core/formats/_toon.py",

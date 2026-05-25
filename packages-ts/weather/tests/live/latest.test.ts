@@ -5,7 +5,7 @@
 
 import { type MockInstance, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { NoLiveDataError } from "@tradewinds/core";
+import { NoLiveDataError } from "@mostlyright/core";
 
 import { latest } from "../../src/live/latest.js";
 import * as fetchModule from "../../src/live/_fetch.js";
@@ -257,8 +257,8 @@ describe("latest()", () => {
 
   it("`live/index` barrel re-exports the documented surface", async () => {
     // Regression for iter-3 codex finding: the `live/` barrel was reachable
-    // only via the main `@tradewinds/weather` import; the documented
-    // `@tradewinds/weather/live` subpath was NOT in `package.json` exports
+    // only via the main `@mostlyright/weather` import; the documented
+    // `@mostlyright/weather/live` subpath was NOT in `package.json` exports
     // and was NOT a tsup entry. Phase 11 iter-3 added both.
     //
     // We use a SOURCE-RELATIVE import here (not the bare subpath) because

@@ -1,7 +1,7 @@
-// Structured exception hierarchy for the tradewinds TS SDK.
+// Structured exception hierarchy for the mostlyright TS SDK.
 //
-// Mirrors the Python design in `packages/core/src/tradewinds/core/exceptions.py`
-// and `packages/core/src/tradewinds/_internal/exceptions.py`. Every error
+// Mirrors the Python design in `packages/core/src/mostlyright/core/exceptions.py`
+// and `packages/core/src/mostlyright/_internal/exceptions.py`. Every error
 // subclasses `TradewindsError` and exposes a `toDict()` method that returns a
 // JSON-safe payload suitable for MCP `error.data` / extension messaging.
 //
@@ -9,7 +9,7 @@
 //   "observations" / "forecasts" / "settlement"  (long form, NOT the col prefixes)
 
 // ---------------------------------------------------------------------------
-// JSON-safe coercion (mirrors `tradewinds.core._json_safe.to_json_safe`)
+// JSON-safe coercion (mirrors `mostlyright.core._json_safe.to_json_safe`)
 // ---------------------------------------------------------------------------
 
 /**
@@ -112,7 +112,7 @@ export interface TradewindsErrorOptions {
 }
 
 /**
- * Base class for all tradewinds structured errors.
+ * Base class for all mostlyright structured errors.
  *
  * `errorCode` is a stable enum (e.g. "SOURCE_UNAVAILABLE") used by callers /
  * agents to branch on without parsing message text. `source` is the source id
@@ -394,7 +394,7 @@ export class PayloadTooLargeError extends TradewindsError {
 }
 
 // ---------------------------------------------------------------------------
-// DeferredMarketError (TS-W6 placeholder; mirrors tradewinds.international)
+// DeferredMarketError (TS-W6 placeholder; mirrors mostlyright.international)
 // ---------------------------------------------------------------------------
 
 export class DeferredMarketError extends TradewindsError {
@@ -402,7 +402,7 @@ export class DeferredMarketError extends TradewindsError {
 }
 
 // ---------------------------------------------------------------------------
-// PolymarketEventError (TS-W5 placeholder; mirrors tradewinds.markets.polymarket)
+// PolymarketEventError (TS-W5 placeholder; mirrors mostlyright.markets.polymarket)
 // ---------------------------------------------------------------------------
 
 export class PolymarketEventError extends TradewindsError {
@@ -410,7 +410,7 @@ export class PolymarketEventError extends TradewindsError {
 }
 
 // ---------------------------------------------------------------------------
-// HTTP-layer hierarchy (mirrors tradewinds._internal.exceptions)
+// HTTP-layer hierarchy (mirrors mostlyright._internal.exceptions)
 // ---------------------------------------------------------------------------
 
 export interface TherminalErrorOptions extends TradewindsErrorOptions {
@@ -508,7 +508,7 @@ export class ServerError extends TherminalError {
 // ---------------------------------------------------------------------------
 
 /**
- * Base class for `tradewinds.live.stream` / `live.latest` failures.
+ * Base class for `mostlyright.live.stream` / `live.latest` failures.
  *
  * Mirrors Python `LiveStreamError`. Live-streaming errors are a separate
  * sub-tree from `SourceUnavailableError` because the recovery path differs —
@@ -525,7 +525,7 @@ export interface NoLiveDataErrorOptions extends TradewindsErrorOptions {
 }
 
 /**
- * `tradewinds.live.latest` returned no observations for the station.
+ * `mostlyright.live.latest` returned no observations for the station.
  *
  * Carries the resolved ICAO `station` and the canonical source identity
  * tag (`"awc.live"` / `"iem.live"`) so caller logs can branch by source

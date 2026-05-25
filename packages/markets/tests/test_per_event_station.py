@@ -1,6 +1,6 @@
 """Tests for the Phase 3.1 per-event station resolver.
 
-Exercises ``tradewinds.markets._per_event_station.resolve_station_for_event``:
+Exercises ``mostlyright.markets._per_event_station.resolve_station_for_event``:
 
 - Single-airport cities → ``default`` lookup.
 - Paris LFPG/LFPB split via high/low keyword detection.
@@ -13,8 +13,8 @@ Exercises ``tradewinds.markets._per_event_station.resolve_station_for_event``:
 from __future__ import annotations
 
 import pytest
-from tradewinds.international import DeferredMarketError
-from tradewinds.markets._per_event_station import (
+from mostlyright.international import DeferredMarketError
+from mostlyright.markets._per_event_station import (
     DEFERRED_STATION_MEASURES,
     extract_icao_from_resolution_source,
     load_polymarket_city_stations,
@@ -468,7 +468,7 @@ class TestResolverTier1_5:
         Inject a test-only deferred-station-measure for KLGA so we can
         exercise the gate without altering the production defer list.
         """
-        from tradewinds.markets import _per_event_station as mod
+        from mostlyright.markets import _per_event_station as mod
 
         patched = frozenset(mod.DEFERRED_STATION_MEASURES | {("KLGA", "default")})
         monkeypatch.setattr(mod, "DEFERRED_STATION_MEASURES", patched)

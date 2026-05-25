@@ -20,8 +20,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from tradewinds._internal.models.station import StationInfo
-from tradewinds.weather._fetchers.iem_asos import download_iem_asos
+from mostlyright._internal.models.station import StationInfo
+from mostlyright.weather._fetchers.iem_asos import download_iem_asos
 
 
 def _make_station(code: str = "NYC", icao: str = "KNYC") -> StationInfo:
@@ -47,7 +47,7 @@ def frozen_today_utc():
         def now(cls, tz=None):  # type: ignore[override]
             return fake_dt if tz is UTC or tz is not None else fake_dt.replace(tzinfo=None)
 
-    with patch("tradewinds.weather._fetchers.iem_asos.datetime", _FakeDatetime):
+    with patch("mostlyright.weather._fetchers.iem_asos.datetime", _FakeDatetime):
         yield date(2026, 5, 22)
 
 
@@ -65,10 +65,10 @@ def test_exact_window_url_uses_day_granular_params(tmp_path, frozen_today_utc):
 
     with (
         patch(
-            "tradewinds.weather._fetchers.iem_asos.download_with_retry",
+            "mostlyright.weather._fetchers.iem_asos.download_with_retry",
             side_effect=_fake_download,
         ),
-        patch("tradewinds.weather._fetchers.iem_asos.time.sleep"),
+        patch("mostlyright.weather._fetchers.iem_asos.time.sleep"),
     ):
         paths = download_iem_asos(
             station,
@@ -107,10 +107,10 @@ def test_exact_window_false_preserves_year_normalization(tmp_path, frozen_today_
 
     with (
         patch(
-            "tradewinds.weather._fetchers.iem_asos.download_with_retry",
+            "mostlyright.weather._fetchers.iem_asos.download_with_retry",
             side_effect=_fake_download,
         ),
-        patch("tradewinds.weather._fetchers.iem_asos.time.sleep"),
+        patch("mostlyright.weather._fetchers.iem_asos.time.sleep"),
     ):
         download_iem_asos(
             station,
@@ -139,10 +139,10 @@ def test_exact_window_paths_under_caller_dest_dir(tmp_path, frozen_today_utc):
 
     with (
         patch(
-            "tradewinds.weather._fetchers.iem_asos.download_with_retry",
+            "mostlyright.weather._fetchers.iem_asos.download_with_retry",
             side_effect=_fake_download,
         ),
-        patch("tradewinds.weather._fetchers.iem_asos.time.sleep"),
+        patch("mostlyright.weather._fetchers.iem_asos.time.sleep"),
     ):
         paths = download_iem_asos(
             station,
@@ -169,10 +169,10 @@ def test_exact_window_returns_list_of_csv_paths(tmp_path, frozen_today_utc):
 
     with (
         patch(
-            "tradewinds.weather._fetchers.iem_asos.download_with_retry",
+            "mostlyright.weather._fetchers.iem_asos.download_with_retry",
             side_effect=_fake_download,
         ),
-        patch("tradewinds.weather._fetchers.iem_asos.time.sleep"),
+        patch("mostlyright.weather._fetchers.iem_asos.time.sleep"),
     ):
         paths = download_iem_asos(
             station,

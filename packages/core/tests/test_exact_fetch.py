@@ -19,7 +19,7 @@ from unittest.mock import patch
 
 
 def _info():
-    from tradewinds._internal._stations import StationInfo
+    from mostlyright._internal._stations import StationInfo
 
     return StationInfo(
         code="NYC",
@@ -33,22 +33,22 @@ def _info():
 
 
 def test_exact_fetch_module_importable():
-    from tradewinds._exact_fetch import _exact_fetch_observations
+    from mostlyright._exact_fetch import _exact_fetch_observations
 
     assert callable(_exact_fetch_observations)
 
 
 def test_exact_fetch_source_none_invokes_all_three(tmp_path, monkeypatch):
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
-    from tradewinds._exact_fetch import _exact_fetch_observations
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
+    from mostlyright._exact_fetch import _exact_fetch_observations
 
     with (
-        patch("tradewinds._exact_fetch.download_iem_asos", return_value=[]) as mock_iem,
-        patch("tradewinds._exact_fetch.fetch_awc_metars", return_value=[]) as mock_awc,
-        patch("tradewinds._exact_fetch.download_ghcnh") as mock_ghcnh,
-        patch("tradewinds._exact_fetch.parse_iem_file", return_value=[]),
-        patch("tradewinds._exact_fetch.parse_ghcnh_file", return_value=[]),
-        patch("tradewinds._exact_fetch.awc_to_observation", return_value=None),
+        patch("mostlyright._exact_fetch.download_iem_asos", return_value=[]) as mock_iem,
+        patch("mostlyright._exact_fetch.fetch_awc_metars", return_value=[]) as mock_awc,
+        patch("mostlyright._exact_fetch.download_ghcnh") as mock_ghcnh,
+        patch("mostlyright._exact_fetch.parse_iem_file", return_value=[]),
+        patch("mostlyright._exact_fetch.parse_ghcnh_file", return_value=[]),
+        patch("mostlyright._exact_fetch.awc_to_observation", return_value=None),
     ):
         # Use a historical window so AWC is skipped if too old; but force it
         # to NOT be too old by using a recent window (within 7 days). We're
@@ -68,14 +68,14 @@ def test_exact_fetch_source_none_invokes_all_three(tmp_path, monkeypatch):
 
 
 def test_exact_fetch_source_iem_skips_other_fetchers(tmp_path, monkeypatch):
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
-    from tradewinds._exact_fetch import _exact_fetch_observations
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
+    from mostlyright._exact_fetch import _exact_fetch_observations
 
     with (
-        patch("tradewinds._exact_fetch.download_iem_asos", return_value=[]) as mock_iem,
-        patch("tradewinds._exact_fetch.fetch_awc_metars", return_value=[]) as mock_awc,
-        patch("tradewinds._exact_fetch.download_ghcnh") as mock_ghcnh,
-        patch("tradewinds._exact_fetch.parse_iem_file", return_value=[]),
+        patch("mostlyright._exact_fetch.download_iem_asos", return_value=[]) as mock_iem,
+        patch("mostlyright._exact_fetch.fetch_awc_metars", return_value=[]) as mock_awc,
+        patch("mostlyright._exact_fetch.download_ghcnh") as mock_ghcnh,
+        patch("mostlyright._exact_fetch.parse_iem_file", return_value=[]),
     ):
         _ = _exact_fetch_observations(_info(), "2024-03-01", "2024-03-31", source="iem")
 
@@ -85,19 +85,19 @@ def test_exact_fetch_source_iem_skips_other_fetchers(tmp_path, monkeypatch):
 
 
 def test_exact_fetch_source_awc_skips_other_fetchers(tmp_path, monkeypatch):
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
     from datetime import date, timedelta
 
-    from tradewinds._exact_fetch import _exact_fetch_observations
+    from mostlyright._exact_fetch import _exact_fetch_observations
 
     today = date.today()
     start_iso = (today - timedelta(days=3)).isoformat()
     end_iso = today.isoformat()
 
     with (
-        patch("tradewinds._exact_fetch.download_iem_asos") as mock_iem,
-        patch("tradewinds._exact_fetch.fetch_awc_metars", return_value=[]) as mock_awc,
-        patch("tradewinds._exact_fetch.download_ghcnh") as mock_ghcnh,
+        patch("mostlyright._exact_fetch.download_iem_asos") as mock_iem,
+        patch("mostlyright._exact_fetch.fetch_awc_metars", return_value=[]) as mock_awc,
+        patch("mostlyright._exact_fetch.download_ghcnh") as mock_ghcnh,
     ):
         _ = _exact_fetch_observations(_info(), start_iso, end_iso, source="awc")
 
@@ -107,14 +107,14 @@ def test_exact_fetch_source_awc_skips_other_fetchers(tmp_path, monkeypatch):
 
 
 def test_exact_fetch_source_ghcnh_skips_other_fetchers(tmp_path, monkeypatch):
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
-    from tradewinds._exact_fetch import _exact_fetch_observations
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
+    from mostlyright._exact_fetch import _exact_fetch_observations
 
     with (
-        patch("tradewinds._exact_fetch.download_iem_asos") as mock_iem,
-        patch("tradewinds._exact_fetch.fetch_awc_metars") as mock_awc,
-        patch("tradewinds._exact_fetch.download_ghcnh") as mock_ghcnh,
-        patch("tradewinds._exact_fetch.parse_ghcnh_file", return_value=[]),
+        patch("mostlyright._exact_fetch.download_iem_asos") as mock_iem,
+        patch("mostlyright._exact_fetch.fetch_awc_metars") as mock_awc,
+        patch("mostlyright._exact_fetch.download_ghcnh") as mock_ghcnh,
+        patch("mostlyright._exact_fetch.parse_ghcnh_file", return_value=[]),
     ):
         _ = _exact_fetch_observations(_info(), "2024-03-01", "2024-03-31", source="ghcnh")
 
@@ -124,12 +124,12 @@ def test_exact_fetch_source_ghcnh_skips_other_fetchers(tmp_path, monkeypatch):
 
 
 def test_exact_fetch_iem_called_with_exact_window_true_and_separate_dir(tmp_path, monkeypatch):
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
-    from tradewinds._exact_fetch import _exact_fetch_observations
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
+    from mostlyright._exact_fetch import _exact_fetch_observations
 
     with (
-        patch("tradewinds._exact_fetch.download_iem_asos", return_value=[]) as mock_iem,
-        patch("tradewinds._exact_fetch.parse_iem_file", return_value=[]),
+        patch("mostlyright._exact_fetch.download_iem_asos", return_value=[]) as mock_iem,
+        patch("mostlyright._exact_fetch.parse_iem_file", return_value=[]),
     ):
         _ = _exact_fetch_observations(_info(), "2024-03-01", "2024-03-31", source="iem")
 
@@ -152,8 +152,8 @@ def test_exact_fetch_iem_called_with_exact_window_true_and_separate_dir(tmp_path
 
 def test_exact_fetch_does_not_write_canonical_parquet(tmp_path, monkeypatch):
     """The function imports neither write_cache nor cache_path — verifiable via source."""
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
-    import tradewinds._exact_fetch as mod
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
+    import mostlyright._exact_fetch as mod
 
     src = __import__("pathlib").Path(mod.__file__).read_text(encoding="utf-8")
     # No write to canonical parquet cache — search for the call expression,
@@ -169,8 +169,8 @@ def test_exact_fetch_does_not_write_canonical_parquet(tmp_path, monkeypatch):
 
 def test_exact_fetch_returns_merged_rows(tmp_path, monkeypatch):
     """merge_observations is called and its output returned."""
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
-    from tradewinds._exact_fetch import _exact_fetch_observations
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
+    from mostlyright._exact_fetch import _exact_fetch_observations
 
     fake_rows = [
         {
@@ -183,8 +183,8 @@ def test_exact_fetch_returns_merged_rows(tmp_path, monkeypatch):
     ]
 
     with (
-        patch("tradewinds._exact_fetch.download_iem_asos", return_value=[tmp_path / "fake.csv"]),
-        patch("tradewinds._exact_fetch.parse_iem_file", return_value=fake_rows),
+        patch("mostlyright._exact_fetch.download_iem_asos", return_value=[tmp_path / "fake.csv"]),
+        patch("mostlyright._exact_fetch.parse_iem_file", return_value=fake_rows),
     ):
         result = _exact_fetch_observations(_info(), "2024-03-15", "2024-03-15", source="iem")
 

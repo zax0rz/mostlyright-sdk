@@ -3,32 +3,32 @@
     {
       "gated": false,
       "path": "json/schema.forecast.iem_mos.v1.json",
-      "sha256": "e80c9859abea127a083e91d84f065fb108c97ae7ce997fbbd3f8d507bed78ed6",
-      "size_bytes": 1840
+      "sha256": "2df0daf4fab7e43a0ebc94b2d1229747e567f86307d6aefa15f40c8fcf59e5f9",
+      "size_bytes": 1841
     },
     {
       "gated": false,
       "path": "json/schema.observation.v1.json",
-      "sha256": "b7456846297707d7610856da6a1525e42b279daad576dbb50fe89dc08afa866b",
-      "size_bytes": 4227
+      "sha256": "e8c9ea9ad3c9c0d8e53893a7e17a1a012b54afbed4cb51ab7c033fb7f2fcd76a",
+      "size_bytes": 4228
     },
     {
       "gated": false,
       "path": "json/schema.observation_ledger.v1.json",
-      "sha256": "23a687122173d6bf258ff7b5e835f03632e261a9b2a4f1e63c2aef27a406502e",
-      "size_bytes": 2463
+      "sha256": "c745380efd03a1d576ba8d23e9066a0e36c0f24415f1fb33c886401b04ae353f",
+      "size_bytes": 2464
     },
     {
       "gated": false,
       "path": "json/schema.observation_qc.v1.json",
-      "sha256": "ed433a78086fce3cfb59ea5e8900b0e31d3e463170da30e81126c4aafecc49a9",
-      "size_bytes": 1657
+      "sha256": "f581bb7f18d896b308240285ec7ea96d51f8f9ef840b48ad4f8b9ee4ad3c18c7",
+      "size_bytes": 1658
     },
     {
       "gated": false,
       "path": "json/schema.settlement.cli.v1.json",
-      "sha256": "20e2ba0d7497ebe04c2a05ea272e58d159c7d3fa3e2881ab5528849993740ce5",
-      "size_bytes": 2794
+      "sha256": "59d78ec98cfa8c93b78e731fcd27f74c12eae1cd1cdac053852a465371be9882",
+      "size_bytes": 2795
     },
     {
       "gated": false,

@@ -31,7 +31,7 @@ interface SchemaInfo {
 }
 
 // Static manifest of the v0.1.0 schemas. Derived from `schemas/json/*.json`
-// at repo root; baked in here so `@tradewinds/core/discovery` works in
+// at repo root; baked in here so `@mostlyright/core/discovery` works in
 // browsers (no `node:fs`) without a runtime fetch. The codegen pipeline
 // would replace this hand-maintained list once it covers schema docs.
 //

@@ -1,4 +1,10 @@
-"""Phase 3.6 — discovery + DataVersion + settlement primitives."""
+"""Phase 3.6 — discovery + DataVersion + settlement primitives.
+
+NOTE: This test file intentionally uses the legacy ``TRADEWINDS_CACHE_DIR``
+env var (not the canonical ``MOSTLYRIGHT_CACHE_DIR``) to exercise the Phase 12
+W4 back-compat shim. The other test files were migrated to the canonical
+env var. Scheduled for removal in v0.3 when the deprecation window closes.
+"""
 
 from __future__ import annotations
 
@@ -7,10 +13,20 @@ from pathlib import Path
 
 import pytest
 
+# Silence DeprecationWarning for this whole module (legacy env-var usage is
+# intentional back-compat coverage; the back-compat shim's 3-test suite at
+# packages/core/tests/test_cache_env_back_compat.py is the canonical proof
+# the warning fires). Use pytestmark + filterwarnings — module-level
+# warnings.filterwarnings() does NOT survive pytest's per-test warning-filter
+# reset; pytestmark IS picked up by pytest's collection layer.
+pytestmark = pytest.mark.filterwarnings(
+    "ignore:TRADEWINDS_CACHE_DIR is deprecated:DeprecationWarning"
+)
+
 
 class TestAvailability:
     def test_no_cache_returns_zero_counts(self, tmp_path: Path, monkeypatch) -> None:
-        from tradewinds.discovery import availability
+        from mostlyright.discovery import availability
 
         monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
         out = availability("KNYC")
@@ -22,7 +38,7 @@ class TestAvailability:
         assert out["qc_sidecars"] == 0
 
     def test_counts_obs_climate_qc_files(self, tmp_path: Path, monkeypatch) -> None:
-        from tradewinds.discovery import availability
+        from mostlyright.discovery import availability
 
         monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
         # Build a synthetic cache layout.
@@ -50,14 +66,14 @@ class TestAvailability:
 
 class TestClimateGaps:
     def test_no_cache_all_days_are_gaps(self, tmp_path: Path, monkeypatch) -> None:
-        from tradewinds.discovery import climate_gaps
+        from mostlyright.discovery import climate_gaps
 
         monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
         gaps = climate_gaps("KNYC", "2025-01-01", "2025-01-03")
         assert gaps == ["2025-01-01", "2025-01-02", "2025-01-03"]
 
     def test_year_cached_no_gaps_within_year(self, tmp_path: Path, monkeypatch) -> None:
-        from tradewinds.discovery import climate_gaps
+        from mostlyright.discovery import climate_gaps
 
         monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
         cli = tmp_path / "v1" / "climate" / "KNYC"
@@ -66,7 +82,7 @@ class TestClimateGaps:
         assert climate_gaps("KNYC", "2025-01-01", "2025-01-31") == []
 
     def test_year_boundary_only_uncached_year_in_gaps(self, tmp_path: Path, monkeypatch) -> None:
-        from tradewinds.discovery import climate_gaps
+        from mostlyright.discovery import climate_gaps
 
         monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
         cli = tmp_path / "v1" / "climate" / "KNYC"
@@ -79,7 +95,7 @@ class TestClimateGaps:
         assert "2025-01-02" not in gaps
 
     def test_reversed_range_returns_empty(self, tmp_path: Path, monkeypatch) -> None:
-        from tradewinds.discovery import climate_gaps
+        from mostlyright.discovery import climate_gaps
 
         monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
         assert climate_gaps("KNYC", "2025-12-31", "2025-01-01") == []
@@ -87,14 +103,14 @@ class TestClimateGaps:
 
 class TestDescribe:
     def test_known_schema_returns_text(self) -> None:
-        from tradewinds.discovery import describe
+        from mostlyright.discovery import describe
 
         text = describe("schema.observation.v1")
         assert "Schema: schema.observation.v1" in text
         assert "Columns:" in text
 
     def test_unknown_schema_raises(self) -> None:
-        from tradewinds.discovery import describe
+        from mostlyright.discovery import describe
 
         with pytest.raises(ValueError, match="Unknown schema_id"):
             describe("schema.bogus.v1")
@@ -102,7 +118,7 @@ class TestDescribe:
 
 class TestFeatureCatalog:
     def test_lists_transforms_public_surface(self) -> None:
-        from tradewinds.discovery import feature_catalog
+        from mostlyright.discovery import feature_catalog
 
         catalog = feature_catalog()
         for name in (
@@ -119,7 +135,7 @@ class TestFeatureCatalog:
 
 class TestSettlementWrappers:
     def test_settlement_date_for_returns_iso_date(self) -> None:
-        from tradewinds.discovery import settlement_date_for
+        from mostlyright.discovery import settlement_date_for
 
         ts = datetime(2025, 1, 6, 18, 0, tzinfo=UTC)
         out = settlement_date_for("NYC", ts)
@@ -127,7 +143,7 @@ class TestSettlementWrappers:
         assert out == "2025-01-06"
 
     def test_settlement_window_utc_returns_aware_tuple(self) -> None:
-        from tradewinds.discovery import settlement_window_utc
+        from mostlyright.discovery import settlement_window_utc
 
         start, end = settlement_window_utc("NYC", "2025-01-06")
         assert start.tzinfo is not None
@@ -136,10 +152,10 @@ class TestSettlementWrappers:
         assert (end - start).total_seconds() == 24 * 3600
 
     def test_settlement_wrappers_match_snapshot_impl(self) -> None:
-        from tradewinds.discovery import settlement_date_for as discovery_sdf
-        from tradewinds.discovery import settlement_window_utc as discovery_swu
-        from tradewinds.snapshot import settlement_date_for as snapshot_sdf
-        from tradewinds.snapshot import settlement_window_utc as snapshot_swu
+        from mostlyright.discovery import settlement_date_for as discovery_sdf
+        from mostlyright.discovery import settlement_window_utc as discovery_swu
+        from mostlyright.snapshot import settlement_date_for as snapshot_sdf
+        from mostlyright.snapshot import settlement_window_utc as snapshot_swu
 
         ts = datetime(2025, 6, 15, 22, 0, tzinfo=UTC)
         # The discovery wrapper for settlement_date_for accepts datetime;
@@ -150,7 +166,7 @@ class TestSettlementWrappers:
 
 class TestDataVersion:
     def test_token_is_deterministic_for_same_inputs(self) -> None:
-        from tradewinds.discovery import DataVersion
+        from mostlyright.discovery import DataVersion
 
         a = DataVersion.from_components(
             sdk_version="0.1.0",
@@ -170,7 +186,7 @@ class TestDataVersion:
         assert len(a.token) == 64  # SHA-256 hex
 
     def test_token_changes_when_any_component_changes(self) -> None:
-        from tradewinds.discovery import DataVersion
+        from mostlyright.discovery import DataVersion
 
         base = DataVersion.from_components(
             sdk_version="0.1.0",
@@ -200,7 +216,7 @@ class TestDataVersion:
 
     def test_token_invariant_under_schema_id_ordering(self) -> None:
         """Reordering schema_ids shouldn't change the token (canonical sort)."""
-        from tradewinds.discovery import DataVersion
+        from mostlyright.discovery import DataVersion
 
         a = DataVersion.from_components(
             sdk_version="0.1.0",
@@ -219,7 +235,7 @@ class TestDataVersion:
         assert a.token == b.token
 
     def test_for_research_token_invariant_for_same_cache(self, tmp_path: Path, monkeypatch) -> None:
-        from tradewinds.discovery import DataVersion
+        from mostlyright.discovery import DataVersion
 
         monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
         a = DataVersion.for_research(station="KNYC", from_date="2025-01-06", to_date="2025-01-12")
@@ -229,7 +245,7 @@ class TestDataVersion:
     def test_for_research_token_changes_when_cache_changes(
         self, tmp_path: Path, monkeypatch
     ) -> None:
-        from tradewinds.discovery import DataVersion
+        from mostlyright.discovery import DataVersion
 
         monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
         before = DataVersion.for_research(
@@ -254,15 +270,15 @@ class TestDataVersionWiredIntoResearch:
         """
         import importlib
 
-        from tradewinds.discovery import DataVersion
+        from mostlyright.discovery import DataVersion
 
-        research_module = importlib.import_module("tradewinds.research")
+        research_module = importlib.import_module("mostlyright.research")
 
         monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
         monkeypatch.setattr(research_module, "_fetch_observations_range", lambda *a, **kw: [])
         monkeypatch.setattr(research_module, "_fetch_climate_range", lambda *a, **kw: [])
         monkeypatch.setattr(research_module, "_all_caches_warm", lambda *a, **kw: True)
-        df = importlib.import_module("tradewinds.research").research(
+        df = importlib.import_module("mostlyright.research").research(
             "KNYC", "2025-01-06", "2025-01-12"
         )
         token = DataVersion.for_research(

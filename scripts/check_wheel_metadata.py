@@ -1,7 +1,7 @@
 """Pre-publish METADATA check (Phase 2 Wave 5 PKG-03).
 
 Every sibling-package wheel under ``dist/`` must declare an explicit
-``Requires-Dist: tradewinds >=0.1.0a1,<0.2`` (or stricter) so a downstream
+``Requires-Dist: mostlyright >=0.1.0a1,<0.2`` (or stricter) so a downstream
 user cannot silently install a core/weather/markets combo across an
 incompatible boundary.
 
@@ -36,22 +36,22 @@ from packaging.requirements import InvalidRequirement, Requirement
 from packaging.specifiers import SpecifierSet
 
 #: Distributions we gate on (wheel filename prefix). Map -> the SpecifierSet
-#: that the wheel's `Requires-Dist: tradewinds <specifier>` line MUST
+#: that the wheel's `Requires-Dist: mostlyright <specifier>` line MUST
 #: SATISFY. ``"<0.2"`` is the load-bearing upper bound — the gate exists
 #: precisely to keep a future 0.2.x core from being pulled by an
 #: under-specified weather/markets wheel.
 REQUIRED_TRADEWINDS_SPECIFIER: dict[str, SpecifierSet] = {
-    "tradewinds_weather": SpecifierSet(">=0.1.0a1,<0.2"),
-    "tradewinds_markets": SpecifierSet(">=0.1.0a1,<0.2"),
+    "mostlyright_weather": SpecifierSet(">=0.1.0a1,<0.2"),
+    "mostlyright_markets": SpecifierSet(">=0.1.0a1,<0.2"),
 }
 
 
-def _find_tradewinds_requirement(metadata: str) -> Requirement | None:
-    """Return the parsed `Requires-Dist: tradewinds <specifier>` from the
+def _find_mostlyright_requirement(metadata: str) -> Requirement | None:
+    """Return the parsed `Requires-Dist: mostlyright <specifier>` from the
     wheel's METADATA, or None if absent.
 
     Iterates Requires-Dist lines, parses each with packaging.Requirement,
-    and returns the first one whose ``name == "tradewinds"``. Skips
+    and returns the first one whose ``name == "mostlyright"``. Skips
     Requires-Dist lines we can't parse (e.g. ones with environment
     markers we don't care about; the parser handles markers but a
     malformed one would otherwise blow up).
@@ -64,7 +64,7 @@ def _find_tradewinds_requirement(metadata: str) -> Requirement | None:
             req = Requirement(spec_text)
         except InvalidRequirement:
             continue
-        if req.name.replace("_", "-") == "tradewinds":
+        if req.name.replace("_", "-") == "mostlyright":
             return req
     return None
 
@@ -85,9 +85,9 @@ def check_wheel(wheel_path: Path) -> list[str]:
             errors.append(f"{wheel_path.name}: no METADATA file in wheel")
             return errors
         content = z.read(metadata_path).decode()
-    req = _find_tradewinds_requirement(content)
+    req = _find_mostlyright_requirement(content)
     if req is None:
-        errors.append(f"{wheel_path.name}: missing Requires-Dist: tradewinds line")
+        errors.append(f"{wheel_path.name}: missing Requires-Dist: mostlyright line")
         return errors
     # The wheel's specifier MUST be at least as strict as the required range
     # ``>=0.1.0a1,<0.2``. Two checks via SpecifierSet.contains() on sentinel
@@ -104,7 +104,7 @@ def check_wheel(wheel_path: Path) -> list[str]:
     wheel_spec = str(req.specifier)
     if req.specifier.contains("0.2.0", prereleases=True):
         errors.append(
-            f"{wheel_path.name}: Requires-Dist: tradewinds {wheel_spec!s} "
+            f"{wheel_path.name}: Requires-Dist: mostlyright {wheel_spec!s} "
             f"allows 0.2.0 (upper bound missing or too loose; required "
             f"<0.2). Fix the pyproject.toml dep to '>=0.1.0a1,<0.2'."
         )
@@ -115,8 +115,8 @@ def check_wheel(wheel_path: Path) -> list[str]:
     # in is a HIGH gate failure.
     if req.specifier.contains("0.1.0a0", prereleases=True):
         errors.append(
-            f"{wheel_path.name}: Requires-Dist: tradewinds {wheel_spec!s} "
-            f"allows tradewinds 0.1.0a0 or older (lower bound missing or "
+            f"{wheel_path.name}: Requires-Dist: mostlyright {wheel_spec!s} "
+            f"allows mostlyright 0.1.0a0 or older (lower bound missing or "
             f"too loose; required >=0.1.0a1). Fix the pyproject.toml dep "
             f"to '>=0.1.0a1,<0.2'."
         )

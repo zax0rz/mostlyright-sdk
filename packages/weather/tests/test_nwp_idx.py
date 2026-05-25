@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from tradewinds.weather._fetchers._nwp_idx import (
+from mostlyright.weather._fetchers._nwp_idx import (
     IdxRecord,
     compute_byte_end,
     filter_records,

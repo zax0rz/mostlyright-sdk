@@ -13,7 +13,7 @@ import type { Observation } from "../_parsers/awc.js";
 import type { LiveSourceTag } from "./sources.js";
 
 /**
- * Observation row emitted by `tradewinds.live.stream` and `live.latest`.
+ * Observation row emitted by `mostlyright.live.stream` and `live.latest`.
  *
  * Same shape as the canonical `Observation` row, but with `source` narrowed
  * to the live-channel identity tags. The widened-archive `"awc"` / `"iem"`

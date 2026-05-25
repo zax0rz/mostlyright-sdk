@@ -1,7 +1,7 @@
 // TS-W4 Plan 02 Task 2 — rolling reduction tests (RED phase).
 //
-// Mirrors Python `tradewinds.transforms.rolling` (packages/core/src/
-// tradewinds/transforms.py:58-68) which uses
+// Mirrors Python `mostlyright.transforms.rolling` (packages/core/src/
+// mostlyright/transforms.py:58-68) which uses
 // `df[col].rolling(window=window, min_periods=1)` and `getattr(rolling, fn)()`.
 //
 // Key invariants:

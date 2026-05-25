@@ -4,17 +4,16 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime
 
+# Importing core.schemas triggers eager registration.
+import mostlyright.core.schemas  # noqa: F401
 import numpy as np
 import pandas as pd
 import pytest
-
-# Importing core.schemas triggers eager registration.
-import tradewinds.core.schemas  # noqa: F401
-from tradewinds.core.exceptions import (
+from mostlyright.core.exceptions import (
     SchemaValidationError,
     SourceMismatchError,
 )
-from tradewinds.core.validator import (
+from mostlyright.core.validator import (
     _SCHEMA_REGISTRY,
     register_schema,
     validate_dataframe,
@@ -63,7 +62,7 @@ def _good_observation_df(source: str = "iem.archive") -> pd.DataFrame:
 # Schema registration
 # ----------------------------------------------------------------------
 def test_canonical_schemas_eagerly_registered():
-    """Importing tradewinds.core.schemas registers all 3 canonical schemas."""
+    """Importing mostlyright.core.schemas registers all 3 canonical schemas."""
     assert "schema.observation.v1" in _SCHEMA_REGISTRY
     assert "schema.forecast.iem_mos.v1" in _SCHEMA_REGISTRY
     assert "schema.settlement.cli.v1" in _SCHEMA_REGISTRY
@@ -71,7 +70,7 @@ def test_canonical_schemas_eagerly_registered():
 
 def test_canonical_schemas_have_registered_source():
     """Each canonical schema has a non-None ``_registered_source``."""
-    from tradewinds.core.schemas import (
+    from mostlyright.core.schemas import (
         ForecastSchema,
         ObservationSchema,
         SettlementSchema,
@@ -84,7 +83,7 @@ def test_canonical_schemas_have_registered_source():
 
 def test_register_schema_idempotent():
     """Re-registering the same class is a no-op."""
-    from tradewinds.core.schemas import ObservationSchema
+    from mostlyright.core.schemas import ObservationSchema
 
     register_schema(ObservationSchema)
     register_schema(ObservationSchema)
@@ -93,7 +92,7 @@ def test_register_schema_idempotent():
 
 def test_register_schema_conflict_raises():
     """Registering a different class to an existing ID raises."""
-    from tradewinds.core.schema import Schema
+    from mostlyright.core.schema import Schema
 
     class FakeObservation(Schema):
         schema_id = "schema.observation.v1"
@@ -103,7 +102,7 @@ def test_register_schema_conflict_raises():
 
 
 def test_register_schema_empty_id_raises():
-    from tradewinds.core.schema import Schema
+    from mostlyright.core.schema import Schema
 
     class Anon(Schema):
         schema_id = ""
@@ -333,7 +332,7 @@ def test_per_row_source_mismatch_raises():
     """If df has a 'source' column with rows not matching df.attrs['source'],
     the validator raises SourceMismatchError listing the distinct bad values.
     """
-    from tradewinds.core.exceptions import SourceMismatchError
+    from mostlyright.core.exceptions import SourceMismatchError
 
     df = _good_observation_df(source="iem.archive")
     df["source"] = ["iem.archive", "awc.live"]  # second row mismatches.
@@ -362,7 +361,7 @@ def test_per_row_source_null_raises():
     for selected rows to hide their true provenance. The validator must
     treat null as a mismatch, not silently allow it.
     """
-    from tradewinds.core.exceptions import SourceMismatchError
+    from mostlyright.core.exceptions import SourceMismatchError
 
     df = _good_observation_df(source="iem.archive")
     df["source"] = pd.Series(["iem.archive", pd.NA], dtype="string")

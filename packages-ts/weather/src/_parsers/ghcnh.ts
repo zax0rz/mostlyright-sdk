@@ -1,7 +1,7 @@
 // GHCNh PSV parser — pipe-delimited body in, Observation rows out.
 //
 // Byte-faithful TS port of Python
-// `packages/weather/src/tradewinds/weather/_ghcnh.py::parse_ghcnh_row` and
+// `packages/weather/src/mostlyright/weather/_ghcnh.py::parse_ghcnh_row` and
 // `parse_ghcnh_file`. The TS port consumes the PSV body in-memory (a
 // string returned by `downloadGhcnh`); the Python version walks a file
 // handle but the semantics are identical.
@@ -33,8 +33,8 @@ import {
   boundedFloat,
   boundedFloatMin,
   boundedInt,
-} from "@tradewinds/core/internal/bounds";
-import { celsiusToFahrenheit, hpaToInhg } from "@tradewinds/core/internal/convert";
+} from "@mostlyright/core/internal/bounds";
+import { celsiusToFahrenheit, hpaToInhg } from "@mostlyright/core/internal/convert";
 
 import { extractStationCode } from "./_station_translator.js";
 import { type Observation, mapCloudCover } from "./awc.js";

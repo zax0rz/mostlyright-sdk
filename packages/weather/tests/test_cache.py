@@ -1,11 +1,11 @@
-"""Tests for tradewinds.weather.cache.
+"""Tests for mostlyright.weather.cache.
 
 Covers Task 1.4 acceptance criteria (CACHE-01, CACHE-07):
 
 Path layout:
     - `cache_path` returns the spec'd directory structure (v1/observations/...)
     - `climate_cache_path` returns the annual layout (v1/climate/...)
-    - `TRADEWINDS_CACHE_DIR` env var overrides the root
+    - `MOSTLYRIGHT_CACHE_DIR` env var overrides the root
 
 Atomic + concurrent safety:
     - `write_cache` followed by `read_cache` round-trips identically
@@ -47,8 +47,8 @@ from typing import Any
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
-from tradewinds.weather import cache as cache_module
-from tradewinds.weather.cache import (
+from mostlyright.weather import cache as cache_module
+from mostlyright.weather.cache import (
     CACHE_VERSION,
     DEFAULT_ROOT,
     cache_path,
@@ -67,8 +67,8 @@ from tradewinds.weather.cache import (
 # ---------------------------------------------------------------------------
 @pytest.fixture
 def tmp_cache_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Point TRADEWINDS_CACHE_DIR at an isolated tmp directory per test."""
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+    """Point MOSTLYRIGHT_CACHE_DIR at an isolated tmp directory per test."""
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
     return tmp_path
 
 
@@ -228,7 +228,7 @@ class TestPathTraversalRejection:
 # ---------------------------------------------------------------------------
 class TestEnvVarOverride:
     def test_env_var_override(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+        monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
         path = cache_path("KNYC", 2025, 1)
         assert path.is_relative_to(tmp_path)
         # Tail layout unchanged.
@@ -241,14 +241,14 @@ class TestEnvVarOverride:
         )
 
     def test_default_root_when_env_absent(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.delenv("TRADEWINDS_CACHE_DIR", raising=False)
+        monkeypatch.delenv("MOSTLYRIGHT_CACHE_DIR", raising=False)
         path = cache_path("KNYC", 2025, 1)
-        # Should fall under $HOME/.tradewinds/cache/
+        # Should fall under $HOME/.mostlyright/cache/
         assert path.is_relative_to(DEFAULT_ROOT)
 
     def test_env_var_expansion(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         # Tilde expansion: ~/foo -> /home/.../foo
-        monkeypatch.setenv("TRADEWINDS_CACHE_DIR", "~/tw-cache-test")
+        monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", "~/tw-cache-test")
         path = cache_path("KNYC", 2025, 1)
         assert "~" not in str(path)
 
@@ -295,7 +295,7 @@ class TestRoundtrip:
     def test_now_lst_uses_real_clock(self, tmp_cache_dir: Path) -> None:
         # Cover the un-stubbed `_now_lst` path (real-clock branch). Sanity
         # check: now_lst should be within ~10s of wall-clock + offset.
-        from tradewinds.weather.cache import _now_lst
+        from mostlyright.weather.cache import _now_lst
 
         before = datetime.now(UTC) + cache_module._lst_offset("KNYC")
         result = _now_lst("KNYC")
@@ -310,11 +310,11 @@ class TestRoundtrip:
         raised ``ValueError`` for half the registry once Task 1.1 landed
         ``_stations.py`` without a ``_lst_offset`` symbol, silently breaking
         ``research()`` for 11 of the 20 advertised stations. The fix
-        delegates to ``tradewinds.snapshot._lst_offset`` (which carries the
+        delegates to ``mostlyright.snapshot._lst_offset`` (which carries the
         full v0.14.1 tz map). This test pins the contract so the regression
         cannot return unnoticed.
         """
-        from tradewinds._internal._stations import STATIONS
+        from mostlyright._internal._stations import STATIONS
 
         failures: list[tuple[str, str]] = []
         for code, info in STATIONS.items():
@@ -610,9 +610,9 @@ def _writer_worker(
     Sets the cache dir env var inside the child process, then re-stubs
     `_now_lst` so the LST-current-month check passes regardless of wall clock.
     """
-    os.environ["TRADEWINDS_CACHE_DIR"] = cache_dir
+    os.environ["MOSTLYRIGHT_CACHE_DIR"] = cache_dir
     # Re-import fresh inside the child.
-    from tradewinds.weather import cache as child_cache
+    from mostlyright.weather import cache as child_cache
 
     fixed_utc = datetime.fromisoformat(fixed_utc_iso)
 

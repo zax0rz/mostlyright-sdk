@@ -1,4 +1,4 @@
-"""Phase 11 — `tradewinds.live.latest` unit tests (8 tests).
+"""Phase 11 — `mostlyright.live.latest` unit tests (8 tests).
 
 Tests mock the per-source fetcher to avoid hitting the network. Each test
 verifies one observable property of the one-shot latest() surface:
@@ -20,8 +20,8 @@ from typing import Any
 
 import pytest
 
-from tradewinds.core.exceptions import NoLiveDataError
-from tradewinds.live import latest
+from mostlyright.core.exceptions import NoLiveDataError
+from mostlyright.live import latest
 
 
 def _run(coro: Any) -> Any:
@@ -79,7 +79,7 @@ def test_latest_awc_returns_observation_row(monkeypatch: pytest.MonkeyPatch) -> 
         return [_awc_metar(1748174400)]  # 2025-05-25T12:00:00Z
 
     monkeypatch.setattr(
-        "tradewinds.weather._fetchers.awc.fetch_awc_metars",
+        "mostlyright.weather._fetchers.awc.fetch_awc_metars",
         fake_fetch_awc,
     )
     row = _run(latest("KNYC"))
@@ -102,11 +102,11 @@ def test_latest_awc_default_source(monkeypatch: pytest.MonkeyPatch) -> None:
         return []
 
     monkeypatch.setattr(
-        "tradewinds.weather._fetchers.awc.fetch_awc_metars",
+        "mostlyright.weather._fetchers.awc.fetch_awc_metars",
         fake_awc,
     )
     monkeypatch.setattr(
-        "tradewinds.weather._fetchers.iem_asos.download_iem_asos",
+        "mostlyright.weather._fetchers.iem_asos.download_iem_asos",
         fake_iem,
     )
     _run(latest("KNYC"))  # no source= kwarg
@@ -125,18 +125,18 @@ def test_latest_iem_source_selectable(monkeypatch: pytest.MonkeyPatch) -> None:
     # Patch the high-level IEM fetch to bypass actual HTTP + filesystem
     async def fake_iem_latest(station: str) -> list[dict[str, Any]]:
         called["iem"] = True
-        from tradewinds.weather._iem import iem_to_observation
+        from mostlyright.weather._iem import iem_to_observation
         obs = iem_to_observation(_iem_csv_row(), observation_type_override="METAR")
         assert obs is not None
         obs["source"] = "iem.live"
         return [obs]
 
     monkeypatch.setattr(
-        "tradewinds.weather._fetchers.awc.fetch_awc_metars",
+        "mostlyright.weather._fetchers.awc.fetch_awc_metars",
         fake_awc,
     )
     monkeypatch.setattr(
-        "tradewinds.live._latest._fetch_iem_latest",
+        "mostlyright.live._latest._fetch_iem_latest",
         fake_iem_latest,
     )
     row = _run(latest("KNYC", source="iem"))
@@ -158,7 +158,7 @@ def test_latest_empty_response_raises_no_live_data(monkeypatch: pytest.MonkeyPat
         return []
 
     monkeypatch.setattr(
-        "tradewinds.weather._fetchers.awc.fetch_awc_metars",
+        "mostlyright.weather._fetchers.awc.fetch_awc_metars",
         fake_fetch,
     )
     with pytest.raises(NoLiveDataError) as exc_info:
@@ -175,7 +175,7 @@ def test_latest_no_live_data_error_carries_station_and_source(
         return []
 
     monkeypatch.setattr(
-        "tradewinds.weather._fetchers.awc.fetch_awc_metars",
+        "mostlyright.weather._fetchers.awc.fetch_awc_metars",
         fake_fetch,
     )
     with pytest.raises(NoLiveDataError) as exc_info:
@@ -197,7 +197,7 @@ def test_latest_returns_most_recent_when_multiple(monkeypatch: pytest.MonkeyPatc
         ]
 
     monkeypatch.setattr(
-        "tradewinds.weather._fetchers.awc.fetch_awc_metars",
+        "mostlyright.weather._fetchers.awc.fetch_awc_metars",
         fake_fetch,
     )
     row = _run(latest("KNYC"))
@@ -216,7 +216,7 @@ def test_latest_strips_unparseable_metars(monkeypatch: pytest.MonkeyPatch) -> No
         return [bad, good]
 
     monkeypatch.setattr(
-        "tradewinds.weather._fetchers.awc.fetch_awc_metars",
+        "mostlyright.weather._fetchers.awc.fetch_awc_metars",
         fake_fetch,
     )
     row = _run(latest("KNYC"))
@@ -262,11 +262,11 @@ def test_latest_iem_construction_does_not_raise(monkeypatch: pytest.MonkeyPatch)
         return []
 
     monkeypatch.setattr(
-        "tradewinds.weather._fetchers.iem_asos.download_iem_asos",
+        "mostlyright.weather._fetchers.iem_asos.download_iem_asos",
         fake_download,
     )
     monkeypatch.setattr(
-        "tradewinds.weather._iem.parse_iem_file",
+        "mostlyright.weather._iem.parse_iem_file",
         fake_parse,
     )
     with pytest.raises(NoLiveDataError):
@@ -313,11 +313,11 @@ def test_latest_iem_fetches_metar_and_speci(monkeypatch: pytest.MonkeyPatch) -> 
         return []
 
     monkeypatch.setattr(
-        "tradewinds.weather._fetchers.iem_asos.download_iem_asos",
+        "mostlyright.weather._fetchers.iem_asos.download_iem_asos",
         fake_download,
     )
     monkeypatch.setattr(
-        "tradewinds.weather._iem.parse_iem_file",
+        "mostlyright.weather._iem.parse_iem_file",
         fake_parse,
     )
     with pytest.raises(NoLiveDataError):

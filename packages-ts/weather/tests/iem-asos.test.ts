@@ -1,7 +1,7 @@
 // TS-W2 Plan 01 Task 2 — downloadIemAsos fetcher tests.
 //
 // Byte-faithful port of Python
-// `packages/weather/src/tradewinds/weather/_fetchers/iem_asos.py::download_iem_asos`,
+// `packages/weather/src/mostlyright/weather/_fetchers/iem_asos.py::download_iem_asos`,
 // minus the disk-cache layer (deferred to TS-W3 — TS-side returns in-memory
 // CSV bodies). URL shape, start-normalization, polite-delay, and reversed-
 // range short-circuit semantics all match the Python source.

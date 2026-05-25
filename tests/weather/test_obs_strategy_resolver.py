@@ -30,7 +30,7 @@ def warm_cache(tmp_path):
 
 # --- Case 1: small window + no cache + no env -> exact_window ----------------
 def test_resolver_small_window_cold_no_env_returns_exact_window(empty_cache):
-    from tradewinds.weather.obs import _resolve_strategy
+    from mostlyright.weather.obs import _resolve_strategy
 
     result = _resolve_strategy(
         from_date=date(2024, 3, 1),
@@ -44,7 +44,7 @@ def test_resolver_small_window_cold_no_env_returns_exact_window(empty_cache):
 
 # --- Case 2: small window + cache hit + no env -> warm_cache -----------------
 def test_resolver_small_window_warm_no_env_returns_warm_cache(warm_cache):
-    from tradewinds.weather.obs import _resolve_strategy
+    from mostlyright.weather.obs import _resolve_strategy
 
     result = _resolve_strategy(
         from_date=date(2024, 3, 1),
@@ -58,7 +58,7 @@ def test_resolver_small_window_warm_no_env_returns_warm_cache(warm_cache):
 
 # --- Case 3: small window + any state + env set -> hosted --------------------
 def test_resolver_env_set_overrides_everything_to_hosted(empty_cache):
-    from tradewinds.weather.obs import _resolve_strategy
+    from mostlyright.weather.obs import _resolve_strategy
 
     result = _resolve_strategy(
         from_date=date(2024, 3, 1),
@@ -72,7 +72,7 @@ def test_resolver_env_set_overrides_everything_to_hosted(empty_cache):
 
 # --- Case 4: large window + no cache + no env -> warm_cache (fallback) -------
 def test_resolver_large_window_cold_no_env_returns_warm_cache_fallback(empty_cache):
-    from tradewinds.weather.obs import _resolve_strategy
+    from mostlyright.weather.obs import _resolve_strategy
 
     result = _resolve_strategy(
         from_date=date(2024, 1, 1),
@@ -86,7 +86,7 @@ def test_resolver_large_window_cold_no_env_returns_warm_cache_fallback(empty_cac
 
 # --- Case 5: large window + cache hit + no env -> warm_cache -----------------
 def test_resolver_large_window_warm_no_env_returns_warm_cache(warm_cache):
-    from tradewinds.weather.obs import _resolve_strategy
+    from mostlyright.weather.obs import _resolve_strategy
 
     result = _resolve_strategy(
         from_date=date(2024, 1, 1),
@@ -100,7 +100,7 @@ def test_resolver_large_window_warm_no_env_returns_warm_cache(warm_cache):
 
 # --- Case 6: large window + warm cache + env set -> hosted (env wins) --------
 def test_resolver_large_window_warm_env_set_returns_hosted(warm_cache):
-    from tradewinds.weather.obs import _resolve_strategy
+    from mostlyright.weather.obs import _resolve_strategy
 
     result = _resolve_strategy(
         from_date=date(2024, 1, 1),
@@ -114,7 +114,7 @@ def test_resolver_large_window_warm_env_set_returns_hosted(warm_cache):
 
 # --- Bonus: exactly 90 days is "large" (boundary check) ---------------------
 def test_resolver_exactly_90_day_window_is_large(empty_cache):
-    from tradewinds.weather.obs import _resolve_strategy
+    from mostlyright.weather.obs import _resolve_strategy
 
     # 90 days exactly: from 2024-01-01 to 2024-03-30 = 90 days inclusive.
     result = _resolve_strategy(
@@ -131,7 +131,7 @@ def test_resolver_exactly_90_day_window_is_large(empty_cache):
 # --- W-2: multi-year window with warm cache in the SECOND year --------------
 def test_resolver_multi_year_window_sees_cache_in_either_year(tmp_path):
     """A Dec->Nov window touching two years finds warm cache in either year."""
-    from tradewinds.weather.obs import _resolve_strategy
+    from mostlyright.weather.obs import _resolve_strategy
 
     root = tmp_path / "mixed_cache"
     # Seed cache in 2025 only (not 2024).
@@ -152,10 +152,10 @@ def test_resolver_multi_year_window_sees_cache_in_either_year(tmp_path):
 
 # --- Hosted dispatch: end-to-end check via obs() ----------------------------
 def test_obs_auto_with_env_set_raises_hosted_not_implemented(monkeypatch, empty_cache):
-    from tradewinds.weather.obs import obs
+    from mostlyright.weather.obs import obs
 
     monkeypatch.setenv("TW_HOSTED_URL", "https://api.example.com")
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(empty_cache))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(empty_cache))
     with pytest.raises(NotImplementedError, match=r"hosted strategy deferred to v0\.2\.x"):
         obs("KNYC", "2024-03-01", "2024-03-31", strategy="auto")
 
@@ -169,7 +169,7 @@ def test_resolver_source_filter_forces_exact_window_even_with_warm_cache(warm_ca
     source-filtered query to warm_cache — regardless of cache warmth or
     window size.
     """
-    from tradewinds.weather.obs import _resolve_strategy
+    from mostlyright.weather.obs import _resolve_strategy
 
     # Small window + warm cache + no env: normally → warm_cache.
     # With source set → exact_window (forced).
@@ -186,7 +186,7 @@ def test_resolver_source_filter_forces_exact_window_even_with_warm_cache(warm_ca
 
 def test_resolver_source_filter_forces_exact_window_for_large_window(empty_cache):
     """auto + source + large window: exact_window (would otherwise be warm_cache)."""
-    from tradewinds.weather.obs import _resolve_strategy
+    from mostlyright.weather.obs import _resolve_strategy
 
     result = _resolve_strategy(
         from_date=date(2024, 1, 1),
@@ -207,7 +207,7 @@ def test_resolver_source_filter_beats_hosted_env_var(empty_cache):
     reasons. Source filtering only works in exact_window today, so it
     must take precedence over the hosted env var.
     """
-    from tradewinds.weather.obs import _resolve_strategy
+    from mostlyright.weather.obs import _resolve_strategy
 
     result = _resolve_strategy(
         from_date=date(2024, 3, 1),
@@ -222,7 +222,7 @@ def test_resolver_source_filter_beats_hosted_env_var(empty_cache):
 
 # --- _has_cached_year lives in cache.py (I-4) -------------------------------
 def test_has_cached_year_lives_in_cache_module(tmp_path):
-    from tradewinds.weather.cache import _has_cached_year
+    from mostlyright.weather.cache import _has_cached_year
 
     # Empty cache returns False.
     assert _has_cached_year("KNYC", 2024, cache_root=tmp_path) is False

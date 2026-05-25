@@ -7,23 +7,21 @@ All HTTP calls are mocked via ``respx``; no test is marked
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
 
 import httpx
 import pytest
 
 respx = pytest.importorskip("respx")
 
-from tradewinds.markets._kalshi_client import (  # noqa: E402
+from mostlyright.markets._kalshi_client import (  # noqa: E402
     KALSHI_API_BASE,
 )
-from tradewinds.markets.kalshi_trades import (  # noqa: E402
+from mostlyright.markets.kalshi_trades import (  # noqa: E402
     INTERVALS,
     candles,
     fills,
     orderbook,
 )
-
 
 _TICKER = "KXHIGHNY-25MAY26-T79"
 _SERIES = "KXHIGHNY"
@@ -37,9 +35,7 @@ class TestCandles:
         """Real Kalshi response (March 2026 migration): FixedPointDollars
         strings for prices + `*_fp` integer strings for size fields."""
         with respx.mock(assert_all_called=False) as router:
-            router.get(
-                f"{KALSHI_API_BASE}/series/{_SERIES}/markets/{_TICKER}/candlesticks"
-            ).mock(
+            router.get(f"{KALSHI_API_BASE}/series/{_SERIES}/markets/{_TICKER}/candlesticks").mock(
                 return_value=httpx.Response(
                     200,
                     json={
@@ -100,9 +96,7 @@ class TestCandles:
         """Legacy integer-cents shape accepted as a fallback (older
         endpoints / recorded fixtures)."""
         with respx.mock(assert_all_called=False) as router:
-            router.get(
-                f"{KALSHI_API_BASE}/series/{_SERIES}/markets/{_TICKER}/candlesticks"
-            ).mock(
+            router.get(f"{KALSHI_API_BASE}/series/{_SERIES}/markets/{_TICKER}/candlesticks").mock(
                 return_value=httpx.Response(
                     200,
                     json={
@@ -129,9 +123,7 @@ class TestCandles:
 
     def test_subpenny_precision_preserved(self):
         with respx.mock(assert_all_called=False) as router:
-            router.get(
-                f"{KALSHI_API_BASE}/series/{_SERIES}/markets/{_TICKER}/candlesticks"
-            ).mock(
+            router.get(f"{KALSHI_API_BASE}/series/{_SERIES}/markets/{_TICKER}/candlesticks").mock(
                 return_value=httpx.Response(
                     200,
                     json={
@@ -163,9 +155,9 @@ class TestCandles:
 
     def test_empty_candlesticks_returns_empty_dataframe(self):
         with respx.mock(assert_all_called=False) as router:
-            router.get(
-                f"{KALSHI_API_BASE}/series/{_SERIES}/markets/{_TICKER}/candlesticks"
-            ).mock(return_value=httpx.Response(200, json={"candlesticks": []}))
+            router.get(f"{KALSHI_API_BASE}/series/{_SERIES}/markets/{_TICKER}/candlesticks").mock(
+                return_value=httpx.Response(200, json={"candlesticks": []})
+            )
             df = candles(
                 _TICKER,
                 interval="1h",
@@ -221,15 +213,13 @@ class TestCandles:
 
     def test_429_retries_then_succeeds(self):
         with respx.mock(assert_all_called=False) as router:
-            route = router.get(
-                f"{KALSHI_API_BASE}/series/{_SERIES}/markets/{_TICKER}/candlesticks"
-            )
+            route = router.get(f"{KALSHI_API_BASE}/series/{_SERIES}/markets/{_TICKER}/candlesticks")
             route.side_effect = [
                 httpx.Response(429, json={"error": "rate_limited"}),
                 httpx.Response(200, json={"candlesticks": []}),
             ]
             # Patch out the backoff sleep so the test runs fast.
-            import tradewinds.markets._kalshi_client as kc
+            import mostlyright.markets._kalshi_client as kc
 
             orig_sleep = kc.time.sleep
             kc.time.sleep = lambda _s: None
@@ -248,12 +238,10 @@ class TestCandles:
     def test_429_honors_retry_after_header(self):
         """Architect iter-1 CRITICAL: 429 + Retry-After: <seconds> should
         sleep at least the documented interval before retrying."""
-        import tradewinds.markets._kalshi_client as kc
+        import mostlyright.markets._kalshi_client as kc
 
         with respx.mock(assert_all_called=False) as router:
-            route = router.get(
-                f"{KALSHI_API_BASE}/series/{_SERIES}/markets/{_TICKER}/candlesticks"
-            )
+            route = router.get(f"{KALSHI_API_BASE}/series/{_SERIES}/markets/{_TICKER}/candlesticks")
             route.side_effect = [
                 httpx.Response(429, json={"error": "rate_limited"}, headers={"Retry-After": "5"}),
                 httpx.Response(200, json={"candlesticks": []}),
@@ -276,7 +264,7 @@ class TestCandles:
         assert any(s >= 5 for s in captured_sleep), captured_sleep
 
     def test_parse_retry_after_seconds_helper(self):
-        from tradewinds.markets._kalshi_client import _parse_retry_after_seconds
+        from mostlyright.markets._kalshi_client import _parse_retry_after_seconds
 
         assert _parse_retry_after_seconds("5") == 5.0
         assert _parse_retry_after_seconds("  10.5  ") == 10.5
@@ -291,12 +279,10 @@ class TestCandles:
         """Iter-2 python-architect HIGH: a hostile/buggy server returning
         Retry-After: 999999 must not hang the SDK for ~11 days. The
         _MAX_RETRY_AFTER_S cap (120s) bounds the sleep."""
-        import tradewinds.markets._kalshi_client as kc
+        import mostlyright.markets._kalshi_client as kc
 
         with respx.mock(assert_all_called=False) as router:
-            route = router.get(
-                f"{KALSHI_API_BASE}/series/{_SERIES}/markets/{_TICKER}/candlesticks"
-            )
+            route = router.get(f"{KALSHI_API_BASE}/series/{_SERIES}/markets/{_TICKER}/candlesticks")
             route.side_effect = [
                 httpx.Response(
                     429, json={"error": "rate_limited"}, headers={"Retry-After": "999999"}
@@ -523,9 +509,7 @@ class TestOrderbook:
     def test_snapshot_at_attr_present(self):
         with respx.mock(assert_all_called=False) as router:
             router.get(f"{KALSHI_API_BASE}/markets/{_TICKER}/orderbook").mock(
-                return_value=httpx.Response(
-                    200, json={"orderbook": {"yes": [], "no": []}}
-                )
+                return_value=httpx.Response(200, json={"orderbook": {"yes": [], "no": []}})
             )
             df = orderbook(_TICKER, sleep_between=0)
         assert "snapshot_at" in df.attrs

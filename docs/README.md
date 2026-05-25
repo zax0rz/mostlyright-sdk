@@ -1,12 +1,12 @@
-# tradewinds docs/
+# mostlyright docs/
 
-This directory is the **forward-looking design** for tradewinds. It explains where the codebase is heading after Sprint 0 ships v0.1.0.
+This directory is the **forward-looking design** for mostlyright. It explains where the codebase is heading after Sprint 0 ships v0.1.0.
 
 ## What lives here
 
 | File | Scope |
 |---|---|
-| [`design.md`](./design.md) | **The v0.2 foundations design** (884 lines, approved 2026-05-21, amended across three Claude + Codex review passes). Describes the MCP-native primitives — `TimePoint`, `Schema` framework, source-identity invariants, MCP server with 3 tools — that build on top of Sprint 0's v0.1.0 wedge. Originally drafted under the working title "mostlyright-mcp v1" and merged into tradewinds on 2026-05-21. |
+| [`design.md`](./design.md) | **The v0.2 foundations design** (884 lines, approved 2026-05-21, amended across three Claude + Codex review passes). Describes the MCP-native primitives — `TimePoint`, `Schema` framework, source-identity invariants, MCP server with 3 tools — that build on top of Sprint 0's v0.1.0 wedge. Originally drafted under the working title "mostlyright-mcp v1" and merged into mostlyright on 2026-05-21. |
 
 ## What lives in `.planning/` (canonical project plan)
 
@@ -25,7 +25,7 @@ Current planning lives in the GSD-managed `.planning/` directory:
 ## How docs/ and .planning/ relate
 
 - **`.planning/` = THE PLAN.** Phase 1 (in progress) → Phase 2 (planned, awaiting Phase 1 ship) → Phase 3 → Phase 4 → v0.1.0 publish.
-- **`docs/` = forward-looking design.** [`design.md`](./design.md) is the v0.2 foundations spec; not active planning. The 266-test reference implementation lives at `packages/core/src/tradewinds/_v02/` and gets rebranded to `tradewinds.core` in Phase 2.
+- **`docs/` = forward-looking design.** [`design.md`](./design.md) is the v0.2 foundations spec; not active planning. The 266-test reference implementation lives at `packages/core/src/mostlyright/_v02/` and gets rebranded to `mostlyright.core` in Phase 2.
 
 ## Branch workflow
 
@@ -36,4 +36,4 @@ Current planning lives in the GSD-managed `.planning/` directory:
 
 ## History note
 
-This design originated outside tradewinds as a separate project called `mostlyright-mcp`. On 2026-05-21 the visions were unified: tradewinds becomes the active repo for both the v0.1.0 wedge (lift from `mostlyright==0.14.1`, Sprint 0) and the v0.2+ MCP-native foundations (this doc). The old `mostlyright-mcp` repo at `~/Documents/GitHub/mostlyright-mcp/` retains the `feat/wave-1-core` branch as a frozen reference snapshot; the canonical work is now in tradewinds.
+This design originated outside mostlyright as a separate project called `mostlyright-mcp`. On 2026-05-21 the visions were unified: mostlyright becomes the active repo for both the v0.1.0 wedge (lift from `mostlyright==0.14.1`, Sprint 0) and the v0.2+ MCP-native foundations (this doc). The old `mostlyright-mcp` repo at `~/Documents/GitHub/mostlyright-mcp/` retains the `feat/wave-1-core` branch as a frozen reference snapshot; the canonical work is now in mostlyright.

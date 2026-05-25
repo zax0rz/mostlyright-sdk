@@ -20,7 +20,7 @@ Prerequisites
     /tmp/mostlyright-v14-venv/bin/pip install "mostlyright[parquet]==0.14.1"
     /tmp/mostlyright-v14-venv/bin/pip install "pandas>=2.2,<3.0" "pyarrow>=18,<25"
 
-   The pandas pin is **PARITY-CRITICAL** (see tradewinds CLAUDE.md):
+   The pandas pin is **PARITY-CRITICAL** (see mostlyright CLAUDE.md):
    pandas 3.0 introduces CoW + dtype-shift changes that break
    byte-equivalence against the 2.x-era fixtures.
 
@@ -105,7 +105,7 @@ def main() -> int:
     # Note: api.mostlyright.md restricts to a 20-station whitelist (ATL, AUS, BOS,
     # DCA, DEN, DFW, HOU, LAS, LAX, MDW, MIA, MSP, MSY, NYC, OKC, PHL, PHX, SAT,
     # SEA, SFO). KORD (O'Hare) is NOT in the whitelist; case 2 uses KMDW (Midway)
-    # which is also Chicago and IS in the whitelist. tradewinds' local-first SDK
+    # which is also Chicago and IS in the whitelist. mostlyright' local-first SDK
     # will work for any ICAO station; parity is only defined for the whitelist.
     cases: list[tuple[int, str, str, str, str]] = [
         (1, "KNYC", "2025-01-06", "2025-01-12", "Single-week NYC baseline"),

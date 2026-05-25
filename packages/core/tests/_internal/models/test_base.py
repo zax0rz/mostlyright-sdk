@@ -1,4 +1,4 @@
-"""Tests for tradewinds._internal.models._base — DictLikeMixin.
+"""Tests for mostlyright._internal.models._base — DictLikeMixin.
 
 The mixin is exercised indirectly through Observation tests (getitem, to_dict,
 to_storage_dict). This file adds dedicated coverage for the mixin's behavior
@@ -23,7 +23,7 @@ class _SampleModel:
 
 def _make_sample_with_mixin():
     """Build a class with DictLikeMixin at test time to avoid import-order issues."""
-    from tradewinds._internal.models._base import DictLikeMixin
+    from mostlyright._internal.models._base import DictLikeMixin
 
     @dataclass(frozen=True)
     class Sample(DictLikeMixin):

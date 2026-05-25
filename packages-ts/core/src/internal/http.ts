@@ -1,6 +1,6 @@
 // Shared HTTP download helper with retry logic.
 //
-// Ported from `packages/core/src/tradewinds/_internal/_http.py`.
+// Ported from `packages/core/src/mostlyright/_internal/_http.py`.
 // Uses the native `fetch` API so this module works in browsers, Node 20+,
 // Cloudflare Workers, and Deno. Returns the `Response` on success — callers
 // decide whether to consume JSON, text, or bytes.
@@ -27,7 +27,7 @@ const DEFAULT_RETRY_STATUSES: ReadonlySet<number> = new Set([429, 500, 502, 503,
 /**
  * Upper cap on the per-attempt sleep induced by a server ``Retry-After``
  * header. Mirrors Python ``_MAX_RETRY_AFTER_S = 120.0`` in
- * `packages/markets/src/tradewinds/markets/_kalshi_client.py`. A hostile
+ * `packages/markets/src/mostlyright/markets/_kalshi_client.py`. A hostile
  * or buggy upstream returning ``Retry-After: 999999`` would otherwise
  * hang the runtime for ~11 days per retry; a 2-minute cap matches the
  * AWS SDK default and is more than enough headroom for any legitimate

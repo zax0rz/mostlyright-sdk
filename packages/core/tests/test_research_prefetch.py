@@ -36,9 +36,9 @@ def test_prefetch_sources_returns_per_source_times_with_four_names(monkeypatch, 
     """
     from datetime import UTC, datetime
 
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path / "cache"))
-    from tradewinds._internal._stations import STATIONS
-    from tradewinds.research import _prefetch_sources
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path / "cache"))
+    from mostlyright._internal._stations import STATIONS
+    from mostlyright.research import _prefetch_sources
 
     info = STATIONS["NYC"]
     # Fake now = 2024-01-15; query 2024-01-08..2024-01-15 is well inside 168h.
@@ -48,10 +48,10 @@ def test_prefetch_sources_returns_per_source_times_with_four_names(monkeypatch, 
     # spike's job here is to verify the ThreadPoolExecutor wiring, not the
     # fetchers themselves.
     with (
-        patch("tradewinds.weather._fetchers.iem_asos.download_iem_asos", return_value=[]),
-        patch("tradewinds.weather._fetchers.iem_cli.download_cli", return_value=Path("/tmp/x")),
-        patch("tradewinds.weather._fetchers.ghcnh.download_ghcnh", return_value=Path("/tmp/x")),
-        patch("tradewinds.research._fetch_awc_for_window", return_value=[]),
+        patch("mostlyright.weather._fetchers.iem_asos.download_iem_asos", return_value=[]),
+        patch("mostlyright.weather._fetchers.iem_cli.download_cli", return_value=Path("/tmp/x")),
+        patch("mostlyright.weather._fetchers.ghcnh.download_ghcnh", return_value=Path("/tmp/x")),
+        patch("mostlyright.research._fetch_awc_for_window", return_value=[]),
     ):
         result = _prefetch_sources(info, "2023-12-25", "2024-01-05", "2024-01-06", now=fake_now)
 
@@ -96,9 +96,9 @@ def test_prefetch_sources_pitfall_6_submitted_at_in_source(monkeypatch) -> None:
     """
     import sys
 
-    import tradewinds.research  # noqa: F401 — populates sys.modules
+    import mostlyright.research  # noqa: F401 — populates sys.modules
 
-    research_mod = sys.modules["tradewinds.research"]
+    research_mod = sys.modules["mostlyright.research"]
 
     src = inspect.getsource(research_mod._prefetch_sources)
     tree = ast.parse(src)
@@ -165,9 +165,9 @@ def test_prefetch_sources_uses_max_workers_4(monkeypatch) -> None:
     """SOURCE-LIMITS.md Option C: max_workers=4. AST scan."""
     import sys
 
-    import tradewinds.research  # noqa: F401 — populates sys.modules
+    import mostlyright.research  # noqa: F401 — populates sys.modules
 
-    research_mod = sys.modules["tradewinds.research"]
+    research_mod = sys.modules["mostlyright.research"]
 
     src = inspect.getsource(research_mod._prefetch_sources)
     tree = ast.parse(src)
@@ -201,9 +201,9 @@ def test_prefetch_sources_no_asyncio_used() -> None:
     """
     import sys
 
-    import tradewinds.research  # noqa: F401 — populates sys.modules
+    import mostlyright.research  # noqa: F401 — populates sys.modules
 
-    research_mod = sys.modules["tradewinds.research"]
+    research_mod = sys.modules["mostlyright.research"]
 
     src = inspect.getsource(research_mod)
     assert "import asyncio" not in src, "asyncio is forbidden in Phase 1.5 (CONTEXT.md lock)"
@@ -213,9 +213,9 @@ def test_prefetch_sources_no_asyncio_used() -> None:
 
 def test_prefetch_sources_awc_rows_returned(monkeypatch, tmp_path) -> None:
     """AWC worker's return value is captured into result['awc_rows']."""
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path / "cache"))
-    from tradewinds._internal._stations import STATIONS
-    from tradewinds.research import _prefetch_sources
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path / "cache"))
+    from mostlyright._internal._stations import STATIONS
+    from mostlyright.research import _prefetch_sources
 
     info = STATIONS["NYC"]
     from datetime import UTC, datetime
@@ -225,10 +225,10 @@ def test_prefetch_sources_awc_rows_returned(monkeypatch, tmp_path) -> None:
     fake_now = datetime(2024, 1, 10, 12, 0, 0, tzinfo=UTC)
 
     with (
-        patch("tradewinds.weather._fetchers.iem_asos.download_iem_asos", return_value=[]),
-        patch("tradewinds.weather._fetchers.iem_cli.download_cli", return_value=Path("/tmp/x")),
-        patch("tradewinds.weather._fetchers.ghcnh.download_ghcnh", return_value=Path("/tmp/x")),
-        patch("tradewinds.research._fetch_awc_for_window", return_value=fake_awc),
+        patch("mostlyright.weather._fetchers.iem_asos.download_iem_asos", return_value=[]),
+        patch("mostlyright.weather._fetchers.iem_cli.download_cli", return_value=Path("/tmp/x")),
+        patch("mostlyright.weather._fetchers.ghcnh.download_ghcnh", return_value=Path("/tmp/x")),
+        patch("mostlyright.research._fetch_awc_for_window", return_value=fake_awc),
     ):
         result = _prefetch_sources(info, "2023-12-25", "2024-01-05", "2024-01-06", now=fake_now)
 
@@ -253,9 +253,9 @@ def test_prefetch_sources_propagates_unexpected_exception(monkeypatch, tmp_path)
     its inner ``download_iem_asos`` — the post-iter-1 fix skips the prefetch
     for the current UTC year, which would otherwise mask the test.
     """
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path / "cache"))
-    from tradewinds._internal._stations import STATIONS
-    from tradewinds.research import _prefetch_sources
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path / "cache"))
+    from mostlyright._internal._stations import STATIONS
+    from mostlyright.research import _prefetch_sources
 
     info = STATIONS["NYC"]
 
@@ -263,10 +263,10 @@ def test_prefetch_sources_propagates_unexpected_exception(monkeypatch, tmp_path)
         raise RuntimeError("simulated programming bug")
 
     with (
-        patch("tradewinds.weather._fetchers.iem_asos.download_iem_asos", side_effect=boom),
-        patch("tradewinds.weather._fetchers.iem_cli.download_cli", return_value=Path("/tmp/x")),
-        patch("tradewinds.weather._fetchers.ghcnh.download_ghcnh", return_value=Path("/tmp/x")),
-        patch("tradewinds.research._fetch_awc_for_window", return_value=[]),
+        patch("mostlyright.weather._fetchers.iem_asos.download_iem_asos", side_effect=boom),
+        patch("mostlyright.weather._fetchers.iem_cli.download_cli", return_value=Path("/tmp/x")),
+        patch("mostlyright.weather._fetchers.ghcnh.download_ghcnh", return_value=Path("/tmp/x")),
+        patch("mostlyright.research._fetch_awc_for_window", return_value=[]),
         pytest.raises(RuntimeError, match="simulated programming bug"),
     ):
         _prefetch_sources(info, "2024-01-01", "2024-12-31", "2025-01-01")
@@ -282,9 +282,9 @@ def test_prefetch_sources_swallows_network_errors(monkeypatch, tmp_path) -> None
     """
     import httpx
 
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path / "cache"))
-    from tradewinds._internal._stations import STATIONS
-    from tradewinds.research import _prefetch_sources
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path / "cache"))
+    from mostlyright._internal._stations import STATIONS
+    from mostlyright.research import _prefetch_sources
 
     info = STATIONS["NYC"]
 
@@ -295,10 +295,10 @@ def test_prefetch_sources_swallows_network_errors(monkeypatch, tmp_path) -> None
         raise httpx.HTTPStatusError("upstream flaked", request=request, response=response)
 
     with (
-        patch("tradewinds.weather._fetchers.iem_asos.download_iem_asos", side_effect=http_500),
-        patch("tradewinds.weather._fetchers.iem_cli.download_cli", return_value=Path("/tmp/x")),
-        patch("tradewinds.weather._fetchers.ghcnh.download_ghcnh", return_value=Path("/tmp/x")),
-        patch("tradewinds.research._fetch_awc_for_window", return_value=[]),
+        patch("mostlyright.weather._fetchers.iem_asos.download_iem_asos", side_effect=http_500),
+        patch("mostlyright.weather._fetchers.iem_cli.download_cli", return_value=Path("/tmp/x")),
+        patch("mostlyright.weather._fetchers.ghcnh.download_ghcnh", return_value=Path("/tmp/x")),
+        patch("mostlyright.research._fetch_awc_for_window", return_value=[]),
     ):
         # HTTPStatusError IS caught and logged; the call returns normally.
         result = _prefetch_sources(info, "2024-01-01", "2024-12-31", "2025-01-01")
@@ -312,9 +312,9 @@ def test_prefetch_sources_swallows_network_errors(monkeypatch, tmp_path) -> None
 
 def test_all_caches_warm_returns_false_when_obs_cache_missing(monkeypatch, tmp_path) -> None:
     """Gate predicate: any obs-parquet miss returns False (so prefetch runs)."""
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path / "cache"))
-    from tradewinds._internal._stations import STATIONS
-    from tradewinds.research import _all_caches_warm
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path / "cache"))
+    from mostlyright._internal._stations import STATIONS
+    from mostlyright.research import _all_caches_warm
 
     info = STATIONS["NYC"]
     # No cache written → every month is a miss → returns False.
@@ -325,9 +325,9 @@ def test_per_source_times_are_positive(monkeypatch, tmp_path) -> None:
     """Per-source elapsed times should be ≥ 0 — a sanity check that
     submitted_at IS captured (would be ≈ wall_time, not negative, if not).
     """
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path / "cache"))
-    from tradewinds._internal._stations import STATIONS
-    from tradewinds.research import _prefetch_sources
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path / "cache"))
+    from mostlyright._internal._stations import STATIONS
+    from mostlyright.research import _prefetch_sources
 
     info = STATIONS["NYC"]
 
@@ -337,18 +337,18 @@ def test_per_source_times_are_positive(monkeypatch, tmp_path) -> None:
 
     with (
         patch(
-            "tradewinds.weather._fetchers.iem_asos.download_iem_asos",
+            "mostlyright.weather._fetchers.iem_asos.download_iem_asos",
             side_effect=slow_noop,
         ),
         patch(
-            "tradewinds.weather._fetchers.iem_cli.download_cli",
+            "mostlyright.weather._fetchers.iem_cli.download_cli",
             side_effect=lambda *a, **k: time.sleep(0.05) or Path("/tmp/x"),
         ),
         patch(
-            "tradewinds.weather._fetchers.ghcnh.download_ghcnh",
+            "mostlyright.weather._fetchers.ghcnh.download_ghcnh",
             side_effect=lambda *a, **k: time.sleep(0.05) or Path("/tmp/x"),
         ),
-        patch("tradewinds.research._fetch_awc_for_window", side_effect=slow_noop),
+        patch("mostlyright.research._fetch_awc_for_window", side_effect=slow_noop),
     ):
         from datetime import UTC, datetime
 

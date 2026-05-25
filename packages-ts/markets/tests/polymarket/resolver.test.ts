@@ -1,4 +1,4 @@
-import { DeferredMarketError } from "@tradewinds/core";
+import { DeferredMarketError } from "@mostlyright/core";
 import { describe, expect, it } from "vitest";
 
 import {

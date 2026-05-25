@@ -2,7 +2,7 @@
  * Capture HTTP request/response tapes for the 5 parity cases.
  *
  * Runs against REAL public APIs (AWC, IEM ASOS, IEM CLI, GHCNh). Gated
- * behind TRADEWINDS_TS_LIVE=1. One-shot: writes to
+ * behind MOSTLYRIGHT_TS_LIVE=1. One-shot: writes to
  * packages-ts/meta/tests/parity/recordings/.
  *
  * Re-run only if Python parquet fixtures change (see
@@ -11,16 +11,16 @@
  * the parity test (Plan 08).
  *
  * Usage:
- *   TRADEWINDS_TS_LIVE=1 pnpm --filter tradewinds capture-parity
+ *   MOSTLYRIGHT_TS_LIVE=1 pnpm --filter mostlyright capture-parity
  */
 import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
-if (process.env.TRADEWINDS_TS_LIVE !== "1") {
+if (process.env.MOSTLYRIGHT_TS_LIVE !== "1") {
   console.error(
-    "Refusing to run: TRADEWINDS_TS_LIVE=1 is required for live recording capture.\n" +
+    "Refusing to run: MOSTLYRIGHT_TS_LIVE=1 is required for live recording capture.\n" +
       "This script hits real public APIs (AWC, IEM, GHCNh, NCEI) and writes\n" +
       "recordings to packages-ts/meta/tests/parity/recordings/. Set the env\n" +
       "var only when you've verified you intend to re-record (see README.md).",

@@ -1,4 +1,4 @@
-// Phase 9 — barrel for @tradewinds/markets/trades subpath.
+// Phase 9 — barrel for @mostlyright/markets/trades subpath.
 
 export {
   KALSHI_API_BASE,

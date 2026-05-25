@@ -88,7 +88,7 @@ export function runCacheStoreContract(makeStore: () => CacheStore | Promise<Cach
 
   describe("lockKeyFor (via contract suite)", () => {
     it("returns the canonical lock id", () => {
-      expect(lockKeyFor("foo")).toBe("tradewinds:cache:lock:foo");
+      expect(lockKeyFor("foo")).toBe("mostlyright:cache:lock:foo");
     });
 
     it("is pure (same input → same output)", () => {

@@ -1,7 +1,7 @@
 // TS-W2 Plan 01 Task 3 — IEM CSV parser tests.
 //
 // Byte-faithful port of Python
-// `packages/weather/src/tradewinds/weather/_iem.py::iem_to_observation`
+// `packages/weather/src/mostlyright/weather/_iem.py::iem_to_observation`
 // + `parse_iem_file`. CSV bodies are passed as strings (the TS fetcher
 // returns in-memory bodies — no Path/file I/O).
 //
@@ -357,7 +357,7 @@ describe("iemToObservation — output shape", () => {
     const out = parseIemCsv(csvBody([makeRow({ metar: longMetar })]));
     const row = out[0] as Observation;
     expect(row.raw_metar).not.toBeNull();
-    // MAX_RAW_METAR_LEN = 2048 per @tradewinds/core/internal/bounds
+    // MAX_RAW_METAR_LEN = 2048 per @mostlyright/core/internal/bounds
     expect((row.raw_metar as string).length).toBe(2048);
   });
 });

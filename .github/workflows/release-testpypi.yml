@@ -9,10 +9,10 @@ name: Release (TestPyPI dry-run on rc tags)
 #     separate gates (operator can require manual approval for either)
 #
 # Setup checklist (one-time, before the first v*rc* tag):
-#   1. On test.pypi.org, register each of tradewinds / tradewinds-weather /
-#      tradewinds-markets as a "pending publisher":
+#   1. On test.pypi.org, register each of mostlyright / mostlyright-weather /
+#      mostlyright-markets as a "pending publisher":
 #        owner = helloiamvu (GH account that pushes the tag)
-#        repo = tradewinds
+#        repo = mostlyright
 #        workflow filename = release-testpypi.yml
 #        environment name = testpypi
 #      https://docs.pypi.org/trusted-publishers/adding-a-publisher/
@@ -37,38 +37,38 @@ permissions:
 
 jobs:
   publish-core:
-    name: Publish tradewinds (core) → TestPyPI
+    name: Publish mostlyright (core) → TestPyPI
     runs-on: ubuntu-latest
     environment:
       name: testpypi
-      url: https://test.pypi.org/project/tradewinds/
+      url: https://test.pypi.org/project/mostlyright/
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
         uses: astral-sh/setup-uv@v3
       - name: Set up Python
         run: uv python install 3.12
-      - name: Build tradewinds wheel + sdist
-        run: uv build --package tradewinds
+      - name: Build mostlyright wheel + sdist
+        run: uv build --package mostlyright
       - name: Publish to TestPyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
 
   publish-weather:
-    name: Publish tradewinds-weather → TestPyPI
+    name: Publish mostlyright-weather → TestPyPI
     runs-on: ubuntu-latest
     environment:
       name: testpypi
-      url: https://test.pypi.org/project/tradewinds-weather/
+      url: https://test.pypi.org/project/mostlyright-weather/
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
         uses: astral-sh/setup-uv@v3
       - name: Set up Python
         run: uv python install 3.12
-      - name: Build tradewinds-weather wheel + sdist
-        run: uv build --package tradewinds-weather
+      - name: Build mostlyright-weather wheel + sdist
+        run: uv build --package mostlyright-weather
       - name: Verify Requires-Dist pin (CI-04 gate)
         run: uv run python scripts/check_wheel_metadata.py
       - name: Publish to TestPyPI
@@ -77,19 +77,19 @@ jobs:
           repository-url: https://test.pypi.org/legacy/
 
   publish-markets:
-    name: Publish tradewinds-markets → TestPyPI
+    name: Publish mostlyright-markets → TestPyPI
     runs-on: ubuntu-latest
     environment:
       name: testpypi
-      url: https://test.pypi.org/project/tradewinds-markets/
+      url: https://test.pypi.org/project/mostlyright-markets/
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
         uses: astral-sh/setup-uv@v3
       - name: Set up Python
         run: uv python install 3.12
-      - name: Build tradewinds-markets wheel + sdist
-        run: uv build --package tradewinds-markets
+      - name: Build mostlyright-markets wheel + sdist
+        run: uv build --package mostlyright-markets
       - name: Verify Requires-Dist pin (CI-04 gate)
         run: uv run python scripts/check_wheel_metadata.py
       - name: Publish to TestPyPI

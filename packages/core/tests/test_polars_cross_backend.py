@@ -20,10 +20,10 @@ pytestmark = pytest.mark.polars
 
 from datetime import UTC  # noqa: E402
 
-from tradewinds import preprocessing, qc, transforms  # noqa: E402
-from tradewinds.core.formats import csv as csv_fmt  # noqa: E402
-from tradewinds.core.formats import json as json_fmt  # noqa: E402
-from tradewinds.core.formats import toon as toon_fmt  # noqa: E402
+from mostlyright import preprocessing, qc, transforms  # noqa: E402
+from mostlyright.core.formats import csv as csv_fmt  # noqa: E402
+from mostlyright.core.formats import json as json_fmt  # noqa: E402
+from mostlyright.core.formats import toon as toon_fmt  # noqa: E402
 
 
 def _series_equal_nansafe(a_vals: list, b_vals: list) -> bool:
@@ -202,7 +202,7 @@ def test_knowledge_view_accepts_polars_via_wrapper() -> None:
     """KV via TradewindsResult wrapper handles polars frames (W0 path)."""
     from datetime import datetime
 
-    from tradewinds.core import KnowledgeView, TimePoint, TradewindsResult
+    from mostlyright.core import KnowledgeView, TimePoint, TradewindsResult
 
     pdf = pd.DataFrame(
         {

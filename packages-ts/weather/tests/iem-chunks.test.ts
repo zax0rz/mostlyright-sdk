@@ -1,7 +1,7 @@
 // TS-W2 Plan 01 — yearlyChunksExclusiveEnd unit tests.
 //
 // Byte-faithful port of
-// `packages/weather/src/tradewinds/weather/_fetchers/_iem_chunks.py::yearly_chunks_exclusive_end`
+// `packages/weather/src/mostlyright/weather/_fetchers/_iem_chunks.py::yearly_chunks_exclusive_end`
 // (PR #85 cf9eb85, 2026-05-12). Leap-year safety via `date(year+1, 1, 1)` —
 // NEVER `+365 days` (drops Feb 29; PR #85's primary anti-pattern).
 

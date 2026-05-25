@@ -1,5 +1,5 @@
 {
-  "$id": "https://tradewinds.dev/schemas/schema.observation_qc.v1.json",
+  "$id": "https://mostlyright.dev/schemas/schema.observation_qc.v1.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "properties": {
     "as_of_time": {

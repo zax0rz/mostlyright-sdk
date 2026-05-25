@@ -1,7 +1,7 @@
 """Canonical schema exporter (TS-W0 Wave 2).
 
 Reads the Python canonical sources under ``packages/`` and emits the
-``schemas/`` directory consumed by ``@tradewinds/codegen`` for the TS
+``schemas/`` directory consumed by ``@mostlyright/codegen`` for the TS
 SDK. Every output is byte-deterministic so the ``schema-drift.yml`` CI
 gate can run the exporter twice and assert ``git diff --exit-code``.
 
@@ -49,7 +49,7 @@ from typing import Any
 _REPO_ROOT: Path = Path(__file__).resolve().parents[1]
 _DEFAULT_OUT_DIR: Path = _REPO_ROOT / "schemas"
 
-# Add each packages/<pkg>/src to sys.path so we can `import tradewinds.*`
+# Add each packages/<pkg>/src to sys.path so we can `import mostlyright.*`
 # without requiring the workspace to be `uv sync`'d first. ``uv run`` /
 # ``uv sync`` users will already have these on ``sys.path``; the explicit
 # prepend is a no-op in that case but is what lets the exporter run from a
@@ -202,7 +202,7 @@ def _render_schema(schema_cls: Any) -> dict[str, Any]:
 
     payload: dict[str, Any] = {
         "$schema": _JSON_SCHEMA_DIALECT,
-        "$id": f"https://tradewinds.dev/schemas/{schema_id}.json",
+        "$id": f"https://mostlyright.dev/schemas/{schema_id}.json",
         "title": schema_id,
         "type": "object",
         "version": version,
@@ -244,7 +244,7 @@ def _gated_payload(reason: str) -> str:
 
 def _build_group_a_schemas() -> list[_OutputFile]:
     """Render the 5 Group A schemas under schemas/json/."""
-    from tradewinds.core.schemas import (
+    from mostlyright.core.schemas import (
         ForecastSchema,
         ObservationLedgerSchema,
         ObservationQCSchema,
@@ -270,7 +270,7 @@ def _build_group_a_schemas() -> list[_OutputFile]:
 
 def _build_stations() -> _OutputFile:
     """Emit ``schemas/stations.json`` — all 60+ stations, sorted by ICAO."""
-    from tradewinds._internal._stations import STATIONS
+    from mostlyright._internal._stations import STATIONS
 
     entries: list[dict[str, Any]] = []
     for info in STATIONS.values():
@@ -296,7 +296,7 @@ def _build_stations() -> _OutputFile:
 
 def _build_kalshi() -> _OutputFile:
     """Emit ``schemas/kalshi-settlement-stations.json``."""
-    from tradewinds.markets.catalog.kalshi_stations import (
+    from mostlyright.markets.catalog.kalshi_stations import (
         KALSHI_SETTLEMENT_STATIONS,
         KNOWN_WRONG_STATIONS,
     )
@@ -317,9 +317,9 @@ def _build_kalshi() -> _OutputFile:
 
 def _build_source_priority() -> _OutputFile:
     """Emit ``schemas/source-priority.json``."""
-    from tradewinds._internal.merge.climate import REPORT_TYPE_PRIORITY
-    from tradewinds._internal.merge.observations import SOURCE_PRIORITY
-    from tradewinds.core.merge import LIVE_V1
+    from mostlyright._internal.merge.climate import REPORT_TYPE_PRIORITY
+    from mostlyright._internal.merge.observations import SOURCE_PRIORITY
+    from mostlyright.core.merge import LIVE_V1
 
     payload = {
         "observation": dict(SOURCE_PRIORITY),
@@ -340,7 +340,7 @@ def _build_polymarket_city_stations() -> _OutputFile:
     """Group B — emit ``schemas/polymarket-city-stations.json`` if source exists."""
     rel = "polymarket-city-stations.json"
     try:
-        from tradewinds.markets._per_event_station import load_polymarket_city_stations
+        from mostlyright.markets._per_event_station import load_polymarket_city_stations
     except ImportError:
         return _OutputFile(
             rel_path=rel,
@@ -383,12 +383,12 @@ def _build_qc_alpha_rules() -> _OutputFile:
     """Group B — emit ``schemas/qc-alpha-rules.json`` if source exists."""
     rel = "qc-alpha-rules.json"
     try:
-        from tradewinds.qc import ALPHA_RULES
+        from mostlyright.qc import ALPHA_RULES
     except ImportError:
         return _OutputFile(
             rel_path=rel,
             content=_gated_payload(
-                "Python source tradewinds.qc.ALPHA_RULES not materialized in packages/"
+                "Python source mostlyright.qc.ALPHA_RULES not materialized in packages/"
             ).encode("utf-8"),
             gated=True,
         )

@@ -1,4 +1,4 @@
-// Node-only subpath entry for @tradewinds/core/internal/cache/fs.
+// Node-only subpath entry for @mostlyright/core/internal/cache/fs.
 //
 // Iter-2 H5: FsStore + defaultFsRoot were removed from the cache
 // barrel (`./internal/cache/index.ts`) because the re-export pulled
@@ -10,7 +10,7 @@
 // can import FsStore without dragging the whole cache barrel into a
 // browser bundle.
 //
-// Package.json maps `@tradewinds/core/internal/cache/fs` → this file.
+// Package.json maps `@mostlyright/core/internal/cache/fs` → this file.
 // tsup config emits it as a sibling dist entry (`dist/internal/cache/
 // fs.{mjs,cjs}`); the cache subbundle has no static import to this
 // file, so tree-shaking keeps Node imports out of MV3 bundles.

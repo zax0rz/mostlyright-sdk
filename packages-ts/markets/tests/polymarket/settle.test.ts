@@ -151,7 +151,7 @@ describe("polymarketSettle — settlement", () => {
       },
       now: new Date("2026-05-25T12:00:00Z"),
       loader: async () => rows,
-      polymarketPublishedValue: 20, // claim 20°C but tradewinds resolves ~30°C
+      polymarketPublishedValue: 20, // claim 20°C but mostlyright resolves ~30°C
     });
     expect(result.dataQualityAlert).not.toBeNull();
     expect(result.dataQualityAlert).toMatch(/Δ/);

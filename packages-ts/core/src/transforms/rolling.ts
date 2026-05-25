@@ -1,7 +1,7 @@
 // TS-W4 Plan 02 Task 2 — rolling reduction transform.
 //
-// Pure row→row port of Python `tradewinds.transforms.rolling`
-// (packages/core/src/tradewinds/transforms.py:58-68) which uses
+// Pure row→row port of Python `mostlyright.transforms.rolling`
+// (packages/core/src/mostlyright/transforms.py:58-68) which uses
 // `df[col].rolling(window=window, min_periods=1)` and `getattr(rolling, fn)()`.
 //
 // Key semantics (load-bearing for Wave 5 QCEngine and Python parity):

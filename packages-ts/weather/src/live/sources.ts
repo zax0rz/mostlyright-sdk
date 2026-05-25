@@ -1,6 +1,6 @@
 // Phase 11 — per-source registry + polite floors.
 //
-// Mirrors Python `tradewinds/live/_sources.py`. Source set + floor values are
+// Mirrors Python `mostlyright/live/_sources.py`. Source set + floor values are
 // kept byte-faithful with Python so cross-SDK consumers see the same
 // invariant. Any divergence triggers the dual-SDK parity gate.
 

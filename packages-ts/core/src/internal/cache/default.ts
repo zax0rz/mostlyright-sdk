@@ -9,7 +9,7 @@
 // Iter-1 H3: `FsStore` is NO longer statically imported here. It
 // top-level-imports `node:fs/promises`, `node:os`, `node:path`, and
 // `proper-lockfile`, which would pull all four into any MV3 / browser /
-// edge bundle that touches `@tradewinds/core/internal/cache` — even via
+// edge bundle that touches `@mostlyright/core/internal/cache` — even via
 // the IndexedDB code path. The dynamic `await import('./fs.js')` behind
 // a `process.versions?.node` runtime feature-detect ensures bundlers
 // can statically prove the FsStore subgraph is unreachable from the

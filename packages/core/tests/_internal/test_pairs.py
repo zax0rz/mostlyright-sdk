@@ -1,4 +1,4 @@
-"""Tests for ``tradewinds._internal._pairs`` - the pairs() row builder.
+"""Tests for ``mostlyright._internal._pairs`` - the pairs() row builder.
 
 Lifted from monorepo-v0.14.1/tests/test_sdk_pairs.py (lines 1-614), strictly
 the pure-function test classes:
@@ -15,11 +15,11 @@ the pure-function test classes:
 
 The hosted-API tests (``TestPairsIncludeForecastWiring`` - lines 624-774)
 are intentionally NOT lifted; they exercise ``MostlyRightClient.pairs(...)``,
-which does not exist in tradewinds (the local-first SDK replaces the hosted
-join with :func:`tradewinds.research.research`).
+which does not exist in mostlyright (the local-first SDK replaces the hosted
+join with :func:`mostlyright.research.research`).
 
 Modifications:
-- ``from mostlyright.pairs import ...`` -> ``from tradewinds._internal._pairs import ...``
+- ``from mostlyright.pairs import ...`` -> ``from mostlyright._internal._pairs import ...``
 - Otherwise byte-faithful to v0.14.1.
 """
 
@@ -29,7 +29,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import pytest
-from tradewinds._internal._pairs import (
+from mostlyright._internal._pairs import (
     _aggregate_fcst_temps_iem,
     _aggregate_fcst_temps_openmeteo,
     _obs_aggregates,

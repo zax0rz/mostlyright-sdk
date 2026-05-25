@@ -1,4 +1,4 @@
-"""Tests for tradewinds._internal._http.
+"""Tests for mostlyright._internal._http.
 
 Lifted from monorepo-v0.14.1/ingest/sources/_http.py — the public-API
 retry helper used by historical fetchers (IEM, GHCNh, AWC, CLI).
@@ -15,7 +15,7 @@ from pathlib import Path
 
 import httpx
 import pytest
-from tradewinds._internal._http import (
+from mostlyright._internal._http import (
     BASE_DELAY,
     HTTP_TIMEOUT,
     MAX_RETRIES,
@@ -87,7 +87,7 @@ class TestDownloadWithRetry:
             pytest.skip("respx not installed")
 
         # Don't actually sleep through retries
-        monkeypatch.setattr("tradewinds._internal._http.time.sleep", lambda _: None)
+        monkeypatch.setattr("mostlyright._internal._http.time.sleep", lambda _: None)
 
         with respx.mock(assert_all_called=True) as mock:
             route = mock.get(url)
@@ -117,7 +117,7 @@ class TestDownloadWithRetry:
         except ImportError:
             pytest.skip("respx not installed")
 
-        monkeypatch.setattr("tradewinds._internal._http.time.sleep", lambda _: None)
+        monkeypatch.setattr("mostlyright._internal._http.time.sleep", lambda _: None)
 
         with respx.mock(assert_all_called=True) as mock:
             route = mock.get(url)
@@ -137,7 +137,7 @@ class TestDownloadWithRetry:
         except ImportError:
             pytest.skip("respx not installed")
 
-        monkeypatch.setattr("tradewinds._internal._http.time.sleep", lambda _: None)
+        monkeypatch.setattr("mostlyright._internal._http.time.sleep", lambda _: None)
 
         with respx.mock() as mock:
             mock.get(url).respond(503)

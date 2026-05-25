@@ -4,7 +4,7 @@
 #     uv run pytest tests/perf/test_ingest_obs.py -m live -v -s
 
 Methodology (per research at .planning/research/INGEST-PLANNER-RESEARCH.md):
-- Per-case isolation via TRADEWINDS_CACHE_DIR=<tmp_path>.
+- Per-case isolation via MOSTLYRIGHT_CACHE_DIR=<tmp_path>.
 - Measure dir-size delta before/after for byte budget.
 - Time cold (empty cache) then warm (full cache) phase.
 
@@ -39,14 +39,14 @@ def _dir_size_bytes(path: Path) -> int:
 def isolated_cache(monkeypatch, tmp_path):
     cache_dir = tmp_path / "tw_cache"
     cache_dir.mkdir()
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(cache_dir))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(cache_dir))
     yield cache_dir
 
 
 @pytest.mark.live
 def test_exact_window_1mo_knyc_iem_under_2mb(isolated_cache):
     """1mo KNYC exact_window source=iem: cold ≤ 2 MB, warm < 1 s."""
-    from tradewinds.weather import obs  # imports the post-PLAN-02 surface
+    from mostlyright.weather import obs  # imports the post-PLAN-02 surface
 
     before = _dir_size_bytes(isolated_cache)
     t0 = time.perf_counter()
@@ -90,7 +90,7 @@ def test_warm_cache_1mo_knyc_control_baseline(isolated_cache):
     change accidentally adds year-normalization bypass to warm_cache too,
     this would fall below 10 MB and we'd want to know.
     """
-    from tradewinds.weather import obs
+    from mostlyright.weather import obs
 
     before = _dir_size_bytes(isolated_cache)
     df_cold = obs(

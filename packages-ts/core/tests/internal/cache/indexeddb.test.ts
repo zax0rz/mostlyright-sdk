@@ -14,7 +14,7 @@ describe("IndexedDBStore", () => {
   runCacheStoreContract(() => new IndexedDBStore({ dbName: `tw-test-${randomUUID()}` }));
 
   it("DB_NAME constant matches the canonical wire value", () => {
-    expect(DB_NAME).toBe("tradewinds-cache-v1");
+    expect(DB_NAME).toBe("mostlyright-cache-v1");
   });
 
   describe("DB name isolation", () => {

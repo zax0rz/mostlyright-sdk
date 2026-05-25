@@ -1,6 +1,6 @@
 // assertNoLeakage + LeakageDetector — loud assertion of as-of leakage absence.
 //
-// Mirrors `packages/core/src/tradewinds/core/temporal/leakage.py`. Where
+// Mirrors `packages/core/src/mostlyright/core/temporal/leakage.py`. Where
 // KnowledgeView silently filters, assertNoLeakage throws LeakageError if
 // any row has knowledge_time > asOf. The error payload follows design.md
 // §D: violatingCount + sampleViolations (capped at 10).

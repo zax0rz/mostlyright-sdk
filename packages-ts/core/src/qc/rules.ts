@@ -2,7 +2,7 @@
 //
 // Bit positions + rule IDs are CONSUMED from the codegen table at
 // src/data/generated/qc-alpha-rules.ts (NEVER hand-coded). Mirrors Python
-// `packages/core/src/tradewinds/qc.py:53-134`.
+// `packages/core/src/mostlyright/qc.py:53-134`.
 //
 // If a future codegen run adds a new rule, this file MUST be updated to
 // register a matching evaluator — the module-load drift guard fires loud

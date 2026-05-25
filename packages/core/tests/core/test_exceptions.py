@@ -8,7 +8,7 @@ import warnings
 import numpy as np
 import pandas as pd
 import pytest
-from tradewinds.core.exceptions import (
+from mostlyright.core.exceptions import (
     LeakageError,
     PayloadTooLargeError,
     SchemaValidationError,
@@ -43,7 +43,7 @@ class TestTradewindsError:
         cache lives at ``exceptions._DEPRECATION_WARNINGS_EMITTED``; clear it
         per-test so this assertion is deterministic.
         """
-        from tradewinds.core import exceptions as _exc
+        from mostlyright.core import exceptions as _exc
 
         _exc._DEPRECATION_WARNINGS_EMITTED.clear()
         with warnings.catch_warnings(record=True) as caught:
@@ -56,7 +56,7 @@ class TestTradewindsError:
         """Module ``__getattr__`` only handles the documented alias; anything
         else must surface as ``AttributeError``.
         """
-        from tradewinds.core import exceptions as _exc
+        from mostlyright.core import exceptions as _exc
 
         with pytest.raises(AttributeError):
             _ = _exc.SomeUndefinedName  # type: ignore[attr-defined]

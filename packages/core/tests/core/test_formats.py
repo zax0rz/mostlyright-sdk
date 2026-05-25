@@ -1,6 +1,6 @@
 """Format roundtrip and loss-documentation tests.
 
-Covers ``tradewinds.core.formats``:
+Covers ``mostlyright.core.formats``:
 
 - Standard-fixture roundtrip for dataframe, parquet, json, csv, toon.
 - TOON-specific deterministic losses per design doc §I.
@@ -18,8 +18,7 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from hypothesis.extra import pandas as hpd
-from pandas.testing import assert_frame_equal, assert_series_equal
-from tradewinds.core.formats import (
+from mostlyright.core.formats import (
     csv_dumps,
     csv_loads,
     df_dumps,
@@ -31,6 +30,7 @@ from tradewinds.core.formats import (
     toon_dumps,
     toon_loads,
 )
+from pandas.testing import assert_frame_equal, assert_series_equal
 
 # ---------------------------------------------------------------------------
 # Standard fixture (schema.observation.v1 subset per design doc §A)
@@ -579,7 +579,7 @@ def test_parquet_size_cap_is_documented_in_module() -> None:
 
     Prevents the doc from drifting away from the architectural decision in §E.
     """
-    from tradewinds.core.formats import parquet as parquet_mod
+    from mostlyright.core.formats import parquet as parquet_mod
 
     doc = parquet_mod.loads.__doc__ or ""
     assert "MCP" in doc or "trust boundary" in doc
@@ -723,7 +723,7 @@ def test_toon_assert_series_equal_on_obs_count(standard_df: pd.DataFrame) -> Non
 
 def test_lifted_toon_encode_tabular_smoke() -> None:
     """The lifted ``encode_tabular`` produces the canonical tabular form."""
-    from tradewinds.core.formats._toon import encode, encode_tabular
+    from mostlyright.core.formats._toon import encode, encode_tabular
 
     out = encode_tabular([{"a": 1, "b": "x"}, {"a": 2, "b": "y"}])
     assert out.startswith("rows[2]{a,b}:")
@@ -733,7 +733,7 @@ def test_lifted_toon_encode_tabular_smoke() -> None:
 
 def test_lifted_toon_list_codec_smoke() -> None:
     """The lifted ``flatten_lists_for_toon`` joins ``qc_flags`` with ``|``."""
-    from tradewinds.core.formats._toon_list_codec import (
+    from mostlyright.core.formats._toon_list_codec import (
         QC_FLAGS_TOON_SEPARATOR,
         flatten_lists_for_toon,
     )

@@ -1,10 +1,10 @@
 // Phase 11 — one-shot `latest()` fetch.
 //
-// Mirrors Python `tradewinds.live.latest`. Single-source poll: hit AWC or
+// Mirrors Python `mostlyright.live.latest`. Single-source poll: hit AWC or
 // IEM ONCE, parse the response, return the most-recent observation row
 // with its live source identity tag. No fusion, no cache, no QC.
 
-import { NoLiveDataError } from "@tradewinds/core";
+import { NoLiveDataError } from "@mostlyright/core";
 
 import { fetchLatest, normalizeStation, pickMostRecent } from "./_fetch.js";
 import { type LiveSource, sourceTag, validateSource } from "./sources.js";

@@ -93,8 +93,8 @@ function previousDayIso(iso: string): string {
 export async function fetchIemLatest(station: string): Promise<LiveObservation[]> {
   const [{ fetchWithRetry }, { STATION_CODE_RE }, { buildIemUrl }, { parseIemCsv }] =
     await Promise.all([
-      import("@tradewinds/core"),
-      import("@tradewinds/core/internal/bounds"),
+      import("@mostlyright/core"),
+      import("@mostlyright/core/internal/bounds"),
       import("../_fetchers/iem-asos.js"),
       import("../_parsers/iem.js"),
     ]);

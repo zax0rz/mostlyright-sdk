@@ -2,7 +2,7 @@
 
 This test IS the Sprint 0 parity gate. Sprint 0 ships only if all 5
 parametrized cases pass against the captured ``case_*.parquet`` fixtures.
-Each case calls ``tradewinds.research(station, frm, to)`` against the
+Each case calls ``mostlyright.research(station, frm, to)`` against the
 real public APIs (IEM ASOS, IEM CLI, GHCNh) and compares the returned
 DataFrame to the v0.14.1 ``client.pairs()`` output.
 
@@ -48,7 +48,6 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
-import tradewinds
 from pandas.testing import assert_frame_equal
 
 FIXTURES = Path(__file__).parent / "fixtures" / "parity"
@@ -102,10 +101,10 @@ CASES: list[tuple[int, str, str, str]] = [
 
 @pytest.fixture(autouse=True)
 def _isolated_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Force a fresh, per-test ``TRADEWINDS_CACHE_DIR`` for the parity gate.
+    """Force a fresh, per-test ``MOSTLYRIGHT_CACHE_DIR`` for the parity gate.
 
-    Without this, ``tradewinds.research()`` reads and writes the user's
-    persistent ``~/.tradewinds/cache``: a populated cache from an earlier
+    Without this, ``mostlyright.research()`` reads and writes the user's
+    persistent ``~/.mostlyright/cache``: a populated cache from an earlier
     (potentially buggy) build can let the gate go green by serving stale
     rows, hiding a fetcher/parser regression - exactly the "leaked state"
     HIGH-severity failure mode that REVIEW-DISCIPLINE.md calls out, and
@@ -120,7 +119,7 @@ def _isolated_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     leaked-state calibration. Applies to ``test_dtypes_match_ground_truth``
     too (no-op there - it never touches the cache).
     """
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
 
 
 def _canon(df: pd.DataFrame) -> pd.DataFrame:
@@ -147,7 +146,7 @@ def _canon(df: pd.DataFrame) -> pd.DataFrame:
 def test_parity_case(case_num: int, station: str, frm: str, to: str) -> None:
     """PARITY-01 + PARITY-02: byte-equivalent vs v0.14.1 client.pairs()."""
     expected = pd.read_parquet(FIXTURES / f"case_{case_num}_{station}_{frm}_{to}.parquet")
-    actual = tradewinds.research(station, frm, to)
+    actual = mostlyright.research(station, frm, to)
 
     actual_c = _canon(actual)
     expected_c = _canon(expected)

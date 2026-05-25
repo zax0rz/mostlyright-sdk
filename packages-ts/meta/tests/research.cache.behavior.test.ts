@@ -35,7 +35,7 @@ import {
   MemoryStore,
   cacheKeyForObservations,
   isLiveSource,
-} from "@tradewinds/core/internal/cache";
+} from "@mostlyright/core/internal/cache";
 import { research } from "../src/research.js";
 
 import fixtureData from "../../core/tests/internal/cache/fixtures/skip-rules-behavior.json" with {
@@ -73,7 +73,7 @@ function setKeys(setSpy: { mock: { calls: ReadonlyArray<ReadonlyArray<unknown>> 
  *
  * Iter-2 H7: the previous `skipLive` assertion grepped cache *keys* for
  * `.live`, but `cacheKeyForObservations` emits
- * `tradewinds:v1:observations:STATION:YYYY:MM` (and the climate key has
+ * `mostlyright:v1:observations:STATION:YYYY:MM` (and the climate key has
  * the same shape) — there is no `.live` token in any key the orchestrator
  * writes. The check passed vacuously, so a regression that wrote
  * AWC live-source rows to the cache would still pass. The fix is to

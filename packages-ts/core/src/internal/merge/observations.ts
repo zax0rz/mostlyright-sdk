@@ -1,24 +1,24 @@
 // Observation source-priority dedup — AWC > IEM > GHCNh with strict-> + first-seen tiebreak.
 //
 // Byte-faithful TS port of
-// `packages/core/src/tradewinds/_internal/merge/observations.py::merge_observations`.
+// `packages/core/src/mostlyright/_internal/merge/observations.py::merge_observations`.
 //
-// Why this lives in @tradewinds/core (not @tradewinds/weather): the merge
-// policy is a tradewinds-wide invariant — every settlement-grade path that
+// Why this lives in @mostlyright/core (not @mostlyright/weather): the merge
+// policy is a mostlyright-wide invariant — every settlement-grade path that
 // joins multi-source observations depends on it. Putting it in core keeps
 // the dep direction clean (weather + meta → core), avoids a circular
 // import between weather/parsers and the orchestrator, and matches the
 // Python layout (`_internal/merge/`).
 //
 // Type strategy: a STRUCTURAL `ObservationKey` interface (4 fields) avoids
-// pulling the full `Observation` shape from @tradewinds/weather into core.
+// pulling the full `Observation` shape from @mostlyright/weather into core.
 // The function is generic over `T extends ObservationKey` so callers can
 // pass the full row type without losing fields.
 
 /**
  * Source priority — strictly greater means "wins on tiebreak".
  * Verbatim from Python `SOURCE_PRIORITY` at
- * `packages/core/src/tradewinds/_internal/merge/observations.py:18`.
+ * `packages/core/src/mostlyright/_internal/merge/observations.py:18`.
  *
  * Frozen so consumers cannot mutate the policy at runtime.
  */

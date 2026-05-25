@@ -1,8 +1,8 @@
 // TS-W1 Wave 2 — Kalshi NHIGH/NLOW resolver tests.
 //
 // Ports the parity surface of:
-//   - packages/markets/src/tradewinds/markets/catalog/kalshi_nhigh.py
-//   - packages/markets/src/tradewinds/markets/catalog/kalshi_nlow.py
+//   - packages/markets/src/mostlyright/markets/catalog/kalshi_nhigh.py
+//   - packages/markets/src/mostlyright/markets/catalog/kalshi_nlow.py
 //   - the KNOWN_WRONG_STATIONS contract test from kalshi_stations.py.
 //
 // The contract test is the load-bearing one: any drift in

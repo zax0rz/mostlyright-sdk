@@ -1,14 +1,14 @@
 // Mode 2 — source-explicit research() variant.
 //
-// Mirrors packages/core/src/tradewinds/mode2.py. Mode 1 (the existing
+// Mirrors packages/core/src/mostlyright/mode2.py. Mode 1 (the existing
 // `research()`) merges AWC > IEM > GHCNh; Mode 2 lets the caller pin
 // observations to a single named source for source-identified
 // training pairs (the workflow Vojtech wanted for backtests that
 // need source-identity invariants).
 //
-// Lives in @tradewinds/meta (alongside `research()`), NOT in
-// @tradewinds/core — `assertSourceIdentity` consumes the
-// @tradewinds/weather `Observation` type, which @tradewinds/core
+// Lives in @mostlyright/meta (alongside `research()`), NOT in
+// @mostlyright/core — `assertSourceIdentity` consumes the
+// @mostlyright/weather `Observation` type, which @mostlyright/core
 // must not depend on (would create a cycle).
 //
 // ── Vocabulary ───────────────────────────────────────────────────────
@@ -27,7 +27,7 @@ import {
   STATION_BY_ICAO,
   SourceMismatchError,
   type SourceMismatchRole,
-} from "@tradewinds/core";
+} from "@mostlyright/core";
 import {
   type Observation,
   awcToObservation,
@@ -36,7 +36,7 @@ import {
   fetchAwcMetars,
   parseGhcnhPsv,
   parseIemCsv,
-} from "@tradewinds/weather";
+} from "@mostlyright/weather";
 
 export type { SourceMismatchRole };
 
@@ -53,12 +53,12 @@ export type Mode2Source = (typeof MODE2_SOURCES)[number];
 /**
  * Map each canonical dotted source to the bare parser-emitted tags
  * that satisfy it. Parsers emit bare `iem`/`awc`/`ghcnh` per
- * packages-ts/weather; tradewinds' canonical vocab is dotted. The
+ * packages-ts/weather; mostlyright' canonical vocab is dotted. The
  * alias table bridges both at the boundary without rewriting the
  * per-row source — downstream consumers see the truthful
  * parser-emitted tag.
  *
- * Mirrors packages/core/src/tradewinds/mode2.py:55-63.
+ * Mirrors packages/core/src/mostlyright/mode2.py:55-63.
  */
 export const SOURCE_ALIASES: ReadonlyMap<Mode2Source, ReadonlySet<string>> = new Map<
   Mode2Source,
@@ -244,7 +244,7 @@ function yearOf(isoDate: string): number {
  *
  * Dispatches to a single source's fetcher (no merge) and returns raw
  * {@link Observation}s tagged with that source. Mirrors Python
- * `tradewinds.mode2.research_by_source` (packages/core/src/tradewinds/mode2.py).
+ * `mostlyright.mode2.research_by_source` (packages/core/src/mostlyright/mode2.py).
  *
  * The four supported sources:
  *

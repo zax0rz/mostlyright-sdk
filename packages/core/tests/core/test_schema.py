@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta, timezone
 from typing import ClassVar
 
 import pytest
-from tradewinds.core.schema import (
+from mostlyright.core.schema import (
     ColumnSpec,
     Schema,
     SchemaRegistration,

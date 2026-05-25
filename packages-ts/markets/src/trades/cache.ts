@@ -1,7 +1,7 @@
 // Phase 9 — trades cache adapter (TRADES-06, TS counterpart to
-// packages/markets/src/tradewinds/markets/_trades_cache.py).
+// packages/markets/src/mostlyright/markets/_trades_cache.py).
 //
-// Thin wrapper over the existing `@tradewinds/core` CacheStore interface
+// Thin wrapper over the existing `@mostlyright/core` CacheStore interface
 // (MemoryStore / IndexedDBStore / FsStore). Key shape mirrors the Python
 // path layout: trades/{issuer}/{ticker}/{YYYY-MM}.
 //
@@ -9,7 +9,7 @@
 // cacheable (write no-op + read miss) — trades may still arrive for the
 // active month.
 
-import type { CacheStore } from "@tradewinds/core/internal/cache";
+import type { CacheStore } from "@mostlyright/core/internal/cache";
 
 const ISSUER_RE = /^[a-z][a-z0-9._-]{0,31}$/;
 // Iter-2 codex + python-architect HIGH: parity with Python `_trades_cache._TICKER_RE`.
