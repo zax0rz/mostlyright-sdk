@@ -72,3 +72,27 @@ class TestDiscoverCity:
     def test_keyword_only_arg(self):
         with pytest.raises(TypeError):
             discover("NYC")  # type: ignore[misc]
+
+    def test_missing_markets_pkg_raises_source_unavailable(self, monkeypatch):
+        """Iter-2 codex HIGH: when `tradewinds.markets` is missing
+        (because the user installed `tradewinds` without
+        `tradewinds-markets`), discover() must raise a friendly
+        SourceUnavailableError with the install hint — NOT a raw
+        ModuleNotFoundError.
+
+        Simulate the missing-markets condition by intercepting the
+        resolve_city call with a function that raises the canonical
+        error shape Python emits when the markets package isn't
+        installed.
+        """
+        from tradewinds import _compose
+        from tradewinds.core.exceptions import SourceUnavailableError
+
+        def fake_resolve_city(_city: str):
+            raise ModuleNotFoundError(
+                "No module named 'tradewinds.markets'", name="tradewinds.markets"
+            )
+
+        monkeypatch.setattr(_compose, "resolve_city", fake_resolve_city)
+        with pytest.raises(SourceUnavailableError, match="tradewinds-markets"):
+            discover(city="NYC")
