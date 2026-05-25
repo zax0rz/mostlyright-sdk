@@ -1,13 +1,13 @@
-# TypeScript SDK quickstart (`@tradewinds/*`)
+# TypeScript SDK quickstart (`@mostlyright/*`)
 
 The TS SDK mirrors the Python public surface and ships four npm packages:
 
 | npm | Path | Use case |
 |---|---|---|
-| [`@tradewinds/core`](../packages-ts/core/) | core types, schemas, temporal/QC primitives, formats | every consumer |
-| [`@tradewinds/weather`](../packages-ts/weather/) | AWC/IEM/GHCNh/CLI fetchers + parsers | observations + climate |
-| [`@tradewinds/markets`](../packages-ts/markets/) | Kalshi NHIGH/NLOW + Polymarket discover/settle | settlement logic |
-| [`tradewinds`](../packages-ts/meta/) | meta convenience re-export | full-SDK import |
+| [`@mostlyright/core`](../packages-ts/core/) | core types, schemas, temporal/QC primitives, formats | every consumer |
+| [`@mostlyright/weather`](../packages-ts/weather/) | AWC/IEM/GHCNh/CLI fetchers + parsers | observations + climate |
+| [`@mostlyright/markets`](../packages-ts/markets/) | Kalshi NHIGH/NLOW + Polymarket discover/settle | settlement logic |
+| [`mostlyright`](../packages-ts/meta/) | meta convenience re-export | full-SDK import |
 
 Five-minute path: **Node** + **browser** below. The browser path is for service workers / content scripts in extensions or web apps; the Node path is for scripts, backtests, Workers, and Bun/Deno.
 
@@ -15,13 +15,13 @@ Five-minute path: **Node** + **browser** below. The browser path is for service 
 
 ```bash
 # research() ships from the meta package only — install that.
-npm install tradewinds
+npm install mostlyright
 ```
 
-`tradewinds` re-exports the three scoped packages (`@tradewinds/core`, `@tradewinds/weather`, `@tradewinds/markets`) so importing `tradewinds` is enough. Install the scoped packages separately only if you want a single subpath (e.g. `@tradewinds/markets/polymarket`) without pulling the meta surface.
+`mostlyright` re-exports the three scoped packages (`@mostlyright/core`, `@mostlyright/weather`, `@mostlyright/markets`) so importing `mostlyright` is enough. Install the scoped packages separately only if you want a single subpath (e.g. `@mostlyright/markets/polymarket`) without pulling the meta surface.
 
 ```ts
-import { research } from "tradewinds";
+import { research } from "mostlyright";
 
 const rows = await research("KNYC", "2025-01-06", "2025-01-12");
 console.log(rows[0]);
@@ -40,10 +40,10 @@ console.log(rows[0]);
 
 ## Cache
 
-The TS SDK caches AWC observations + IEM CLI + IEM ASOS + GHCNh under `$HOME/.tradewinds/cache-ts/` (Node), browser IndexedDB at `tradewinds-cache-v1` (browser), or in-memory (Workers / no-storage runtimes). Auto-detection picks the right store for the runtime; override via the `cache` option on `research()` if needed.
+The TS SDK caches AWC observations + IEM CLI + IEM ASOS + GHCNh under `$HOME/.mostlyright/cache-ts/` (Node), browser IndexedDB at `mostlyright-cache-v1` (browser), or in-memory (Workers / no-storage runtimes). Auto-detection picks the right store for the runtime; override via the `cache` option on `research()` if needed.
 
 ```ts
-import { defaultCacheStore, MemoryStore } from "@tradewinds/core/internal/cache";
+import { defaultCacheStore, MemoryStore } from "@mostlyright/core/internal/cache";
 
 const cache = new MemoryStore(); // ephemeral; useful for tests
 await research("KNYC", "2025-01-06", "2025-01-12", { cache });
@@ -51,10 +51,10 @@ await research("KNYC", "2025-01-06", "2025-01-12", { cache });
 
 ## Polymarket discover + settle
 
-Polymarket lives at the [`@tradewinds/markets/polymarket`](../packages-ts/markets/src/polymarket/) subpath — server-side only (CORS-blocked from browsers per [`.planning/research/TS-CORS-MATRIX.md`](../.planning/research/TS-CORS-MATRIX.md)).
+Polymarket lives at the [`@mostlyright/markets/polymarket`](../packages-ts/markets/src/polymarket/) subpath — server-side only (CORS-blocked from browsers per [`.planning/research/TS-CORS-MATRIX.md`](../.planning/research/TS-CORS-MATRIX.md)).
 
 ```ts
-import { polymarketDiscover, polymarketSettle } from "@tradewinds/markets/polymarket";
+import { polymarketDiscover, polymarketSettle } from "@mostlyright/markets/polymarket";
 
 // Discover active weather events.
 const events = await polymarketDiscover();
@@ -89,7 +89,7 @@ Security defenses: UUID-ish event-id regex, 16 KB description cap, netloc allowl
 ## Kalshi resolver helper
 
 ```ts
-import { kalshiSettlementFor } from "@tradewinds/markets";
+import { kalshiSettlementFor } from "@mostlyright/markets";
 
 const r = kalshiSettlementFor("KHIGHNYC", "2025-01-06");
 // { settlementSource: "cli.archive", settlementStation: "KNYC",
@@ -106,8 +106,8 @@ import {
   dataVersionForResearch,
   describe,
   featureCatalog,
-} from "@tradewinds/core/discovery";
-import { MemoryStore } from "@tradewinds/core/internal/cache";
+} from "@mostlyright/core/discovery";
+import { MemoryStore } from "@mostlyright/core/internal/cache";
 
 const cache = new MemoryStore();
 const a = await availability("KNYC", cache);
@@ -135,6 +135,6 @@ Mirrors Python v0.1.0 deferrals:
 
 ## API stability
 
-- `@tradewinds/core`: public functions stable at v0.1.0; new exports MUST land at SUBPATH entries to preserve the 25 KB main-bundle gate (see [`packages-ts/core/src/index.ts`](../packages-ts/core/src/index.ts) header).
-- Schema generated types (`@tradewinds/core/src/schemas/generated/*`) are codegen output; do NOT hand-edit.
+- `@mostlyright/core`: public functions stable at v0.1.0; new exports MUST land at SUBPATH entries to preserve the 25 KB main-bundle gate (see [`packages-ts/core/src/index.ts`](../packages-ts/core/src/index.ts) header).
+- Schema generated types (`@mostlyright/core/src/schemas/generated/*`) are codegen output; do NOT hand-edit.
 - Result shapes (`ResearchRow`, `DailyExtreme`, `PolymarketSettlementResult`) follow [`PYTHON-SURFACE-INVENTORY.md`](../.planning/research/PYTHON-SURFACE-INVENTORY.md). Drift triggers a parity ticket per [`CROSS-SDK-SYNC.md`](../.planning/CROSS-SDK-SYNC.md).

@@ -6,9 +6,9 @@
 - **Provider:** NOAA / National Weather Service (CLI = "Climatological Report")
 - **License:** Public-domain (US federal government work)
 - **Endpoint (via IEM mirror):** `https://mesonet.agron.iastate.edu/json/cli.py?station={icao}&year={year}`
-- **Catalog module:** `tradewinds.weather.catalog.cli.CLIAdapter`
-- **Fetcher module:** `tradewinds.weather._fetchers.iem_cli`
-- **Parser module:** `tradewinds.weather._climate` (`parse_cli_record`, `parse_cli_response`)
+- **Catalog module:** `mostlyright.weather.catalog.cli.CLIAdapter`
+- **Fetcher module:** `mostlyright.weather._fetchers.iem_cli`
+- **Parser module:** `mostlyright.weather._climate` (`parse_cli_record`, `parse_cli_response`)
 
 CLI is **the** settlement source for Kalshi NHIGH/NLOW. Every byte-equivalent
 parity fixture in `tests/fixtures/parity/` joins observation rows against the
@@ -68,7 +68,7 @@ parser records:
   extraction; Phase 3.4's richer parse goes into `cli_data_quality`.
 - **Per-station IANA tz mapping.** The 20 Kalshi-traded stations carry a
   hard-coded `station_tz` lookup in
-  `packages/weather/src/tradewinds/weather/catalog/_cli_station_tz.py`. Stations
+  `packages/weather/src/mostlyright/weather/catalog/_cli_station_tz.py`. Stations
   outside the registry default to the `"UTC"` sentinel, which is intentionally
   wrong — the Validator's `event_time` check fires and the caller learns
   immediately. Production code MUST pass the real zone.
@@ -113,7 +113,7 @@ parser records:
 
 ## Cache Layout
 
-- On-disk path: `$HOME/.tradewinds/cache/v1/climate/{station}/{year}.parquet`
+- On-disk path: `$HOME/.mostlyright/cache/v1/climate/{station}/{year}.parquet`
 - Per-year cache, NOT per-month (CLI is a daily product; year-grain matches
   the IEM `json/cli.py` query parameter).
 - `filelock`-guarded; same SoftFileLock fallback as observation cache.
@@ -125,10 +125,10 @@ parser records:
 - [`iem.md`](iem.md) — the IEM JSON transport for CLI products
 - [`awc.md`](awc.md) — observation source (separate from settlement)
 - [`ghcnh.md`](ghcnh.md) — observation source (separate from settlement)
-- Source-of-truth code: `packages/weather/src/tradewinds/weather/catalog/cli.py`
-- Parser: `packages/weather/src/tradewinds/weather/_climate.py`
-- Fetcher: `packages/weather/src/tradewinds/weather/_fetchers/iem_cli.py`
-- Merge logic (CLI dedup): `packages/core/src/tradewinds/_internal/merge/climate.py`
-- Per-station tz: `packages/weather/src/tradewinds/weather/catalog/_cli_station_tz.py`
+- Source-of-truth code: `packages/weather/src/mostlyright/weather/catalog/cli.py`
+- Parser: `packages/weather/src/mostlyright/weather/_climate.py`
+- Fetcher: `packages/weather/src/mostlyright/weather/_fetchers/iem_cli.py`
+- Merge logic (CLI dedup): `packages/core/src/mostlyright/_internal/merge/climate.py`
+- Per-station tz: `packages/weather/src/mostlyright/weather/catalog/_cli_station_tz.py`
 - v0.14.1 lift source: `monorepo-v0.14.1/ingest/storage/parquet.py:477-494`
   (`_dedup_climate_rows`) — byte-faithful port; any drift invalidates parity

@@ -1,4 +1,4 @@
-# Browser integration guide (`@tradewinds/*` in MV3 + web apps)
+# Browser integration guide (`@mostlyright/*` in MV3 + web apps)
 
 The TS SDK is engineered for browser runtimes alongside Node. This guide
 covers the four patterns we test against:
@@ -32,7 +32,7 @@ Background scripts in MV3 run as ES module service workers. They have `fetch`, `
 // manifest.json
 {
   "manifest_version": 3,
-  "name": "tradewinds-extension",
+  "name": "mostlyright-extension",
   "version": "0.1.0",
   "permissions": ["storage"],
   "host_permissions": [
@@ -49,8 +49,8 @@ Background scripts in MV3 run as ES module service workers. They have `fetch`, `
 
 ```ts
 // background.ts → bundled to background.js as ES module
-import { research } from "tradewinds";
-import { kalshiSettlementFor } from "@tradewinds/markets";
+import { research } from "mostlyright";
+import { kalshiSettlementFor } from "@mostlyright/markets";
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === "research") {
@@ -71,7 +71,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
 **CSP-safe:** all bundles are CSP-clean (`script-src 'self'`); no `eval`, no `new Function(...)`, no remote code. ajv runs in `ajv-standalone` precompiled form, never runtime.
 
-**Bundle size:** the `@tradewinds/core` main entry stays under 25 KB min+gzip (the [`TS-BUNDLE-01`](../.planning/REVIEW-DISCIPLINE.md) gate). Subpath imports (`@tradewinds/core/temporal`, `/discovery`, `/transforms`, etc.) tree-shake separately.
+**Bundle size:** the `@mostlyright/core` main entry stays under 25 KB min+gzip (the [`TS-BUNDLE-01`](../.planning/REVIEW-DISCIPLINE.md) gate). Subpath imports (`@mostlyright/core/temporal`, `/discovery`, `/transforms`, etc.) tree-shake separately.
 
 ## Pattern 2 — MV3 content script
 
@@ -92,16 +92,16 @@ if (resp.ok) {
 
 ## Pattern 3 — IIFE for vanilla web apps
 
-The meta IIFE bundle (`tradewinds`) INLINES the three scoped packages, so a single `<script>` tag is enough. It exposes `globalThis.tradewinds` with `research()` and the rest of the meta surface. Limited to AWC + IEM CLI in-browser (the only CORS-allowed endpoints):
+The meta IIFE bundle (`mostlyright`) INLINES the three scoped packages, so a single `<script>` tag is enough. It exposes `globalThis.mostlyright` with `research()` and the rest of the meta surface. Limited to AWC + IEM CLI in-browser (the only CORS-allowed endpoints):
 
 ```html
-<script src="https://unpkg.com/tradewinds/dist/index.global.js"></script>
+<script src="https://unpkg.com/mostlyright/dist/index.global.js"></script>
 <script>
-  tradewinds.research("KNYC", "2025-01-06", "2025-01-12").then(console.log);
+  mostlyright.research("KNYC", "2025-01-06", "2025-01-12").then(console.log);
 </script>
 ```
 
-If you only need one scoped surface (e.g. just `@tradewinds/core` for temporal primitives), the scoped IIFEs are available as `tradewindsCore`, `tradewindsWeather`, `tradewindsMarkets` globals at `https://unpkg.com/@tradewinds/<pkg>/dist/index.global.js` — but `research()` itself only ships from the meta global.
+If you only need one scoped surface (e.g. just `@mostlyright/core` for temporal primitives), the scoped IIFEs are available as `mostlyrightCore`, `mostlyrightWeather`, `mostlyrightMarkets` globals at `https://unpkg.com/@mostlyright/<pkg>/dist/index.global.js` — but `research()` itself only ships from the meta global.
 
 For SDK-style use, ESM via a bundler (vite/esbuild/webpack) is preferred. The IIFE is for quick scratch pages and Kalshi-page overlays that can't run a build step.
 
@@ -112,8 +112,8 @@ Workers ship ES modules; the SDK works as-is. There's no IndexedDB, so the
 cross-request persistence if needed:
 
 ```ts
-import { research } from "tradewinds";
-import { MemoryStore } from "@tradewinds/core/internal/cache";
+import { research } from "mostlyright";
+import { MemoryStore } from "@mostlyright/core/internal/cache";
 
 export default {
   async fetch(req: Request, env: Env) {
@@ -130,14 +130,14 @@ export default {
 
 Quick smoke test from the browser console (after the extension is loaded
 and host permissions granted). `research()` ships from the meta package
-only — the worker bundle for an extension that imports `tradewinds`
-exposes it as the `tradewinds` global if you used the IIFE; via the ESM
+only — the worker bundle for an extension that imports `mostlyright`
+exposes it as the `mostlyright` global if you used the IIFE; via the ESM
 bundle it's the imported binding directly.
 
 ```ts
 // ESM-bundled extensions (the recommended path) — assuming the service
-// worker imports `research` from "tradewinds":
-import { research } from "tradewinds";
+// worker imports `research` from "mostlyright":
+import { research } from "mostlyright";
 const rows = await research("KNYC", "2025-01-06", "2025-01-12");
 console.assert(rows.length > 0, "research returned no rows — check host_permissions");
 console.assert(typeof rows[0].cli_high_f === "number", "CLI data missing");
@@ -148,7 +148,7 @@ For an end-to-end browser smoke test against published packages, see
 
 ## Common pitfalls
 
-- **`Refused to load … because it violates the Content Security Policy`** — you imported a non-tradewinds module that uses `eval`. tradewinds is CSP-clean; check your other deps.
+- **`Refused to load … because it violates the Content Security Policy`** — you imported a non-mostlyright module that uses `eval`. mostlyright is CSP-clean; check your other deps.
 - **`Access to fetch at … has been blocked by CORS policy`** — the page can't reach the upstream API directly. Either move the fetch to the service worker with `host_permissions`, or proxy through your own backend. AWC + IEM CLI are the only browser-direct-fetchable upstream sources.
 - **`TypeError: navigator.locks is not a function`** — older browsers / jsdom test envs. The SDK transparently falls back to an in-process promise chain (FIFO) — no behavior change for single-tab use; cross-tab locking degrades to best-effort.
 - **`research(...)` returns no rows after cache warming** — confirm the station code form. `research("KNYC", ...)` and `research("NYC", ...)` both work and write the cache under `NYC` (the 3-letter NWS code). See [`availability`](../packages-ts/core/src/discovery/availability.ts) which resolves both forms.

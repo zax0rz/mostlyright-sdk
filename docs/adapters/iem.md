@@ -8,9 +8,9 @@
 - **Endpoints:**
   - ASOS observations: `https://mesonet.agron.iastate.edu/cgi-bin/request/asos.py`
   - CLI JSON mirror: `https://mesonet.agron.iastate.edu/json/cli.py?station={icao}&year={year}`
-- **Catalog module:** `tradewinds.weather.catalog.iem.IEMAdapter`
-- **Fetcher modules:** `tradewinds.weather._fetchers.iem_asos`, `tradewinds.weather._fetchers.iem_cli`
-- **Parser module:** `tradewinds.weather._iem` (METAR/SPECI rows → canonical observation rows)
+- **Catalog module:** `mostlyright.weather.catalog.iem.IEMAdapter`
+- **Fetcher modules:** `mostlyright.weather._fetchers.iem_asos`, `mostlyright.weather._fetchers.iem_cli`
+- **Parser module:** `mostlyright.weather._iem` (METAR/SPECI rows → canonical observation rows)
 
 IEM is the historical-depth backbone of the v0.1.0 observation merge. Where AWC
 gives us the freshest live METAR (US-only, ≤7 days deep) and GHCNh gives us
@@ -81,7 +81,7 @@ losslessly through parquet, JSON, and TOON.
   parses to a tz-aware `datetime64[ns, UTC]` immediately at the boundary.
 - The CLI JSON mirror returns local-date strings for `observation_date` — those
   do NOT carry tz info. Settlement-window math is delegated to
-  `tradewinds.snapshot.settlement_date_for(observed_at, station_code,
+  `mostlyright.snapshot.settlement_date_for(observed_at, station_code,
   tz_override=...)`, which uses the per-station IANA zone (`_STATION_TZ` for
   the 20 Kalshi-traded stations).
 - DST boundaries: ASOS valid times never shift (UTC is monotonic). Settlement
@@ -105,7 +105,7 @@ losslessly through parquet, JSON, and TOON.
 
 ## Cache Layout
 
-- On-disk path: `$HOME/.tradewinds/cache/v1/observations/{station}/{year}/{month}.parquet`
+- On-disk path: `$HOME/.mostlyright/cache/v1/observations/{station}/{year}/{month}.parquet`
 - `filelock`-guarded per-file (cross-process safe). Phase 1.5 PERF-04 added an
   iCloud/Dropbox auto-detect — cloud-sync filesystems fall back to `SoftFileLock`.
 - Cache-skip rules:
@@ -120,6 +120,6 @@ losslessly through parquet, JSON, and TOON.
 - [`awc.md`](awc.md) — live-priority observation source (US-only, ≤7d)
 - [`cli.md`](cli.md) — settlement source (NWS CLI via IEM JSON mirror)
 - [`ghcnh.md`](ghcnh.md) — international + multi-decade fallback
-- Source-of-truth code: `packages/weather/src/tradewinds/weather/catalog/iem.py`
-- Merge logic: `packages/core/src/tradewinds/_internal/merge/observations.py`
-- Phase 1.5 PERF-04 chunker: `packages/weather/src/tradewinds/weather/_fetchers/_iem_chunks.py`
+- Source-of-truth code: `packages/weather/src/mostlyright/weather/catalog/iem.py`
+- Merge logic: `packages/core/src/mostlyright/_internal/merge/observations.py`
+- Phase 1.5 PERF-04 chunker: `packages/weather/src/mostlyright/weather/_fetchers/_iem_chunks.py`

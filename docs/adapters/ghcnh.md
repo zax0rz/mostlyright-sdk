@@ -6,9 +6,9 @@
 - **Provider:** NOAA / NCEI (National Centers for Environmental Information)
 - **License:** Public-domain (US federal government work)
 - **Endpoint:** NCEI GHCNh PSV (pipe-separated) files
-- **Catalog module:** `tradewinds.weather.catalog.ghcnh.GHCNhAdapter`
-- **Fetcher module:** `tradewinds.weather._fetchers.ghcnh`
-- **Parser module:** `tradewinds.weather._ghcnh` (`parse_ghcnh_row`)
+- **Catalog module:** `mostlyright.weather.catalog.ghcnh.GHCNhAdapter`
+- **Fetcher module:** `mostlyright.weather._fetchers.ghcnh`
+- **Parser module:** `mostlyright.weather._ghcnh` (`parse_ghcnh_row`)
 
 GHCNh is the international + multi-decade observation backbone. Where AWC
 gives ≤7 days of fresh US-only METARs and IEM gives full-depth US ASOS, GHCNh
@@ -76,7 +76,7 @@ The projection from raw GHCNh parser rows applies the shared SI-unit transform
 - GHCNh `DATE` + `HOUR` columns encode **UTC** observation times. The parser
   parses to tz-aware `datetime64[ns, UTC]` at the boundary.
 - The 20 Kalshi-traded stations carry per-station IANA zones via
-  `tradewinds.snapshot._STATION_TZ`. International stations added in Phase
+  `mostlyright.snapshot._STATION_TZ`. International stations added in Phase
   3.1 carry their own IANA mappings.
 - DST handling: same as IEM. UTC observation times are monotonic; LST
   settlement-window math happens at the `_pairs.py` layer, not in the adapter.
@@ -99,7 +99,7 @@ The projection from raw GHCNh parser rows applies the shared SI-unit transform
 
 ## Cache Layout
 
-- On-disk path: `$HOME/.tradewinds/cache/v1/observations/{station}/{year}/{month}.parquet`
+- On-disk path: `$HOME/.mostlyright/cache/v1/observations/{station}/{year}/{month}.parquet`
 - Same path layout as AWC and IEM — observation rows from all three sources
   share the parquet file, distinguished by the `source` overlay column.
 - `filelock`-guarded; SoftFileLock fallback on cloud-sync filesystems.
@@ -112,7 +112,7 @@ The projection from raw GHCNh parser rows applies the shared SI-unit transform
 - [`iem.md`](iem.md) — primary US archive + live fallback
 - [`awc.md`](awc.md) — live observation source (US-only, ≤7d)
 - [`cli.md`](cli.md) — settlement source (CLI; separate from observation merge)
-- Source-of-truth code: `packages/weather/src/tradewinds/weather/catalog/ghcnh.py`
-- Parser: `packages/weather/src/tradewinds/weather/_ghcnh.py`
-- Fetcher: `packages/weather/src/tradewinds/weather/_fetchers/ghcnh.py`
-- Merge logic: `packages/core/src/tradewinds/_internal/merge/observations.py`
+- Source-of-truth code: `packages/weather/src/mostlyright/weather/catalog/ghcnh.py`
+- Parser: `packages/weather/src/mostlyright/weather/_ghcnh.py`
+- Fetcher: `packages/weather/src/mostlyright/weather/_fetchers/ghcnh.py`
+- Merge logic: `packages/core/src/mostlyright/_internal/merge/observations.py`

@@ -1,4 +1,4 @@
-# tradewinds
+# mostlyright
 
 Local-first **Python + TypeScript** SDK for quants researching prediction-market weather settlements.
 
@@ -10,36 +10,36 @@ Local-first **Python + TypeScript** SDK for quants researching prediction-market
 
 | PyPI | Path | v0.1.0 status |
 |---|---|---|
-| `tradewinds` | [packages/core/](packages/core/) | rc1 ready (operator-gated PyPI publish) |
-| `tradewinds-weather` | [packages/weather/](packages/weather/) | rc1 ready |
-| `tradewinds-markets` | [packages/markets/](packages/markets/) | rc1 ready (Polymarket stubs; live engine in TS) |
+| `mostlyright` | [packages/core/](packages/core/) | rc1 ready (operator-gated PyPI publish) |
+| `mostlyright-weather` | [packages/weather/](packages/weather/) | rc1 ready |
+| `mostlyright-markets` | [packages/markets/](packages/markets/) | rc1 ready (Polymarket stubs; live engine in TS) |
 
 ### TypeScript (npm)
 
 | npm | Path | v0.1.0 status |
 |---|---|---|
-| `@tradewinds/core` | [packages-ts/core/](packages-ts/core/) | TS-W6 shipped; npm publish operator-gated |
-| `@tradewinds/weather` | [packages-ts/weather/](packages-ts/weather/) | TS-W2 parity-gate passed |
-| `@tradewinds/markets` | [packages-ts/markets/](packages-ts/markets/) | TS-W5 shipped (Polymarket live + Kalshi resolver) |
-| `tradewinds` (meta) | [packages-ts/meta/](packages-ts/meta/) | re-exports the three scoped pkgs |
+| `@mostlyright/core` | [packages-ts/core/](packages-ts/core/) | TS-W6 shipped; npm publish operator-gated |
+| `@mostlyright/weather` | [packages-ts/weather/](packages-ts/weather/) | TS-W2 parity-gate passed |
+| `@mostlyright/markets` | [packages-ts/markets/](packages-ts/markets/) | TS-W5 shipped (Polymarket live + Kalshi resolver) |
+| `mostlyright` (meta) | [packages-ts/meta/](packages-ts/meta/) | re-exports the three scoped pkgs |
 
 See [`docs/ts-quickstart.md`](docs/ts-quickstart.md) for TS Node/browser quickstart and [`docs/browser-integration.md`](docs/browser-integration.md) for MV3 service-worker / content-script integration.
 
 ## Quickstart (alpha1) — <5 minutes
 
 ```bash
-pip install "tradewinds[parquet]==0.1.0a1" "tradewinds-weather[parquet]==0.1.0a1"
-python -c "import tradewinds as tw; print(tw.research('KNYC', '2025-01-06', '2025-01-12').head())"
+pip install "mostlyright[parquet]==0.1.0a1" "mostlyright-weather[parquet]==0.1.0a1"
+python -c "import mostlyright as tw; print(tw.research('KNYC', '2025-01-06', '2025-01-12').head())"
 ```
 
 That's it. `research(station, from_date, to_date)` returns a pandas DataFrame;
-local parquet cache lives at `$HOME/.tradewinds/cache/` (override with
+local parquet cache lives at `$HOME/.mostlyright/cache/` (override with
 `TRADEWINDS_CACHE_DIR`); no API keys; no hosted backend.
 
 ### Mode 1 — v0.14.1 parity (default)
 
 ```python
-import tradewinds as tw
+import mostlyright as tw
 
 df = tw.research(
     station="KNYC",
@@ -56,7 +56,7 @@ df = tw.research(
 
 ```python
 from datetime import datetime, UTC
-from tradewinds.core import (
+from mostlyright.core import (
     TimePoint, KnowledgeView, LeakageDetector, assert_no_leakage,
 )
 
@@ -71,12 +71,12 @@ assert_no_leakage(df, TimePoint("2025-02-15T00:00:00+00:00"))
 ### Source-identity validator
 
 ```python
-from tradewinds.weather.catalog.iem import IEMAdapter
-from tradewinds.core import validate_dataframe
+from mostlyright.weather.catalog.iem import IEMAdapter
+from mostlyright.core import validate_dataframe
 
 # Catalog adapters produce canonical-schema DataFrames with df.attrs["source"]
 # already stamped. Validator compares against the schema's pinned source
-# (set when tradewinds.core.schemas eager-registers at import).
+# (set when mostlyright.core.schemas eager-registers at import).
 obs_df = IEMAdapter.from_rows([])  # also works with parsed rows
 reg = validate_dataframe(obs_df, schema_id="schema.observation.v1")
 print(reg.audit_log())
@@ -96,7 +96,7 @@ reg = validate_dataframe(
 
 ```python
 from datetime import date
-from tradewinds.markets.catalog import kalshi_nhigh, kalshi_nlow
+from mostlyright.markets.catalog import kalshi_nhigh, kalshi_nlow
 
 # Contract IDs follow Kalshi's KHIGH<CITY> / KLOW<CITY> ticker convention.
 nhigh = kalshi_nhigh.resolve("KHIGHNYC", date(2025, 1, 15))

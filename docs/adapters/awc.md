@@ -6,9 +6,9 @@
 - **Provider:** NOAA Aviation Weather Center
 - **License:** Public-domain (US federal government work)
 - **Endpoint:** `https://aviationweather.gov/api/data/metar`
-- **Catalog module:** `tradewinds.weather.catalog.awc.AWCAdapter`
-- **Fetcher module:** `tradewinds.weather._fetchers.awc`
-- **Parser module:** `tradewinds.weather._awc` (`awc_to_observation`)
+- **Catalog module:** `mostlyright.weather.catalog.awc.AWCAdapter`
+- **Fetcher module:** `mostlyright.weather._fetchers.awc`
+- **Parser module:** `mostlyright.weather._awc` (`awc_to_observation`)
 
 AWC is the freshest observation source in the v0.1.0 catalog (~5-minute lag
 versus IEM's ~15-minute METAR broadcast lag). It is the **highest-priority**
@@ -74,7 +74,7 @@ The projection from raw AWC parser rows applies the shared SI-unit transform
   observation valid time. v0.1 uses `obsTime` exclusively for `event_time`.
 - Settlement-date math: same as IEM. Settlement dates are LST per the
   Kalshi-traded station's IANA zone, derived from
-  `tradewinds.snapshot.settlement_date_for(obs_time, station_code)`.
+  `mostlyright.snapshot.settlement_date_for(obs_time, station_code)`.
 - DST boundaries do not affect UTC timestamps; the LST settlement-window
   join in `_pairs.py` is the layer that handles DST.
 
@@ -95,7 +95,7 @@ The projection from raw AWC parser rows applies the shared SI-unit transform
 
 ## Cache Layout
 
-- On-disk path: `$HOME/.tradewinds/cache/v1/observations/{station}/{year}/{month}.parquet`
+- On-disk path: `$HOME/.mostlyright/cache/v1/observations/{station}/{year}/{month}.parquet`
 - AWC rows are cached on the closed-month boundary alongside IEM and GHCNh
   rows (per-source dedup happens at merge time, not cache time).
 - `awc.live` is never written to disk in the current LST month — current-month
@@ -108,6 +108,6 @@ The projection from raw AWC parser rows applies the shared SI-unit transform
 - [`iem.md`](iem.md) — observation archive + live fallback when AWC has gaps
 - [`cli.md`](cli.md) — settlement source (CLI is the daily extremes layer)
 - [`ghcnh.md`](ghcnh.md) — international + multi-decade fallback
-- Source-of-truth code: `packages/weather/src/tradewinds/weather/catalog/awc.py`
-- Fetcher: `packages/weather/src/tradewinds/weather/_fetchers/awc.py`
-- Merge logic: `packages/core/src/tradewinds/_internal/merge/observations.py`
+- Source-of-truth code: `packages/weather/src/mostlyright/weather/catalog/awc.py`
+- Fetcher: `packages/weather/src/mostlyright/weather/_fetchers/awc.py`
+- Merge logic: `packages/core/src/mostlyright/_internal/merge/observations.py`

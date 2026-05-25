@@ -7,7 +7,7 @@ the per-strategy cost table.
 ## Quick reference
 
 ```python
-from tradewinds.weather import obs
+from mostlyright.weather import obs
 
 # Default (strategy="auto") picks the right path for you.
 df = obs("KNYC", "2024-03-01", "2024-03-31")
@@ -102,10 +102,10 @@ All three strategies honor the same mutable-period invariants:
   day has not yet passed in UTC time are excluded from canonical cache writes.
 
 These invariants are enforced in the existing helpers
-(`tradewinds.research._is_writable_month`,
-`tradewinds.weather.cache._is_current_lst_month`,
-`tradewinds.weather.cache._is_current_lst_year`) — see source for details.
-The `tradewinds.weather.obs` surface reuses these helpers and adds no new
+(`mostlyright.research._is_writable_month`,
+`mostlyright.weather.cache._is_current_lst_month`,
+`mostlyright.weather.cache._is_current_lst_year`) — see source for details.
+The `mostlyright.weather.obs` surface reuses these helpers and adds no new
 mutable-period logic.
 
 ## When to use which strategy
@@ -126,7 +126,7 @@ mutable-period logic.
 
 ## See also
 
-- `tradewinds.research.research()` — the full obs + CLI + forecast join.
+- `mostlyright.research.research()` — the full obs + CLI + forecast join.
 - `.planning/research/INGEST-PLANNER-RESEARCH.md` — the empirical research
   doc that informed this design.
 - `.planning/ROADMAP.md` — Phase 7 entry.
