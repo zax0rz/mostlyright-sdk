@@ -1,4 +1,4 @@
-"""tradewinds.weather — direct public-API access for AWC, IEM, GHCNh, NWS CLI.
+"""mostlyright.weather — direct public-API access for AWC, IEM, GHCNh, NWS CLI.
 
 Local-first; no hosted backend; no API keys. Parsers are byte-faithful lifts
 from ``monorepo-v0.14.1``; HTTP fetchers and the parquet cache are net-new
@@ -10,7 +10,7 @@ the v0.14.1 release tag of ``Tarabcak/monorepo`` (commit
 
 | Module                  | Source path                                            | Source SHA | Lift date  | Modifications                                                       |
 |-------------------------|--------------------------------------------------------|------------|------------|---------------------------------------------------------------------|
-| _awc.py                 | monorepo-v0.14.1/src/mostlyright/weather/_awc.py       | 514fcda    | 2026-05-21 | namespace rename only (imports point at ``tradewinds._internal``)   |
+| _awc.py                 | monorepo-v0.14.1/src/mostlyright/weather/_awc.py       | 514fcda    | 2026-05-21 | namespace rename only (imports point at ``mostlyright._internal``)   |
 | _iem.py                 | monorepo-v0.14.1/src/mostlyright/weather/_iem.py       | 514fcda    | 2026-05-21 | namespace rename only                                               |
 | _climate.py             | monorepo-v0.14.1/src/mostlyright/weather/_climate.py   | 514fcda    | 2026-05-21 | namespace rename only                                               |
 | _ghcnh.py               | monorepo-v0.14.1/src/mostlyright/weather/_ghcnh.py     | 514fcda    | 2026-05-21 | namespace rename only                                               |
@@ -21,16 +21,16 @@ the v0.14.1 release tag of ``Tarabcak/monorepo`` (commit
 | _fetchers/ghcnh.py      | n/a (NEW)                                              | n/a        | 2026-05-21 | NEW (Sprint 0 Wave 1 Lane F) — per-year NCEI GHCNh PSV fetcher      |
 | cache.py                | n/a (NEW)                                              | n/a        | 2026-05-21 | NEW (Sprint 0 Wave 1 Lane F) — local parquet cache, filelock-guarded |
 
-``_bounds`` is imported from ``tradewinds._internal`` (lifted there from
+``_bounds`` is imported from ``mostlyright._internal`` (lifted there from
 ``monorepo-v0.14.1/src/mostlyright/_bounds.py``) — see the parallel lift
-inventory in ``tradewinds._internal.__init__``.
+inventory in ``mostlyright._internal.__init__``.
 
 Public surface kept stable for Vojtech's existing ``mostlyright==0.14.1``
 workflow: ``raw_metar`` is preserved on observation rows so MetPy re-parse
 keeps working without preprocessing in v0.1.0.
 """
 
-from tradewinds.weather.obs import obs as obs  # re-export Phase 7 public surface
+from mostlyright.weather.obs import obs as obs  # re-export Phase 7 public surface
 
 __version__ = "0.1.0rc1"
 __all__ = ["__version__", "obs"]

@@ -1,9 +1,9 @@
 """AWC catalog adapter (CATALOG-02).
 
-Wraps :func:`tradewinds.weather._awc.awc_to_observation` into a class that
+Wraps :func:`mostlyright.weather._awc.awc_to_observation` into a class that
 satisfies the ``WeatherAdapter`` Protocol and emits a canonical
 ``schema.observation.v1`` DataFrame with overlay columns + correct SI units
-(see :mod:`tradewinds.weather.catalog._obs_projection`).
+(see :mod:`mostlyright.weather.catalog._obs_projection`).
 
 Source IDs: ``"awc.live"`` (the only AWC source — historical archive is
 not exposed via AWC's public endpoint as of Sept 2025 endpoint migration).
@@ -15,8 +15,8 @@ from datetime import UTC, datetime, timedelta
 from typing import ClassVar
 
 import pandas as pd
-from tradewinds.weather._awc import awc_to_observation
-from tradewinds.weather.catalog._obs_projection import (
+from mostlyright.weather._awc import awc_to_observation
+from mostlyright.weather.catalog._obs_projection import (
     add_overlay_columns,
     empty_observation_df,
     project_row,
@@ -42,7 +42,7 @@ class AWCAdapter:
         """Phase 3 Mode-2 entry point. v0.1: NotImplementedError."""
         raise NotImplementedError(
             "AWCAdapter.fetch_observations is the Phase 3 Mode-2 entry point. "
-            "v0.1 callers should use tradewinds.research() (Mode 1 parity)."
+            "v0.1 callers should use mostlyright.research() (Mode 1 parity)."
         )
 
     @staticmethod
@@ -76,7 +76,7 @@ class AWCAdapter:
 __all__ = ["AWCAdapter", "awc_to_observation"]
 
 
-from tradewinds.weather.catalog import register_adapter  # noqa: E402
+from mostlyright.weather.catalog import register_adapter  # noqa: E402
 
 for _sid in AWCAdapter.SUPPORTED_SOURCES:
     register_adapter(_sid, AWCAdapter)

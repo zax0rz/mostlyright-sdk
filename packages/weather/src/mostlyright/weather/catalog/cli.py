@@ -1,6 +1,6 @@
 """NWS CLI settlement adapter (CATALOG-03).
 
-Wraps :func:`tradewinds.weather._climate.parse_cli_record` (and
+Wraps :func:`mostlyright.weather._climate.parse_cli_record` (and
 ``parse_cli_response``) into a class that satisfies the ``WeatherAdapter``
 Protocol and emits a canonical ``schema.settlement.cli.v1`` DataFrame.
 
@@ -19,8 +19,8 @@ from typing import ClassVar
 from zoneinfo import ZoneInfo
 
 import pandas as pd
-from tradewinds._internal._pandas_compat import empty_utc_datetime_series
-from tradewinds.weather._climate import (
+from mostlyright._internal._pandas_compat import empty_utc_datetime_series
+from mostlyright.weather._climate import (
     REPORT_TYPE_PRIORITY,
     parse_cli_record,
     parse_cli_response,
@@ -63,7 +63,7 @@ class CLIAdapter:
         """Phase 3 Mode-2 entry point. v0.1: NotImplementedError."""
         raise NotImplementedError(
             "CLIAdapter.fetch_observations is the Phase 3 Mode-2 entry point. "
-            "v0.1 callers should use tradewinds.research() (Mode 1 parity)."
+            "v0.1 callers should use mostlyright.research() (Mode 1 parity)."
         )
 
     @staticmethod
@@ -233,7 +233,7 @@ def _event_time_from_date(date_series: pd.Series, tz: str) -> pd.Series:
 __all__ = ["CLIAdapter", "parse_cli_record", "parse_cli_response"]
 
 
-from tradewinds.weather.catalog import register_adapter  # noqa: E402
+from mostlyright.weather.catalog import register_adapter  # noqa: E402
 
 for _sid in CLIAdapter.SUPPORTED_SOURCES:
     register_adapter(_sid, CLIAdapter)

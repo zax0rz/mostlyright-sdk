@@ -1,4 +1,4 @@
-"""Tests for tradewinds._internal._convert — unit conversions with NO rounding."""
+"""Tests for mostlyright._internal._convert — unit conversions with NO rounding."""
 
 from __future__ import annotations
 
@@ -8,13 +8,13 @@ import math
 import pytest
 
 
-# Wave 2 lifted `tradewinds._internal.models`, so the previously-skipped
+# Wave 2 lifted `mostlyright._internal.models`, so the previously-skipped
 # TestConvertObservation class now runs. The skipif gate stays defensive so
 # this file survives a hypothetical drop of the models package; if models is
 # present (which it always should be now), the suite is active.
 def _has_tw_models() -> bool:
     try:
-        return importlib.util.find_spec("tradewinds._internal.models") is not None
+        return importlib.util.find_spec("mostlyright._internal.models") is not None
     except ModuleNotFoundError:
         return False
 
@@ -26,23 +26,23 @@ class TestCelsiusToFahrenheit:
     """celsius_to_fahrenheit: C * 9/5 + 32, float64 precision, no rounding."""
 
     def test_zero_celsius(self) -> None:
-        from tradewinds._internal._convert import celsius_to_fahrenheit
+        from mostlyright._internal._convert import celsius_to_fahrenheit
 
         assert celsius_to_fahrenheit(0.0) == 32.0
 
     def test_hundred_celsius(self) -> None:
-        from tradewinds._internal._convert import celsius_to_fahrenheit
+        from mostlyright._internal._convert import celsius_to_fahrenheit
 
         assert celsius_to_fahrenheit(100.0) == 212.0
 
     def test_negative(self) -> None:
-        from tradewinds._internal._convert import celsius_to_fahrenheit
+        from mostlyright._internal._convert import celsius_to_fahrenheit
 
         assert celsius_to_fahrenheit(-40.0) == -40.0
 
     def test_preserves_float64_precision_no_rounding(self) -> None:
         """T-group 15.6C should produce 60.08, NOT 60.1 (old _go_round bug)."""
-        from tradewinds._internal._convert import celsius_to_fahrenheit
+        from mostlyright._internal._convert import celsius_to_fahrenheit
 
         result = celsius_to_fahrenheit(15.6)
         # Must be the raw float64 result: 15.6 * 9/5 + 32
@@ -53,24 +53,24 @@ class TestCelsiusToFahrenheit:
 
     def test_t_group_negative(self) -> None:
         """T-group -5.6C → raw float64 conversion."""
-        from tradewinds._internal._convert import celsius_to_fahrenheit
+        from mostlyright._internal._convert import celsius_to_fahrenheit
 
         result = celsius_to_fahrenheit(-5.6)
         expected = -5.6 * 9 / 5 + 32
         assert result == expected
 
     def test_none_returns_none(self) -> None:
-        from tradewinds._internal._convert import celsius_to_fahrenheit
+        from mostlyright._internal._convert import celsius_to_fahrenheit
 
         assert celsius_to_fahrenheit(None) is None
 
     def test_nan_returns_none(self) -> None:
-        from tradewinds._internal._convert import celsius_to_fahrenheit
+        from mostlyright._internal._convert import celsius_to_fahrenheit
 
         assert celsius_to_fahrenheit(float("nan")) is None
 
     def test_inf_returns_none(self) -> None:
-        from tradewinds._internal._convert import celsius_to_fahrenheit
+        from mostlyright._internal._convert import celsius_to_fahrenheit
 
         assert celsius_to_fahrenheit(float("inf")) is None
 
@@ -79,7 +79,7 @@ class TestHpaToInhg:
     """hpa_to_inhg: hPa * 0.0295299875, float64 precision, no rounding."""
 
     def test_standard_pressure(self) -> None:
-        from tradewinds._internal._convert import hpa_to_inhg
+        from mostlyright._internal._convert import hpa_to_inhg
 
         result = hpa_to_inhg(1013.25)
         expected = 1013.25 * 0.0295299875
@@ -87,7 +87,7 @@ class TestHpaToInhg:
 
     def test_preserves_float64_no_rounding(self) -> None:
         """Must NOT round to 2 decimal places like _safe_altim did."""
-        from tradewinds._internal._convert import hpa_to_inhg
+        from mostlyright._internal._convert import hpa_to_inhg
 
         result = hpa_to_inhg(1015.0)
         expected = 1015.0 * 0.0295299875
@@ -96,12 +96,12 @@ class TestHpaToInhg:
         assert result == 1015.0 * 0.0295299875
 
     def test_none_returns_none(self) -> None:
-        from tradewinds._internal._convert import hpa_to_inhg
+        from mostlyright._internal._convert import hpa_to_inhg
 
         assert hpa_to_inhg(None) is None
 
     def test_nan_returns_none(self) -> None:
-        from tradewinds._internal._convert import hpa_to_inhg
+        from mostlyright._internal._convert import hpa_to_inhg
 
         assert hpa_to_inhg(float("nan")) is None
 
@@ -110,14 +110,14 @@ class TestComputeRelativeHumidity:
     """compute_relative_humidity: Magnus formula, no rounding, clamped [0,100]."""
 
     def test_equal_temp_dewpoint_gives_100(self) -> None:
-        from tradewinds._internal._convert import compute_relative_humidity
+        from mostlyright._internal._convert import compute_relative_humidity
 
         result = compute_relative_humidity(20.0, 20.0)
         assert result == 100.0
 
     def test_typical_values(self) -> None:
         """20C temp, 10C dewpoint → ~52% RH (Magnus approximation)."""
-        from tradewinds._internal._convert import compute_relative_humidity
+        from mostlyright._internal._convert import compute_relative_humidity
 
         result = compute_relative_humidity(20.0, 10.0)
         assert result is not None
@@ -125,7 +125,7 @@ class TestComputeRelativeHumidity:
 
     def test_no_rounding_artifacts(self) -> None:
         """Result must be raw float64, not rounded to 1 decimal."""
-        from tradewinds._internal._convert import compute_relative_humidity
+        from mostlyright._internal._convert import compute_relative_humidity
 
         result = compute_relative_humidity(25.0, 15.0)
         assert result is not None
@@ -135,18 +135,18 @@ class TestComputeRelativeHumidity:
         assert result == expected
 
     def test_none_temp_returns_none(self) -> None:
-        from tradewinds._internal._convert import compute_relative_humidity
+        from mostlyright._internal._convert import compute_relative_humidity
 
         assert compute_relative_humidity(None, 10.0) is None
 
     def test_none_dewpoint_returns_none(self) -> None:
-        from tradewinds._internal._convert import compute_relative_humidity
+        from mostlyright._internal._convert import compute_relative_humidity
 
         assert compute_relative_humidity(20.0, None) is None
 
     def test_clamped_to_100(self) -> None:
         """Dewpoint > temp (physically impossible but handle gracefully)."""
-        from tradewinds._internal._convert import compute_relative_humidity
+        from mostlyright._internal._convert import compute_relative_humidity
 
         result = compute_relative_humidity(10.0, 20.0)
         assert result is not None
@@ -158,14 +158,14 @@ class TestComputeFeelsLike:
 
     def test_mild_temperature_returns_temp(self) -> None:
         """Between 50-80F with low wind → returns raw temp."""
-        from tradewinds._internal._convert import compute_feels_like
+        from mostlyright._internal._convert import compute_feels_like
 
         result = compute_feels_like(65.0, 5, 50.0)
         assert result == 65.0
 
     def test_wind_chill_below_50f(self) -> None:
         """30F with 15kt wind → wind chill applies."""
-        from tradewinds._internal._convert import compute_feels_like
+        from mostlyright._internal._convert import compute_feels_like
 
         result = compute_feels_like(30.0, 15, 50.0)
         assert result is not None
@@ -173,7 +173,7 @@ class TestComputeFeelsLike:
 
     def test_wind_chill_no_rounding(self) -> None:
         """Wind chill result must be raw float64."""
-        from tradewinds._internal._convert import compute_feels_like
+        from mostlyright._internal._convert import compute_feels_like
 
         result = compute_feels_like(30.0, 15, 50.0)
         assert result is not None
@@ -184,27 +184,27 @@ class TestComputeFeelsLike:
 
     def test_heat_index_above_80f(self) -> None:
         """95F with high humidity → heat index applies."""
-        from tradewinds._internal._convert import compute_feels_like
+        from mostlyright._internal._convert import compute_feels_like
 
         result = compute_feels_like(95.0, 5, 80.0)
         assert result is not None
         assert result > 95.0  # Heat index makes it feel hotter
 
     def test_none_temp_returns_none(self) -> None:
-        from tradewinds._internal._convert import compute_feels_like
+        from mostlyright._internal._convert import compute_feels_like
 
         assert compute_feels_like(None, 10, 50.0) is None
 
     def test_none_wind_uses_zero(self) -> None:
         """Null wind → treated as calm (0 mph)."""
-        from tradewinds._internal._convert import compute_feels_like
+        from mostlyright._internal._convert import compute_feels_like
 
         result = compute_feels_like(65.0, None, 50.0)
         assert result == 65.0
 
     def test_none_rh_skips_heat_index(self) -> None:
         """Above 80F but no RH → returns raw temp."""
-        from tradewinds._internal._convert import compute_feels_like
+        from mostlyright._internal._convert import compute_feels_like
 
         result = compute_feels_like(85.0, 5, None)
         assert result == 85.0
@@ -219,23 +219,23 @@ class TestKtToMs:
     """kt_to_ms: knots × (1852/3600) = m/s. No rounding."""  # noqa: RUF002
 
     def test_known_value(self) -> None:
-        from tradewinds._internal._convert import kt_to_ms
+        from mostlyright._internal._convert import kt_to_ms
 
         result = kt_to_ms(10)
         assert result == 10 * (1852.0 / 3600.0)
 
     def test_zero(self) -> None:
-        from tradewinds._internal._convert import kt_to_ms
+        from mostlyright._internal._convert import kt_to_ms
 
         assert kt_to_ms(0) == 0.0
 
     def test_none_returns_none(self) -> None:
-        from tradewinds._internal._convert import kt_to_ms
+        from mostlyright._internal._convert import kt_to_ms
 
         assert kt_to_ms(None) is None
 
     def test_float_input(self) -> None:
-        from tradewinds._internal._convert import kt_to_ms
+        from mostlyright._internal._convert import kt_to_ms
 
         result = kt_to_ms(8.5)
         assert result == 8.5 * (1852.0 / 3600.0)
@@ -245,18 +245,18 @@ class TestKtToMph:
     """kt_to_mph: knots × 1.15078 = mph. No rounding."""  # noqa: RUF002
 
     def test_known_value(self) -> None:
-        from tradewinds._internal._convert import kt_to_mph
+        from mostlyright._internal._convert import kt_to_mph
 
         result = kt_to_mph(10)
         assert result == 10 * 1.15078
 
     def test_zero(self) -> None:
-        from tradewinds._internal._convert import kt_to_mph
+        from mostlyright._internal._convert import kt_to_mph
 
         assert kt_to_mph(0) == 0.0
 
     def test_none_returns_none(self) -> None:
-        from tradewinds._internal._convert import kt_to_mph
+        from mostlyright._internal._convert import kt_to_mph
 
         assert kt_to_mph(None) is None
 
@@ -265,18 +265,18 @@ class TestMiToKm:
     """mi_to_km: statute miles × 1.609344 = km. No rounding."""  # noqa: RUF002
 
     def test_known_value(self) -> None:
-        from tradewinds._internal._convert import mi_to_km
+        from mostlyright._internal._convert import mi_to_km
 
         result = mi_to_km(10.0)
         assert result == 10.0 * 1.609344
 
     def test_one_mile(self) -> None:
-        from tradewinds._internal._convert import mi_to_km
+        from mostlyright._internal._convert import mi_to_km
 
         assert mi_to_km(1.0) == 1.609344
 
     def test_none_returns_none(self) -> None:
-        from tradewinds._internal._convert import mi_to_km
+        from mostlyright._internal._convert import mi_to_km
 
         assert mi_to_km(None) is None
 
@@ -285,32 +285,32 @@ class TestInchesToMm:
     """inches_to_mm: inches × 25.4 = mm. Exact conversion. No rounding."""  # noqa: RUF002
 
     def test_one_inch(self) -> None:
-        from tradewinds._internal._convert import inches_to_mm
+        from mostlyright._internal._convert import inches_to_mm
 
         assert inches_to_mm(1.0) == 25.4
 
     def test_fractional(self) -> None:
-        from tradewinds._internal._convert import inches_to_mm
+        from mostlyright._internal._convert import inches_to_mm
 
         result = inches_to_mm(0.05)
         assert result == 0.05 * 25.4
 
     def test_none_returns_none(self) -> None:
-        from tradewinds._internal._convert import inches_to_mm
+        from mostlyright._internal._convert import inches_to_mm
 
         assert inches_to_mm(None) is None
 
 
 @pytest.mark.skipif(
     not _HAS_MOSTLYRIGHT_MODELS,
-    reason="tradewinds._internal.models not available — should never trigger "
+    reason="mostlyright._internal.models not available — should never trigger "
     "after Wave 2 lifted the models package.",
 )
 class TestConvertObservation:
     """convert_observation: returns NEW Observation with converted fields."""
 
     def _make_obs(self):
-        from tradewinds._internal.models import Observation
+        from mostlyright._internal.models import Observation
 
         return Observation(
             station_code="NYC",
@@ -346,14 +346,14 @@ class TestConvertObservation:
         )
 
     def test_raw_is_noop(self) -> None:
-        from tradewinds._internal._convert import convert_observation
+        from mostlyright._internal._convert import convert_observation
 
         obs = self._make_obs()
         result = convert_observation(obs, "raw")
         assert result is obs
 
     def test_metric_converts_wind_to_ms(self) -> None:
-        from tradewinds._internal._convert import convert_observation
+        from mostlyright._internal._convert import convert_observation
 
         obs = self._make_obs()
         result = convert_observation(obs, "metric")
@@ -362,14 +362,14 @@ class TestConvertObservation:
         assert result.peak_wind_gust_kt == 25 * (1852.0 / 3600.0)
 
     def test_metric_converts_visibility_to_km(self) -> None:
-        from tradewinds._internal._convert import convert_observation
+        from mostlyright._internal._convert import convert_observation
 
         obs = self._make_obs()
         result = convert_observation(obs, "metric")
         assert result.visibility_miles == 10.0 * 1.609344
 
     def test_metric_converts_precip_to_mm(self) -> None:
-        from tradewinds._internal._convert import convert_observation
+        from mostlyright._internal._convert import convert_observation
 
         obs = self._make_obs()
         result = convert_observation(obs, "metric")
@@ -377,7 +377,7 @@ class TestConvertObservation:
         assert result.snow_depth_inches == 4.0 * 25.4
 
     def test_metric_leaves_temp_untouched(self) -> None:
-        from tradewinds._internal._convert import convert_observation
+        from mostlyright._internal._convert import convert_observation
 
         obs = self._make_obs()
         result = convert_observation(obs, "metric")
@@ -387,7 +387,7 @@ class TestConvertObservation:
         assert result.dewpoint_f == 41.0
 
     def test_metric_leaves_pressure_untouched(self) -> None:
-        from tradewinds._internal._convert import convert_observation
+        from mostlyright._internal._convert import convert_observation
 
         obs = self._make_obs()
         result = convert_observation(obs, "metric")
@@ -395,7 +395,7 @@ class TestConvertObservation:
         assert result.sea_level_pressure_mb == 1013.25
 
     def test_imperial_converts_wind_to_mph(self) -> None:
-        from tradewinds._internal._convert import convert_observation
+        from mostlyright._internal._convert import convert_observation
 
         obs = self._make_obs()
         result = convert_observation(obs, "imperial")
@@ -404,14 +404,14 @@ class TestConvertObservation:
         assert result.peak_wind_gust_kt == 25 * 1.15078
 
     def test_imperial_leaves_visibility_as_miles(self) -> None:
-        from tradewinds._internal._convert import convert_observation
+        from mostlyright._internal._convert import convert_observation
 
         obs = self._make_obs()
         result = convert_observation(obs, "imperial")
         assert result.visibility_miles == 10.0
 
     def test_imperial_leaves_precip_as_inches(self) -> None:
-        from tradewinds._internal._convert import convert_observation
+        from mostlyright._internal._convert import convert_observation
 
         obs = self._make_obs()
         result = convert_observation(obs, "imperial")
@@ -419,22 +419,22 @@ class TestConvertObservation:
         assert result.snow_depth_inches == 4.0
 
     def test_returns_new_observation(self) -> None:
-        from tradewinds._internal._convert import convert_observation
+        from mostlyright._internal._convert import convert_observation
 
         obs = self._make_obs()
         result = convert_observation(obs, "metric")
         assert result is not obs
 
     def test_unknown_units_raises_valueerror(self) -> None:
-        from tradewinds._internal._convert import convert_observation
+        from mostlyright._internal._convert import convert_observation
 
         obs = self._make_obs()
         with pytest.raises(ValueError, match="Unrecognized"):
             convert_observation(obs, "celsius")
 
     def test_none_fields_stay_none(self) -> None:
-        from tradewinds._internal._convert import convert_observation
-        from tradewinds._internal.models import Observation
+        from mostlyright._internal._convert import convert_observation
+        from mostlyright._internal.models import Observation
 
         obs = Observation(
             station_code="NYC",

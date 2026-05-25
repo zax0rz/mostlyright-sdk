@@ -177,7 +177,7 @@ class QCEngine:
                         "station_code": row.get("station", row.get("station_code")),
                         "observed_at": str(row.get("event_time", "")),
                         "source": row.get("source"),
-                        "qc_system": "tradewinds.qc.alpha",
+                        "qc_system": "mostlyright.qc.alpha",
                         "qc_version": "v0.1.0a1",
                         "rule_id": rule.rule_id,
                         "field": rule.rule_id.split(".")[0],
@@ -213,7 +213,7 @@ def crosscheck_iem_ghcnh(
     """
     import pandas as pd
 
-    from tradewinds.core._narwhals_compat import pandas_to_polars, to_pandas_if_polars
+    from mostlyright.core._narwhals_compat import pandas_to_polars, to_pandas_if_polars
 
     iem_df, iem_was_polars = to_pandas_if_polars(iem_df)
     ghcnh_df, _ghcnh_was_polars = to_pandas_if_polars(ghcnh_df)

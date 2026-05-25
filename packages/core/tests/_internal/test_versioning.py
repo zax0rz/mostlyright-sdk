@@ -38,7 +38,7 @@ def _make_obs(observed_at: str, station: str = "NYC") -> dict:
 
 class TestDataVersion:
     def test_create_from_observations(self) -> None:
-        from tradewinds._internal.versioning import DataVersion
+        from mostlyright._internal.versioning import DataVersion
 
         obs_timestamps = [
             "2024-07-04T10:00:00Z",
@@ -56,7 +56,7 @@ class TestDataVersion:
         assert dv.observation_count == 3
 
     def test_empty_observations(self) -> None:
-        from tradewinds._internal.versioning import DataVersion
+        from mostlyright._internal.versioning import DataVersion
 
         dv = DataVersion.from_timestamps(
             station="ATL",
@@ -67,7 +67,7 @@ class TestDataVersion:
         assert dv.observation_count == 0
 
     def test_version_token_is_string(self) -> None:
-        from tradewinds._internal.versioning import DataVersion
+        from mostlyright._internal.versioning import DataVersion
 
         dv = DataVersion.from_timestamps(
             station="NYC",
@@ -78,7 +78,7 @@ class TestDataVersion:
         assert len(dv.version) > 0
 
     def test_version_token_is_deterministic(self) -> None:
-        from tradewinds._internal.versioning import DataVersion
+        from mostlyright._internal.versioning import DataVersion
 
         # Use explicit kwargs rather than **dict(...) so the type checker
         # can narrow each parameter's type instead of inferring ``str | list[str]``.
@@ -95,7 +95,7 @@ class TestDataVersion:
         assert dv1.version == dv2.version
 
     def test_different_data_different_version(self) -> None:
-        from tradewinds._internal.versioning import DataVersion
+        from mostlyright._internal.versioning import DataVersion
 
         dv1 = DataVersion.from_timestamps(
             station="NYC",
@@ -110,7 +110,7 @@ class TestDataVersion:
         assert dv1.version != dv2.version
 
     def test_different_station_different_version(self) -> None:
-        from tradewinds._internal.versioning import DataVersion
+        from mostlyright._internal.versioning import DataVersion
 
         ts = ["2024-07-04T12:00:00Z"]
         dv1 = DataVersion.from_timestamps(
@@ -123,7 +123,7 @@ class TestDataVersion:
 
     def test_as_of_not_in_hash(self) -> None:
         """Same observations at different query times → same version token."""
-        from tradewinds._internal.versioning import DataVersion
+        from mostlyright._internal.versioning import DataVersion
 
         ts = ["2024-07-04T10:00:00Z", "2024-07-04T11:00:00Z", "2024-07-04T12:00:00Z"]
         dv_early = DataVersion.from_timestamps(
@@ -143,7 +143,7 @@ class TestDataVersion:
         assert dv_late.as_of == "2024-07-04T23:59:00Z"
 
     def test_to_dict(self) -> None:
-        from tradewinds._internal.versioning import DataVersion
+        from mostlyright._internal.versioning import DataVersion
 
         dv = DataVersion.from_timestamps(
             station="NYC",
@@ -158,7 +158,7 @@ class TestDataVersion:
         assert d["observation_count"] == 1
 
     def test_from_dict_roundtrip(self) -> None:
-        from tradewinds._internal.versioning import DataVersion
+        from mostlyright._internal.versioning import DataVersion
 
         dv = DataVersion.from_timestamps(
             station="NYC",
@@ -179,7 +179,7 @@ class TestDataVersion:
 
 class TestVersionOrdering:
     def test_is_newer_than(self) -> None:
-        from tradewinds._internal.versioning import DataVersion
+        from mostlyright._internal.versioning import DataVersion
 
         old = DataVersion.from_timestamps(
             station="NYC",
@@ -195,7 +195,7 @@ class TestVersionOrdering:
         assert not old.is_newer_than(new)
 
     def test_same_version_not_newer(self) -> None:
-        from tradewinds._internal.versioning import DataVersion
+        from mostlyright._internal.versioning import DataVersion
 
         dv = DataVersion.from_timestamps(
             station="NYC",
@@ -205,7 +205,7 @@ class TestVersionOrdering:
         assert not dv.is_newer_than(dv)
 
     def test_is_stale_when_newer_obs_available(self) -> None:
-        from tradewinds._internal.versioning import DataVersion
+        from mostlyright._internal.versioning import DataVersion
 
         dv = DataVersion.from_timestamps(
             station="NYC",

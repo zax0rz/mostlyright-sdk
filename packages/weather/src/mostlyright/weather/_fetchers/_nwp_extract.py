@@ -6,9 +6,9 @@ are limited to the standard library + numpy (a transitive dep of xarray
 that we let the ``[nwp]`` extra install). The heavy deps (``cfgrib``,
 ``xarray``, ``sklearn``) are imported inside :func:`open_grib2_dataset`
 and :func:`extract_stations`; calling either without
-``pip install tradewinds-weather[nwp]`` raises ``ImportError`` with a
+``pip install mostlyright-weather[nwp]`` raises ``ImportError`` with a
 hint message — handled higher up in
-:mod:`tradewinds.weather.forecast_nwp`.
+:mod:`mostlyright.weather.forecast_nwp`.
 
 Pattern lifted from mostlyright ``sprint2/2r-impl-bundle:ingest/sources/
 _nwp_grids/hrrr.py:get_balltree`` + ``pick_points`` family. Tradewinds
@@ -64,7 +64,7 @@ def _grid_signature(lat2d: Any, lon2d: Any) -> int:
 def _wrap_longitude(lon2d: Any) -> Any:
     """Wrap longitudes from 0..360 to -180..180.
 
-    HRRR / NBM grids carry longitude in 0..360; tradewinds station coords
+    HRRR / NBM grids carry longitude in 0..360; mostlyright station coords
     use signed -180..180. Without wrap, west-of-Greenwich grid cells end
     up "360° away" from station coords and the BallTree returns a
     dateline-wrap distance of >10,000 km (Pitfall 3).

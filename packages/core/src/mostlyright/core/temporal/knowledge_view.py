@@ -2,7 +2,7 @@
 
 A plain wrapper class (not a pandas accessor, not a DataFrame subclass)
 that exposes a ``dataframe()`` view filtered by ``knowledge_time <= as_of``.
-This is the structural temporal-safety primitive the tradewinds research()
+This is the structural temporal-safety primitive the mostlyright research()
 Mode 2 dispatch uses to render leakage-free training tables — any row
 whose ``knowledge_time`` is later than the asserted as-of cutoff is
 silently dropped from the view (and would be loud via :class:`LeakageDetector`).
@@ -21,9 +21,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tradewinds.core.exceptions import SchemaValidationError
-from tradewinds.core.result import TradewindsResult
-from tradewinds.core.temporal.timepoint import TimePoint
+from mostlyright.core.exceptions import SchemaValidationError
+from mostlyright.core.result import TradewindsResult
+from mostlyright.core.temporal.timepoint import TimePoint
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -45,7 +45,7 @@ class KnowledgeView:
     and view only the rows knowable as of ``2025-01-02T12:00:00Z``:
 
     >>> import pandas as pd
-    >>> from tradewinds.core import KnowledgeView, TimePoint
+    >>> from mostlyright.core import KnowledgeView, TimePoint
     >>> df = pd.DataFrame({
     ...     "knowledge_time": pd.to_datetime([
     ...         "2025-01-01T00:00:00Z",

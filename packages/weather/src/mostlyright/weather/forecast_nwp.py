@@ -3,7 +3,7 @@
 End-to-end pipeline:
 
 1. Validate ``(model, mirror)`` against the closed enums in
-   :mod:`tradewinds.weather._fetchers._nwp_archive`. Reserved ECMWF
+   :mod:`mostlyright.weather._fetchers._nwp_archive`. Reserved ECMWF
    models raise :class:`NwpModelNotAvailableError`.
 2. Resolve ``cycle`` (default: latest cycle whose lead time covers the
    requested ``fxx``).
@@ -37,15 +37,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import httpx
-from tradewinds._internal._http import HTTP_TIMEOUT
-from tradewinds._internal._stations import STATIONS
-from tradewinds.core.exceptions import (
+from mostlyright._internal._http import HTTP_TIMEOUT
+from mostlyright._internal._stations import STATIONS
+from mostlyright.core.exceptions import (
     GribIntegrityError,
     NoLiveForNwpError,
     NwpModelNotAvailableError,
     SourceUnavailableError,
 )
-from tradewinds.core.schemas.forecast_nwp import (
+from mostlyright.core.schemas.forecast_nwp import (
     NWP_MIRROR_VALUES,
     NWP_MODEL_VALUES,
 )
@@ -82,9 +82,9 @@ _RESERVED_MODELS: frozenset[str] = frozenset(NWP_MODEL_VALUES) - SUPPORTED_NWP_M
 
 
 #: cfgrib's canonical short-name for each GRIB2 ``(variable, level)`` pair
-#: in the tradewinds variable maps. Lifted from cfgrib's CF / GRIB2 short-
+#: in the mostlyright variable maps. Lifted from cfgrib's CF / GRIB2 short-
 #: name table; used to project per-record xarray datasets back to the
-#: canonical tradewinds column name.
+#: canonical mostlyright column name.
 _GRIB_VAR_TO_CFGRIB_NAME: dict[tuple[str, str], str] = {
     ("TMP", "2 m above ground"): "t2m",
     ("DPT", "2 m above ground"): "d2m",
@@ -354,7 +354,7 @@ def _extract_records(
     for rec in filtered_records:
         record_groups.setdefault((rec.variable, rec.level), []).append(rec)
 
-    with tempfile.TemporaryDirectory(prefix="tradewinds_nwp_") as tmpdir:
+    with tempfile.TemporaryDirectory(prefix="mostlyright_nwp_") as tmpdir:
         tmp = Path(tmpdir)
         for col, key in variable_map.items():
             group = record_groups.get(key)
@@ -366,7 +366,7 @@ def _extract_records(
                 raise GribIntegrityError(
                     f"ambiguous .idx records for {key}: "
                     f"{[r.forecast_period for r in group]} — "
-                    "tradewinds v0.1 picks one record per (variable, level); "
+                    "mostlyright v0.1 picks one record per (variable, level); "
                     "for accumulated fields with multiple windows, "
                     "extend VARIABLE_MAP to a (variable, level, forecast_period) "
                     "tuple or pin the desired window via Phase 3.4 QC engine.",
@@ -462,7 +462,7 @@ def forecast_nwp(
             structural failures (Pitfall 1 territory — cfgrib raises
             for a truncated final-record byte range).
     """
-    # Public schema enum split: tradewinds-served vs reserved (ECMWF).
+    # Public schema enum split: mostlyright-served vs reserved (ECMWF).
     if model in _RESERVED_MODELS:
         raise NwpModelNotAvailableError(
             f"NWP model {model!r} is reserved in schema.forecast_nwp.v1 "
@@ -503,7 +503,7 @@ def forecast_nwp(
     except ImportError as exc:
         raise SourceUnavailableError(
             f"NWP forecast for model={model!r} requires the [nwp] optional "
-            "extra. Install with: pip install tradewinds-weather[nwp]",
+            "extra. Install with: pip install mostlyright-weather[nwp]",
             source=f"nwp.{model}",
             retryable=False,
             underlying=str(exc),
@@ -513,7 +513,7 @@ def forecast_nwp(
     except ImportError as exc:
         raise SourceUnavailableError(
             f"NWP forecast for model={model!r} requires the [nwp] optional "
-            "extra. Install with: pip install tradewinds-weather[nwp]",
+            "extra. Install with: pip install mostlyright-weather[nwp]",
             source=f"nwp.{model}",
             retryable=False,
             underlying=str(exc),
@@ -525,7 +525,7 @@ def forecast_nwp(
     # Phase 6 W3-T2: validate backend kwargs early (steps 1 + 2) so the
     # caller fails fast BEFORE the network fetch. The lazy polars import
     # (step 3) still fires at wrap time when backend='polars'.
-    from tradewinds.core._backend_dispatch import validate_backend_kwargs
+    from mostlyright.core._backend_dispatch import validate_backend_kwargs
 
     validate_backend_kwargs(backend, return_type)  # type: ignore[arg-type]
 
@@ -671,7 +671,7 @@ def forecast_nwp(
             row["source"] = "noaa_bdp"
             rows.append(row)
         df = pd.DataFrame(rows)
-        # Codex iter-1 P2: validator (tradewinds.core.validator) checks
+        # Codex iter-1 P2: validator (mostlyright.core.validator) checks
         # df.attrs["source"] against the schema's registered source on
         # every canonical DataFrame. Stamp it here so callers that
         # validate the documented schema.forecast_nwp.v1 result do not
@@ -783,7 +783,7 @@ def _maybe_wrap_forecast(
     if backend == "pandas" and return_type == "dataframe":
         return df
 
-    from tradewinds.core._backend_dispatch import wrap_result
+    from mostlyright.core._backend_dispatch import wrap_result
 
     # Codex iter-3 P2 fix: pass through the captured retrieved_at from
     # df.attrs (set at line ~670 / ~752) instead of defaulting to

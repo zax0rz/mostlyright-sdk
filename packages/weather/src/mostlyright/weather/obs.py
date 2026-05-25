@@ -1,4 +1,4 @@
-"""tradewinds.weather.obs — public surface for observation aggregates.
+"""mostlyright.weather.obs — public surface for observation aggregates.
 
 Smart-routes between three ingest strategies:
 
@@ -96,7 +96,7 @@ def obs(
 
     Examples
     --------
-    >>> from tradewinds.weather import obs
+    >>> from mostlyright.weather import obs
     >>> df = obs("KNYC", "2024-03-01", "2024-03-31", source="iem",
     ...          strategy="exact_window")  # doctest: +SKIP
     """
@@ -110,7 +110,7 @@ def obs(
     date.fromisoformat(end)
 
     # Resolve station via the existing research.py helper (single source of truth).
-    from tradewinds.research import _resolve_station
+    from mostlyright.research import _resolve_station
 
     info = _resolve_station(station)
 
@@ -164,7 +164,7 @@ def _dispatch_strategy(
     new param risks being forgotten.
     """
     if strategy == "exact_window":
-        from tradewinds._exact_fetch import _exact_fetch_observations
+        from mostlyright._exact_fetch import _exact_fetch_observations
 
         return _exact_fetch_observations(info, from_date_iso, to_date_iso, source=source)
     if strategy == "warm_cache":
@@ -177,7 +177,7 @@ def _dispatch_strategy(
 
 
 def _warm_cache_fetch(
-    info,  # StationInfo from tradewinds._internal._stations
+    info,  # StationInfo from mostlyright._internal._stations
     from_date_iso: str,
     to_date_iso: str,
     *,
@@ -203,7 +203,7 @@ def _warm_cache_fetch(
     """
     from datetime import timedelta
 
-    from tradewinds.research import _fetch_observations_range
+    from mostlyright.research import _fetch_observations_range
 
     if source is not None:
         raise ValueError(
@@ -241,7 +241,7 @@ def _aggregate_daily_rows(
     """Bucket raw obs rows by LST settlement date then aggregate per-day.
 
     Mirrors the obs-only subset of ``research()``'s pipeline at
-    ``packages/core/src/tradewinds/research.py:1213-1238``: each raw row is
+    ``packages/core/src/mostlyright/research.py:1213-1238``: each raw row is
     routed to its LST settlement date via :func:`settlement_date_for`, then
     ``_obs_aggregates`` produces the daily summary columns (``obs_high_f``,
     ``obs_low_f``, ``obs_mean_f``, ``obs_mean_dewpoint_f``, ``obs_max_wind_kt``,
@@ -257,8 +257,8 @@ def _aggregate_daily_rows(
     are dropped from the output (they were fetched only to capture the
     settlement-window tail).
     """
-    from tradewinds._internal._pairs import _obs_aggregates, date_range
-    from tradewinds.snapshot import settlement_date_for
+    from mostlyright._internal._pairs import _obs_aggregates, date_range
+    from mostlyright.snapshot import settlement_date_for
 
     dates = date_range(from_date_iso, to_date_iso)
     buckets: dict[str, list[dict]] = {d: [] for d in dates}
@@ -329,7 +329,7 @@ def _resolve_strategy(
         for tests.
     cache_root : Path | None
         Override cache root for tests. Defaults to ``$TRADEWINDS_CACHE_DIR``
-        or ``~/.tradewinds/cache`` via ``_cache_root()``.
+        or ``~/.mostlyright/cache`` via ``_cache_root()``.
     source : {"iem", "ghcnh", "awc"} | None
         Source filter from the obs() caller. When set, forces exact_window
         regardless of window size or cache warmth — warm_cache cannot honor
@@ -339,7 +339,7 @@ def _resolve_strategy(
     -------
     {"exact_window", "warm_cache", "hosted"}
     """
-    from tradewinds.weather.cache import _has_cached_year
+    from mostlyright.weather.cache import _has_cached_year
 
     # Source-filtered queries always go through exact_window because no other
     # strategy honors source filtering today (warm_cache rejects source!=None;

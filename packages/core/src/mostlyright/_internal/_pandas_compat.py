@@ -1,6 +1,6 @@
 """Pandas 2.x / 3.x compatibility helpers (Phase 6 PANDAS3-01).
 
-Pandas 3.0 (Jan 2026) shipped breaking changes that touch tradewinds:
+Pandas 3.0 (Jan 2026) shipped breaking changes that touch mostlyright:
 
 - Default datetime resolution inference for naive string parsing shifts
   from ``ns`` to ``us`` (pandas 3.0 whatsnew §"Datetime resolution

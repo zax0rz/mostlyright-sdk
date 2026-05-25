@@ -1,4 +1,4 @@
-"""Wave 2 smoke test for :func:`tradewinds.research.research`.
+"""Wave 2 smoke test for :func:`mostlyright.research.research`.
 
 This is the **dtype-and-shape smoke gate** for the Phase 1 Wave 2 orchestrator.
 Full byte-equivalent parity against ``mostlyright==0.14.1`` lands in Wave 3
@@ -137,7 +137,7 @@ def _cli_json_for_year(year: int) -> dict[str, Any]:
 
 @pytest.fixture
 def tmp_cache_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
-    """Redirect the tradewinds cache to ``tmp_path`` for the duration of the test."""
+    """Redirect the mostlyright cache to ``tmp_path`` for the duration of the test."""
     monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
     return tmp_path
 
@@ -205,7 +205,7 @@ class TestResearchSmoke:
     def test_returns_dataframe_with_correct_shape(
         self, mocked_http: Any, tmp_cache_env: Path
     ) -> None:
-        from tradewinds import research
+        from mostlyright import research
 
         df = research("KNYC", "2025-01-06", "2025-01-12")
 
@@ -215,7 +215,7 @@ class TestResearchSmoke:
         assert len(df) == 7, f"expected 7 settlement days, got {len(df)}"
 
     def test_columns_match_case_1_fixture(self, mocked_http: Any, tmp_cache_env: Path) -> None:
-        from tradewinds import research
+        from mostlyright import research
 
         df = research("KNYC", "2025-01-06", "2025-01-12")
         # date is the DataFrame index after pairs_to_dataframe; the fixture
@@ -230,7 +230,7 @@ class TestResearchSmoke:
 
     def test_dtypes_align_with_case_1_fixture(self, mocked_http: Any, tmp_cache_env: Path) -> None:
         """dtype-only smoke. Wave 3 asserts byte values; Wave 2 asserts kinds."""
-        from tradewinds import research
+        from mostlyright import research
 
         df = research("KNYC", "2025-01-06", "2025-01-12")
         # The fixture's ``date`` column is timestamp[ns]; pairs_to_dataframe
@@ -275,7 +275,7 @@ class TestResearchSmoke:
     def test_first_row_has_observation_and_climate(
         self, mocked_http: Any, tmp_cache_env: Path
     ) -> None:
-        from tradewinds import research
+        from mostlyright import research
 
         df = research("KNYC", "2025-01-06", "2025-01-12")
         first = df.iloc[0]
@@ -285,7 +285,7 @@ class TestResearchSmoke:
         assert first["station"] == "NYC", "station must be normalized to 3-letter code"
 
     def test_market_close_utc_is_iso_string(self, mocked_http: Any, tmp_cache_env: Path) -> None:
-        from tradewinds import research
+        from mostlyright import research
 
         df = research("KNYC", "2025-01-06", "2025-01-12")
         # 4:30 PM EST = 21:30 UTC year-round (DST ignored per v0.14.1).
@@ -294,7 +294,7 @@ class TestResearchSmoke:
     def test_as_dataframe_false_returns_list_of_dicts(
         self, mocked_http: Any, tmp_cache_env: Path
     ) -> None:
-        from tradewinds import research
+        from mostlyright import research
 
         rows = research("KNYC", "2025-01-06", "2025-01-12", as_dataframe=False)
         assert isinstance(rows, list)
@@ -308,7 +308,7 @@ class TestResearchSmoke:
         self, mocked_http: Any, tmp_cache_env: Path
     ) -> None:
         """The orchestrator should write the parquet cache for the fetched month."""
-        from tradewinds import research
+        from mostlyright import research
 
         research("KNYC", "2025-01-06", "2025-01-12")
         obs_path = tmp_cache_env / "v1" / "observations" / "KNYC" / "2025" / "01.parquet"
@@ -332,7 +332,7 @@ class TestResearchSmoke:
         The mock _iem_csv_for_month produces 2 obs/day. The fix branches the
         handler so report_type=4 returns header-only; obs_count stays at 2.
         """
-        from tradewinds import research
+        from mostlyright import research
 
         df = research("KNYC", "2025-01-06", "2025-01-12")
         assert df["obs_count"].iloc[0] == 2, (
@@ -349,7 +349,7 @@ class TestRegistryCoverage:
     raised ``ValueError`` for the rest, silently breaking ``research()`` for
     every registry entry outside the hardcoded whitelist (KAUS, KDCA, KDFW,
     KHOU, KLAS, KMDW, KMSP, KOKC, KPHL, KSAT, KSFO). The fix delegates to
-    ``tradewinds.snapshot._lst_offset`` (the canonical v0.14.1 map); this
+    ``mostlyright.snapshot._lst_offset`` (the canonical v0.14.1 map); this
     test asserts the cache layer accepts every advertised station so the
     regression cannot return.
 
@@ -360,8 +360,8 @@ class TestRegistryCoverage:
     """
 
     def test_every_station_resolves_via_cache_layer(self, tmp_cache_env: Path) -> None:
-        from tradewinds._internal._stations import STATIONS
-        from tradewinds.weather.cache import _lst_offset
+        from mostlyright._internal._stations import STATIONS
+        from mostlyright.weather.cache import _lst_offset
 
         for code, info in STATIONS.items():
             for variant in (code, info.icao):
@@ -373,7 +373,7 @@ class TestRegistryCoverage:
 class TestIncludeForecastRaises:
     def test_include_forecast_true_raises_not_implemented(self, tmp_cache_env: Path) -> None:
         """Phase 1 is observations + climate only; forecast is Phase 3.2."""
-        from tradewinds import research
+        from mostlyright import research
 
         with pytest.raises(NotImplementedError, match="include_forecast"):
             research("KNYC", "2025-01-06", "2025-01-12", include_forecast=True)
@@ -381,7 +381,7 @@ class TestIncludeForecastRaises:
 
 class TestUnknownStation:
     def test_unknown_station_raises(self, tmp_cache_env: Path) -> None:
-        from tradewinds import research
+        from mostlyright import research
 
         with pytest.raises(ValueError, match="Unknown station"):
             research("ZZZ", "2025-01-06", "2025-01-12")
@@ -404,7 +404,7 @@ class TestCachePoisoningRegressions:
         second call must succeed entirely from the parquet cache - including
         GHCNh and AWC, which previously were pre-fetched eagerly.
         """
-        from tradewinds import research
+        from mostlyright import research
 
         # Warm the cache.
         research("KNYC", "2025-01-06", "2025-01-12")
@@ -425,7 +425,7 @@ class TestCachePoisoningRegressions:
         next call retries. A poisoned cache would mask the failure forever.
         """
         import httpx
-        from tradewinds import research
+        from mostlyright import research
 
         def _iem_asos_fail(_request: httpx.Request) -> httpx.Response:
             return httpx.Response(500, text="upstream error")
@@ -470,8 +470,8 @@ class TestCachePoisoningRegressions:
         """
         from datetime import datetime as _dt
 
-        from tradewinds import research
-        from tradewinds.research import _is_writable_month
+        from mostlyright import research
+        from mostlyright.research import _is_writable_month
 
         # Freeze "now" inside January so February is a UTC-future month.
         frozen_now = _dt(2025, 1, 15, 12, 0, tzinfo=UTC)
@@ -500,7 +500,7 @@ class TestSourceCacheAndPartialIEM:
         on `iem_ok=True` which now requires BOTH report types.
         """
         import httpx
-        from tradewinds import research
+        from mostlyright import research
 
         def _iem_asos_partial(request: httpx.Request) -> httpx.Response:
             params = dict(request.url.params)
@@ -553,8 +553,8 @@ class TestSourceCacheAndPartialIEM:
         """
         from pathlib import Path as _Path
 
-        from tradewinds._internal._stations import STATIONS
-        from tradewinds.research import _fetch_iem_month
+        from mostlyright._internal._stations import STATIONS
+        from mostlyright.research import _fetch_iem_month
 
         info = STATIONS["NYC"]
         captured_kwargs: dict[str, Any] = {}
@@ -564,7 +564,7 @@ class TestSourceCacheAndPartialIEM:
             return []
 
         monkeypatch.setattr(
-            "tradewinds.weather._fetchers.iem_asos.download_iem_asos",
+            "mostlyright.weather._fetchers.iem_asos.download_iem_asos",
             _fake_download,
         )
 
@@ -587,8 +587,8 @@ class TestSourceCacheAndPartialIEM:
         """
         from pathlib import Path as _Path
 
-        from tradewinds._internal._stations import STATIONS
-        from tradewinds.research import _fetch_ghcnh_year
+        from mostlyright._internal._stations import STATIONS
+        from mostlyright.research import _fetch_ghcnh_year
 
         info = STATIONS["NYC"]
         captured: list[bool] = []
@@ -609,9 +609,9 @@ class TestSourceCacheAndPartialIEM:
             return []
 
         monkeypatch.setattr(
-            "tradewinds.weather._fetchers.ghcnh.download_ghcnh", _fake_download_ghcnh
+            "mostlyright.weather._fetchers.ghcnh.download_ghcnh", _fake_download_ghcnh
         )
-        monkeypatch.setattr("tradewinds.weather._ghcnh.parse_ghcnh_file", _fake_parse)
+        monkeypatch.setattr("mostlyright.weather._ghcnh.parse_ghcnh_file", _fake_parse)
 
         _fetch_ghcnh_year(info, 2025, tmp_cache_env)
         _fetch_ghcnh_year(info, 2025, tmp_cache_env, skip_source_cache=True)
@@ -634,8 +634,8 @@ class TestSourceCacheAndPartialIEM:
         from datetime import datetime as _dt
         from pathlib import Path as _Path
 
-        from tradewinds._internal._stations import STATIONS
-        from tradewinds.research import _fetch_observations_range
+        from mostlyright._internal._stations import STATIONS
+        from mostlyright.research import _fetch_observations_range
 
         info = STATIONS["NYC"]
         # Freeze "now" to 2025-05-01 00:30 UTC. At NYC's UTC-5 offset that is
@@ -657,13 +657,13 @@ class TestSourceCacheAndPartialIEM:
             captured.append((year, month, skip_source_cache))
             return [], True
 
-        # ``tradewinds.research`` resolves to the re-exported ``research``
-        # function (not the submodule) due to ``from tradewinds.research
-        # import research`` in ``tradewinds/__init__.py``. Pull the actual
+        # ``mostlyright.research`` resolves to the re-exported ``research``
+        # function (not the submodule) due to ``from mostlyright.research
+        # import research`` in ``mostlyright/__init__.py``. Pull the actual
         # submodule out of ``sys.modules`` to patch the module-level helpers.
         import sys
 
-        research_module = sys.modules["tradewinds.research"]
+        research_module = sys.modules["mostlyright.research"]
 
         monkeypatch.setattr(research_module, "_fetch_iem_month", _fake_fetch_iem_month)
         # Stub GHCNh + cache to avoid touching disk / network unrelated paths.
@@ -673,11 +673,11 @@ class TestSourceCacheAndPartialIEM:
             lambda _info, _year, _dir, *, skip_source_cache=False: [],
         )
         monkeypatch.setattr(
-            "tradewinds.weather.cache.read_cache",
+            "mostlyright.weather.cache.read_cache",
             lambda _icao, _year, _month: None,
         )
         monkeypatch.setattr(
-            "tradewinds.weather.cache.write_cache",
+            "mostlyright.weather.cache.write_cache",
             lambda *_a, **_k: None,
         )
 
@@ -709,8 +709,8 @@ class TestSourceCacheAndPartialIEM:
         import json as _json
         from pathlib import Path as _Path
 
-        from tradewinds._internal._stations import STATIONS
-        from tradewinds.research import _fetch_climate_range
+        from mostlyright._internal._stations import STATIONS
+        from mostlyright.research import _fetch_climate_range
 
         info = STATIONS["NYC"]
         captured: list[bool] = []
@@ -728,12 +728,12 @@ class TestSourceCacheAndPartialIEM:
         # Stub _is_current_lst_year deterministically: 2026 is "current",
         # 2025 is historical. The orchestrator must call download_cli with
         # skip_cache=True for 2026 and skip_cache=False for 2025.
-        monkeypatch.setattr("tradewinds.weather._fetchers.iem_cli.download_cli", _fake_download_cli)
+        monkeypatch.setattr("mostlyright.weather._fetchers.iem_cli.download_cli", _fake_download_cli)
 
         def _fake_current(_station: str, year: int) -> bool:
             return year == 2026
 
-        monkeypatch.setattr("tradewinds.weather.cache._is_current_lst_year", _fake_current)
+        monkeypatch.setattr("mostlyright.weather.cache._is_current_lst_year", _fake_current)
 
         _fetch_climate_range(info, "2025-12-30", "2026-01-02")
 
@@ -766,8 +766,8 @@ class TestSourceCacheAndPartialIEM:
         from datetime import datetime as _dt
         from pathlib import Path as _Path
 
-        from tradewinds._internal._stations import STATIONS
-        from tradewinds.research import _fetch_climate_range
+        from mostlyright._internal._stations import STATIONS
+        from mostlyright.research import _fetch_climate_range
 
         info = STATIONS["NYC"]
 
@@ -783,13 +783,13 @@ class TestSourceCacheAndPartialIEM:
             )
             return p
 
-        monkeypatch.setattr("tradewinds.weather._fetchers.iem_cli.download_cli", _fake_download_cli)
+        monkeypatch.setattr("mostlyright.weather._fetchers.iem_cli.download_cli", _fake_download_cli)
 
         # Anchor "now" at 2026-05-22 (the GSD project date). 2025 is past,
         # 2026 is current UTC, 2027 would be future.
         import sys
 
-        research_module = sys.modules["tradewinds.research"]
+        research_module = sys.modules["mostlyright.research"]
 
         class _FrozenDateTime(_dt):
             @classmethod
@@ -819,17 +819,17 @@ class TestSourceCacheAndPartialIEM:
 
 class TestMonthRange:
     def test_single_month(self) -> None:
-        from tradewinds.research import _month_range
+        from mostlyright.research import _month_range
 
         assert _month_range("2025-01-06", "2025-01-12") == [(2025, 1)]
 
     def test_spans_year_boundary(self) -> None:
-        from tradewinds.research import _month_range
+        from mostlyright.research import _month_range
 
         assert _month_range("2024-12-01", "2025-01-15") == [(2024, 12), (2025, 1)]
 
     def test_multi_month(self) -> None:
-        from tradewinds.research import _month_range
+        from mostlyright.research import _month_range
 
         assert _month_range("2025-02-01", "2025-04-30") == [
             (2025, 2),
@@ -838,7 +838,7 @@ class TestMonthRange:
         ]
 
     def test_inverted_range_empty(self) -> None:
-        from tradewinds.research import _month_range
+        from mostlyright.research import _month_range
 
         assert _month_range("2025-02-01", "2025-01-01") == []
 
@@ -847,7 +847,7 @@ class TestMonthWindow:
     def test_january(self) -> None:
         from datetime import date
 
-        from tradewinds.research import _month_window
+        from mostlyright.research import _month_window
 
         first, last = _month_window(2025, 1)
         assert first == date(2025, 1, 1)
@@ -856,7 +856,7 @@ class TestMonthWindow:
     def test_february_non_leap(self) -> None:
         from datetime import date
 
-        from tradewinds.research import _month_window
+        from mostlyright.research import _month_window
 
         first, last = _month_window(2025, 2)
         assert first == date(2025, 2, 1)
@@ -865,7 +865,7 @@ class TestMonthWindow:
     def test_february_leap(self) -> None:
         from datetime import date
 
-        from tradewinds.research import _month_window
+        from mostlyright.research import _month_window
 
         first, last = _month_window(2024, 2)
         assert first == date(2024, 2, 1)
@@ -874,7 +874,7 @@ class TestMonthWindow:
     def test_december_rolls_to_january_next_year(self) -> None:
         from datetime import date
 
-        from tradewinds.research import _month_window
+        from mostlyright.research import _month_window
 
         first, last = _month_window(2024, 12)
         assert first == date(2024, 12, 1)
@@ -885,7 +885,7 @@ class TestMonthOverlapsAwcWindow:
     def test_far_historical_month_outside_window(self) -> None:
         from datetime import datetime
 
-        from tradewinds.research import _month_overlaps_awc_window
+        from mostlyright.research import _month_overlaps_awc_window
 
         now = datetime(2025, 6, 15, tzinfo=UTC)
         assert _month_overlaps_awc_window(2025, 1, now=now) is False
@@ -893,7 +893,7 @@ class TestMonthOverlapsAwcWindow:
     def test_current_month_inside_window(self) -> None:
         from datetime import datetime
 
-        from tradewinds.research import _month_overlaps_awc_window
+        from mostlyright.research import _month_overlaps_awc_window
 
         now = datetime(2025, 6, 15, tzinfo=UTC)
         assert _month_overlaps_awc_window(2025, 6, now=now) is True
@@ -901,7 +901,7 @@ class TestMonthOverlapsAwcWindow:
     def test_previous_month_within_168h(self) -> None:
         from datetime import datetime
 
-        from tradewinds.research import _month_overlaps_awc_window
+        from mostlyright.research import _month_overlaps_awc_window
 
         # Now is Jun 3 -- 168h ago is May 27, which is in May.
         now = datetime(2025, 6, 3, tzinfo=UTC)
@@ -910,7 +910,7 @@ class TestMonthOverlapsAwcWindow:
     def test_previous_month_outside_168h(self) -> None:
         from datetime import datetime
 
-        from tradewinds.research import _month_overlaps_awc_window
+        from mostlyright.research import _month_overlaps_awc_window
 
         # Now is Jun 15 -- 168h ago is Jun 8, well into June. May is excluded.
         now = datetime(2025, 6, 15, tzinfo=UTC)
@@ -919,27 +919,27 @@ class TestMonthOverlapsAwcWindow:
 
 class TestResolveStation:
     def test_three_letter_code(self) -> None:
-        from tradewinds.research import _resolve_station
+        from mostlyright.research import _resolve_station
 
         info = _resolve_station("NYC")
         assert info.code == "NYC"
         assert info.icao == "KNYC"
 
     def test_four_letter_icao_normalized(self) -> None:
-        from tradewinds.research import _resolve_station
+        from mostlyright.research import _resolve_station
 
         info = _resolve_station("KNYC")
         assert info.code == "NYC"
         assert info.icao == "KNYC"
 
     def test_lowercase_input_normalized(self) -> None:
-        from tradewinds.research import _resolve_station
+        from mostlyright.research import _resolve_station
 
         info = _resolve_station("knyc")
         assert info.code == "NYC"
 
     def test_unknown_raises(self) -> None:
-        from tradewinds.research import _resolve_station
+        from mostlyright.research import _resolve_station
 
         with pytest.raises(ValueError, match="Unknown station"):
             _resolve_station("ZZZ")
@@ -952,7 +952,7 @@ class TestResolveStation:
         ``_resolve_station`` silently accepted intl stations and returned a
         DataFrame with all-null CLI columns — wrong. Verify the gate fires.
         """
-        from tradewinds.research import _resolve_station
+        from mostlyright.research import _resolve_station
 
         with pytest.raises(ValueError, match=r"research\(\) v0\.1\.0 supports only"):
             _resolve_station("EGLL")
@@ -994,7 +994,7 @@ class TestFetchObservationsRangeCacheGating:
             ghcnh_route = router.get(
                 url__regex=r"ncei\.noaa\.gov/.*global-historical-climatology-network/hourly.*"
             ).mock(return_value=httpx.Response(404, text=""))
-            from tradewinds import research
+            from mostlyright import research
 
             research("KNYC", "2025-01-06", "2025-01-12")
             assert iem_route.call_count > 0, "first call should have fetched IEM"
@@ -1018,7 +1018,7 @@ class TestFetchObservationsRangeCacheGating:
             awc2 = router2.get(url__regex=r"aviationweather\.gov/.*").mock(
                 return_value=httpx.Response(500, text="should not be called")
             )
-            from tradewinds import research
+            from mostlyright import research
 
             research("KNYC", "2025-01-06", "2025-01-12")
             assert iem2.call_count == 0, (
@@ -1055,7 +1055,7 @@ class TestMergeInputOrderingDeterminism:
         an arbitrary concat order and the sort key picks a deterministic
         survivor order.
         """
-        from tradewinds._internal.merge import merge_observations
+        from mostlyright._internal.merge import merge_observations
 
         # Two rows with distinct observation_types so the dedup key
         # (station_code, observed_at, observation_type) does not collide.
@@ -1102,7 +1102,7 @@ class TestMergeInputOrderingDeterminism:
         that order. Anyone who reads the parquet sees deterministic
         ordering.
         """
-        from tradewinds import research
+        from mostlyright import research
 
         research("KNYC", "2025-01-06", "2025-01-12")
         # Read the persisted parquet directly to verify the persisted row
@@ -1126,7 +1126,7 @@ class TestMergeInputOrderingDeterminism:
         day -- Task 5 fixes that. Until Task 5 runs, this test pins
         obs_count >= 2 so we know aggregation still works.
         """
-        from tradewinds import research
+        from mostlyright import research
 
         df = research("KNYC", "2025-01-06", "2025-01-12")
         assert df["obs_count"].iloc[0] >= 2, (

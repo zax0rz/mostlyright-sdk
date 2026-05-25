@@ -6,8 +6,8 @@ from datetime import UTC, date, datetime
 
 import pandas as pd
 import pytest
-from tradewinds.weather.catalog import get_adapter
-from tradewinds.weather.catalog.cli import CLIAdapter
+from mostlyright.weather.catalog import get_adapter
+from mostlyright.weather.catalog.cli import CLIAdapter
 
 
 def _rec(**overrides):
@@ -130,7 +130,7 @@ def test_empty_records():
 
 def test_empty_records_pass_validator():
     """codex iter-6 HIGH fix: zero-row CLI pulls must validate cleanly."""
-    from tradewinds.core import validate_dataframe
+    from mostlyright.core import validate_dataframe
 
     df = CLIAdapter.from_records(
         [], retrieved_at=datetime(2025, 1, 2, 13, tzinfo=UTC), station_tz="UTC"
@@ -156,7 +156,7 @@ def test_cli_adapter_output_passes_validator():
     declares float64. The adapter must coerce so adapter -> Validator
     integration succeeds.
     """
-    from tradewinds.core import validate_dataframe
+    from mostlyright.core import validate_dataframe
 
     parser_output_int = {
         "station_code": "KNYC",

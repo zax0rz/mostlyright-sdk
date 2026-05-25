@@ -2,7 +2,7 @@
 
 GFS (Global Forecast System) is a 0.25-degree regular lat/lon model run
 every 6 hours by NCEP. The pgrb2.0p25 product carries the same surface
-fields tradewinds extracts from HRRR/NBM, but on a global regular grid
+fields mostlyright extracts from HRRR/NBM, but on a global regular grid
 so the BallTree is built over the full ~1M grid cells once and reused.
 
 Mean-sea-level pressure in GFS uses the ``PRMSL`` variable id (HRRR

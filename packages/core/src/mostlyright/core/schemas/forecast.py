@@ -32,7 +32,7 @@ class ForecastSchema(Schema):
 
     schema_id = "schema.forecast.iem_mos.v1"
 
-    #: Canonical source — IEM MOS archive (the only MOS source tradewinds ships).
+    #: Canonical source — IEM MOS archive (the only MOS source mostlyright ships).
     _registered_source: ClassVar[str] = "iem.archive"
 
     COLUMNS: ClassVar[list[ColumnSpec]] = [

@@ -1,4 +1,4 @@
-"""Capabilities and schema introspection for the tradewinds SDK.
+"""Capabilities and schema introspection for the mostlyright SDK.
 
 Provides:
   - _METHOD_INDEX: structured summary of all public SDK methods
@@ -40,7 +40,7 @@ _SCHEMA_FILES: dict[str, str] = {
     "daily_extreme": "daily_extreme.json",
 }
 
-# 5 additional specs ship in ``tradewinds/_internal/specs/`` but are intentionally
+# 5 additional specs ship in ``mostlyright/_internal/specs/`` but are intentionally
 # not exposed via ``client.schema()``:
 #   - event.json            — Kalshi event metadata (Sprint 3)
 #   - series.json           — Kalshi series (Sprint 3)
@@ -56,14 +56,14 @@ _SCHEMA_FILES: dict[str, str] = {
 
 _SCHEMA_CACHE: dict[str, dict[str, Any]] = {}
 
-# Path to the specs/ directory that ships inside the ``tradewinds`` wheel.
+# Path to the specs/ directory that ships inside the ``mostlyright`` wheel.
 # Before 0.14.1 this pointed at the repo-root ``specs/`` via
 # ``parent.parent.parent``, which works for editable / source installs but
 # broke in every pip-installed environment — the wheel never shipped the
 # specs. Vu caught it with ``client.schema('observation')`` returning
 # FileNotFoundError in a clean PyPI install.
 #
-# Moving specs into the package (``tradewinds/_internal/specs/``) means
+# Moving specs into the package (``mostlyright/_internal/specs/``) means
 # ``Path(__file__).parent / "specs"`` resolves to the packaged copy in
 # both wheel and source layouts — single path, no fallback logic.
 SPECS_DIR: Path = Path(__file__).parent / "specs"

@@ -3,16 +3,16 @@
 These exceptions mirror the surface ``therminal-py`` exposed for HTTP
 transport errors. ``TherminalError`` remains as the HTTP-layer marker so
 existing call sites (Phase 1 fetchers) continue to catch it, but it is now
-a subclass of :class:`tradewinds.core.exceptions.TradewindsError` so that
+a subclass of :class:`mostlyright.core.exceptions.TradewindsError` so that
 user code which catches ``TradewindsError`` also catches transport errors.
 Deprecation target: v0.2+ may collapse these into ``SourceUnavailableError``.
 """
 
-from tradewinds.core.exceptions import TradewindsError
+from mostlyright.core.exceptions import TradewindsError
 
 
 class TherminalError(TradewindsError):
-    """Base exception for tradewinds HTTP-layer errors.
+    """Base exception for mostlyright HTTP-layer errors.
 
     Subclass of :class:`TradewindsError` since Phase 2 — catching
     ``TradewindsError`` now catches transport errors too. The HTTP-layer

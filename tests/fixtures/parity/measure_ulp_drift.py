@@ -58,13 +58,11 @@ def measure() -> dict[str, object]:
     """Measure per-column max-abs-drift across all 5 parity fixtures.
 
     Loads the canonical 2.x fixtures, applies ``coerce_2x_to_3x``, and
-    compares column-wise against ``tradewinds.research()`` output running
+    compares column-wise against ``mostlyright.research()`` output running
     on the current pandas. Returns the JSON-ready report dict.
     """
     import importlib.util
     import sys
-
-    import tradewinds
 
     # Load sibling coerce_pd3.py without making tests/ a package.
     _spec = importlib.util.spec_from_file_location("_coerce_pd3_local", FIXTURES / "coerce_pd3.py")
@@ -81,7 +79,7 @@ def measure() -> dict[str, object]:
         if not path.exists():
             continue
         expected = coerce_2x_to_3x(path)
-        actual = tradewinds.research(station, frm, to)
+        actual = mostlyright.research(station, frm, to)
 
         for col in DRIFT_COLUMNS:
             if col not in expected.columns or col not in actual.columns:

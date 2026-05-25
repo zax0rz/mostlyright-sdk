@@ -1,6 +1,6 @@
 """NWP forecast schema (``schema.forecast_nwp.v1``) — Phase 3.2.
 
-Distinct from :mod:`tradewinds.core.schemas.forecast` (which describes
+Distinct from :mod:`mostlyright.core.schemas.forecast` (which describes
 IEM MOS forecasts on a per-station-cycle basis). NWP forecasts come from
 gridded numerical models (HRRR / GFS / NBM in v0.1.0; ECMWF Tier-2
 predeclared in the enum for v0.2) and carry model-native units (Kelvin
@@ -48,7 +48,7 @@ NWP_MIRROR_VALUES: tuple[str, ...] = (
 
 
 #: QC status values populated by the inline physics-bounds check in
-#: :mod:`tradewinds.weather.forecast_nwp`. ``"clean"`` passed all rules;
+#: :mod:`mostlyright.weather.forecast_nwp`. ``"clean"`` passed all rules;
 #: ``"flagged"`` tripped one or more; ``"suspect"`` tripped a hard
 #: physics violation (e.g. negative absolute temperature) that warrants
 #: dropping for most use cases.
@@ -70,7 +70,7 @@ class NwpForecastSchema(Schema):
     schema_id = "schema.forecast_nwp.v1"
 
     #: Canonical source — NOAA BDP archive (the only NWP source
-    #: tradewinds ships in v0.1.0).
+    #: mostlyright ships in v0.1.0).
     _registered_source: ClassVar[str] = "noaa_bdp"
 
     COLUMNS: ClassVar[list[ColumnSpec]] = [

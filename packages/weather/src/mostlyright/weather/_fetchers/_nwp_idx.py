@@ -11,7 +11,7 @@ Example HRRR sfcf01 line::
 
 By parsing the ``.idx`` we can issue HTTP ``Range: bytes=START-END`` requests
 to fetch only the records we need from the (much larger) GRIB2 file --
-typically reducing 135 MB to ~13 MB per cycle for the 13 fields tradewinds
+typically reducing 135 MB to ~13 MB per cycle for the 13 fields mostlyright
 extracts.
 
 The last record's ``byte_end`` cannot be derived from the next record

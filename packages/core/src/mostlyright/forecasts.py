@@ -1,16 +1,16 @@
 """Phase 3.2 — Multi-forecast live path (HRRR + GFS + NBM via NOAA BDP).
 
-Public dispatch surface for tradewinds NWP forecasts. The real fetch
+Public dispatch surface for mostlyright NWP forecasts. The real fetch
 + decode + station-extraction pipeline lives in
-:mod:`tradewinds.weather.forecast_nwp` (shipped by the sibling
-``tradewinds-weather`` distribution) so this module stays importable
+:mod:`mostlyright.weather.forecast_nwp` (shipped by the sibling
+``mostlyright-weather`` distribution) so this module stays importable
 without the ``[nwp]`` optional extra installed.
 
 Live-path only in v0.1.0 — historical NWP backfill + ECMWF Tier-2
 defer to v0.2 (both require hosted infrastructure local-first cannot
 host). ECMWF Tier-2 model ids are reserved in
 ``schema.forecast_nwp.v1`` and raise
-:class:`tradewinds.core.exceptions.NwpModelNotAvailableError` when
+:class:`mostlyright.core.exceptions.NwpModelNotAvailableError` when
 called.
 
 Surface:
@@ -19,9 +19,9 @@ Surface:
 - :data:`SUPPORTED_NWP_MODELS` — frozen set of model ids we ship.
 
 The ``[nwp]`` optional extra
-(``pip install tradewinds-weather[nwp]``) adds ``cfgrib``, ``xarray``,
+(``pip install mostlyright-weather[nwp]``) adds ``cfgrib``, ``xarray``,
 and ``scikit-learn``. Calling :func:`forecast_nwp` without it raises
-:class:`tradewinds.core.exceptions.SourceUnavailableError` carrying the
+:class:`mostlyright.core.exceptions.SourceUnavailableError` carrying the
 install hint.
 """
 
@@ -29,11 +29,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tradewinds.core.exceptions import (
+from mostlyright.core.exceptions import (
     NwpModelNotAvailableError,
     SourceUnavailableError,
 )
-from tradewinds.core.schemas.forecast_nwp import NWP_MODEL_VALUES
+from mostlyright.core.schemas.forecast_nwp import NWP_MODEL_VALUES
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -45,8 +45,8 @@ if TYPE_CHECKING:
 __all__ = ["SUPPORTED_NWP_MODELS", "forecast_nwp"]
 
 
-#: NWP models tradewinds ships in v0.1.0. ECMWF Tier-2 (4 models) is
-#: predeclared in :data:`tradewinds.core.schemas.forecast_nwp.NWP_MODEL_VALUES`
+#: NWP models mostlyright ships in v0.1.0. ECMWF Tier-2 (4 models) is
+#: predeclared in :data:`mostlyright.core.schemas.forecast_nwp.NWP_MODEL_VALUES`
 #: and raises :class:`NwpModelNotAvailableError` when requested in v0.1.
 SUPPORTED_NWP_MODELS: frozenset[str] = frozenset({"hrrr", "gfs", "nbm"})
 
@@ -62,9 +62,9 @@ def forecast_nwp(
 ) -> pd.DataFrame:
     """Fetch an NWP forecast from NOAA Big Data Program direct-fetch.
 
-    Thin re-export of :func:`tradewinds.weather.forecast_nwp.forecast_nwp`
-    so the canonical user-facing import path stays ``tradewinds.forecasts``
-    (matching :func:`tradewinds.research`).
+    Thin re-export of :func:`mostlyright.weather.forecast_nwp.forecast_nwp`
+    so the canonical user-facing import path stays ``mostlyright.forecasts``
+    (matching :func:`mostlyright.research`).
 
     Args:
         station: Single ICAO/NWS code or a list of them.
@@ -113,13 +113,13 @@ def forecast_nwp(
         )
 
     try:
-        from tradewinds.weather.forecast_nwp import (
+        from mostlyright.weather.forecast_nwp import (
             forecast_nwp as _impl,
         )
     except ImportError as exc:
         raise SourceUnavailableError(
-            f"tradewinds.weather.forecast_nwp is not available: {exc}. "
-            "Install tradewinds-weather: pip install tradewinds-weather",
+            f"mostlyright.weather.forecast_nwp is not available: {exc}. "
+            "Install mostlyright-weather: pip install mostlyright-weather",
             source=f"nwp.{model}",
             retryable=False,
             underlying=str(exc),

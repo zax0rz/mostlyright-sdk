@@ -11,7 +11,7 @@ import re
 from datetime import UTC, datetime
 from typing import Any
 
-from tradewinds._internal._bounds import (
+from mostlyright._internal._bounds import (
     MAX_RAW_METAR_LEN,
     MAX_VISIBILITY_MILES,
     MAX_WX_CODES_LEN,
@@ -28,7 +28,7 @@ from tradewinds._internal._bounds import (
     bounded_float_min,
     bounded_int,
 )
-from tradewinds._internal._convert import celsius_to_fahrenheit, hpa_to_inhg
+from mostlyright._internal._convert import celsius_to_fahrenheit, hpa_to_inhg
 
 
 def icao_to_station_code(icao: str) -> str:

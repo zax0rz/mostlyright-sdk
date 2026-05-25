@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 import pytest
-from tradewinds.core.merge import (
+from mostlyright.core.merge import (
     LIVE_V1,
     ObservationMergePolicy,
     query_time_merge,
@@ -219,15 +219,15 @@ def test_custom_policy_input_dict_wrapped():
 # ----------------------------------------------------------------------
 def test_observation_ledger_schema_registered():
     """schema.observation_ledger.v1 is in the Validator registry."""
-    import tradewinds.core.schemas  # noqa: F401 — triggers registration
-    from tradewinds.core.validator import _SCHEMA_REGISTRY
+    import mostlyright.core.schemas  # noqa: F401 — triggers registration
+    from mostlyright.core.validator import _SCHEMA_REGISTRY
 
     assert "schema.observation_ledger.v1" in _SCHEMA_REGISTRY
 
 
 def test_observation_qc_schema_registered():
     """schema.observation_qc.v1 is in the Validator registry."""
-    import tradewinds.core.schemas  # noqa: F401
-    from tradewinds.core.validator import _SCHEMA_REGISTRY
+    import mostlyright.core.schemas  # noqa: F401
+    from mostlyright.core.validator import _SCHEMA_REGISTRY
 
     assert "schema.observation_qc.v1" in _SCHEMA_REGISTRY

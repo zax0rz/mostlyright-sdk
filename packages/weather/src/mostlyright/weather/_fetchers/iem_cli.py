@@ -2,8 +2,8 @@
 
 Sprint 0 Wave 3B (Lane F). NEW code. Wraps:
 
-- ``tradewinds._internal._http.download_with_retry`` — atomic write + 5xx retry.
-- ``tradewinds.weather._climate.parse_cli_response`` (consumed downstream).
+- ``mostlyright._internal._http.download_with_retry`` — atomic write + 5xx retry.
+- ``mostlyright.weather._climate.parse_cli_response`` (consumed downstream).
 
 URL pattern + cache layout lifted READ-ONLY from monorepo-v0.14.1
 ``ingest/sources/climate_sync.py::download_cli`` (see also Day 0.7 spike at
@@ -27,8 +27,8 @@ from pathlib import Path
 
 import httpx
 from filelock import FileLock
-from tradewinds._internal._bounds import validate_icao_for_path
-from tradewinds._internal._http import download_with_retry
+from mostlyright._internal._bounds import validate_icao_for_path
+from mostlyright._internal._http import download_with_retry
 
 # Match cache.py's lock timeout so concurrent downloaders surface deadlocks
 # rather than hanging forever.

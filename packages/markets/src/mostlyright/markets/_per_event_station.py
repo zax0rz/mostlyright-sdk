@@ -9,7 +9,7 @@ produces colder overnight lows than CDG's tarmac).
 This module implements that lookup against
 ``polymarket_city_stations.json``. It also gates the two markets whose
 data source ships in v0.2 (Taipei CWA, Hong Kong-lowest HKO) by raising
-:class:`tradewinds.international.DeferredMarketError`.
+:class:`mostlyright.international.DeferredMarketError`.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ import logging
 import re
 from pathlib import Path
 
-from tradewinds.international import DEFERRED_STATIONS, DeferredMarketError
+from mostlyright.international import DEFERRED_STATIONS, DeferredMarketError
 
 log = logging.getLogger(__name__)
 

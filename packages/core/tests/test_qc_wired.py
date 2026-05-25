@@ -1,10 +1,10 @@
 """Phase 3.4 — QC wiring tests.
 
-Validates the opt-in ``qc=True`` kwarg on :func:`tradewinds.research`:
+Validates the opt-in ``qc=True`` kwarg on :func:`mostlyright.research`:
 - Mode 1 parity preserved when qc=False (default).
 - QC runs against raw observations without mutating row contents.
 - Sidecar written to the canonical
-  ``$HOME/.tradewinds/cache/v1/observations_qc/{station}/{YYYY}/{MM}.parquet``
+  ``$HOME/.mostlyright/cache/v1/observations_qc/{station}/{YYYY}/{MM}.parquet``
   location.
 - Failures degrade silently (errors land in df.attrs["qc"]["error"]).
 """
@@ -23,14 +23,14 @@ import pytest
 # ---------------------------------------------------------------------------
 def _make_info(icao: str = "KNYC") -> Any:
     """Return a real StationInfo for KNYC out of the registry."""
-    from tradewinds._internal._stations import STATIONS
+    from mostlyright._internal._stations import STATIONS
 
     return STATIONS["NYC"]
 
 
 class TestRunQcDirectly:
     def test_empty_raw_obs_returns_summary_skeleton(self) -> None:
-        from tradewinds.research import _run_qc_and_write_sidecar
+        from mostlyright.research import _run_qc_and_write_sidecar
 
         summary = _run_qc_and_write_sidecar(
             info=_make_info(),
@@ -43,7 +43,7 @@ class TestRunQcDirectly:
         assert summary["sidecar_paths"] == []
 
     def test_temp_out_of_range_fires_rule(self, tmp_path: Path, monkeypatch) -> None:
-        from tradewinds.research import _run_qc_and_write_sidecar
+        from mostlyright.research import _run_qc_and_write_sidecar
 
         monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
         # Construct two rows: one in-range, one with absurd temperature.
@@ -77,7 +77,7 @@ class TestRunQcDirectly:
         assert summary["rules_fired"]["temp_c.out_of_range"] == 1
 
     def test_dewpoint_gt_temp_fires_rule(self, tmp_path: Path, monkeypatch) -> None:
-        from tradewinds.research import _run_qc_and_write_sidecar
+        from mostlyright.research import _run_qc_and_write_sidecar
 
         monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
         raw = [
@@ -99,7 +99,7 @@ class TestRunQcDirectly:
         assert summary["rules_fired"].get("dew_point_c.exceeds_temp") == 1
 
     def test_crosscheck_runs_when_both_sources_present(self, tmp_path: Path, monkeypatch) -> None:
-        from tradewinds.research import _run_qc_and_write_sidecar
+        from mostlyright.research import _run_qc_and_write_sidecar
 
         monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
         raw = [
@@ -130,8 +130,8 @@ class TestRunQcDirectly:
         assert summary["crosscheck_disagreements"] >= 1
 
     def test_sidecar_written_to_canonical_path(self, tmp_path: Path, monkeypatch) -> None:
-        from tradewinds.research import _run_qc_and_write_sidecar
-        from tradewinds.weather.qc_sidecar import qc_sidecar_path
+        from mostlyright.research import _run_qc_and_write_sidecar
+        from mostlyright.weather.qc_sidecar import qc_sidecar_path
 
         monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
         raw = [
@@ -169,8 +169,8 @@ class TestProductionShapeIntegration:
     def test_production_row_shape_fires_temp_rule_and_writes_sidecar(
         self, tmp_path: Path, monkeypatch
     ) -> None:
-        from tradewinds.research import _run_qc_and_write_sidecar
-        from tradewinds.weather.qc_sidecar import qc_sidecar_path
+        from mostlyright.research import _run_qc_and_write_sidecar
+        from mostlyright.weather.qc_sidecar import qc_sidecar_path
 
         monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
         raw = [
@@ -206,7 +206,7 @@ class TestProductionShapeIntegration:
         normalize to the QC engine's expected names so dewpoint, wind,
         and pressure rules fire on real data.
         """
-        from tradewinds.research import _run_qc_and_write_sidecar
+        from mostlyright.research import _run_qc_and_write_sidecar
 
         monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
         raw = [
@@ -235,7 +235,7 @@ class TestProductionShapeIntegration:
         assert "slp_hpa.out_of_range" in summary["rules_fired"]
 
     def test_production_row_shape_crosscheck_fires(self, tmp_path: Path, monkeypatch) -> None:
-        from tradewinds.research import _run_qc_and_write_sidecar
+        from mostlyright.research import _run_qc_and_write_sidecar
 
         monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
         raw = [
@@ -269,7 +269,7 @@ class TestProductionShapeIntegration:
 # ---------------------------------------------------------------------------
 class TestQcSidecarWriter:
     def test_empty_rows_no_io(self, tmp_path: Path, monkeypatch) -> None:
-        from tradewinds.weather.qc_sidecar import write_qc_sidecar
+        from mostlyright.weather.qc_sidecar import write_qc_sidecar
 
         monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
         out = write_qc_sidecar([], station="KNYC", year=2025, month=1)
@@ -279,7 +279,7 @@ class TestQcSidecarWriter:
 
     def test_writes_parquet_round_trip(self, tmp_path: Path, monkeypatch) -> None:
         import pyarrow.parquet as pq
-        from tradewinds.weather.qc_sidecar import write_qc_sidecar
+        from mostlyright.weather.qc_sidecar import write_qc_sidecar
 
         monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
         rows = [
@@ -287,7 +287,7 @@ class TestQcSidecarWriter:
                 "station_code": "KNYC",
                 "observed_at": "2025-01-06T12:00:00+00:00",
                 "source": "iem.archive",
-                "qc_system": "tradewinds.qc.alpha",
+                "qc_system": "mostlyright.qc.alpha",
                 "qc_version": "v0.1.0a1",
                 "rule_id": "temp_c.out_of_range",
                 "field": "temp_c",
@@ -304,7 +304,7 @@ class TestQcSidecarWriter:
         assert df.iloc[0]["rule_id"] == "temp_c.out_of_range"
 
     def test_path_invalid_station_rejected(self, tmp_path: Path, monkeypatch) -> None:
-        from tradewinds.weather.qc_sidecar import qc_sidecar_path
+        from mostlyright.weather.qc_sidecar import qc_sidecar_path
 
         monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
         with pytest.raises(ValueError):
@@ -319,7 +319,7 @@ class TestResearchQcKwarg:
         """qc=False is the default — Mode 1 parity preserved."""
         import inspect
 
-        from tradewinds.research import research
+        from mostlyright.research import research
 
         sig = inspect.signature(research)
         param = sig.parameters.get("qc")
@@ -336,7 +336,7 @@ class TestResearchQcKwarg:
         """
         import importlib
 
-        research_module = importlib.import_module("tradewinds.research")
+        research_module = importlib.import_module("mostlyright.research")
 
         monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
 
@@ -385,7 +385,7 @@ class TestResearchQcKwarg:
         """qc=False → no df.attrs['qc'] key at all (parity / clean)."""
         import importlib
 
-        research_module = importlib.import_module("tradewinds.research")
+        research_module = importlib.import_module("mostlyright.research")
 
         monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
         monkeypatch.setattr(research_module, "_fetch_observations_range", lambda *a, **kw: [])
@@ -404,7 +404,7 @@ class TestResearchQcKwarg:
         """
         import importlib
 
-        research_module = importlib.import_module("tradewinds.research")
+        research_module = importlib.import_module("mostlyright.research")
 
         monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
         synthetic_obs = [

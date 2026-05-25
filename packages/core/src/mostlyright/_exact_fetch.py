@@ -1,6 +1,6 @@
 """Exact-window obs fetcher — bypasses year-aligned monthly cache.
 
-Used by `tradewinds.weather.obs(strategy="exact_window")` to serve small,
+Used by `mostlyright.weather.obs(strategy="exact_window")` to serve small,
 caller-bounded windows (e.g. 1-month backtest replays) without pulling a
 full calendar year of IEM CSV.
 
@@ -21,16 +21,16 @@ from __future__ import annotations
 from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING, Any, Literal
 
-from tradewinds._internal.merge import merge_observations
-from tradewinds.weather._awc import awc_to_observation
-from tradewinds.weather._fetchers.awc import fetch_awc_metars
-from tradewinds.weather._fetchers.ghcnh import download_ghcnh
-from tradewinds.weather._fetchers.iem_asos import download_iem_asos
-from tradewinds.weather._ghcnh import parse_ghcnh_file
-from tradewinds.weather._iem import parse_iem_file
+from mostlyright._internal.merge import merge_observations
+from mostlyright.weather._awc import awc_to_observation
+from mostlyright.weather._fetchers.awc import fetch_awc_metars
+from mostlyright.weather._fetchers.ghcnh import download_ghcnh
+from mostlyright.weather._fetchers.iem_asos import download_iem_asos
+from mostlyright.weather._ghcnh import parse_ghcnh_file
+from mostlyright.weather._iem import parse_iem_file
 
 if TYPE_CHECKING:
-    from tradewinds._internal.models.station import StationInfo
+    from mostlyright._internal.models.station import StationInfo
 
 
 Source = Literal["iem", "ghcnh", "awc"]
@@ -57,7 +57,7 @@ def _exact_fetch_observations(
     source : {"iem", "ghcnh", "awc"} | None
         If set, only that source is queried (fetcher-boundary enforcement).
         If None, all three are queried and merged via SOURCE_PRIORITY in
-        ``tradewinds._internal.merge.observations`` (AWC > IEM > GHCNh).
+        ``mostlyright._internal.merge.observations`` (AWC > IEM > GHCNh).
 
     Returns
     -------
@@ -69,7 +69,7 @@ def _exact_fetch_observations(
     # Local import: research depends on weather, but _exact_fetch only needs
     # the _sources_root helper for path layout — keep the dependency one-way
     # by importing inside the function.
-    from tradewinds.research import _sources_root
+    from mostlyright.research import _sources_root
 
     from_date = date.fromisoformat(from_date_iso)
     to_date = date.fromisoformat(to_date_iso)
@@ -127,7 +127,7 @@ def _exact_fetch_observations(
     if source in (None, "ghcnh"):
         import httpx
 
-        from tradewinds.weather.cache import _is_current_lst_year
+        from mostlyright.weather.cache import _is_current_lst_year
 
         ghcnh_dir = sources_root / "ghcnh"
         # Per-station-year files; iterate calendar years touching the window.

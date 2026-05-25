@@ -20,8 +20,8 @@ from datetime import date as _date
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
-from tradewinds._internal._stations import STATIONS, is_us_station
-from tradewinds.core.exceptions import TradewindsError
+from mostlyright._internal._stations import STATIONS, is_us_station
+from mostlyright.core.exceptions import TradewindsError
 
 logger = logging.getLogger(__name__)
 
@@ -209,14 +209,14 @@ def daily_extremes(
 ) -> list[dict[str, Any]]:
     """Roll up cached hourly observations to per-local-day temperature extremes.
 
-    Reads from the parquet cache (``tradewinds.weather.cache.read_cache``)
+    Reads from the parquet cache (``mostlyright.weather.cache.read_cache``)
     one calendar month at a time, converts each row's ``observed_at`` from
     UTC to the station's IANA local date, and aggregates per
     ``(station, local_date)``.
 
     The function never touches the network — it is purely a rollup over
     whatever observations the cache already has. Callers are expected to
-    have run :func:`tradewinds.research` (or another fetcher) first to warm
+    have run :func:`mostlyright.research` (or another fetcher) first to warm
     the cache.
 
     Args:
@@ -279,7 +279,7 @@ def daily_extremes(
     # cost to stay near zero.
     from zoneinfo import ZoneInfo
 
-    from tradewinds.weather.cache import read_cache
+    from mostlyright.weather.cache import read_cache
 
     tz = ZoneInfo(info.tz)
     is_us = is_us_station(info.icao)
@@ -380,7 +380,7 @@ def daily_extremes(
     if return_type == "list" and backend == "pandas":
         return out
 
-    from tradewinds.core._backend_dispatch import (
+    from mostlyright.core._backend_dispatch import (
         validate_backend_kwargs,
         wrap_result,
     )

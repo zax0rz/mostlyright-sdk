@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     import pandas as pd
     import polars as pl
 
-    from tradewinds.discovery import DataVersion
+    from mostlyright.discovery import DataVersion
 
     FrameLike = pd.DataFrame | pl.DataFrame
 else:
@@ -60,7 +60,7 @@ class TradewindsResult:
     Examples:
         >>> import pandas as pd
         >>> from datetime import datetime, timezone
-        >>> from tradewinds.core.result import TradewindsResult
+        >>> from mostlyright.core.result import TradewindsResult
         >>> df = pd.DataFrame({"date": ["2025-01-01"], "value": [42]})
         >>> result = TradewindsResult(
         ...     frame=df,
@@ -121,7 +121,7 @@ class TradewindsResult:
             raise ImportError(
                 "TradewindsResult.frame_as_pandas() requires polars to be "
                 "installed when wrapping a polars DataFrame. Install with: "
-                "pip install tradewinds[polars]"
+                "pip install mostlyright[polars]"
             ) from exc
 
         if isinstance(self.frame, pl.DataFrame):
@@ -176,7 +176,7 @@ class TradewindsResult:
         """JSON-safe dict representation for v0.2 MCP JSON-RPC serialization.
 
         Excludes the frame body — callers that need to ship rows over MCP
-        should serialize the frame via ``tradewinds.core.formats.*`` writers
+        should serialize the frame via ``mostlyright.core.formats.*`` writers
         and attach the provenance via this method's output.
         """
         out: dict[str, Any] = {

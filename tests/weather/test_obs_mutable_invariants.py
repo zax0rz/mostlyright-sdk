@@ -32,7 +32,7 @@ def _canonical_parquets(cache_root: Path) -> list[Path]:
 # --- helper-existence sanity checks (catch refactors that rename invariants) -
 def test_is_writable_month_helper_exists_and_returns_bool():
     """Sanity: the canonical mutable-period gate is still named the same."""
-    from tradewinds.research import _is_writable_month
+    from mostlyright.research import _is_writable_month
 
     today_utc = datetime.now(UTC).date()
     # Last completed month — strictly past UTC — must be writable.
@@ -47,13 +47,13 @@ def test_is_writable_month_helper_exists_and_returns_bool():
 
 
 def test_is_current_lst_month_helper_exists():
-    from tradewinds.weather.cache import _is_current_lst_month
+    from mostlyright.weather.cache import _is_current_lst_month
 
     assert callable(_is_current_lst_month)
 
 
 def test_is_current_lst_year_helper_exists():
-    from tradewinds.weather.cache import _is_current_lst_year
+    from mostlyright.weather.cache import _is_current_lst_year
 
     assert callable(_is_current_lst_year)
 
@@ -68,7 +68,7 @@ def test_warm_cache_current_lst_month_does_not_write_final_canonical(tmp_path, m
     cache_root.mkdir()
     monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(cache_root))
 
-    from tradewinds.weather import obs
+    from mostlyright.weather import obs
 
     today = date.today()
     first_of_month = date(today.year, today.month, 1)
@@ -101,7 +101,7 @@ def test_auto_small_window_crossing_current_month_routes_to_exact_window(tmp_pat
     monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(cache_root))
     monkeypatch.delenv("TW_HOSTED_URL", raising=False)
 
-    from tradewinds.weather.obs import _resolve_strategy, obs
+    from mostlyright.weather.obs import _resolve_strategy, obs
 
     today = date.today()
     start = today - timedelta(days=20)
@@ -139,7 +139,7 @@ def test_auto_large_window_warm_cache_routes_to_warm_cache(tmp_path, monkeypatch
     monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(cache_root))
     monkeypatch.delenv("TW_HOSTED_URL", raising=False)
 
-    from tradewinds.weather.obs import _resolve_strategy
+    from mostlyright.weather.obs import _resolve_strategy
 
     resolved = _resolve_strategy(
         from_date=date(2024, 1, 1),

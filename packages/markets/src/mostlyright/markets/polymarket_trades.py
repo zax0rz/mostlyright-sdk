@@ -9,8 +9,8 @@ Both return :class:`pandas.DataFrame` with ``source="polymarket.gamma"``
 per row so downstream `pd.concat` / `merge` keep source-identity intact.
 
 The trades surface intentionally lives at the flat module name
-:mod:`tradewinds.markets.polymarket_trades` (rather than under a
-hypothetical ``tradewinds.markets.polymarket.trades`` subpackage)
+:mod:`mostlyright.markets.polymarket_trades` (rather than under a
+hypothetical ``mostlyright.markets.polymarket.trades`` subpackage)
 because converting the existing ``polymarket.py`` module into a package
 would break the dozen-plus call sites (including ``test_polymarket_real.py``
 and ``test_cross_issuer_station_identity.py``) that import private
@@ -24,7 +24,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-from tradewinds.markets._polymarket_client import (
+from mostlyright.markets._polymarket_client import (
     CLOB_API_BASE,
     get_json,
 )
@@ -50,11 +50,11 @@ def _require_pandas(source_label: str = "polymarket") -> Any:
     try:
         import pandas as _pandas
     except ImportError as exc:
-        from tradewinds.core.exceptions import SourceUnavailableError
+        from mostlyright.core.exceptions import SourceUnavailableError
 
         raise SourceUnavailableError(
-            "tradewinds.markets.polymarket_trades requires pandas. Install with: "
-            "pip install tradewinds-markets[trades]",
+            "mostlyright.markets.polymarket_trades requires pandas. Install with: "
+            "pip install mostlyright-markets[trades]",
             source=source_label,
             retryable=False,
             underlying=str(exc),
@@ -265,13 +265,9 @@ def snapshot(
 # ----------------------------------------------------------------------
 def _validate_aware(dt: datetime, name: str) -> None:
     if not isinstance(dt, datetime):
-        raise TypeError(
-            f"{name} must be a datetime instance; got {type(dt).__name__}"
-        )
+        raise TypeError(f"{name} must be a datetime instance; got {type(dt).__name__}")
     if dt.tzinfo is None or dt.tzinfo.utcoffset(dt) is None:
-        raise TypeError(
-            f"{name} must be a tz-aware UTC datetime; got naive {dt!r}"
-        )
+        raise TypeError(f"{name} must be a tz-aware UTC datetime; got naive {dt!r}")
 
 
 def _maybe_float(v: Any) -> float | None:

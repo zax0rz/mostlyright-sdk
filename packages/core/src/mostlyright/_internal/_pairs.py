@@ -3,7 +3,7 @@
 #   (file blob sha; tag SHA is 514fcdab227e845145ca32b989355647466231d9)
 # Lift date: 2026-05-22
 # Modifications:
-#   - import-rename: ``from mostlyright.snapshot`` -> ``from tradewinds.snapshot``
+#   - import-rename: ``from mostlyright.snapshot`` -> ``from mostlyright.snapshot``
 #   - removed ``pairs_to_toon`` function and the ``from mostlyright._toon import ...``
 #     import it required (TOON serialization deferred to Phase 2 CORE-05; ``research()``
 #     emits DataFrame or list[dict] only in Phase 1).
@@ -51,7 +51,7 @@ from collections import defaultdict
 from datetime import UTC, datetime
 from typing import Any
 
-from tradewinds.snapshot import (
+from mostlyright.snapshot import (
     _lst_offset,
     _station_code_normalized,
     settlement_window_utc,
@@ -386,7 +386,7 @@ def pairs_to_dataframe(rows: list[dict[str, Any]]) -> Any:
         import pandas as pd
     except ImportError:
         raise ImportError(
-            "pandas is required for DataFrame output. Install with: pip install tradewinds[parquet]"
+            "pandas is required for DataFrame output. Install with: pip install mostlyright[parquet]"
         ) from None
 
     if not rows:

@@ -13,7 +13,7 @@ import pytest
 # ---------------------------------------------------------------------------
 class TestCalendarFeatures:
     def test_emits_all_cyclical_pairs(self) -> None:
-        from tradewinds.transforms import calendar_features
+        from mostlyright.transforms import calendar_features
 
         df = pd.DataFrame({"ts": pd.to_datetime(["2025-01-06T12:00:00+00:00"])})
         out = calendar_features(df, "ts")
@@ -23,7 +23,7 @@ class TestCalendarFeatures:
 
     def test_cyclical_invariant_sin2_plus_cos2_equals_one(self) -> None:
         """Phase 3.5 SC-2: sin² + cos² ≈ 1 for every row of every pair."""
-        from tradewinds.transforms import calendar_features
+        from mostlyright.transforms import calendar_features
 
         # 12 rows spanning various dates / hours covers most decision
         # paths without needing the full Hypothesis machinery in a
@@ -39,7 +39,7 @@ class TestCalendarFeatures:
             assert ((s**2 + c**2) - 1.0).abs().max() < 1e-9
 
     def test_calendar_features_does_not_mutate_input(self) -> None:
-        from tradewinds.transforms import calendar_features
+        from mostlyright.transforms import calendar_features
 
         df = pd.DataFrame({"ts": pd.to_datetime(["2025-01-06T12:00:00+00:00"])})
         original_cols = set(df.columns)
@@ -52,7 +52,7 @@ class TestCalendarFeatures:
 # ---------------------------------------------------------------------------
 class TestClipOutliers:
     def test_physics_bounds_default_for_temp_c(self) -> None:
-        from tradewinds.preprocessing import PHYSICS_BOUNDS, clip_outliers
+        from mostlyright.preprocessing import PHYSICS_BOUNDS, clip_outliers
 
         df = pd.DataFrame({"temp_c": [-200.0, 0.0, 50.0, 200.0]})
         out = clip_outliers(df, "temp_c")
@@ -64,14 +64,14 @@ class TestClipOutliers:
         assert out.iloc[3] == hi  # 200 → 57
 
     def test_explicit_bounds_override_physics(self) -> None:
-        from tradewinds.preprocessing import clip_outliers
+        from mostlyright.preprocessing import clip_outliers
 
         df = pd.DataFrame({"temp_c": [-5.0, 5.0, 100.0]})
         out = clip_outliers(df, "temp_c", bounds=(0.0, 10.0))
         assert out.tolist() == [0.0, 5.0, 10.0]
 
     def test_fallback_to_std_when_no_physics_default(self) -> None:
-        from tradewinds.preprocessing import clip_outliers
+        from mostlyright.preprocessing import clip_outliers
 
         # column with no PHYSICS_BOUNDS entry → sigma-based fallback.
         df = pd.DataFrame({"custom_col": [1.0, 2.0, 3.0, 4.0, 100.0]})
@@ -80,14 +80,14 @@ class TestClipOutliers:
         assert out.iloc[-1] < 100.0
 
     def test_unknown_column_raises(self) -> None:
-        from tradewinds.preprocessing import clip_outliers
+        from mostlyright.preprocessing import clip_outliers
 
         df = pd.DataFrame({"x": [1.0]})
         with pytest.raises(KeyError):
             clip_outliers(df, "no_such_col")
 
     def test_input_not_mutated(self) -> None:
-        from tradewinds.preprocessing import clip_outliers
+        from mostlyright.preprocessing import clip_outliers
 
         df = pd.DataFrame({"temp_c": [-200.0, 200.0]})
         snapshot = df["temp_c"].tolist()
@@ -98,7 +98,7 @@ class TestClipOutliers:
         """Architect iter-1 HIGH: std<=0 in sigma fallback would silently
         collapse every row to the mean. Refuse loudly instead.
         """
-        from tradewinds.preprocessing import clip_outliers
+        from mostlyright.preprocessing import clip_outliers
 
         df = pd.DataFrame({"custom_col": [1.0, 2.0, 3.0, 4.0, 100.0]})
         with pytest.raises(ValueError, match="std must be > 0"):
@@ -112,7 +112,7 @@ class TestClipOutliers:
 # ---------------------------------------------------------------------------
 class TestIemCrosscheckStandalone:
     def test_returns_disagreement_df(self) -> None:
-        from tradewinds.preprocessing import iem_crosscheck
+        from mostlyright.preprocessing import iem_crosscheck
 
         df = pd.DataFrame(
             {
@@ -130,7 +130,7 @@ class TestIemCrosscheckStandalone:
         assert "delta_c" in out.columns
 
     def test_no_disagreement_returns_empty(self) -> None:
-        from tradewinds.preprocessing import iem_crosscheck
+        from mostlyright.preprocessing import iem_crosscheck
 
         df = pd.DataFrame(
             {
@@ -148,7 +148,7 @@ class TestIemCrosscheckStandalone:
 
     def test_accepts_production_station_code_observed_at(self) -> None:
         """Auto-normalizes station_code → station and observed_at → event_time."""
-        from tradewinds.preprocessing import iem_crosscheck
+        from mostlyright.preprocessing import iem_crosscheck
 
         df = pd.DataFrame(
             {
@@ -165,14 +165,14 @@ class TestIemCrosscheckStandalone:
         assert len(out) == 1
 
     def test_missing_source_column_raises(self) -> None:
-        from tradewinds.preprocessing import iem_crosscheck
+        from mostlyright.preprocessing import iem_crosscheck
 
         df = pd.DataFrame({"x": [1, 2]})
         with pytest.raises(ValueError, match="source"):
             iem_crosscheck(df)
 
     def test_only_one_source_returns_empty(self) -> None:
-        from tradewinds.preprocessing import iem_crosscheck
+        from mostlyright.preprocessing import iem_crosscheck
 
         df = pd.DataFrame(
             {
@@ -186,7 +186,7 @@ class TestIemCrosscheckStandalone:
         assert out.empty
 
     def test_custom_tolerance(self) -> None:
-        from tradewinds.preprocessing import iem_crosscheck
+        from mostlyright.preprocessing import iem_crosscheck
 
         df = pd.DataFrame(
             {
@@ -213,7 +213,7 @@ class TestWindChillHeatIndex:
         For T=20 V=20: ≈ 4.24°F (verified against
         https://www.weather.gov/safety/cold-wind-chill-chart).
         """
-        from tradewinds.transforms import wind_chill
+        from mostlyright.transforms import wind_chill
 
         wc = wind_chill(20.0, 20.0)
         assert wc is not None
@@ -221,7 +221,7 @@ class TestWindChillHeatIndex:
 
     def test_wind_chill_extreme_cold(self) -> None:
         """NWS wind chill T=0°F V=30 mph → about -26°F."""
-        from tradewinds.transforms import wind_chill
+        from mostlyright.transforms import wind_chill
 
         wc = wind_chill(0.0, 30.0)
         assert wc is not None
@@ -229,26 +229,26 @@ class TestWindChillHeatIndex:
         assert -30.0 < wc < -22.0
 
     def test_wind_chill_above_50f_returns_temp(self) -> None:
-        from tradewinds.transforms import wind_chill
+        from mostlyright.transforms import wind_chill
 
         # Outside validity: temp > 50F → returns temp unchanged.
         assert wind_chill(60.0, 20.0) == 60.0
 
     def test_heat_index_nws_reference(self) -> None:
         """NWS heat index T=90°F RH=70% → ~106°F."""
-        from tradewinds.transforms import heat_index
+        from mostlyright.transforms import heat_index
 
         hi = heat_index(90.0, 70.0)
         assert hi is not None
         assert 100.0 < hi < 110.0
 
     def test_heat_index_below_80f_returns_temp(self) -> None:
-        from tradewinds.transforms import heat_index
+        from mostlyright.transforms import heat_index
 
         assert heat_index(70.0, 50.0) == 70.0
 
     def test_nan_inputs_return_none(self) -> None:
-        from tradewinds.transforms import heat_index, wind_chill
+        from mostlyright.transforms import heat_index, wind_chill
 
         assert wind_chill(math.nan, 10.0) is None
         assert heat_index(math.nan, 50.0) is None
@@ -278,7 +278,7 @@ class TestCalendarFeaturesProperty:
     def test_sin_squared_plus_cos_squared_is_one(
         self, year: int, month: int, day: int, hour: int
     ) -> None:
-        from tradewinds.transforms import calendar_features
+        from mostlyright.transforms import calendar_features
 
         ts = pd.Timestamp(year=year, month=month, day=day, hour=hour, tz="UTC")
         df = pd.DataFrame({"ts": [ts]})

@@ -1,4 +1,4 @@
-"""Tests for ``tradewinds.international.daily_extremes`` (Phase 3.1).
+"""Tests for ``mostlyright.international.daily_extremes`` (Phase 3.1).
 
 Exercises the new ``daily_extremes(station, from_date, to_date)`` rollup:
 
@@ -8,7 +8,7 @@ Exercises the new ``daily_extremes(station, from_date, to_date)`` rollup:
 - Source provenance preserved per extreme (``source_tmin``, ``source_tmax``).
 - Empty / partial-cache handling.
 
-Cache reads are monkey-patched on ``tradewinds.weather.cache.read_cache``
+Cache reads are monkey-patched on ``mostlyright.weather.cache.read_cache``
 because ``daily_extremes`` imports the cache module lazily — patching the
 module attribute is enough.
 """
@@ -19,7 +19,7 @@ import logging
 from datetime import UTC, date, datetime, timedelta
 
 import pytest
-from tradewinds import international as intl
+from mostlyright import international as intl
 
 
 def _build_hourly_rows(
@@ -64,7 +64,7 @@ def _patch_cache_with_rows(monkeypatch, rows: list[dict]) -> None:
     legitimately reads an adjacent UTC month to cover a station-local day,
     and (b) hid the month-boundary bug it was meant to detect.
     """
-    from tradewinds.weather import cache as cache_mod
+    from mostlyright.weather import cache as cache_mod
 
     def _read_cache(station: str, year: int, month: int):
         out = [r for r in rows if r.get("observed_at", "").startswith(f"{year:04d}-{month:02d}-")]
@@ -75,7 +75,7 @@ def _patch_cache_with_rows(monkeypatch, rows: list[dict]) -> None:
 
 def _patch_cache_with_month_map(monkeypatch, by_month: dict[tuple[int, int], list[dict]]) -> None:
     """Patch ``read_cache`` to consult a (year, month) -> rows table."""
-    from tradewinds.weather import cache as cache_mod
+    from mostlyright.weather import cache as cache_mod
 
     def _read_cache(station: str, year: int, month: int):
         return by_month.get((year, month))

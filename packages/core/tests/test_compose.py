@@ -5,8 +5,7 @@ from __future__ import annotations
 import warnings
 
 import pytest
-
-from tradewinds._compose import (
+from mostlyright._compose import (
     StationOverrideWarning,
     annotate_settles_for,
     emit_override_warning,
@@ -256,25 +255,25 @@ class TestResearchSignatureValidation:
     is correct + the backwards-compat station path is preserved."""
 
     def test_no_selector_raises(self):
-        from tradewinds import research
+        from mostlyright import research
 
         with pytest.raises(ValueError, match="exactly one of"):
             research()
 
     def test_two_selectors_raises(self):
-        from tradewinds import research
+        from mostlyright import research
 
         with pytest.raises(ValueError, match="mutually exclusive"):
             research(station="KNYC", city="NYC")
 
     def test_station_without_dates_raises(self):
-        from tradewinds import research
+        from mostlyright import research
 
         with pytest.raises(ValueError, match="from_date and to_date"):
             research(station="NYC")
 
     def test_sources_and_source_mutually_exclusive(self):
-        from tradewinds import research
+        from mostlyright import research
 
         with pytest.raises(ValueError, match="mutually exclusive"):
             research(
@@ -289,7 +288,7 @@ class TestResearchSignatureValidation:
         """Iter-1 codex HIGH: sources= silently bypassed the data-fetch
         wiring. v0.2 now raises NotImplementedError directing callers at
         researchBySource for Mode-2 today + v0.3 for sources=[]."""
-        from tradewinds import research
+        from mostlyright import research
 
         with pytest.raises(NotImplementedError, match="v0.3"):
             research(
@@ -300,7 +299,7 @@ class TestResearchSignatureValidation:
             )
 
     def test_source_only_raises_notimplemented_v03(self):
-        from tradewinds import research
+        from mostlyright import research
 
         with pytest.raises(NotImplementedError, match="research_by_source"):
             research(
@@ -311,7 +310,7 @@ class TestResearchSignatureValidation:
             )
 
     def test_station_override_requires_contract(self):
-        from tradewinds import research
+        from mostlyright import research
 
         with pytest.raises(ValueError, match="requires contract="):
             research(
@@ -322,7 +321,7 @@ class TestResearchSignatureValidation:
             )
 
     def test_include_trades_requires_contract_selector(self):
-        from tradewinds import research
+        from mostlyright import research
 
         with pytest.raises(ValueError, match="include_trades=True requires"):
             research(
@@ -335,13 +334,13 @@ class TestResearchSignatureValidation:
     def test_city_selector_v02_raises_notimplemented(self):
         """v0.2 surfaces the selector + validates kwargs but defers the
         multi-station join to v0.3."""
-        from tradewinds import research
+        from mostlyright import research
 
         with pytest.raises(NotImplementedError, match="v0.3"):
             research(city="NYC", from_date="2025-01-06", to_date="2025-01-12")
 
     def test_contract_selector_v02_raises_notimplemented(self):
-        from tradewinds import research
+        from mostlyright import research
 
         with pytest.raises(NotImplementedError, match="v0.3"):
             research(
@@ -351,7 +350,7 @@ class TestResearchSignatureValidation:
             )
 
     def test_contracts_selector_v02_raises_notimplemented(self):
-        from tradewinds import research
+        from mostlyright import research
 
         with pytest.raises(NotImplementedError, match="v0.3"):
             research(
@@ -366,7 +365,7 @@ class TestResearchSignatureValidation:
         fire BEFORE the v0.3 NotImplementedError. Order matters: callers
         should see the validation error (which is fixable now) rather
         than the deferred-feature error (which isn't)."""
-        from tradewinds import research
+        from mostlyright import research
 
         with pytest.raises(ValueError, match="mutually exclusive"):
             research(city="NYC", contract="kalshi:KHIGHNYC")

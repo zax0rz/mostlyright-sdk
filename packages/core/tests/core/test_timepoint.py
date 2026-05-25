@@ -1,4 +1,4 @@
-"""Tests for ``tradewinds.core.timepoint.TimePoint``.
+"""Tests for ``mostlyright.core.timepoint.TimePoint``.
 
 Covers:
 - Property-based round-trips (Hypothesis) for UTC datetimes and ISO strings
@@ -23,7 +23,7 @@ import pandas as pd
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
-from tradewinds.core.temporal.timepoint import TimePoint
+from mostlyright.core.temporal.timepoint import TimePoint
 
 # ---------------------------------------------------------------------------
 # Property tests (Hypothesis)

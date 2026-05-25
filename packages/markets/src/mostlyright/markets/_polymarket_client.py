@@ -8,13 +8,13 @@ sleep (0.2s ≈ 300 req/min ceiling). Cloudfront returns 403 on blank
 ``limit`` (the cursor signal for end-of-data on the Gamma endpoint).
 
 The client is deliberately narrow — only what
-:mod:`tradewinds.markets.polymarket` needs for v0.1.0 discovery +
+:mod:`mostlyright.markets.polymarket` needs for v0.1.0 discovery +
 settlement. Order book, fills, and paid-feed endpoints are out of
 scope (deferred to ``MARKETS-04`` Sprint 0.5+).
 
 Pattern lifted from mostlyright ``sprint2/2t-impl-bundle:src/mostlyright/
 markets/polymarket_client.py`` — kept the rate-limit + UA + paginate
-loop verbatim; dropped the asyncio.Lock (tradewinds is sync-only in
+loop verbatim; dropped the asyncio.Lock (mostlyright is sync-only in
 v0.1) and the persistent cache layer (not needed for live discovery).
 """
 
@@ -25,7 +25,7 @@ import time
 from typing import Any
 
 import httpx
-from tradewinds._internal._http import HTTP_TIMEOUT
+from mostlyright._internal._http import HTTP_TIMEOUT
 
 log = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ _EVENTS_MAX: int = 10_000
 
 
 #: Required user-agent header. Cloudfront returns 403 on a blank UA.
-_USER_AGENT: str = "tradewinds-sdk/0.1 (+https://github.com/Tarabcak/tradewinds)"
+_USER_AGENT: str = "mostlyright-sdk/0.1 (+https://github.com/Tarabcak/mostlyright)"
 
 
 def get_json(
@@ -203,7 +203,7 @@ def fetch_event_by_id(
 
     Args:
         event_id: Polymarket event id. The caller has already validated
-            this against :data:`tradewinds.markets.polymarket._EVENT_ID_RE`
+            this against :data:`mostlyright.markets.polymarket._EVENT_ID_RE`
             so we don't re-validate here — assume well-formed.
         client: Optional ``httpx.Client`` for connection reuse.
         timeout: Per-request timeout in seconds.

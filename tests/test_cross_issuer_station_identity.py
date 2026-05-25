@@ -13,14 +13,14 @@ cross-package contract.
 
 from __future__ import annotations
 
-from tradewinds.markets._per_event_station import load_polymarket_city_stations
-from tradewinds.markets.catalog.kalshi_stations import (
+from mostlyright.markets._per_event_station import load_polymarket_city_stations
+from mostlyright.markets.catalog.kalshi_stations import (
     KALSHI_SETTLEMENT_STATIONS,
 )
-from tradewinds.markets.catalog.kalshi_stations import (
+from mostlyright.markets.catalog.kalshi_stations import (
     KNOWN_WRONG_STATIONS as KALSHI_KNOWN_WRONG_STATIONS,
 )
-from tradewinds.markets.polymarket import (
+from mostlyright.markets.polymarket import (
     KNOWN_WRONG_STATIONS as POLYMARKET_KNOWN_WRONG_STATIONS,
 )
 

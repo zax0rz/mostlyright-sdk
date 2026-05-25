@@ -1,4 +1,4 @@
-"""Tests for ``tradewinds._internal._capabilities``.
+"""Tests for ``mostlyright._internal._capabilities``.
 
 Lifted from ``monorepo-v0.14.1/tests/test_sdk_stations.py`` (the
 ``schema()`` + ``capabilities()`` blocks). The original file mixed
@@ -14,7 +14,7 @@ A spec-loading smoke test is added at the bottom to verify the
 from __future__ import annotations
 
 import pytest
-from tradewinds._internal._capabilities import (
+from mostlyright._internal._capabilities import (
     _METHOD_INDEX,
     _SCHEMA_CACHE,
     _SCHEMA_FILES,

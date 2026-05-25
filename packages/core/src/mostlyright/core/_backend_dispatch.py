@@ -29,7 +29,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Literal
 
-from tradewinds.core.result import TradewindsResult
+from mostlyright.core.result import TradewindsResult
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -100,7 +100,7 @@ def convert_to_backend(df: pd.DataFrame, backend: BackendT) -> Any:
     # backend == "polars"
     import pandas as pd
 
-    from tradewinds.core._polars_compat import require_polars
+    from mostlyright.core._polars_compat import require_polars
 
     pl = require_polars()
     # Promote named index → column so it survives the conversion.
@@ -169,6 +169,6 @@ def gate_polars_availability(backend: BackendT) -> None:
     helper is the eager variant.
     """
     if backend == "polars":
-        from tradewinds.core._polars_compat import require_polars
+        from mostlyright.core._polars_compat import require_polars
 
         require_polars()  # raises SourceUnavailableError if absent

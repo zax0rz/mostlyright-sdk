@@ -1,18 +1,18 @@
-"""tradewinds — local-first SDK for prediction-market weather settlement research.
+"""mostlyright — local-first SDK for prediction-market weather settlement research.
 
 Sprint 0 v0.1.0 ships:
-- ``tradewinds.research(station, from_date, to_date, ...)`` — the v0.14.1 ``pairs()`` join,
+- ``mostlyright.research(station, from_date, to_date, ...)`` — the v0.14.1 ``pairs()`` join,
   lifted from monorepo-v0.14.1, calling AWC + IEM + GHCNh + NWS CLI directly.
-- ``tradewinds.snapshot`` — settlement-window math (LST, market_close_utc).
+- ``mostlyright.snapshot`` — settlement-window math (LST, market_close_utc).
 
 Adjacent surfaces:
-- ``tradewinds.weather`` — observations + climate + forecasts (sibling package ``tradewinds-weather``).
-- ``tradewinds.markets`` — Kalshi + Polymarket metadata (sibling package ``tradewinds-markets``,
+- ``mostlyright.weather`` — observations + climate + forecasts (sibling package ``mostlyright-weather``).
+- ``mostlyright.markets`` — Kalshi + Polymarket metadata (sibling package ``mostlyright-markets``,
   ships v0.1.0 in Sprint 0.5).
 
-Namespace note: ``tradewinds`` is a split-distribution namespace package. Core owns this
-``__init__.py``; sibling distributions ``tradewinds-weather`` and ``tradewinds-markets`` ship
-subdirectories (``tradewinds/weather/``, ``tradewinds/markets/``) WITHOUT their own
+Namespace note: ``mostlyright`` is a split-distribution namespace package. Core owns this
+``__init__.py``; sibling distributions ``mostlyright-weather`` and ``mostlyright-markets`` ship
+subdirectories (``mostlyright/weather/``, ``mostlyright/markets/``) WITHOUT their own
 namespace-root ``__init__.py``. The pkgutil declaration below extends ``__path__`` so Python's
 import machinery finds those subpackages from whichever site-packages location installed them.
 """
@@ -22,7 +22,7 @@ __path__ = __import__("pkgutil").extend_path(__path__, __name__)
 
 __version__ = "0.1.0rc1"
 
-from tradewinds.discover import discover
-from tradewinds.research import research
+from mostlyright.discover import discover
+from mostlyright.research import research
 
 __all__ = ["__version__", "discover", "research"]

@@ -44,6 +44,6 @@ class DictLikeMixin:
         Matches the served API contract - no computed fields leak.
         Use ``encode(self.to_dict())`` directly if you need computed fields.
         """
-        from tradewinds._internal._toon import encode
+        from mostlyright._internal._toon import encode
 
         return encode(self.to_storage_dict())

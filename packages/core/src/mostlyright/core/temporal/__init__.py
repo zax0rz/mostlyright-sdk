@@ -1,4 +1,4 @@
-"""tradewinds.core.temporal — temporal-safety primitives.
+"""mostlyright.core.temporal — temporal-safety primitives.
 
 Public exports:
 - TimePoint (UTC-aware timestamp wrapper with DST + ns truncation handling)
@@ -6,9 +6,9 @@ Public exports:
 - LeakageDetector + assert_no_leakage (loud as-of cutoff enforcement)
 """
 
-from tradewinds.core.temporal.knowledge_view import KnowledgeView
-from tradewinds.core.temporal.leakage import LeakageDetector, assert_no_leakage
-from tradewinds.core.temporal.timepoint import TimePoint
+from mostlyright.core.temporal.knowledge_view import KnowledgeView
+from mostlyright.core.temporal.leakage import LeakageDetector, assert_no_leakage
+from mostlyright.core.temporal.timepoint import TimePoint
 
 __all__ = [
     "KnowledgeView",

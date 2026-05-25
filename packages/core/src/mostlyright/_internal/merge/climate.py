@@ -5,19 +5,19 @@ Source SHA: 514fcda
 Lift date: 2026-05-21
 Modifications:
 - Renamed ``_dedup_climate_rows`` -> ``merge_climate`` (public surface).
-- Promoted to its own module under ``tradewinds._internal.merge``;
+- Promoted to its own module under ``mostlyright._internal.merge``;
   the v0.14.1 source mixes pure dedup with parquet I/O in one file.
 - ``REPORT_TYPE_PRIORITY`` is co-located here (lower-layer canonical
   home). The values are byte-identical to the dict in
-  ``tradewinds.weather._climate`` (Wave 3A lift). They are NOT
+  ``mostlyright.weather._climate`` (Wave 3A lift). They are NOT
   imported from there because that would create a core -> weather
-  cycle: ``tradewinds-weather`` depends on ``tradewinds`` (core).
+  cycle: ``mostlyright-weather`` depends on ``mostlyright`` (core).
   Cross-package consumers should re-export the constant from this
   module — there is exactly one canonical definition.
 
 Logic is byte-faithful to mostlyright==0.14.1. ``merge_climate``
 reads ``row["report_type_priority"]`` directly (a precomputed float
-already populated by ``tradewinds.weather._climate.parse_cli_file``),
+already populated by ``mostlyright.weather._climate.parse_cli_file``),
 matching the v0.14.1 source. ``REPORT_TYPE_PRIORITY`` is exported for
 callers that need the mapping (e.g. tests, populating rows ad-hoc).
 
@@ -30,7 +30,7 @@ from __future__ import annotations
 
 from typing import Any
 
-# Report type priority mapping. Values match tradewinds.weather._climate
+# Report type priority mapping. Values match mostlyright.weather._climate
 # verbatim (Wave 3A lift from monorepo-v0.14.1/src/mostlyright/weather/_climate.py).
 # See module docstring for why this is duplicated rather than imported.
 REPORT_TYPE_PRIORITY: dict[str, float] = {

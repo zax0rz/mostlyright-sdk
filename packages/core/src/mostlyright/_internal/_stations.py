@@ -10,7 +10,7 @@
 #     ``research()``.
 """Station registry — 60 stations (20 US + 40 international) with ICAO / lat-lon metadata.
 
-Lives under ``src/tradewinds/_internal`` so it ships in the wheel and is
+Lives under ``src/mostlyright/_internal`` so it ships in the wheel and is
 available to pip-installed SDK users. Phase 3.1 expanded the v0.14.1
 20-station Kalshi registry to 60 stations covering Polymarket's
 international weather markets (Europe, Asia, Oceania, Americas-non-US).
@@ -662,7 +662,7 @@ STATIONS: dict[str, StationInfo] = {
 def is_us_station(icao: str) -> bool:
     """Return True iff ``icao`` is a US station in STATIONS with country=="US".
 
-    Used by :func:`tradewinds.research._fetch_observations_range` to gate
+    Used by :func:`mostlyright.research._fetch_observations_range` to gate
     the GHCNh fetch — NCEI's GHCNh dataset is US-only, so international
     stations skip that fetcher and rely on IEM (which carries global
     METAR/AWOS via the unified ASOS-1min/IEM AWOS network).

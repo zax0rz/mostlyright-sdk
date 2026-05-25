@@ -1,6 +1,6 @@
 """Kalshi NLOW contract spec (daily LOW temperature settlement).
 
-Mirror of :mod:`tradewinds.markets.catalog.kalshi_nhigh` — same station
+Mirror of :mod:`mostlyright.markets.catalog.kalshi_nhigh` — same station
 whitelist + same source (cli.archive); only the metric differs.
 NLOW markets resolve against the NWS CLI ``min_temp_f`` value for a
 specific station on a specific date.
@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date as _date
 
-from tradewinds.markets.catalog.kalshi_stations import KALSHI_SETTLEMENT_STATIONS
+from mostlyright.markets.catalog.kalshi_stations import KALSHI_SETTLEMENT_STATIONS
 
 
 @dataclass(frozen=True)

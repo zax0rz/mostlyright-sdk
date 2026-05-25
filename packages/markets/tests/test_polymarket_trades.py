@@ -13,11 +13,11 @@ import pytest
 
 respx = pytest.importorskip("respx")
 
-from tradewinds.markets._polymarket_client import (  # noqa: E402
+from mostlyright.markets._polymarket_client import (  # noqa: E402
     CLOB_API_BASE,
     GAMMA_API_BASE,
 )
-from tradewinds.markets.polymarket_trades import history, snapshot  # noqa: E402
+from mostlyright.markets.polymarket_trades import history, snapshot  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -131,7 +131,7 @@ class TestHistory:
         caller didn't override, silently bypassing the rate-limit floor
         documented in `.planning/research/MARKETS-RATE-LIMITS.md`.
         """
-        import tradewinds.markets._polymarket_client as pmc
+        import mostlyright.markets._polymarket_client as pmc
 
         captured_sleep: list[float] = []
         orig_sleep = pmc.time.sleep
@@ -157,7 +157,7 @@ class TestHistory:
         has no sleep path — snapshot in a loop bypassed the polite floor.
         The fix routes snapshot through get_json so the default 0.2s sleep
         applies."""
-        import tradewinds.markets._polymarket_client as pmc
+        import mostlyright.markets._polymarket_client as pmc
 
         captured_sleep: list[float] = []
         orig_sleep = pmc.time.sleep

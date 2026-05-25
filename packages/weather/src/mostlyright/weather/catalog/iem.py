@@ -1,6 +1,6 @@
 """IEM catalog adapter (CATALOG-01).
 
-Wraps :func:`tradewinds.weather._iem.iem_to_observation` (and ``parse_iem_file``)
+Wraps :func:`mostlyright.weather._iem.iem_to_observation` (and ``parse_iem_file``)
 into a class that satisfies the ``WeatherAdapter`` Protocol and emits a
 canonical ``schema.observation.v1`` DataFrame with overlay columns + correct
 SI units (m/s, metres, mm — see ``_obs_projection.PROJECTION_SPEC``).
@@ -15,7 +15,7 @@ MOS forecast leg deferred to Phase 3 per the Phase 2 PLAN Open Q1 resolution.
 
 Pitfall 8 (codex cross-ref): IEM's missing-data sentinel ``M`` is converted
 to ``None`` by the underlying parser. The projection in
-:mod:`tradewinds.weather.catalog._obs_projection` preserves ``None`` through
+:mod:`mostlyright.weather.catalog._obs_projection` preserves ``None`` through
 unit conversion.
 """
 
@@ -25,8 +25,8 @@ from datetime import UTC, datetime, timedelta
 from typing import ClassVar
 
 import pandas as pd
-from tradewinds.weather._iem import iem_to_observation
-from tradewinds.weather.catalog._obs_projection import (
+from mostlyright.weather._iem import iem_to_observation
+from mostlyright.weather.catalog._obs_projection import (
     add_overlay_columns,
     empty_observation_df,
     project_row,
@@ -58,7 +58,7 @@ class IEMAdapter:
         """
         raise NotImplementedError(
             "IEMAdapter.fetch_observations is the Phase 3 Mode-2 entry point. "
-            "v0.1 callers should use tradewinds.research() (Mode 1 parity)."
+            "v0.1 callers should use mostlyright.research() (Mode 1 parity)."
         )
 
     def fetch_forecasts(
@@ -85,7 +85,7 @@ class IEMAdapter:
         """Project parser-output rows to a canonical observation DataFrame.
 
         Applies the shared canonical-units projection
-        (:mod:`tradewinds.weather.catalog._obs_projection`): knots → m/s,
+        (:mod:`mostlyright.weather.catalog._obs_projection`): knots → m/s,
         miles → metres, feet → metres, inches → mm. ``None`` (IEM ``M``
         sentinel) passes through unchanged.
         """
@@ -110,7 +110,7 @@ class IEMAdapter:
 __all__ = ["IEMAdapter", "iem_to_observation"]
 
 
-from tradewinds.weather.catalog import register_adapter  # noqa: E402
+from mostlyright.weather.catalog import register_adapter  # noqa: E402
 
 for _sid in IEMAdapter.SUPPORTED_SOURCES:
     register_adapter(_sid, IEMAdapter)

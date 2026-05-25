@@ -24,7 +24,7 @@ from datetime import UTC, datetime, timedelta
 from datetime import date as _date
 from typing import TYPE_CHECKING, Any
 
-from tradewinds.core.exceptions import SourceMismatchError
+from mostlyright.core.exceptions import SourceMismatchError
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -38,7 +38,7 @@ __all__ = ["assert_source_identity", "research_by_source"]
 #: Production parsers emit BARE source tags (`iem`, `awc`, `ghcnh`) per
 #: ``_iem.py:230``, ``_awc.py:320``, ``_ghcnh.py:306``. The dotted
 #: forms (`iem.archive`, `iem.live`, `awc.live`, `ghcnh.archive`) are
-#: tradewinds' canonical source-identity vocabulary documented in
+#: mostlyright' canonical source-identity vocabulary documented in
 #: ``docs/design.md`` §R and used by every schema's ``_registered_source``.
 #: Mode 2 accepts BOTH at the input boundary and uses
 #: :data:`_SOURCE_ALIASES` to map each request to the parser tags that
@@ -79,7 +79,7 @@ def research_by_source(
     aggregates into pairs) and filters rows to the requested source.
     Result carries ``df.attrs["source"] = source`` +
     ``df.attrs["retrieved_at"]`` + a per-row ``source`` overlay column —
-    the canonical validator contract used by all of tradewinds' Mode 2
+    the canonical validator contract used by all of mostlyright' Mode 2
     surfaces.
 
     **v0.1.0 limitation (codex iter-1 P1):** ``_fetch_observations_range``
@@ -89,7 +89,7 @@ def research_by_source(
     rows AWC did NOT supersede — not the full IEM coverage of the
     upstream feed. v0.2 will add a pre-merge source-isolated path; v0.1
     callers who need that today should call the per-source fetchers
-    in ``tradewinds.weather._fetchers`` directly and skip the catalog
+    in ``mostlyright.weather._fetchers`` directly and skip the catalog
     layer.
 
     Args:
@@ -117,13 +117,13 @@ def research_by_source(
     # Codex iter-4 P2 fix: validate backend/return_type BEFORE any
     # network fetch or cache write so a typo doesn't trigger live
     # API calls + cache mutations before raising.
-    from tradewinds.core._backend_dispatch import validate_backend_kwargs
+    from mostlyright.core._backend_dispatch import validate_backend_kwargs
 
     validate_backend_kwargs(backend, return_type)  # type: ignore[arg-type]
 
     # Local import — research.py is heavy and we don't want mode2 to
-    # pay the import cost on every package-level `from tradewinds`.
-    from tradewinds.research import (
+    # pay the import cost on every package-level `from mostlyright`.
+    from mostlyright.research import (
         _all_caches_warm,
         _fetch_observations_range,
         _prefetch_sources,
@@ -149,7 +149,7 @@ def research_by_source(
 
     # Filter to the parser tags that satisfy the requested source
     # (architect-CRITICAL fix: parsers emit bare `iem`/`awc`/`ghcnh`,
-    # tradewinds' canonical vocab is dotted; the alias table bridges
+    # mostlyright' canonical vocab is dotted; the alias table bridges
     # both at the boundary without rewriting the per-row source —
     # downstream Validator sees the truthful parser-emitted tag).
     accepted_sources = _SOURCE_ALIASES.get(source, {source})
@@ -166,7 +166,7 @@ def research_by_source(
         df.attrs["source"] = source
         df.attrs["retrieved_at"] = retrieved_at
         # Phase 6 W3-T2: dispatch even on the empty path.
-        from tradewinds.core._backend_dispatch import (
+        from mostlyright.core._backend_dispatch import (
             validate_backend_kwargs,
             wrap_result,
         )
@@ -195,7 +195,7 @@ def research_by_source(
     df.attrs["accepted_sources"] = sorted(accepted_sources)
 
     # Phase 6 W3-T2: backend / return_type dispatch.
-    from tradewinds.core._backend_dispatch import (
+    from mostlyright.core._backend_dispatch import (
         validate_backend_kwargs,
         wrap_result,
     )
@@ -216,7 +216,7 @@ def assert_source_identity(df: pd.DataFrame, expected_source: str) -> None:
     """Raise :class:`SourceMismatchError` if any row's source != expected.
 
     Mirrors the per-row check in
-    :func:`tradewinds.core.validator.validate_dataframe` but at the
+    :func:`mostlyright.core.validator.validate_dataframe` but at the
     Mode 2 dispatch layer so callers get a Mode-2-flavored error
     message naming the role.
     """

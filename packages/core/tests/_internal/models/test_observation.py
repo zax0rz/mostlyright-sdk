@@ -1,4 +1,4 @@
-"""Tests for tradewinds._internal.models.observation — frozen dataclass with computed fields."""
+"""Tests for mostlyright._internal.models.observation — frozen dataclass with computed fields."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ class TestObservationFields:
     """Observation dataclass has all 30 storage fields + 2 computed."""
 
     def test_all_storage_fields_present(self) -> None:
-        from tradewinds._internal.models.observation import Observation
+        from mostlyright._internal.models.observation import Observation
 
         obs = Observation(
             station_code="JFK",
@@ -51,7 +51,7 @@ class TestObservationFields:
 
     def test_new_fields_temp_c_dewpoint_c_qc_field(self) -> None:
         """The 3 new additive fields exist on the dataclass."""
-        from tradewinds._internal.models.observation import Observation
+        from mostlyright._internal.models.observation import Observation
 
         obs = Observation(
             station_code="JFK",
@@ -94,7 +94,7 @@ class TestObservationComputed:
     """Computed fields: relative_humidity and feels_like_f derived at load time."""
 
     def test_relative_humidity_computed(self) -> None:
-        from tradewinds._internal.models.observation import Observation
+        from mostlyright._internal.models.observation import Observation
 
         obs = Observation(
             station_code="JFK",
@@ -132,7 +132,7 @@ class TestObservationComputed:
         assert 50.0 < obs.relative_humidity < 55.0
 
     def test_feels_like_computed(self) -> None:
-        from tradewinds._internal.models.observation import Observation
+        from mostlyright._internal.models.observation import Observation
 
         obs = Observation(
             station_code="JFK",
@@ -170,7 +170,7 @@ class TestObservationComputed:
         assert obs.feels_like_f < 30.0  # Wind chill
 
     def test_computed_fields_none_when_inputs_missing(self) -> None:
-        from tradewinds._internal.models.observation import Observation
+        from mostlyright._internal.models.observation import Observation
 
         obs = Observation(
             station_code="JFK",
@@ -212,7 +212,7 @@ class TestObservationImmutability:
     """Observation must be frozen (immutable)."""
 
     def test_frozen_cannot_set_field(self) -> None:
-        from tradewinds._internal.models.observation import Observation
+        from mostlyright._internal.models.observation import Observation
 
         obs = Observation(
             station_code="JFK",
@@ -254,7 +254,7 @@ class TestObservationDictAccess:
     """Observation supports dict-style access for backward compat."""
 
     def test_getitem(self) -> None:
-        from tradewinds._internal.models.observation import Observation
+        from mostlyright._internal.models.observation import Observation
 
         obs = Observation(
             station_code="JFK",
@@ -292,7 +292,7 @@ class TestObservationDictAccess:
         assert obs["temp_f"] == 68.0
 
     def test_to_dict(self) -> None:
-        from tradewinds._internal.models.observation import Observation
+        from mostlyright._internal.models.observation import Observation
 
         obs = Observation(
             station_code="JFK",
@@ -334,7 +334,7 @@ class TestObservationDictAccess:
         assert "feels_like_f" in d
 
     def test_to_storage_dict_excludes_computed(self) -> None:
-        from tradewinds._internal.models.observation import Observation
+        from mostlyright._internal.models.observation import Observation
 
         obs = Observation(
             station_code="JFK",
@@ -379,13 +379,13 @@ class TestObservationFromDict:
     """from_dict validates required fields."""
 
     def test_from_dict_missing_required_raises(self) -> None:
-        from tradewinds._internal.models.observation import Observation
+        from mostlyright._internal.models.observation import Observation
 
         with pytest.raises(ValueError, match="missing required fields"):
             Observation.from_dict({"temp_c": 20.0})
 
     def test_from_dict_valid(self) -> None:
-        from tradewinds._internal.models.observation import Observation
+        from mostlyright._internal.models.observation import Observation
 
         d = {
             "station_code": "JFK",

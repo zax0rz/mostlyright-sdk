@@ -10,19 +10,19 @@ downstream.
 Phase 1.5 PERF-01/02/03 — lifts mostlyright PR #85 (commit ``cf9eb85``, 2026-05-12):
 
 - **PERF-01 chunk size:** monthly → 365-day calendar-aligned via the shared
-  :mod:`~tradewinds.weather._fetchers._iem_chunks` helper (leap-year safe).
+  :mod:`~mostlyright.weather._fetchers._iem_chunks` helper (leap-year safe).
 - **PERF-02 cache filename + partial namespace:** cache key encodes the full chunk
   window (``iem_{start_iso}_{end_iso}_{suffix}.csv``); ``skip_cache=True`` OR
   ``chunk_end > today_utc`` routes to the ``_partial_`` infix namespace that backfill
   never reads (closes three cache-poisoning paths PR #85 documented).
-- **PERF-03 timeout** lives in :mod:`tradewinds._internal._http` (separate concern).
+- **PERF-03 timeout** lives in :mod:`mostlyright._internal._http` (separate concern).
 
 Tradewinds-specific deviation from PR #85 verbatim
 ==================================================
 
 PR #85's :func:`yearly_chunks_exclusive_end` uses ``chunk_start = max(current, start)``,
 which floats the chunk's start with the caller. That works for PR #85's "one big
-backfill" caller pattern but defeats cache idempotence when tradewinds'
+backfill" caller pattern but defeats cache idempotence when mostlyright'
 ``research.py`` calls this fetcher month-by-month — each different start date
 produces a different cache filename, forcing 12 full-year fetches per year.
 
@@ -31,7 +31,7 @@ before invoking the chunker. Cache filename becomes year-stable
 (``iem_YYYY-01-01_YYYY+1-01-01_<suffix>.csv``) so a per-month caller hits the cache
 on every month after the first. Over-fetch is documented-safe (the parser is
 idempotent; downstream filters by date). The chunker module itself remains PR-#85
-verbatim — see :mod:`tradewinds.weather._fetchers._iem_chunks`.
+verbatim — see :mod:`mostlyright.weather._fetchers._iem_chunks`.
 
 Conventions
 ===========
@@ -42,7 +42,7 @@ Conventions
   tagging should issue both report types in turn and pass the corresponding
   ``observation_type_override`` to ``parse_iem_file``.
 
-Out of scope here: parsing (see ``tradewinds.weather._iem``), parquet staging/merge,
+Out of scope here: parsing (see ``mostlyright.weather._iem``), parquet staging/merge,
 gap-fill orchestration.
 """
 
@@ -53,10 +53,10 @@ import time
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-from tradewinds._internal._bounds import validate_icao_for_path
-from tradewinds._internal._http import download_with_retry
-from tradewinds._internal.models.station import StationInfo
-from tradewinds.weather._fetchers._iem_chunks import yearly_chunks_exclusive_end
+from mostlyright._internal._bounds import validate_icao_for_path
+from mostlyright._internal._http import download_with_retry
+from mostlyright._internal.models.station import StationInfo
+from mostlyright.weather._fetchers._iem_chunks import yearly_chunks_exclusive_end
 
 log = logging.getLogger(__name__)
 
@@ -213,7 +213,7 @@ def download_iem_asos(
     # the check at the boundary catches any registry corruption or mis-call.
     validate_icao_for_path(station.code, field="station.code")
     # Reversed-range guard (codex iter-1 HIGH): the underlying chunker honors
-    # ``start > end -> []``, but the tradewinds-specific year-normalization
+    # ``start > end -> []``, but the mostlyright-specific year-normalization
     # below would mask an inverted same-year range and fire a full-year
     # download. Mirror the chunker invariant at the caller boundary.
     if start > end:
@@ -232,7 +232,7 @@ def download_iem_asos(
         # Tradewinds-specific: normalize start to Jan 1 of its year so per-month
         # callers share a yearly cache key. PR #85's chunker uses
         # max(current, start), which floats the chunk_start with the caller —
-        # fine for one-shot backfills, wasteful for tradewinds' per-month
+        # fine for one-shot backfills, wasteful for mostlyright' per-month
         # research.py loop. See module docstring "Deviation".
         normalized_start = date(start.year, 1, 1)
         chunks = yearly_chunks_exclusive_end(normalized_start, end)

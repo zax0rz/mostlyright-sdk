@@ -77,7 +77,7 @@ class StationInfo:
 def _build_registry() -> dict[str, StationInfo]:
     """Build public StationInfo registry from the shared STATIONS dict.
 
-    Imports from ``tradewinds._internal._stations`` (ships in the wheel) instead
+    Imports from ``mostlyright._internal._stations`` (ships in the wheel) instead
     of ``ingest.stations``. The previous lazy-try pattern silently produced an
     empty registry on pip-installed systems because ``ingest/`` isn't in
     the wheel — see Vu PR #33 R2 P1.
@@ -85,10 +85,10 @@ def _build_registry() -> dict[str, StationInfo]:
     Derives utc_offset_standard directly from the IANA timezone name — NOT
     from snapshot._lst_offset(), which raises ValueError for unknown stations.
     """
-    # TODO(wave3-stations-lift): swap to actual `tradewinds._internal._stations`
+    # TODO(wave3-stations-lift): swap to actual `mostlyright._internal._stations`
     # once a later wave lifts mostlyright._stations. Until then, calling this
     # function raises ImportError; module-level eager build below is guarded.
-    from tradewinds._internal._stations import STATIONS as _SHARED_STATIONS
+    from mostlyright._internal._stations import STATIONS as _SHARED_STATIONS
 
     registry: dict[str, StationInfo] = {}
     for code, s in _SHARED_STATIONS.items():
@@ -106,7 +106,7 @@ def _build_registry() -> dict[str, StationInfo]:
 
 
 # TODO(wave3-stations-lift): the eager registry build below depends on
-# `tradewinds._internal._stations`, which a later wave will lift. Guarded so
+# `mostlyright._internal._stations`, which a later wave will lift. Guarded so
 # the module remains importable in Wave 2 — `_STATION_REGISTRY` is `{}` until
 # `_stations` lands. Byte-faithful equivalent: `_STATION_REGISTRY = _build_registry()`.
 try:

@@ -2,10 +2,10 @@
 # Source SHA: 514fcdab227e845145ca32b989355647466231d9
 # Lift date: 2026-05-22
 # Modifications:
-#   - import-rename: mostlyright._stations -> tradewinds._internal._stations
+#   - import-rename: mostlyright._stations -> mostlyright._internal._stations
 #   - subset to tests that exercise STATIONS dict + StationInfo dataclass only
 #     (client/capabilities/schema tests deferred to later waves)
-"""Tests for tradewinds._internal._stations — STATIONS registry + StationInfo.
+"""Tests for mostlyright._internal._stations — STATIONS registry + StationInfo.
 
 Exercises the lifted ingest/SDK station registry (the 20 Kalshi-traded
 stations). Distinct from packages/core/tests/_internal/models/test_station.py,
@@ -15,7 +15,7 @@ which exercises the public ``StationInfo`` SDK model.
 from __future__ import annotations
 
 import pytest
-from tradewinds._internal._stations import STATIONS, StationInfo, is_us_station
+from mostlyright._internal._stations import STATIONS, StationInfo, is_us_station
 
 # ---------------------------------------------------------------------------
 # StationInfo dataclass

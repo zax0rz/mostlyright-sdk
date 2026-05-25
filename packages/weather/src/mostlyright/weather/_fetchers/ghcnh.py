@@ -30,8 +30,8 @@ import time
 from pathlib import Path
 
 import httpx
-from tradewinds._internal._bounds import validate_ghcnh_id_for_path
-from tradewinds._internal._http import download_with_retry
+from mostlyright._internal._bounds import validate_ghcnh_id_for_path
+from mostlyright._internal._http import download_with_retry
 
 log = logging.getLogger(__name__)
 

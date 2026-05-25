@@ -1,7 +1,7 @@
-"""tradewinds._internal — shared utilities lifted from monorepo-v0.14.1.
+"""mostlyright._internal — shared utilities lifted from monorepo-v0.14.1.
 
 NOT a public API. Module names start with underscore to discourage downstream
-use; rely on ``tradewinds.research()`` / ``tradewinds.snapshot.*`` instead.
+use; rely on ``mostlyright.research()`` / ``mostlyright.snapshot.*`` instead.
 
 Lift inventory (provenance for parity-critical code). Source SHA refers to the
 v0.14.1 release tag of ``Tarabcak/monorepo`` (commit
@@ -10,7 +10,7 @@ pins the exact source-file blob SHA from that tree.
 
 | Module                | Source path                                              | Source SHA   | Lift date  | Modifications                                                          |
 |-----------------------|----------------------------------------------------------|--------------|------------|------------------------------------------------------------------------|
-| _http.py              | monorepo-v0.14.1/src/mostlyright/_http.py                | 514fcda      | 2026-05-21 | namespace rename only (mostlyright -> tradewinds._internal)            |
+| _http.py              | monorepo-v0.14.1/src/mostlyright/_http.py                | 514fcda      | 2026-05-21 | namespace rename only (mostlyright -> mostlyright._internal)            |
 | _convert.py           | monorepo-v0.14.1/src/mostlyright/_convert.py             | 514fcda      | 2026-05-21 | namespace rename only                                                  |
 | _bounds.py            | monorepo-v0.14.1/src/mostlyright/_bounds.py              | 514fcda      | 2026-05-21 | namespace rename only                                                  |
 | _capabilities.py      | monorepo-v0.14.1/src/mostlyright/_capabilities.py        | 514fcda      | 2026-05-21 | namespace rename only                                                  |

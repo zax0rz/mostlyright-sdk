@@ -2,11 +2,11 @@
 
 Path layout::
 
-    $HOME/.tradewinds/cache/v1/trades/<issuer>/<ticker>/<YYYY-MM>.parquet
+    $HOME/.mostlyright/cache/v1/trades/<issuer>/<ticker>/<YYYY-MM>.parquet
 
 Override the root via the ``TRADEWINDS_CACHE_DIR`` environment variable.
 
-Safety guarantees mirror :mod:`tradewinds.weather.cache`:
+Safety guarantees mirror :mod:`mostlyright.weather.cache`:
 
 - **Atomic write** via sibling ``.tmp`` + ``os.replace`` (works on POSIX
   + Windows).
@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 
 CACHE_VERSION: str = "v1"
-DEFAULT_ROOT: Path = Path.home() / ".tradewinds" / "cache"
+DEFAULT_ROOT: Path = Path.home() / ".mostlyright" / "cache"
 LOCK_TIMEOUT_SECONDS: int = 30
 
 
@@ -93,13 +93,11 @@ def trades_cache_path(issuer: str, ticker: str, year: int, month: int) -> Path:
     """
     if not isinstance(issuer, str) or not _ISSUER_RE.match(issuer):
         raise ValueError(
-            f"invalid issuer for cache path: {issuer!r}; "
-            f"must match {_ISSUER_RE.pattern}"
+            f"invalid issuer for cache path: {issuer!r}; must match {_ISSUER_RE.pattern}"
         )
     if not isinstance(ticker, str) or not _TICKER_RE.match(ticker):
         raise ValueError(
-            f"invalid ticker for cache path: {ticker!r}; "
-            f"must match {_TICKER_RE.pattern}"
+            f"invalid ticker for cache path: {ticker!r}; must match {_TICKER_RE.pattern}"
         )
     if not isinstance(year, int) or not (2000 <= year <= 2100):
         raise ValueError(f"year out of range [2000, 2100]: {year!r}")
@@ -122,9 +120,7 @@ def trades_cache_path(issuer: str, ticker: str, year: int, month: int) -> Path:
     try:
         resolved.relative_to(root_resolved)
     except ValueError as exc:
-        raise ValueError(
-            f"cache path escapes root: {resolved} not under {root_resolved}"
-        ) from exc
+        raise ValueError(f"cache path escapes root: {resolved} not under {root_resolved}") from exc
     return candidate
 
 
@@ -159,9 +155,7 @@ def read_trades_cache(
     Args:
         now: Override wall-clock for tests. Defaults to ``datetime.now(UTC)``.
     """
-    if _is_current_utc_month(year, month, now=now) or _is_future_utc_month(
-        year, month, now=now
-    ):
+    if _is_current_utc_month(year, month, now=now) or _is_future_utc_month(year, month, now=now):
         return None
     path = trades_cache_path(issuer, ticker, year, month)
     if not path.exists():
@@ -201,9 +195,7 @@ def write_trades_cache(
     Args:
         now: Override wall-clock for tests.
     """
-    if _is_current_utc_month(year, month, now=now) or _is_future_utc_month(
-        year, month, now=now
-    ):
+    if _is_current_utc_month(year, month, now=now) or _is_future_utc_month(year, month, now=now):
         return False
     if not rows:
         return False

@@ -1,12 +1,12 @@
 """Phase 3.4 — observation QC sidecar writer.
 
 Writes per-(station, year, month) parquet sidecars produced by
-``tradewinds.qc.QCEngine.build_sidecar_rows()`` to the canonical
-location ``$HOME/.tradewinds/cache/v1/observations_qc/{station}/{YYYY}/
+``mostlyright.qc.QCEngine.build_sidecar_rows()`` to the canonical
+location ``$HOME/.mostlyright/cache/v1/observations_qc/{station}/{YYYY}/
 {MM}.parquet``. Best-effort: failures log + degrade silently so QC
 never breaks the research pipeline.
 
-Sibling of :mod:`tradewinds.weather.cache` — uses the same atomic-write
+Sibling of :mod:`mostlyright.weather.cache` — uses the same atomic-write
 pattern + `_cache_root` + filelock guard so concurrent processes don't
 clobber each other's sidecar files.
 """
@@ -17,7 +17,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from tradewinds._internal._bounds import (
+from mostlyright._internal._bounds import (
     assert_path_under,
     validate_icao_for_path,
 )
@@ -34,7 +34,7 @@ log = logging.getLogger(__name__)
 def qc_sidecar_path(station: str, year: int, month: int) -> Path:
     """Return the QC sidecar parquet path for ``(station, year, month)``.
 
-    Mirrors :func:`tradewinds.weather.cache.cache_path` layout but under
+    Mirrors :func:`mostlyright.weather.cache.cache_path` layout but under
     the ``observations_qc/`` namespace established by Phase 2.1 LINEAGE-05.
     Path validation is identical (defense-in-depth against caller-controlled
     station strings).
@@ -57,7 +57,7 @@ def write_qc_sidecar(
 ) -> Path | None:
     """Persist QC sidecar rows for ``(station, year, month)``.
 
-    Idempotent: writes via :func:`tradewinds.weather.cache._atomic_write`
+    Idempotent: writes via :func:`mostlyright.weather.cache._atomic_write`
     so partial writes don't leak. Returns the written path on success or
     ``None`` if the row list was empty (no rule fired → no sidecar to
     write, no I/O at all).

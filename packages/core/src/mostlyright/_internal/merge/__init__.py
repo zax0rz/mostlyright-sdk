@@ -12,11 +12,11 @@ Phase 1 Wave 1 (parallel sub-branches merged here):
 
 from __future__ import annotations
 
-from tradewinds._internal.merge.climate import (
+from mostlyright._internal.merge.climate import (
     REPORT_TYPE_PRIORITY,
     merge_climate,
 )
-from tradewinds._internal.merge.observations import (
+from mostlyright._internal.merge.observations import (
     SOURCE_PRIORITY,
     merge_observations,
 )

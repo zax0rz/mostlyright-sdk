@@ -11,7 +11,7 @@ polite floor matches that ceiling exactly without throttling normal
 backtest runs.
 
 The module is deliberately narrow — only what
-:mod:`tradewinds.markets.kalshi_trades` needs for v0.2 candles + fills +
+:mod:`mostlyright.markets.kalshi_trades` needs for v0.2 candles + fills +
 orderbook. Authenticated endpoints (orders, positions, account state)
 are out of scope and intentionally not exposed.
 """
@@ -69,7 +69,7 @@ _MAX_TRADES_PAGES: int = 10_000
 
 
 #: User-Agent banner. Sites occasionally block blank UAs as bot traffic.
-_USER_AGENT: str = "tradewinds-markets/0.2 (+https://github.com/helloiamvu/tradewinds)"
+_USER_AGENT: str = "mostlyright-markets/0.2 (+https://github.com/helloiamvu/tradewinds)"
 
 
 def _request(
@@ -115,9 +115,7 @@ def _request(
                 # documents seconds). Use max(retry_after, delay) so a
                 # smaller server hint doesn't shorten our exponential
                 # backoff and lose monotonicity.
-                retry_after = _parse_retry_after_seconds(
-                    response.headers.get("Retry-After")
-                )
+                retry_after = _parse_retry_after_seconds(response.headers.get("Retry-After"))
                 # Iter-2 python-architect HIGH: cap Retry-After at
                 # _MAX_RETRY_AFTER_S so a hostile/buggy upstream cannot
                 # pin the SDK in time.sleep() for arbitrary durations.
@@ -125,8 +123,7 @@ def _request(
                     retry_after = min(retry_after, _MAX_RETRY_AFTER_S)
                 sleep_s = max(retry_after, delay) if retry_after is not None else delay
                 log.warning(
-                    "kalshi HTTP %d for %s, retry %d/%d in %.1fs"
-                    "%s",
+                    "kalshi HTTP %d for %s, retry %d/%d in %.1fs%s",
                     response.status_code,
                     url,
                     attempt + 1,
@@ -178,9 +175,7 @@ def fetch_candlesticks(
         Empty list when no candles in the window.
     """
     if "-" not in ticker:
-        raise ValueError(
-            f"kalshi ticker must contain '-' to derive series prefix; got {ticker!r}"
-        )
+        raise ValueError(f"kalshi ticker must contain '-' to derive series prefix; got {ticker!r}")
     series = ticker.split("-", 1)[0]
     path = f"/series/{series}/markets/{ticker}/candlesticks"
     params = {
@@ -262,9 +257,7 @@ def fetch_orderbook(
     if depth < 1 or depth > 1000:
         raise ValueError(f"depth out of range [1, 1000]: {depth}")
     path = f"/markets/{ticker}/orderbook"
-    payload = _request(
-        path, params={"depth": depth}, client=client, sleep_between=sleep_between
-    )
+    payload = _request(path, params={"depth": depth}, client=client, sleep_between=sleep_between)
     if not isinstance(payload, dict):
         raise RuntimeError(
             f"kalshi orderbook for {ticker!r}: expected dict payload, got {type(payload).__name__}"

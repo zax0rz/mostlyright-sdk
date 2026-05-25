@@ -1,11 +1,11 @@
-"""Unit tests for tradewinds.mode2 (Phase 3 Mode 2 dispatch seam)."""
+"""Unit tests for mostlyright.mode2 (Phase 3 Mode 2 dispatch seam)."""
 
 from __future__ import annotations
 
 import pandas as pd
 import pytest
-from tradewinds.core.exceptions import SourceMismatchError
-from tradewinds.mode2 import (
+from mostlyright.core.exceptions import SourceMismatchError
+from mostlyright.mode2 import (
     _VALID_OBSERVATION_SOURCES,
     assert_source_identity,
     research_by_source,
@@ -43,7 +43,7 @@ def test_research_by_source_filters_by_parser_tag_in_production(tmp_path, monkey
     import importlib
 
     monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
-    research_module = importlib.import_module("tradewinds.research")
+    research_module = importlib.import_module("mostlyright.research")
     synthetic_obs = [
         {
             "station_code": "KNYC",
@@ -78,7 +78,7 @@ def test_research_by_source_bare_source_form_also_accepted(tmp_path, monkeypatch
     import importlib
 
     monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
-    research_module = importlib.import_module("tradewinds.research")
+    research_module = importlib.import_module("mostlyright.research")
     monkeypatch.setattr(
         research_module,
         "_fetch_observations_range",
@@ -102,7 +102,7 @@ def test_research_by_source_empty_carries_attrs(tmp_path, monkeypatch) -> None:
     import importlib
 
     monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
-    research_module = importlib.import_module("tradewinds.research")
+    research_module = importlib.import_module("mostlyright.research")
     monkeypatch.setattr(research_module, "_fetch_observations_range", lambda *a, **kw: [])
     monkeypatch.setattr(research_module, "_all_caches_warm", lambda *a, **kw: True)
     df = research_by_source("KNYC", "iem.archive", "2025-01-06", "2025-01-12")
@@ -115,7 +115,7 @@ def test_research_by_source_ghcnh_alias(tmp_path, monkeypatch) -> None:
     import importlib
 
     monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
-    research_module = importlib.import_module("tradewinds.research")
+    research_module = importlib.import_module("mostlyright.research")
     synthetic_obs = [
         {
             "station_code": "KNYC",
@@ -139,7 +139,7 @@ def test_research_by_source_as_dataframe_false(tmp_path, monkeypatch) -> None:
     import importlib
 
     monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
-    research_module = importlib.import_module("tradewinds.research")
+    research_module = importlib.import_module("mostlyright.research")
     raw = [
         {
             "station_code": "KNYC",

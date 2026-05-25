@@ -48,7 +48,7 @@ def dumps(df: pd.DataFrame) -> str:
     converted to pandas before serialization (output bytes are identical
     for the same row content).
     """
-    from tradewinds.core._narwhals_compat import to_pandas_if_polars
+    from mostlyright.core._narwhals_compat import to_pandas_if_polars
 
     df, _ = to_pandas_if_polars(df)
     if len(df) == 0:

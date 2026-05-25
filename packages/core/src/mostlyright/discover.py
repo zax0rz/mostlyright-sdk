@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     import pandas as pd
 
 
-def discover(*, city: str) -> "pd.DataFrame":
+def discover(*, city: str) -> pd.DataFrame:
     """Return per-station discovery table for ``city``.
 
     Each row shows one settlement station + the list of ``"<issuer>:<ticker>"``
@@ -44,40 +44,39 @@ def discover(*, city: str) -> "pd.DataFrame":
     try:
         import pandas as _pandas
     except ImportError as exc:
-        from tradewinds.core.exceptions import SourceUnavailableError
+        from mostlyright.core.exceptions import SourceUnavailableError
 
         raise SourceUnavailableError(
-            "tradewinds.discover requires pandas. Install with: "
-            "pip install tradewinds[parquet]",
+            "mostlyright.discover requires pandas. Install with: pip install mostlyright[parquet]",
             source="discover",
             retryable=False,
             underlying=str(exc),
         ) from None
 
     # Iter-1 + iter-2 codex HIGH: discover() is exported from the
-    # `tradewinds` (core) package but the resolver depends on
-    # `tradewinds.markets`, which is shipped as a separate distribution
-    # (`tradewinds-markets`). The `_compose` module itself imports
+    # `mostlyright` (core) package but the resolver depends on
+    # `mostlyright.markets`, which is shipped as a separate distribution
+    # (`mostlyright-markets`). The `_compose` module itself imports
     # cleanly (the markets imports inside it are LAZY at call time), so
-    # wrapping only the top-level `from tradewinds._compose import ...`
+    # wrapping only the top-level `from mostlyright._compose import ...`
     # (the iter-1 fix) was not enough — the actual `ModuleNotFoundError`
     # fires inside `resolve_city()` / `annotate_settles_for()` when they
-    # call `from tradewinds.markets... import ...`. The iter-2 fix
+    # call `from mostlyright.markets... import ...`. The iter-2 fix
     # wraps the resolver calls below as well, converting the lazy
     # ImportError into a friendly SourceUnavailableError with the
     # canonical install hint.
-    from tradewinds._compose import annotate_settles_for, resolve_city
+    from mostlyright._compose import annotate_settles_for, resolve_city
 
     try:
         stations = resolve_city(city)
     except ModuleNotFoundError as exc:
-        if "tradewinds.markets" in (exc.name or ""):
-            from tradewinds.core.exceptions import SourceUnavailableError
+        if "mostlyright.markets" in (exc.name or ""):
+            from mostlyright.core.exceptions import SourceUnavailableError
 
             raise SourceUnavailableError(
-                "tradewinds.discover requires the sibling `tradewinds-markets` "
+                "mostlyright.discover requires the sibling `mostlyright-markets` "
                 "distribution (for the Kalshi + Polymarket city catalogs). "
-                "Install with: pip install tradewinds-markets",
+                "Install with: pip install mostlyright-markets",
                 source="discover",
                 retryable=False,
                 underlying=str(exc),

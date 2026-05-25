@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from tradewinds.core.exceptions import SourceUnavailableError
+from mostlyright.core.exceptions import SourceUnavailableError
 
 if TYPE_CHECKING:
     pass
@@ -35,13 +35,13 @@ HAS_POLARS: bool = _pl is not None
 def require_polars() -> Any:
     """Return the ``polars`` module or raise ``SourceUnavailableError``.
 
-    Mirrors the install-hint pattern of ``tradewinds.weather.forecast_nwp``'s
+    Mirrors the install-hint pattern of ``mostlyright.weather.forecast_nwp``'s
     ``[nwp]`` gate.
     """
     if _pl is None:
         raise SourceUnavailableError(
             "polars backend requested but the optional [polars] extra "
-            "is not installed. Install with: pip install tradewinds[polars]"
+            "is not installed. Install with: pip install mostlyright[polars]"
         )
     return _pl
 

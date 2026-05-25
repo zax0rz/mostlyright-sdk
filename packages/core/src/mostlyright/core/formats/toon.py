@@ -145,7 +145,7 @@ def dumps(df: pd.DataFrame) -> str:
     converted to pandas at the boundary because the byte-pinned ``_toon``
     encoder body is parity-locked (CLAUDE.md) and stays pandas-only.
     """
-    from tradewinds.core._narwhals_compat import to_pandas_if_polars
+    from mostlyright.core._narwhals_compat import to_pandas_if_polars
 
     df, _ = to_pandas_if_polars(df)
     if len(df) == 0:

@@ -1,4 +1,4 @@
-"""Tests for tradewinds.weather._fetchers.awc — AWC live METAR HTTP fetcher.
+"""Tests for mostlyright.weather._fetchers.awc — AWC live METAR HTTP fetcher.
 
 Sprint 0 Wave 3B (Lane F, net-new code). Covers:
 
@@ -25,7 +25,7 @@ from typing import Any
 import httpx
 import pytest
 import respx
-from tradewinds.weather._fetchers.awc import AWC_METAR_URL, fetch_awc_metars
+from mostlyright.weather._fetchers.awc import AWC_METAR_URL, fetch_awc_metars
 
 
 def _sample_metar(icao: str = "KNYC") -> dict[str, Any]:
@@ -154,7 +154,7 @@ class TestAwcFetcher4xx:
 class TestAwcFetcher5xx:
     def test_500_retried_then_succeeds(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """5xx is transient — exponential backoff up to MAX_RETRIES."""
-        monkeypatch.setattr("tradewinds.weather._fetchers.awc.time.sleep", lambda _: None)
+        monkeypatch.setattr("mostlyright.weather._fetchers.awc.time.sleep", lambda _: None)
 
         with respx.mock(assert_all_called=True) as mock:
             route = mock.get(AWC_METAR_URL)
@@ -170,7 +170,7 @@ class TestAwcFetcher5xx:
 
     def test_503_exhausts_retries_returns_empty_list(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """After MAX_RETRIES attempts of 5xx, return [] (do not raise)."""
-        monkeypatch.setattr("tradewinds.weather._fetchers.awc.time.sleep", lambda _: None)
+        monkeypatch.setattr("mostlyright.weather._fetchers.awc.time.sleep", lambda _: None)
 
         with respx.mock() as mock:
             mock.get(AWC_METAR_URL).respond(503)
@@ -179,7 +179,7 @@ class TestAwcFetcher5xx:
         assert result == []
 
     def test_502_exhausts_retries_returns_empty_list(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr("tradewinds.weather._fetchers.awc.time.sleep", lambda _: None)
+        monkeypatch.setattr("mostlyright.weather._fetchers.awc.time.sleep", lambda _: None)
 
         with respx.mock() as mock:
             mock.get(AWC_METAR_URL).respond(502)
@@ -191,7 +191,7 @@ class TestAwcFetcher5xx:
 class TestAwcFetcherNetworkErrors:
     def test_connect_timeout_returns_empty_list(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """httpx.RequestError (timeout, DNS failure, etc.) — retry then [] ."""
-        monkeypatch.setattr("tradewinds.weather._fetchers.awc.time.sleep", lambda _: None)
+        monkeypatch.setattr("mostlyright.weather._fetchers.awc.time.sleep", lambda _: None)
 
         with respx.mock() as mock:
             mock.get(AWC_METAR_URL).mock(side_effect=httpx.ConnectTimeout("boom"))
@@ -201,7 +201,7 @@ class TestAwcFetcherNetworkErrors:
 
     def test_network_error_then_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """One transient network error, then success — should return data."""
-        monkeypatch.setattr("tradewinds.weather._fetchers.awc.time.sleep", lambda _: None)
+        monkeypatch.setattr("mostlyright.weather._fetchers.awc.time.sleep", lambda _: None)
 
         with respx.mock(assert_all_called=True) as mock:
             route = mock.get(AWC_METAR_URL)

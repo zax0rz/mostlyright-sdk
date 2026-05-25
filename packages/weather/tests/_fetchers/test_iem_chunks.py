@@ -1,4 +1,4 @@
-"""Tests for tradewinds.weather._fetchers._iem_chunks (Phase 1.5 PERF-01).
+"""Tests for mostlyright.weather._fetchers._iem_chunks (Phase 1.5 PERF-01).
 
 Lifted from mostlyright PR #85 (commit ``cf9eb85``). The critical leap-year
 test (:meth:`TestYearlyChunksExclusiveEnd.test_leap_year_2024_boundary`) is
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from tradewinds.weather._fetchers._iem_chunks import (
+from mostlyright.weather._fetchers._iem_chunks import (
     yearly_chunks_exclusive_end,
     yearly_chunks_inclusive,
 )

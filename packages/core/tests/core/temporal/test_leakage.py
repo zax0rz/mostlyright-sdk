@@ -8,9 +8,9 @@ import pandas as pd
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
-from tradewinds.core.exceptions import LeakageError, SchemaValidationError
-from tradewinds.core.temporal.leakage import LeakageDetector, assert_no_leakage
-from tradewinds.core.temporal.timepoint import TimePoint
+from mostlyright.core.exceptions import LeakageError, SchemaValidationError
+from mostlyright.core.temporal.leakage import LeakageDetector, assert_no_leakage
+from mostlyright.core.temporal.timepoint import TimePoint
 
 # CORE-08 constrained datetime range.
 _MIN = datetime(2018, 1, 1, tzinfo=UTC)

@@ -1,9 +1,9 @@
-"""TimePoint: UTC-aware timestamp wrapper for tradewinds.core.
+"""TimePoint: UTC-aware timestamp wrapper for mostlyright.core.
 
 Load-bearing for the temporal-safety invariants described in docs/design.md
 (see "Definitions" — event_time, knowledge_time, retrieved_at semantics).
 
-Every timestamp in tradewinds.core is UTC-aware. TimePoint:
+Every timestamp in mostlyright.core is UTC-aware. TimePoint:
 - normalizes any tz-aware input to UTC internally
 - rejects naive datetimes loudly (ValueError with "naive" in message)
 - rejects date-only ISO strings loudly (ValueError)

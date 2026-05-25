@@ -7,7 +7,7 @@ narwhals usage patterns so callers don't sprout one-off
 
 Usage::
 
-    from tradewinds.core._narwhals_compat import to_narwhals, to_native
+    from mostlyright.core._narwhals_compat import to_narwhals, to_native
 
     nw_df = to_narwhals(df)            # pandas OR polars OR narwhals
     result = nw_df.with_columns(...)   # narwhals operations
@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from tradewinds.core.exceptions import SourceUnavailableError
+from mostlyright.core.exceptions import SourceUnavailableError
 
 if TYPE_CHECKING:
     pass
@@ -55,7 +55,7 @@ def require_narwhals() -> Any:
     if _nw is None:
         raise SourceUnavailableError(
             "narwhals is required for cross-backend operations. "
-            "Install with: pip install tradewinds[polars]"
+            "Install with: pip install mostlyright[polars]"
         )
     return _nw
 
@@ -118,7 +118,7 @@ def pandas_to_polars(df: Any) -> Any:
     Raises ``SourceUnavailableError`` (via ``require_polars``) when
     polars is absent.
     """
-    from tradewinds.core._polars_compat import require_polars
+    from mostlyright.core._polars_compat import require_polars
 
     pl = require_polars()
     return pl.from_pandas(df)
@@ -126,7 +126,7 @@ def pandas_to_polars(df: Any) -> Any:
 
 def pandas_series_to_polars(s: Any) -> Any:
     """Convert a pandas Series to polars Series."""
-    from tradewinds.core._polars_compat import require_polars
+    from mostlyright.core._polars_compat import require_polars
 
     pl = require_polars()
     return pl.from_pandas(s)

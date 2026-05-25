@@ -100,12 +100,12 @@ def test_parity_locked_modules_load_pandas_only() -> None:
     from pathlib import Path
 
     parity_locked = [
-        "tradewinds._internal._pairs",
-        "tradewinds.core.merge",
-        "tradewinds.core.validator",
-        "tradewinds.core._json_safe",
-        "tradewinds.core.temporal.timepoint",
-        "tradewinds.core.temporal.leakage",
+        "mostlyright._internal._pairs",
+        "mostlyright.core.merge",
+        "mostlyright.core.validator",
+        "mostlyright.core._json_safe",
+        "mostlyright.core.temporal.timepoint",
+        "mostlyright.core.temporal.leakage",
     ]
     for module_name in parity_locked:
         mod = importlib.import_module(module_name)
@@ -136,7 +136,7 @@ def test_data_version_token_is_backend_invariant() -> None:
     A polars caller and a pandas caller against the same cache must hash
     the same files and produce identical DataVersion tokens.
     """
-    from tradewinds.discovery import DataVersion
+    from mostlyright.discovery import DataVersion
 
     a = DataVersion.from_components(
         sdk_version="0.2.0",

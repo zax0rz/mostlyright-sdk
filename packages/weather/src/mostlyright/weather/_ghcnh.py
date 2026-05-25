@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from tradewinds._internal._bounds import (
+from mostlyright._internal._bounds import (
     MAX_RAW_METAR_LEN,
     MAX_VISIBILITY_MILES,
     MAX_WX_CODES_LEN,
@@ -29,8 +29,8 @@ from tradewinds._internal._bounds import (
     bounded_float_min,
     bounded_int,
 )
-from tradewinds._internal._convert import celsius_to_fahrenheit, hpa_to_inhg
-from tradewinds.weather._awc import icao_to_station_code, map_cloud_cover
+from mostlyright._internal._convert import celsius_to_fahrenheit, hpa_to_inhg
+from mostlyright.weather._awc import icao_to_station_code, map_cloud_cover
 
 _MS_TO_KT = 1 / 0.514444
 _KM_TO_MI = 1 / 1.60934

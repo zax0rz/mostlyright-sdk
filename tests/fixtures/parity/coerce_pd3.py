@@ -2,9 +2,9 @@
 
 The v0.1.0 parity contract is byte-equivalent to ``mostlyright==0.14.1`` —
 a single, immutable set of bytes per CLAUDE.md "Data + parity rules".
-Capturing a *second* set of fixtures from tradewinds' own pandas-3 output
-would be circular: it would prove tradewinds-2.x == tradewinds-3.x, NOT
-that pandas-3-tradewinds matches mostlyright-0.14.1.
+Capturing a *second* set of fixtures from mostlyright' own pandas-3 output
+would be circular: it would prove mostlyright-2.x == mostlyright-3.x, NOT
+that pandas-3-mostlyright matches mostlyright-0.14.1.
 
 This module defines a documented, invertible transform from the 2.x
 parquet bytes to the pandas-3 representation. The dual-pandas CI matrix

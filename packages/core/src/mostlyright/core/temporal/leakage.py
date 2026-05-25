@@ -20,9 +20,9 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 
-from tradewinds.core.exceptions import LeakageError, SchemaValidationError
-from tradewinds.core.result import TradewindsResult
-from tradewinds.core.temporal.timepoint import TimePoint
+from mostlyright.core.exceptions import LeakageError, SchemaValidationError
+from mostlyright.core.result import TradewindsResult
+from mostlyright.core.temporal.timepoint import TimePoint
 
 if TYPE_CHECKING:
     pass
@@ -59,7 +59,7 @@ def assert_no_leakage(df: pd.DataFrame | TradewindsResult, as_of: TimePoint) -> 
     A leak-free frame passes silently:
 
     >>> import pandas as pd
-    >>> from tradewinds.core import TimePoint, assert_no_leakage
+    >>> from mostlyright.core import TimePoint, assert_no_leakage
     >>> df = pd.DataFrame({
     ...     "knowledge_time": pd.to_datetime(["2025-01-01T00:00:00Z"], utc=True),
     ...     "value": [10],
@@ -68,7 +68,7 @@ def assert_no_leakage(df: pd.DataFrame | TradewindsResult, as_of: TimePoint) -> 
 
     A row past the cutoff raises :class:`LeakageError`:
 
-    >>> from tradewinds.core import LeakageError
+    >>> from mostlyright.core import LeakageError
     >>> leaky = pd.DataFrame({
     ...     "knowledge_time": pd.to_datetime(["2025-01-03T00:00:00Z"], utc=True),
     ...     "value": [99],

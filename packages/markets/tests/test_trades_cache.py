@@ -5,8 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
-
-from tradewinds.markets._trades_cache import (
+from mostlyright.markets._trades_cache import (
     invalidate_trades,
     read_trades_cache,
     trades_cache_path,
@@ -26,9 +25,7 @@ def cache_dir(tmp_path, monkeypatch):
 class TestPath:
     def test_canonical_layout(self, cache_dir):
         path = trades_cache_path("kalshi", "KXHIGHNY-25MAY26-T79", 2026, 5)
-        assert str(path).endswith(
-            "v1/trades/kalshi/KXHIGHNY-25MAY26-T79/2026-05.parquet"
-        )
+        assert str(path).endswith("v1/trades/kalshi/KXHIGHNY-25MAY26-T79/2026-05.parquet")
 
     def test_uppercase_issuer_rejected(self, cache_dir):
         with pytest.raises(ValueError, match="invalid issuer"):
@@ -109,16 +106,12 @@ class TestSkipRules:
 
     def test_future_month_write_returns_false(self, cache_dir):
         now = datetime(2026, 6, 15, tzinfo=UTC)
-        wrote = write_trades_cache(
-            "kalshi", "KX", 2026, 7, [{"trade_id": "t1"}], now=now
-        )
+        wrote = write_trades_cache("kalshi", "KX", 2026, 7, [{"trade_id": "t1"}], now=now)
         assert wrote is False
 
     def test_future_year_write_returns_false(self, cache_dir):
         now = datetime(2026, 6, 15, tzinfo=UTC)
-        wrote = write_trades_cache(
-            "kalshi", "KX", 2027, 1, [{"trade_id": "t1"}], now=now
-        )
+        wrote = write_trades_cache("kalshi", "KX", 2027, 1, [{"trade_id": "t1"}], now=now)
         assert wrote is False
 
 

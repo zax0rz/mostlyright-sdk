@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 
 import httpx
 import pytest
-from tradewinds.weather._fetchers._nwp_archive import (
+from mostlyright.weather._fetchers._nwp_archive import (
     DEFAULT_MIRROR_CHAIN,
     SUPPORTED_NWP_MIRRORS,
     SUPPORTED_NWP_MODELS,

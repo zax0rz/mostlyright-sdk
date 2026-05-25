@@ -2,9 +2,9 @@
 # Source SHA: 514fcdab227e845145ca32b989355647466231d9
 # Lift date: 2026-05-22
 # Modifications:
-#   - import-rename: mostlyright.models.observation -> tradewinds._internal.models.observation
-#   - import-rename: mostlyright.versioning -> tradewinds._internal.versioning
-#   - import-rename: mostlyright._toon -> tradewinds._internal._toon (lifted in PR #2 fix branch)
+#   - import-rename: mostlyright.models.observation -> mostlyright._internal.models.observation
+#   - import-rename: mostlyright.versioning -> mostlyright._internal.versioning
+#   - import-rename: mostlyright._toon -> mostlyright._internal._toon (lifted in PR #2 fix branch)
 #   - ruff auto-fix UP017 (timezone.utc -> datetime.UTC)
 #   - ruff-clean ambiguous-unicode (RUF002/003): EN DASH and MINUS SIGN in comments
 #     and docstrings replaced with HYPHEN-MINUS. No code-path change.
@@ -35,8 +35,8 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from tradewinds._internal.models.observation import Observation
-from tradewinds._internal.versioning import DataVersion
+from mostlyright._internal.models.observation import Observation
+from mostlyright._internal.versioning import DataVersion
 
 # ---------------------------------------------------------------------------
 # Station → IANA timezone database
@@ -189,7 +189,7 @@ def _lst_offset(station: str, tz_override: str | None = None) -> timedelta:
         # so intl ICAOs (EGLL, RJTT, ...) resolve without a tz_override.
         # The original 20-US tz map stays the primary lookup (preserves the
         # v0.14.1 byte-equivalence path for US settlement-date math).
-        from tradewinds._internal._stations import STATIONS
+        from mostlyright._internal._stations import STATIONS
 
         info = STATIONS.get(code)
         if info is None:
@@ -384,7 +384,7 @@ class DataSnapshot:
 
     def to_toon(self) -> str:
         """Encode as TOON v3.0 string for LLM/AI agent consumption."""
-        from tradewinds._internal._toon import encode
+        from mostlyright._internal._toon import encode
 
         d = self.to_dict()
         # Replace observations list with storage dicts for tabular encoding

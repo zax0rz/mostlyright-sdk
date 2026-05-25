@@ -1,10 +1,10 @@
-"""Tests for tradewinds.weather._fetchers.iem_asos.
+"""Tests for mostlyright.weather._fetchers.iem_asos.
 
 Phase 1.5 PERF-01/02 — yearly-chunked CSV downloads with PR #85 cache-filename
 and ``_partial`` namespace semantics:
 
-- Yearly chunker (PERF-01) via :mod:`~tradewinds.weather._fetchers._iem_chunks`,
-  with the tradewinds-specific normalization that clamps caller ``start`` to
+- Yearly chunker (PERF-01) via :mod:`~mostlyright.weather._fetchers._iem_chunks`,
+  with the mostlyright-specific normalization that clamps caller ``start`` to
   ``date(start.year, 1, 1)`` for cache idempotence across per-month research.py
   callers.
 - Cache filename encodes the full chunk window (PERF-02 pattern A).
@@ -22,8 +22,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from tradewinds._internal.models.station import StationInfo
-from tradewinds.weather._fetchers.iem_asos import (
+from mostlyright._internal.models.station import StationInfo
+from mostlyright.weather._fetchers.iem_asos import (
     IEM_BASE_URL,
     IEM_POLITE_DELAY,
     _build_iem_url,
@@ -64,7 +64,7 @@ def frozen_today_utc():
         def now(cls, tz=None):  # type: ignore[override]
             return fake_dt if tz is UTC or tz is not None else fake_dt.replace(tzinfo=None)
 
-    with patch("tradewinds.weather._fetchers.iem_asos.datetime", _FakeDatetime):
+    with patch("mostlyright.weather._fetchers.iem_asos.datetime", _FakeDatetime):
         yield _FROZEN_TODAY
 
 
@@ -174,10 +174,10 @@ class TestDownloadIemAsosYearlyChunks:
 
         with (
             patch(
-                "tradewinds.weather._fetchers.iem_asos.download_with_retry",
+                "mostlyright.weather._fetchers.iem_asos.download_with_retry",
                 side_effect=fake_download,
             ),
-            patch("tradewinds.weather._fetchers.iem_asos.time.sleep"),
+            patch("mostlyright.weather._fetchers.iem_asos.time.sleep"),
         ):
             paths = download_iem_asos(
                 station,
@@ -199,7 +199,7 @@ class TestDownloadIemAsosYearlyChunks:
     ) -> None:
         """Two month-window calls in the same year produce the SAME cache filename.
 
-        This is the tradewinds-specific normalization payoff: research.py's
+        This is the mostlyright-specific normalization payoff: research.py's
         per-month fetch loop hits the cache after the first month, not 12 times.
         """
         station = _make_station()
@@ -212,10 +212,10 @@ class TestDownloadIemAsosYearlyChunks:
 
         with (
             patch(
-                "tradewinds.weather._fetchers.iem_asos.download_with_retry",
+                "mostlyright.weather._fetchers.iem_asos.download_with_retry",
                 side_effect=fake_download,
             ),
-            patch("tradewinds.weather._fetchers.iem_asos.time.sleep"),
+            patch("mostlyright.weather._fetchers.iem_asos.time.sleep"),
         ):
             paths_jan = download_iem_asos(
                 station, date(2025, 1, 1), date(2025, 1, 31), tmp_path, report_type=3
@@ -243,10 +243,10 @@ class TestDownloadIemAsosYearlyChunks:
 
         with (
             patch(
-                "tradewinds.weather._fetchers.iem_asos.download_with_retry",
+                "mostlyright.weather._fetchers.iem_asos.download_with_retry",
                 side_effect=fake_download,
             ),
-            patch("tradewinds.weather._fetchers.iem_asos.time.sleep"),
+            patch("mostlyright.weather._fetchers.iem_asos.time.sleep"),
         ):
             paths = download_iem_asos(
                 station,
@@ -272,10 +272,10 @@ class TestDownloadIemAsosYearlyChunks:
 
         with (
             patch(
-                "tradewinds.weather._fetchers.iem_asos.download_with_retry",
+                "mostlyright.weather._fetchers.iem_asos.download_with_retry",
                 side_effect=fake_download,
             ),
-            patch("tradewinds.weather._fetchers.iem_asos.time.sleep"),
+            patch("mostlyright.weather._fetchers.iem_asos.time.sleep"),
         ):
             paths = download_iem_asos(
                 station,
@@ -314,8 +314,8 @@ class TestPartialNamespace:
         cached.write_bytes(b"cached")
 
         with (
-            patch("tradewinds.weather._fetchers.iem_asos.download_with_retry") as mock_dl,
-            patch("tradewinds.weather._fetchers.iem_asos.time.sleep") as mock_sleep,
+            patch("mostlyright.weather._fetchers.iem_asos.download_with_retry") as mock_dl,
+            patch("mostlyright.weather._fetchers.iem_asos.time.sleep") as mock_sleep,
         ):
             paths = download_iem_asos(
                 station,
@@ -349,10 +349,10 @@ class TestPartialNamespace:
 
         with (
             patch(
-                "tradewinds.weather._fetchers.iem_asos.download_with_retry",
+                "mostlyright.weather._fetchers.iem_asos.download_with_retry",
                 side_effect=fake_download,
             ),
-            patch("tradewinds.weather._fetchers.iem_asos.time.sleep"),
+            patch("mostlyright.weather._fetchers.iem_asos.time.sleep"),
         ):
             paths = download_iem_asos(
                 station,
@@ -394,12 +394,12 @@ class TestPartialNamespace:
             dest.write_bytes(b"x")
 
         with (
-            patch("tradewinds.weather._fetchers.iem_asos.datetime", _FakeDt),
+            patch("mostlyright.weather._fetchers.iem_asos.datetime", _FakeDt),
             patch(
-                "tradewinds.weather._fetchers.iem_asos.download_with_retry",
+                "mostlyright.weather._fetchers.iem_asos.download_with_retry",
                 side_effect=fake_download,
             ),
-            patch("tradewinds.weather._fetchers.iem_asos.time.sleep"),
+            patch("mostlyright.weather._fetchers.iem_asos.time.sleep"),
         ):
             paths = download_iem_asos(
                 station,
@@ -435,12 +435,12 @@ class TestPartialNamespace:
             dest.write_bytes(b"x")
 
         with (
-            patch("tradewinds.weather._fetchers.iem_asos.datetime", _FakeDt),
+            patch("mostlyright.weather._fetchers.iem_asos.datetime", _FakeDt),
             patch(
-                "tradewinds.weather._fetchers.iem_asos.download_with_retry",
+                "mostlyright.weather._fetchers.iem_asos.download_with_retry",
                 side_effect=fake_download,
             ),
-            patch("tradewinds.weather._fetchers.iem_asos.time.sleep"),
+            patch("mostlyright.weather._fetchers.iem_asos.time.sleep"),
         ):
             paths = download_iem_asos(
                 station,
@@ -468,7 +468,7 @@ class TestPartialNamespace:
         import ast
         import inspect
 
-        from tradewinds.weather._fetchers import iem_asos as fetcher_mod
+        from mostlyright.weather._fetchers import iem_asos as fetcher_mod
 
         tree = ast.parse(inspect.getsource(fetcher_mod))
 
@@ -537,12 +537,12 @@ class TestPartialNamespace:
             dest.write_bytes(b"partial-fresh")
 
         with (
-            patch("tradewinds.weather._fetchers.iem_asos.datetime", _FakeDt),
+            patch("mostlyright.weather._fetchers.iem_asos.datetime", _FakeDt),
             patch(
-                "tradewinds.weather._fetchers.iem_asos.download_with_retry",
+                "mostlyright.weather._fetchers.iem_asos.download_with_retry",
                 side_effect=fake_download,
             ),
-            patch("tradewinds.weather._fetchers.iem_asos.time.sleep"),
+            patch("mostlyright.weather._fetchers.iem_asos.time.sleep"),
         ):
             paths = download_iem_asos(
                 station,
@@ -580,10 +580,10 @@ class TestDownloadIemAsosRetry:
 
         with (
             patch(
-                "tradewinds.weather._fetchers.iem_asos.download_with_retry",
+                "mostlyright.weather._fetchers.iem_asos.download_with_retry",
                 side_effect=fake_download,
             ),
-            patch("tradewinds.weather._fetchers.iem_asos.time.sleep"),
+            patch("mostlyright.weather._fetchers.iem_asos.time.sleep"),
         ):
             download_iem_asos(
                 station,
@@ -608,8 +608,8 @@ class TestDownloadIemAsosRetry:
             raise RuntimeError("simulated retry exhaustion")
 
         with (
-            patch("tradewinds.weather._fetchers.iem_asos.download_with_retry", side_effect=boom),
-            patch("tradewinds.weather._fetchers.iem_asos.time.sleep"),
+            patch("mostlyright.weather._fetchers.iem_asos.download_with_retry", side_effect=boom),
+            patch("mostlyright.weather._fetchers.iem_asos.time.sleep"),
             pytest.raises(RuntimeError, match="simulated retry exhaustion"),
         ):
             download_iem_asos(

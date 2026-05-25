@@ -4,7 +4,7 @@ Public surface:
 
 - :func:`polymarket_discover()` — Gamma API discovery, no auth.
 - :func:`polymarket_settle(event_id)` — settlement engine using
-  internal :func:`tradewinds.international.daily_extremes` as the
+  internal :func:`mostlyright.international.daily_extremes` as the
   resolution source.
 
 Security-adjacent boundary validation (all enforced before any HTTP
@@ -17,7 +17,7 @@ fetch or daily-extremes call):
   :data:`RESOLUTION_SOURCE_ALLOWLIST` (Wunderground or weather.gov).
 
 Taipei + Hong Kong-lowest markets raise
-:class:`tradewinds.international.DeferredMarketError` — v0.2 wires
+:class:`mostlyright.international.DeferredMarketError` — v0.2 wires
 CWA + HKO clients.
 """
 
@@ -31,8 +31,8 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Final
 from urllib.parse import urlparse
 
-from tradewinds.core.exceptions import TradewindsError
-from tradewinds.international import (
+from mostlyright.core.exceptions import TradewindsError
+from mostlyright.international import (
     DEFERRED_STATIONS,
     DeferredMarketError,
     daily_extremes,
@@ -297,7 +297,7 @@ def _derive_city(event: dict[str, Any], city_keys: tuple[str, ...]) -> str | Non
     """Derive the city key from event slug + title + tags.
 
     Real Polymarket Gamma events don't carry a custom ``city`` field;
-    tradewinds tests fabricate one to drive the resolver. To make
+    mostlyright tests fabricate one to drive the resolver. To make
     discovery work against the live API, scan slug+title (lowercase)
     for a substring match against the city_map keys. Longest-first so
     ``london_gatwick`` matches before ``london``.
@@ -345,7 +345,7 @@ def _station_local_end_of_day(icao: str, settlement_date: date) -> datetime:
     from datetime import time as _time
     from zoneinfo import ZoneInfo
 
-    from tradewinds._internal._stations import STATIONS
+    from mostlyright._internal._stations import STATIONS
 
     info = STATIONS.get(icao)
     if info is None:
@@ -401,11 +401,11 @@ def _require_pandas() -> Any:
     try:
         import pandas as _pandas
     except ImportError as exc:
-        from tradewinds.core.exceptions import SourceUnavailableError
+        from mostlyright.core.exceptions import SourceUnavailableError
 
         raise SourceUnavailableError(
-            "tradewinds.markets.polymarket requires pandas. Install with: "
-            "pip install tradewinds-markets[polymarket]",
+            "mostlyright.markets.polymarket requires pandas. Install with: "
+            "pip install mostlyright-markets[polymarket]",
             source="polymarket_gamma",
             retryable=False,
             underlying=str(exc),
@@ -414,16 +414,16 @@ def _require_pandas() -> Any:
 
 
 def _require_weather() -> None:
-    """Lazy-check that tradewinds.weather is importable (daily_extremes uses it)."""
+    """Lazy-check that mostlyright.weather is importable (daily_extremes uses it)."""
     try:
-        import tradewinds.weather  # noqa: F401
+        import mostlyright.weather  # noqa: F401
     except ImportError as exc:
-        from tradewinds.core.exceptions import SourceUnavailableError
+        from mostlyright.core.exceptions import SourceUnavailableError
 
         raise SourceUnavailableError(
-            "tradewinds.markets.polymarket settlement requires the sibling "
-            "tradewinds-weather package (for daily_extremes). Install with: "
-            "pip install tradewinds-markets[polymarket]",
+            "mostlyright.markets.polymarket settlement requires the sibling "
+            "mostlyright-weather package (for daily_extremes). Install with: "
+            "pip install mostlyright-markets[polymarket]",
             source="polymarket_gamma",
             retryable=False,
             underlying=str(exc),
@@ -474,7 +474,7 @@ def polymarket_discover(
     # Codex iter-4 P2 fix: validate backend/return_type BEFORE the Gamma
     # API pagination + sleep cycles so a typo doesn't trigger any HTTP
     # work before raising ValueError.
-    from tradewinds.core._backend_dispatch import validate_backend_kwargs
+    from mostlyright.core._backend_dispatch import validate_backend_kwargs
 
     validate_backend_kwargs(backend, return_type)  # type: ignore[arg-type]
 
@@ -507,7 +507,7 @@ def polymarket_discover(
             measure = _detect_market_measure(ev_enriched)
         except KeyError as exc:
             # No `city` field on the raw Gamma payload, OR the city
-            # isn't in our map → not a tradewinds-known weather market.
+            # isn't in our map → not a mostlyright-known weather market.
             # Codex iter-1 P1: log at INFO so a quant who can't find
             # their market knows it was dropped (and which event).
             log.info(
@@ -568,7 +568,7 @@ def polymarket_discover(
     df.attrs["retrieved_at"] = retrieved_at
 
     # Phase 6 W3-T2: backend / return_type dispatch.
-    from tradewinds.core._backend_dispatch import (
+    from mostlyright.core._backend_dispatch import (
         validate_backend_kwargs,
         wrap_result,
     )
@@ -679,7 +679,7 @@ def polymarket_settle(
         raise PolymarketSettlementError(
             f"event title/slug for {event_id} is ambiguous about high vs low "
             "(neither keyword detected, or both detected together); "
-            "tradewinds refuses to silently default to tmax — caller must "
+            "mostlyright refuses to silently default to tmax — caller must "
             "either supply an unambiguous event payload or disambiguate "
             "manually before settlement",
         )
@@ -722,7 +722,7 @@ def polymarket_settle(
         )
 
     # Pull the daily extreme for the resolution station + date.
-    # Codex iter-1 P2: tradewinds-weather (sibling package) is required
+    # Codex iter-1 P2: mostlyright-weather (sibling package) is required
     # for daily_extremes -> cache I/O. The guard raises a friendly
     # SourceUnavailableError when the [polymarket] extra isn't installed.
     _require_weather()

@@ -1,10 +1,10 @@
-"""``tradewinds.research`` - local-first orchestrator for the v0.14.1 ``pairs()`` join.
+"""``mostlyright.research`` - local-first orchestrator for the v0.14.1 ``pairs()`` join.
 
 Public surface:
 
 .. code-block:: python
 
-    tradewinds.research(
+    mostlyright.research(
         station="KNYC",
         from_date="2025-01-06",
         to_date="2025-01-12",
@@ -23,19 +23,19 @@ for the 5 Phase 1 parity fixtures (verified in Wave 3).
 NEW module - replaces the v0.14.1 ``client.pairs()`` hosted-API call with a
 local pipeline composed from Wave 1 outputs:
 
-- :func:`tradewinds.snapshot.settlement_date_for` for LST settlement-date math.
-- :func:`tradewinds.weather._fetchers.iem_asos.download_iem_asos`,
+- :func:`mostlyright.snapshot.settlement_date_for` for LST settlement-date math.
+- :func:`mostlyright.weather._fetchers.iem_asos.download_iem_asos`,
   ``iem_cli.download_cli``, ``ghcnh.download_ghcnh``, ``awc.fetch_awc_metars``
   for raw-data acquisition.
-- :func:`tradewinds.weather._iem.parse_iem_file`,
+- :func:`mostlyright.weather._iem.parse_iem_file`,
   ``_ghcnh.parse_ghcnh_file``, ``_climate.parse_cli_response``,
   ``_awc.awc_to_observation`` for parsing.
-- :func:`tradewinds._internal.merge.merge_observations` /
+- :func:`mostlyright._internal.merge.merge_observations` /
   ``merge_climate`` for per-key dedup with v0.14.1 priority rules.
-- :func:`tradewinds.weather.cache.read_cache` / ``write_cache`` /
+- :func:`mostlyright.weather.cache.read_cache` / ``write_cache`` /
   ``read_climate_cache`` / ``write_climate_cache`` for the local-first
   parquet cache (skips current LST month/year automatically).
-- :func:`tradewinds._internal._pairs.build_pairs` and ``pairs_to_dataframe``
+- :func:`mostlyright._internal._pairs.build_pairs` and ``pairs_to_dataframe``
   for the actual row assembly (LIFTED verbatim from v0.14.1 ``pairs.py``).
 
 Phase 1 scope (Wave 2): ``include_forecast=False`` only. Forecast wiring
@@ -53,13 +53,13 @@ from datetime import date as _date
 from pathlib import Path
 from typing import Any
 
-from tradewinds._internal._pairs import (
+from mostlyright._internal._pairs import (
     build_pairs,
     date_range,
     pairs_to_dataframe,
 )
-from tradewinds._internal._stations import STATIONS, StationInfo, is_us_station
-from tradewinds.snapshot import (
+from mostlyright._internal._stations import STATIONS, StationInfo, is_us_station
+from mostlyright.snapshot import (
     _station_code_normalized,
     settlement_date_for,
 )
@@ -78,7 +78,7 @@ def _resolve_station(station: str) -> StationInfo:
 
     Accepts both the 3-letter NWS code (``"NYC"``) and the 4-letter ICAO
     (``"KNYC"``) - they are normalized via
-    :func:`tradewinds.snapshot._station_code_normalized` (strips a leading
+    :func:`mostlyright.snapshot._station_code_normalized` (strips a leading
     ``"K"`` when the input is exactly 4 letters).
 
     Raises:
@@ -89,7 +89,7 @@ def _resolve_station(station: str) -> StationInfo:
             because NWS CLI (settlement source) is US-only and the
             settlement-window math (``snapshot._lst_offset``) is calibrated
             for US standard-time offsets). Intl callers should use
-            :func:`tradewinds.international.daily_extremes` after warming
+            :func:`mostlyright.international.daily_extremes` after warming
             the cache with their own observation fetcher; full intl
             ``research()`` ships in a follow-up phase.
     """
@@ -99,14 +99,14 @@ def _resolve_station(station: str) -> StationInfo:
         raise ValueError(
             f"Unknown station: {station!r} (normalized {code!r}). "
             f"v0.1.0 supports the 20 Kalshi-traded stations from "
-            f"``tradewinds._internal._stations.STATIONS``."
+            f"``mostlyright._internal._stations.STATIONS``."
         )
     if not is_us_station(info.icao):
         raise ValueError(
             f"research() v0.1.0 supports only the 20 US Kalshi-traded stations; "
             f"got {station!r} (intl ICAO {info.icao!r}, country={info.country!r}). "
             f"For international weather aggregates use "
-            f"tradewinds.international.daily_extremes(station, from_date, to_date) "
+            f"mostlyright.international.daily_extremes(station, from_date, to_date) "
             f"after warming the observation cache."
         )
     return info
@@ -116,13 +116,13 @@ def _sources_root() -> Path:
     """Return the root directory for raw-source downloads (IEM CSV, CLI JSON, GHCNh PSV).
 
     Sits alongside the parquet cache under the same ``TRADEWINDS_CACHE_DIR``
-    (or ``$HOME/.tradewinds/cache/`` fallback) so a single cache wipe clears
+    (or ``$HOME/.mostlyright/cache/`` fallback) so a single cache wipe clears
     both layers. ``cache._cache_root()`` is the single source of truth - we
     deliberately do not duplicate the env-var lookup here.
     """
     # Local import to avoid an import cycle at module load (cache imports
-    # from ``tradewinds._internal`` for path validators).
-    from tradewinds.weather.cache import CACHE_VERSION, _cache_root
+    # from ``mostlyright._internal`` for path validators).
+    from mostlyright.weather.cache import CACHE_VERSION, _cache_root
 
     return _cache_root() / CACHE_VERSION / "sources"
 
@@ -223,10 +223,10 @@ def _fetch_iem_month(
         stricter follow-up to the iter-2 "neither-succeeded" gate).
     """
     # Local import: weather sibling package may not be importable from a
-    # bare ``tradewinds`` install (no ``[parquet]`` extra), but ``research()``
+    # bare ``mostlyright`` install (no ``[parquet]`` extra), but ``research()``
     # cannot run without it - we let the ImportError surface at call time.
-    from tradewinds.weather._fetchers.iem_asos import download_iem_asos
-    from tradewinds.weather._iem import parse_iem_file
+    from mostlyright.weather._fetchers.iem_asos import download_iem_asos
+    from mostlyright.weather._iem import parse_iem_file
 
     first, last = _month_window(year, month)
     rows: list[dict[str, Any]] = []
@@ -280,8 +280,8 @@ def _fetch_awc_for_window(icao: str, hours: int = _AWC_LOOKBACK_HOURS) -> list[d
     Empty list when the AWC endpoint is unhappy - matches the fetcher's
     "never raise, degrade gracefully" contract.
     """
-    from tradewinds.weather._awc import awc_to_observation
-    from tradewinds.weather._fetchers.awc import fetch_awc_metars
+    from mostlyright.weather._awc import awc_to_observation
+    from mostlyright.weather._fetchers.awc import fetch_awc_metars
 
     raw = fetch_awc_metars([icao], hours=hours)
     out: list[dict[str, Any]] = []
@@ -314,8 +314,8 @@ def _fetch_ghcnh_year(
     """
     import httpx
 
-    from tradewinds.weather._fetchers.ghcnh import download_ghcnh
-    from tradewinds.weather._ghcnh import parse_ghcnh_file
+    from mostlyright.weather._fetchers.ghcnh import download_ghcnh
+    from mostlyright.weather._ghcnh import parse_ghcnh_file
 
     try:
         path = download_ghcnh(info.ghcnh_id, year, dest_dir, skip_cache=skip_source_cache)
@@ -409,8 +409,8 @@ def _fetch_observations_range(
             lazy ``_fetch_awc_for_window`` call. ``None`` preserves the legacy
             lazy behavior for any non-orchestrator callers.
     """
-    from tradewinds._internal.merge import merge_observations
-    from tradewinds.weather.cache import read_cache, write_cache
+    from mostlyright._internal.merge import merge_observations
+    from mostlyright.weather.cache import read_cache, write_cache
 
     sources_root = _sources_root()
     iem_dir = sources_root / "iem_asos"
@@ -462,7 +462,7 @@ def _fetch_observations_range(
         #     stale `iem_<new-UTC-YYYYMM>_*.csv` from the prior call.
         # The same union applies to the annual GHCNh PSV (NCEI republishes
         # as new months land - iter-4 architect finding).
-        from tradewinds.weather.cache import (
+        from mostlyright.weather.cache import (
             _is_current_lst_month,
             _is_current_lst_year,
         )
@@ -554,15 +554,15 @@ def _fetch_climate_range(
 
     Annual cache layer: one parquet per (station, year). Cache miss triggers
     one IEM CLI download per year. Parse via
-    :func:`tradewinds.weather._climate.parse_cli_response` then merge via
+    :func:`mostlyright.weather._climate.parse_cli_response` then merge via
     :func:`merge_climate` (highest ``report_type_priority`` with STRICT > -
     overnight final wins, which IS the Kalshi settlement source).
     """
     import httpx
 
-    from tradewinds.weather._climate import parse_cli_response
-    from tradewinds.weather._fetchers.iem_cli import download_cli
-    from tradewinds.weather.cache import (
+    from mostlyright.weather._climate import parse_cli_response
+    from mostlyright.weather._fetchers.iem_cli import download_cli
+    from mostlyright.weather.cache import (
         _is_current_lst_year,
         read_climate_cache,
         write_climate_cache,
@@ -627,7 +627,7 @@ def _fetch_climate_range(
             continue
 
         parsed = parse_cli_response(data, info.code)
-        from tradewinds._internal.merge import merge_climate
+        from mostlyright._internal.merge import merge_climate
 
         merged = merge_climate(parsed)
         # Climate cache write gate (mirror of `_is_writable_month` for the
@@ -664,7 +664,7 @@ def _all_caches_warm(
     a fully-cached re-run still fires zero HTTP requests
     (TestFetchObservationsRangeCacheGating regression).
     """
-    from tradewinds.weather.cache import read_cache, read_climate_cache
+    from mostlyright.weather.cache import read_cache, read_climate_cache
 
     months = _month_range(from_date_iso, extended_to_iso)
     if any(read_cache(info.icao, y, m) is None for y, m in months):
@@ -753,7 +753,7 @@ def _prefetch_sources(
         import httpx
 
         # Local import: weather sibling may not be present in bare installs.
-        from tradewinds.weather._fetchers.iem_asos import download_iem_asos
+        from mostlyright.weather._fetchers.iem_asos import download_iem_asos
 
         for year in range(from_d.year, min(extended_to.year, _now.year - 1) + 1):
             year_start = _date(year, 1, 1)
@@ -783,7 +783,7 @@ def _prefetch_sources(
         """Warm IEM CLI annual JSON cache for years STRICTLY past UTC."""
         import httpx
 
-        from tradewinds.weather._fetchers.iem_cli import download_cli
+        from mostlyright.weather._fetchers.iem_cli import download_cli
 
         for year in range(from_d.year, min(to_d.year, _now.year - 1) + 1):
             try:
@@ -813,7 +813,7 @@ def _prefetch_sources(
         """
         import httpx
 
-        from tradewinds.weather._fetchers.ghcnh import download_ghcnh
+        from mostlyright.weather._fetchers.ghcnh import download_ghcnh
 
         if not is_us_station(info.icao):
             logger.info(
@@ -955,7 +955,7 @@ def _run_qc_and_write_sidecar(
     try:
         import pandas as pd
 
-        from tradewinds.qc import QCEngine, crosscheck_iem_ghcnh
+        from mostlyright.qc import QCEngine, crosscheck_iem_ghcnh
     except ImportError as exc:
         summary["error"] = f"QC dependency unavailable: {exc}"
         return summary
@@ -1048,7 +1048,7 @@ def _run_qc_and_write_sidecar(
     # month — matches the cache layout. Best-effort writes; ignore
     # failures (write_qc_sidecar logs + returns None).
     try:
-        from tradewinds.weather.qc_sidecar import write_qc_sidecar
+        from mostlyright.weather.qc_sidecar import write_qc_sidecar
 
         per_month: dict[tuple[int, int], list[dict[str, Any]]] = {}
         for row in sidecar_rows:
@@ -1102,11 +1102,11 @@ def research(
         station: 3-letter NWS code (``"NYC"``) or 4-letter ICAO (``"KNYC"``).
             Normalized via :func:`_station_code_normalized`. Must be one of
             the 20 Kalshi-traded stations from
-            :data:`tradewinds._internal._stations.STATIONS`. International
+            :data:`mostlyright._internal._stations.STATIONS`. International
             expansion lands in Phase 3.1.
         from_date: Inclusive start (``YYYY-MM-DD`` in LST). Per-station LST
             settlement-date semantics - see
-            :func:`tradewinds.snapshot.settlement_date_for`.
+            :func:`mostlyright.snapshot.settlement_date_for`.
         to_date: Inclusive end (``YYYY-MM-DD`` in LST). The observation
             fetch extends one calendar day past ``to_date`` so the last LST
             settlement window's pre-midnight UTC tail observations are
@@ -1117,13 +1117,13 @@ def research(
             (multi-forecast live path).
         forecast_model: Filter IEM MOS records to this model name before
             run selection. Passed through to
-            :func:`tradewinds._internal._pairs.build_pairs`. Ignored when
+            :func:`mostlyright._internal._pairs.build_pairs`. Ignored when
             ``include_forecast=False``.
         as_dataframe: When ``True`` (default) return a Pandas DataFrame
             indexed by ``date``. When ``False`` return the raw
             ``list[dict]`` rows produced by ``build_pairs``.
         tz_override: IANA timezone name override for stations not yet in
-            :data:`tradewinds.snapshot._STATION_TZ`. Passed through to
+            :data:`mostlyright.snapshot._STATION_TZ`. Passed through to
             settlement-date math; rarely needed for the 20-station Phase 1
             registry (all entries are covered).
 
@@ -1154,7 +1154,7 @@ def research(
     hits public APIs (AWC, IEM, GHCNh, NWS CLI) directly, so the doctest is
     network-bound and skipped by default — invoke manually before publish:
 
-    >>> import tradewinds as tw
+    >>> import mostlyright as tw
     >>> df = tw.research("KNYC", "2025-01-06", "2025-01-12")  # doctest: +SKIP
     >>> list(df.columns)[:4]  # doctest: +SKIP
     ['station', 'cli_high_f', 'cli_low_f', 'cli_report_type']
@@ -1162,7 +1162,7 @@ def research(
     # Phase 6 codex iter-2 P2 fix: validate backend / return_type kwargs
     # BEFORE any network fetch or cache write. A typo in the new kwargs
     # otherwise hits live APIs + mutates the parquet cache before raising.
-    from tradewinds.core._backend_dispatch import validate_backend_kwargs
+    from mostlyright.core._backend_dispatch import validate_backend_kwargs
 
     validate_backend_kwargs(backend, return_type)  # type: ignore[arg-type]
 
@@ -1178,8 +1178,7 @@ def research(
     _selector_count = sum([_has_station, _has_city, _has_contract, _has_contracts])
     if _selector_count == 0:
         raise ValueError(
-            "research(): exactly one of station=, city=, contract=, contracts= "
-            "must be provided"
+            "research(): exactly one of station=, city=, contract=, contracts= must be provided"
         )
     if _selector_count > 1:
         provided = [
@@ -1192,9 +1191,7 @@ def research(
             )
             if v
         ]
-        raise ValueError(
-            f"research(): selectors are mutually exclusive; got {provided!r}"
-        )
+        raise ValueError(f"research(): selectors are mutually exclusive; got {provided!r}")
 
     # `sources=` (plural) vs `source=` (singular) are mutually exclusive.
     if sources is not None and source is not None:
@@ -1205,14 +1202,14 @@ def research(
     # in v0.3. The station-path silently runs the full multi-source merge
     # regardless of these kwargs, which would be silent data-selection
     # corruption. Surface a clear NotImplementedError pointing callers at
-    # `tradewinds.mode2.research_by_source` (the Mode-2-pin path) until
+    # `mostlyright.mode2.research_by_source` (the Mode-2-pin path) until
     # the kwargs are wired into the station-path dispatch.
     if sources is not None or source is not None:
         raise NotImplementedError(
             "research(): sources= and source= validation surface is shipped in "
             "Phase 10 v0.2 but the data-selection wiring lands in v0.3. For "
             "Mode 2 single-source pinning today, use "
-            "`tradewinds.mode2.research_by_source(station, source, ...)` "
+            "`mostlyright.mode2.research_by_source(station, source, ...)` "
             "directly. Mode 1 multi-source subset (sources=[...]) ships in v0.3."
         )
 
@@ -1252,9 +1249,7 @@ def research(
     # ── Backwards-compat station path ─────────────────────────────────
     # station-path validation: from_date + to_date REQUIRED.
     if from_date is None or to_date is None:
-        raise ValueError(
-            "research(station=...) requires both from_date and to_date"
-        )
+        raise ValueError("research(station=...) requires both from_date and to_date")
 
     if include_forecast:
         raise NotImplementedError(
@@ -1302,7 +1297,7 @@ def research(
     # against raw_obs WITHOUT mutating the rows themselves (parity gate
     # invariant: Mode 1 must NEVER alter observation row contents). The
     # QC summary is stashed on the returned DataFrame's df.attrs and the
-    # sidecar parquet is written to ~/.tradewinds/cache/v1/observations_qc/
+    # sidecar parquet is written to ~/.mostlyright/cache/v1/observations_qc/
     # for later join.
     qc_summary: dict[str, Any] | None = None
     if qc:
@@ -1345,7 +1340,7 @@ def research(
     # the top of research() (codex iter-2 P2 fix). Here we only need the
     # wrap_result helper to convert + wrap the pandas result if the
     # caller opted into a non-default backend or return_type.
-    from tradewinds.core._backend_dispatch import wrap_result
+    from mostlyright.core._backend_dispatch import wrap_result
 
     result = pairs_to_dataframe(rows) if as_dataframe else rows
     # Phase 3.4: surface qc summary on df.attrs when the qc=True opt-in
@@ -1375,7 +1370,7 @@ def research(
         result,
         backend=backend,  # type: ignore[arg-type]
         return_type=return_type,  # type: ignore[arg-type]
-        source=str(result.attrs.get("source", "tradewinds.research")),
+        source=str(result.attrs.get("source", "mostlyright.research")),
         retrieved_at=result.attrs.get("retrieved_at"),
         schema_id=None,  # research() returns heterogeneous pairs, not a single schema
         qc=qc_summary,

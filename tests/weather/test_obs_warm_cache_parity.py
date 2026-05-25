@@ -66,7 +66,7 @@ def test_obs_warm_cache_byte_equiv_to_research_obs_columns(
 ) -> None:
     """obs(strategy='warm_cache') obs aggregates byte-match the fixture's
     obs_* columns at the Rung 3 tolerance (atol=1e-12)."""
-    from tradewinds.weather import obs
+    from mostlyright.weather import obs
 
     expected = pd.read_parquet(fixture_path)
     expected = expected.reset_index() if expected.index.name else expected

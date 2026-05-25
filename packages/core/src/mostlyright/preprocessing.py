@@ -1,7 +1,7 @@
 """Phase 3.5 — preprocessing primitives.
 
 Standalone callable counterparts to the in-pipeline QC engine + transforms.
-Quants can run these after :func:`tradewinds.research` (or any DataFrame
+Quants can run these after :func:`mostlyright.research` (or any DataFrame
 they constructed elsewhere) without going through the QC engine.
 
 Surface:
@@ -10,14 +10,14 @@ Surface:
   to either physics-based bounds (default) or ``mean ± std * sigma``.
 - :func:`iem_crosscheck(silver_df, *, tolerance="default")` — standalone
   IEM-vs-GHCNh disagreement detector. Thin re-export of
-  :func:`tradewinds.qc.crosscheck_iem_ghcnh` with sensible defaults.
+  :func:`mostlyright.qc.crosscheck_iem_ghcnh` with sensible defaults.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from tradewinds.core._narwhals_compat import (
+from mostlyright.core._narwhals_compat import (
     pandas_series_to_polars,
     pandas_to_polars,
     to_pandas_if_polars,
@@ -64,7 +64,7 @@ def clip_outliers(
     If ``bounds`` is supplied, clip to that explicit ``(min, max)``.
     Else if ``column`` has a :data:`PHYSICS_BOUNDS` entry, clip to that.
     Else fall back to ``mean ± std * sigma`` (matches the historical
-    behaviour of :func:`tradewinds.transforms.clip_outliers`).
+    behaviour of :func:`mostlyright.transforms.clip_outliers`).
 
     Returns a NEW Series; the input DataFrame is unchanged.
 
@@ -115,8 +115,8 @@ def iem_crosscheck(
 
     Splits ``silver_df`` by source column (rows whose source starts with
     ``"iem"`` vs ``"ghcnh"``) and delegates to
-    :func:`tradewinds.qc.crosscheck_iem_ghcnh`. Useful when a quant has
-    already called :func:`tradewinds.research` (or another fetcher) and
+    :func:`mostlyright.qc.crosscheck_iem_ghcnh`. Useful when a quant has
+    already called :func:`mostlyright.research` (or another fetcher) and
     wants the disagreement table without going through the full QC engine.
 
     Args:
@@ -139,7 +139,7 @@ def iem_crosscheck(
     """
     import pandas as pd
 
-    from tradewinds.qc import crosscheck_iem_ghcnh
+    from mostlyright.qc import crosscheck_iem_ghcnh
 
     silver_df, was_polars = to_pandas_if_polars(silver_df)
     if "source" not in silver_df.columns:

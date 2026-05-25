@@ -10,7 +10,7 @@ import pytest
 # Phase 3.1 — International + daily_extremes
 # ----------------------------------------------------------------------
 def test_international_stations_count():
-    from tradewinds.international import INTERNATIONAL_STATIONS
+    from mostlyright.international import INTERNATIONAL_STATIONS
 
     # v0.1.0 scope: 40+ international ICAOs (Paris splits into 3 stations,
     # major hubs in Europe/Asia/Oceania/Americas).
@@ -19,7 +19,7 @@ def test_international_stations_count():
 
 def test_paris_split_present():
     """Paris LFPG / LFPB / LFPO all present for per-event resolution."""
-    from tradewinds.international import INTERNATIONAL_STATIONS
+    from mostlyright.international import INTERNATIONAL_STATIONS
 
     assert "LFPG" in INTERNATIONAL_STATIONS
     assert "LFPB" in INTERNATIONAL_STATIONS
@@ -27,7 +27,7 @@ def test_paris_split_present():
 
 
 def test_deferred_stations():
-    from tradewinds.international import DEFERRED_STATIONS
+    from mostlyright.international import DEFERRED_STATIONS
 
     assert "VHHH" in DEFERRED_STATIONS  # Hong Kong
     assert "RCTP" in DEFERRED_STATIONS  # Taipei
@@ -37,8 +37,8 @@ def test_daily_extremes_empty_cache_returns_empty_list(monkeypatch):
     """No cached rows for the window → empty list (no rows, no errors)."""
     from datetime import date
 
-    from tradewinds import international
-    from tradewinds.weather import cache as cache_mod
+    from mostlyright import international
+    from mostlyright.weather import cache as cache_mod
 
     # daily_extremes() imports cache.read_cache lazily; patching the module
     # attribute is sufficient because the lazy import binds to the module.
@@ -51,13 +51,13 @@ def test_daily_extremes_empty_cache_returns_empty_list(monkeypatch):
 # Phase 3.2 — NWP forecast real implementation
 # ----------------------------------------------------------------------
 def test_nwp_models():
-    from tradewinds.forecasts import SUPPORTED_NWP_MODELS
+    from mostlyright.forecasts import SUPPORTED_NWP_MODELS
 
     assert frozenset({"hrrr", "gfs", "nbm"}) == SUPPORTED_NWP_MODELS
 
 
 def test_nwp_unknown_model_raises():
-    from tradewinds.forecasts import forecast_nwp
+    from mostlyright.forecasts import forecast_nwp
 
     with pytest.raises(ValueError, match="NWP model must be one of"):
         forecast_nwp("KNYC", "bogus")
@@ -65,8 +65,8 @@ def test_nwp_unknown_model_raises():
 
 def test_nwp_reserved_ecmwf_model_raises_specific_error():
     """ECMWF Tier-2 ids predeclared in the enum raise NwpModelNotAvailableError."""
-    from tradewinds.core.exceptions import NwpModelNotAvailableError
-    from tradewinds.forecasts import forecast_nwp
+    from mostlyright.core.exceptions import NwpModelNotAvailableError
+    from mostlyright.forecasts import forecast_nwp
 
     with pytest.raises(NwpModelNotAvailableError) as exc_info:
         forecast_nwp("KNYC", "ecmwf_ifs_hres")
@@ -82,8 +82,8 @@ def test_nwp_dispatch_requires_extra_or_runs():
     """
     import importlib.util
 
-    from tradewinds.core.exceptions import SourceUnavailableError
-    from tradewinds.forecasts import forecast_nwp
+    from mostlyright.core.exceptions import SourceUnavailableError
+    from mostlyright.forecasts import forecast_nwp
 
     has_extra = all(
         importlib.util.find_spec(m) is not None for m in ("cfgrib", "xarray", "sklearn")
@@ -99,7 +99,7 @@ def test_nwp_dispatch_requires_extra_or_runs():
 # Phase 3.3 — Polymarket
 # ----------------------------------------------------------------------
 def test_polymarket_event_id_validation():
-    from tradewinds.markets.polymarket import (
+    from mostlyright.markets.polymarket import (
         PolymarketEventError,
         polymarket_settle,
     )
@@ -109,7 +109,7 @@ def test_polymarket_event_id_validation():
 
 
 def test_polymarket_description_oversize_raises():
-    from tradewinds.markets.polymarket import (
+    from mostlyright.markets.polymarket import (
         PolymarketEventError,
         polymarket_settle,
     )
@@ -123,7 +123,7 @@ def test_polymarket_description_oversize_raises():
 
 
 def test_polymarket_disallowed_url_raises():
-    from tradewinds.markets.polymarket import (
+    from mostlyright.markets.polymarket import (
         PolymarketEventError,
         polymarket_settle,
     )
@@ -149,7 +149,7 @@ def test_polymarket_allowed_url_passes_to_settlement():
     # Test the description-validation path WITHOUT triggering an HTTP
     # call by passing an event with no slug — the validator passes the
     # URL but the slug-date parser raises PolymarketSettlementError.
-    from tradewinds.markets.polymarket import PolymarketSettlementError, polymarket_settle
+    from mostlyright.markets.polymarket import PolymarketSettlementError, polymarket_settle
 
     # Title has no high/low keyword, so the architect iter-1 HIGH-3
     # ambiguity-guard fires before the slug-date parser. Use a "highest"
@@ -166,7 +166,7 @@ def test_polymarket_allowed_url_passes_to_settlement():
 # Phase 3.4 — QC engine
 # ----------------------------------------------------------------------
 def test_qc_engine_temp_out_of_range():
-    from tradewinds.qc import QCEngine
+    from mostlyright.qc import QCEngine
 
     df = pd.DataFrame(
         {
@@ -183,7 +183,7 @@ def test_qc_engine_temp_out_of_range():
 
 
 def test_qc_engine_dewpoint_exceeds_temp():
-    from tradewinds.qc import QCEngine
+    from mostlyright.qc import QCEngine
 
     df = pd.DataFrame({"temp_c": [10.0], "dew_point_c": [20.0]})
     out = QCEngine().apply(df)
@@ -193,13 +193,13 @@ def test_qc_engine_dewpoint_exceeds_temp():
 
 def test_qc_engine_alpha_rules_count():
     """Exactly 5 alpha rules registered in v0.1.0."""
-    from tradewinds.qc import ALPHA_RULES
+    from mostlyright.qc import ALPHA_RULES
 
     assert len(ALPHA_RULES) == 5
 
 
 def test_qc_engine_sidecar_rows():
-    from tradewinds.qc import QCEngine
+    from mostlyright.qc import QCEngine
 
     df = pd.DataFrame(
         {
@@ -219,7 +219,7 @@ def test_qc_engine_sidecar_rows():
 
 
 def test_crosscheck_iem_ghcnh():
-    from tradewinds.qc import crosscheck_iem_ghcnh
+    from mostlyright.qc import crosscheck_iem_ghcnh
 
     iem = pd.DataFrame(
         {
@@ -248,7 +248,7 @@ def test_crosscheck_iem_ghcnh():
 # Phase 3.5 — Transforms
 # ----------------------------------------------------------------------
 def test_lag():
-    from tradewinds.transforms import lag
+    from mostlyright.transforms import lag
 
     df = pd.DataFrame({"x": [1, 2, 3, 4]})
     out = lag(df, "x", periods=1)
@@ -257,7 +257,7 @@ def test_lag():
 
 
 def test_diff():
-    from tradewinds.transforms import diff
+    from mostlyright.transforms import diff
 
     df = pd.DataFrame({"x": [10, 12, 15, 14]})
     out = diff(df, "x")
@@ -266,7 +266,7 @@ def test_diff():
 
 
 def test_rolling_mean():
-    from tradewinds.transforms import rolling
+    from mostlyright.transforms import rolling
 
     df = pd.DataFrame({"x": [1.0, 2.0, 3.0, 4.0]})
     out = rolling(df, "x", window=2, fn="mean")
@@ -275,7 +275,7 @@ def test_rolling_mean():
 
 
 def test_calendar_features():
-    from tradewinds.transforms import calendar_features
+    from mostlyright.transforms import calendar_features
 
     df = pd.DataFrame({"d": pd.to_datetime(["2025-06-15T12:00:00Z"], utc=True)})
     out = calendar_features(df, "d")
@@ -286,7 +286,7 @@ def test_calendar_features():
 
 
 def test_wind_chill():
-    from tradewinds.transforms import wind_chill
+    from mostlyright.transforms import wind_chill
 
     # Standard NWS example: 0F + 15 mph wind → wind chill ~-19F.
     val = wind_chill(0.0, 15.0)
@@ -295,7 +295,7 @@ def test_wind_chill():
 
 
 def test_heat_index():
-    from tradewinds.transforms import heat_index
+    from mostlyright.transforms import heat_index
 
     val = heat_index(90.0, 70.0)
     assert val is not None
@@ -303,7 +303,7 @@ def test_heat_index():
 
 
 def test_clip_outliers():
-    from tradewinds.transforms import clip_outliers
+    from mostlyright.transforms import clip_outliers
 
     df = pd.DataFrame({"x": [1.0, 2.0, 3.0, 4.0, 100.0]})
     out = clip_outliers(df, "x", std=1.0)
@@ -315,7 +315,7 @@ def test_clip_outliers():
 # Phase 3.6 — Discovery + DataVersion
 # ----------------------------------------------------------------------
 def test_describe_observation_ledger():
-    from tradewinds.discovery import describe
+    from mostlyright.discovery import describe
 
     out = describe("schema.observation_ledger.v1")
     assert "schema.observation_ledger.v1" in out
@@ -323,14 +323,14 @@ def test_describe_observation_ledger():
 
 
 def test_describe_unknown_raises():
-    from tradewinds.discovery import describe
+    from mostlyright.discovery import describe
 
     with pytest.raises(ValueError, match="Unknown schema_id"):
         describe("schema.nonexistent.v1")
 
 
 def test_feature_catalog():
-    from tradewinds.discovery import feature_catalog
+    from mostlyright.discovery import feature_catalog
 
     catalog = feature_catalog()
     assert "lag" in catalog
@@ -338,7 +338,7 @@ def test_feature_catalog():
 
 
 def test_data_version_deterministic():
-    from tradewinds.discovery import DataVersion
+    from mostlyright.discovery import DataVersion
 
     v1 = DataVersion.from_components(
         sdk_version="0.1.0a1",
@@ -359,7 +359,7 @@ def test_data_version_deterministic():
 
 
 def test_data_version_changes_on_input_change():
-    from tradewinds.discovery import DataVersion
+    from mostlyright.discovery import DataVersion
 
     v1 = DataVersion.from_components(
         sdk_version="0.1.0a1",
@@ -379,7 +379,7 @@ def test_data_version_changes_on_input_change():
 
 
 def test_availability_unknown_station():
-    from tradewinds.discovery import availability
+    from mostlyright.discovery import availability
 
     out = availability("ZZZZZ_NONEXISTENT_STATION")
     assert out["months_cached"] == 0

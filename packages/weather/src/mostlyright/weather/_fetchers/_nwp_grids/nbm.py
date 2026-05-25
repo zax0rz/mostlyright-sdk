@@ -2,9 +2,9 @@
 
 NBM (National Blend of Models) is a 13-km Lambert Conformal CONUS blend
 issued hourly. The core product carries deterministic guidance for the
-same surface fields tradewinds extracts; v5.0 (cutover 2026-05-05) adds
+same surface fields mostlyright extracts; v5.0 (cutover 2026-05-05) adds
 probabilistic siblings without changing the deterministic field id or
-level descriptors tradewinds reads.
+level descriptors mostlyright reads.
 
 See Pitfall 5 in ``.planning/phases/03.2-.../03.2-RESEARCH.md`` — the
 ``.idx`` and path layout are stable across the v4 → v5 cutover; no

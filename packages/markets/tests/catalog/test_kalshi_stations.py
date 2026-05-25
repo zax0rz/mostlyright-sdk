@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import date
 
 import pytest
-from tradewinds.markets.catalog import kalshi_nhigh, kalshi_nlow
-from tradewinds.markets.catalog.kalshi_stations import (
+from mostlyright.markets.catalog import kalshi_nhigh, kalshi_nlow
+from mostlyright.markets.catalog.kalshi_stations import (
     KALSHI_SETTLEMENT_STATIONS,
     KNOWN_WRONG_STATIONS,
     StationCitation,

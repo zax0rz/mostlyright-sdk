@@ -132,13 +132,10 @@ def validate_selectors(
         provided.append("contracts")
     if not provided:
         raise ValueError(
-            "research(): exactly one of station=, city=, contract=, contracts= "
-            "must be provided"
+            "research(): exactly one of station=, city=, contract=, contracts= must be provided"
         )
     if len(provided) > 1:
-        raise ValueError(
-            f"research(): selectors are mutually exclusive; got {provided!r}"
-        )
+        raise ValueError(f"research(): selectors are mutually exclusive; got {provided!r}")
     return provided[0]
 
 
@@ -149,7 +146,7 @@ def resolve_contract(contract_id: str) -> tuple[str, str]:
     - ``kalshi:`` — ``KHIGH*``/``KXHIGH*``/``KLOW*``/``KXLOW*`` city tickers.
     - ``polymarket:`` — event/market ids. v0.2 raises NotImplementedError
       with an actionable message (the resolver lives in
-      :mod:`tradewinds.markets._per_event_station` but requires a fetched
+      :mod:`mostlyright.markets._per_event_station` but requires a fetched
       event payload to identify the city; Phase 10 v0.2 surfaces this as
       a clear error and defers the integration to v0.3).
 
@@ -165,16 +162,14 @@ def resolve_contract(contract_id: str) -> tuple[str, str]:
         NotImplementedError: Polymarket contract resolution (deferred).
     """
     if not isinstance(contract_id, str) or ":" not in contract_id:
-        raise ValueError(
-            f"contract id must be `<issuer>:<id>`; got {contract_id!r}"
-        )
+        raise ValueError(f"contract id must be `<issuer>:<id>`; got {contract_id!r}")
     issuer, raw = contract_id.split(":", 1)
     issuer = issuer.lower()
     raw_upper = raw.upper()
     if issuer == "kalshi":
         from datetime import date as _date
 
-        from tradewinds.markets.catalog import kalshi_nhigh, kalshi_nlow
+        from mostlyright.markets.catalog import kalshi_nhigh, kalshi_nlow
 
         # Kalshi tickers come in two prefix families:
         #   KHIGH<CITY>* / KXHIGH<CITY>* → NHIGH (daily-high)
@@ -251,11 +246,11 @@ def resolve_city(city: str) -> tuple[str, ...]:
     if not isinstance(city, str) or not city:
         raise ValueError(f"city must be a non-empty str; got {city!r}")
 
-    from tradewinds.markets._per_event_station import load_polymarket_city_stations
-    from tradewinds.markets.catalog.kalshi_stations import (
+    from mostlyright.markets._per_event_station import load_polymarket_city_stations
+    from mostlyright.markets.catalog.kalshi_stations import (
         KALSHI_SETTLEMENT_STATIONS,
     )
-    from tradewinds.markets.polymarket import KNOWN_WRONG_STATIONS as POLY_WRONG
+    from mostlyright.markets.polymarket import KNOWN_WRONG_STATIONS as POLY_WRONG
 
     # Iter-1 python-architect HIGH: normalize via the cross-issuer slug
     # alias table so a single call (with either "NYC" or "nyc", "CHI" or
@@ -276,9 +271,7 @@ def resolve_city(city: str) -> tuple[str, ...]:
         if st not in out:
             out.append(st)
     if not out:
-        raise ValueError(
-            f"unknown city {city!r}; not in kalshi or polymarket catalogs"
-        )
+        raise ValueError(f"unknown city {city!r}; not in kalshi or polymarket catalogs")
     return tuple(out)
 
 
@@ -300,8 +293,8 @@ def annotate_settles_for(station: str, city: str | None) -> list[str]:
     out: list[str] = []
     if city is None:
         return out
-    from tradewinds.markets._per_event_station import load_polymarket_city_stations
-    from tradewinds.markets.catalog.kalshi_stations import (
+    from mostlyright.markets._per_event_station import load_polymarket_city_stations
+    from mostlyright.markets.catalog.kalshi_stations import (
         KALSHI_SETTLEMENT_STATIONS,
     )
 

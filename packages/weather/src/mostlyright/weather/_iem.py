@@ -13,7 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from tradewinds._internal._bounds import (
+from mostlyright._internal._bounds import (
     MAX_RAW_METAR_LEN,
     MAX_VISIBILITY_MILES,
     MAX_WX_CODES_LEN,
@@ -32,8 +32,8 @@ from tradewinds._internal._bounds import (
     bounded_float_min,
     bounded_int,
 )
-from tradewinds._internal._convert import fahrenheit_to_celsius
-from tradewinds.weather._awc import icao_to_station_code, map_cloud_cover
+from mostlyright._internal._convert import fahrenheit_to_celsius
+from mostlyright.weather._awc import icao_to_station_code, map_cloud_cover
 
 _TS_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$")
 

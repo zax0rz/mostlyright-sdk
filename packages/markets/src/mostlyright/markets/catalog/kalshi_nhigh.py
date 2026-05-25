@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date as _date
 
-from tradewinds.markets.catalog.kalshi_stations import KALSHI_SETTLEMENT_STATIONS
+from mostlyright.markets.catalog.kalshi_stations import KALSHI_SETTLEMENT_STATIONS
 
 
 @dataclass(frozen=True)

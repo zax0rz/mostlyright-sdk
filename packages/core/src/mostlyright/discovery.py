@@ -43,7 +43,7 @@ class DataVersion:
     sdk_version: str
     schema_ids: tuple[str, ...]
     sources: tuple[str, ...]
-    code_sha: str  # current git SHA of tradewinds itself
+    code_sha: str  # current git SHA of mostlyright itself
     data_sha: str  # SHA of relevant cache files
     token: str  # SHA-256 hex of the canonical concatenation
 
@@ -98,7 +98,7 @@ class DataVersion:
         consulted set.
         """
         if sdk_version is None:
-            from tradewinds import __version__ as _sdk_version
+            from mostlyright import __version__ as _sdk_version
 
             sdk_version = _sdk_version
         data_sha = _hash_cache_files(station)
@@ -116,13 +116,13 @@ class DataVersion:
 
 
 def _cache_root() -> Path:
-    """Cache root resolver — local to avoid importing tradewinds.weather."""
+    """Cache root resolver — local to avoid importing mostlyright.weather."""
     import os
 
     override = os.environ.get("TRADEWINDS_CACHE_DIR")
     if override:
         return Path(override).expanduser()
-    return Path.home() / ".tradewinds" / "cache"
+    return Path.home() / ".mostlyright" / "cache"
 
 
 def _hash_cache_files(station: str) -> str:
@@ -157,7 +157,7 @@ def _hash_cache_files(station: str) -> str:
 
 
 def availability(station: str) -> dict:
-    """Return a summary of what tradewinds has cached for ``station``."""
+    """Return a summary of what mostlyright has cached for ``station``."""
     root = _cache_root() / "v1"
     obs_dir = root / "observations" / station
     cli_dir = root / "climate" / station
@@ -209,7 +209,7 @@ def climate_gaps(station: str, from_date: str, to_date: str) -> list[str]:
 
 def describe(schema_id: str) -> str:
     """Return a human-readable description of a registered schema."""
-    from tradewinds.core.validator import _SCHEMA_REGISTRY
+    from mostlyright.core.validator import _SCHEMA_REGISTRY
 
     cls = _SCHEMA_REGISTRY.get(schema_id)
     if cls is None:
@@ -227,14 +227,14 @@ def describe(schema_id: str) -> str:
 
 
 def feature_catalog() -> list[str]:
-    """List every available transform in ``tradewinds.transforms``."""
-    from tradewinds import transforms
+    """List every available transform in ``mostlyright.transforms``."""
+    from mostlyright import transforms
 
     return list(transforms.__all__)
 
 
 def settlement_date_for(station: str, ts: datetime) -> str:
-    """Top-level wrapper around :func:`tradewinds.snapshot.settlement_date_for`.
+    """Top-level wrapper around :func:`mostlyright.snapshot.settlement_date_for`.
 
     Args:
         station: ICAO or NWS code.
@@ -244,14 +244,14 @@ def settlement_date_for(station: str, ts: datetime) -> str:
     Returns:
         ``YYYY-MM-DD`` station-local settlement date.
     """
-    from tradewinds.snapshot import settlement_date_for as _impl
+    from mostlyright.snapshot import settlement_date_for as _impl
 
     iso = ts.isoformat() if isinstance(ts, datetime) else str(ts)
     return _impl(iso, station)
 
 
 def settlement_window_utc(station: str, settlement_date: str) -> tuple[datetime, datetime]:
-    """Top-level wrapper around :func:`tradewinds.snapshot.settlement_window_utc`.
+    """Top-level wrapper around :func:`mostlyright.snapshot.settlement_window_utc`.
 
     Args:
         station: ICAO or NWS code.
@@ -260,6 +260,6 @@ def settlement_window_utc(station: str, settlement_date: str) -> tuple[datetime,
     Returns:
         ``(window_start_utc, window_end_utc)`` aware UTC datetimes.
     """
-    from tradewinds.snapshot import settlement_window_utc as _impl
+    from mostlyright.snapshot import settlement_window_utc as _impl
 
     return _impl(settlement_date, station)

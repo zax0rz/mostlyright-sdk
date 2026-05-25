@@ -1,4 +1,4 @@
-"""Tests for tradewinds.weather._fetchers.iem_cli.
+"""Tests for mostlyright.weather._fetchers.iem_cli.
 
 NEW code (Sprint 0 Wave 3B, Lane F) — covers URL/params, response unwrapping,
 404 + range-helper continuation, cache hits, ``skip_cache``, and multi-year
@@ -6,7 +6,7 @@ ranges. All HTTP is mocked via ``respx``; no network calls.
 
 Settlement-grade: IEM CLI is THE Kalshi NHIGH/NLOW settlement source, so the
 unwrapping + cache writes are checked byte-by-byte against the same JSON
-shape the parser (``tradewinds.weather._climate``) consumes.
+shape the parser (``mostlyright.weather._climate``) consumes.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from pathlib import Path
 
 import httpx
 import pytest
-from tradewinds.weather._fetchers.iem_cli import (
+from mostlyright.weather._fetchers.iem_cli import (
     IEM_CLI_BASE_URL,
     IEM_CLI_POLITE_DELAY,
     download_cli,
@@ -60,7 +60,7 @@ _SAMPLE_INNER = [
 @pytest.fixture(autouse=True)
 def _no_sleep(monkeypatch: pytest.MonkeyPatch) -> None:
     """Skip the polite delay in tests so they finish in milliseconds."""
-    monkeypatch.setattr("tradewinds.weather._fetchers.iem_cli.time.sleep", lambda _: None)
+    monkeypatch.setattr("mostlyright.weather._fetchers.iem_cli.time.sleep", lambda _: None)
 
 
 class TestModuleConstants:
@@ -253,7 +253,7 @@ class TestDownloadCliRange:
         respx = _skip_if_no_respx()
 
         # download_with_retry sleeps between 5xx retries; bypass that for speed.
-        monkeypatch.setattr("tradewinds._internal._http.time.sleep", lambda _: None)
+        monkeypatch.setattr("mostlyright._internal._http.time.sleep", lambda _: None)
 
         with respx.mock() as mock:
             mock.get(f"{IEM_CLI_BASE_URL}?station=KNYC&year=2020").respond(200, json=_SAMPLE_INNER)

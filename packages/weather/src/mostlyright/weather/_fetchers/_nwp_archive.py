@@ -15,7 +15,7 @@ unknown combination so the caller can fall back to the next mirror.
 Pattern lifted from mostlyright ``sprint2/2r-impl-bundle:ingest/sources/
 nwp_archive.py``. The lift keeps mostlyright's mirror-allowlist
 discipline but drops the ledger/poller paths (which require hosted infra
-tradewinds does not have — see ROADMAP Phase 3.2 "Out of scope").
+mostlyright does not have — see ROADMAP Phase 3.2 "Out of scope").
 """
 
 from __future__ import annotations
@@ -26,19 +26,19 @@ from datetime import UTC, datetime
 from typing import Literal
 
 import httpx
-from tradewinds._internal._http import HTTP_TIMEOUT
+from mostlyright._internal._http import HTTP_TIMEOUT
 
 log = logging.getLogger(__name__)
 
 
-#: NWP models tradewinds ships in v0.1.0. ECMWF Tier-2 (4 models) is
+#: NWP models mostlyright ships in v0.1.0. ECMWF Tier-2 (4 models) is
 #: predeclared in the public schema enum but raises
-#: :class:`tradewinds.core.exceptions.NwpModelNotAvailableError` until
+#: :class:`mostlyright.core.exceptions.NwpModelNotAvailableError` until
 #: v0.2 lands hosted ECMWF support.
 SUPPORTED_NWP_MODELS: frozenset[str] = frozenset({"hrrr", "gfs", "nbm"})
 
 
-#: Mirrors that tradewinds is permitted to fetch from. AWS BDP first
+#: Mirrors that mostlyright is permitted to fetch from. AWS BDP first
 #: (canonical NOAA-funded archive, public no-auth, stable); NOMADS second
 #: (smaller but lands fresh cycles before AWS replicates).
 SUPPORTED_NWP_MIRRORS: frozenset[str] = frozenset({"aws_bdp", "nomads"})
@@ -100,7 +100,7 @@ def _hrrr_path(cycle: datetime, fxx: int) -> str:
     """HRRR surface-field GRIB2 path relative to a mirror root.
 
     Returns the sfcf product (``wrfsfcf{fxx:02d}.grib2``) — surface 2-m
-    temperature + dewpoint + winds + precip, which is what tradewinds
+    temperature + dewpoint + winds + precip, which is what mostlyright
     extracts. Subhourly + pressure-level products are out of scope for
     v0.1.0.
     """

@@ -1,10 +1,10 @@
-"""Structured exception hierarchy for the tradewinds SDK and MCP server.
+"""Structured exception hierarchy for the mostlyright SDK and MCP server.
 
 Every exception subclasses :class:`TradewindsError` and exposes a
 :meth:`TradewindsError.to_dict` method that returns a JSON-safe dict
 suitable for placement in the MCP ``error.data`` field of a JSON-RPC error
 response. Attributes mirror the design doc §D + §R contract; payload values
-are coerced via :func:`tradewinds.core._json_safe.to_json_safe` so the
+are coerced via :func:`mostlyright.core._json_safe.to_json_safe` so the
 returned dict survives ``json.dumps`` without further customization.
 
 Role names for ``SourceMismatchError`` are standardized at ``"observations"``,
@@ -42,7 +42,7 @@ __all__ = [
 
 
 class TradewindsError(Exception):
-    """Base class for all tradewinds structured errors.
+    """Base class for all mostlyright structured errors.
 
     ``error_code`` is a stable enum (e.g. ``"SOURCE_UNAVAILABLE"``) used by
     callers / agents to branch on without parsing message text. ``source`` is

@@ -70,7 +70,7 @@ is the sanctioned extension hook.
   would still trip ``_is_tabular``'s primitive-only check.
 
 Lifted verbatim from mostlyright v0.15.0 → mostlyright-mcp wave-1-core →
-tradewinds.core per design doc §F.
+mostlyright.core per design doc §F.
 """
 
 from __future__ import annotations

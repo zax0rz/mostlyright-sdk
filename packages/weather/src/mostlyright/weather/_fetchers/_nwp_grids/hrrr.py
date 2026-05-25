@@ -2,7 +2,7 @@
 
 HRRR (High-Resolution Rapid Refresh) is a 3 km Lambert Conformal Conic
 CONUS model run hourly by NCEP. The sfcf product carries the 13 fields
-tradewinds extracts at the 2-m / 10-m / surface levels.
+mostlyright extracts at the 2-m / 10-m / surface levels.
 
 The variable strings here must match exactly what appears in the ``.idx``
 file produced by NCEP's wgrib2 indexer. Tradewinds keeps a minimal set;
@@ -14,7 +14,7 @@ from __future__ import annotations
 
 #: HRRR surface variables → ``(idx_variable, idx_level)``.
 #:
-#: Names on the left are tradewinds canonical output columns (also used
+#: Names on the left are mostlyright canonical output columns (also used
 #: as keys in the returned DataFrame). Units are model-native (Kelvin
 #: for temperature, m/s for wind, mm for precip, % for humidity / cloud
 #: cover). Per Phase 3.2 lock #4 in 03.2-RESEARCH.md: NO unit conversion

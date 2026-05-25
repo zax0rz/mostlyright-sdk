@@ -2,7 +2,7 @@
 
 The AWC live endpoint (``https://aviationweather.gov/api/data/metar``) serves
 only recent observations — at most the last ~168 hours (7 days). For historical
-multi-day fetches use ``tradewinds.weather._fetchers.iem`` (IEM ASOS), which
+multi-day fetches use ``mostlyright.weather._fetchers.iem`` (IEM ASOS), which
 has arbitrary historical depth.
 
 Sprint 0 Day 0.7 spike confirmed reachability:
@@ -14,13 +14,13 @@ Sprint 0 Day 0.7 spike confirmed reachability:
 URL pattern lifted from ``monorepo-v0.14.1/ingest/sources/awc_poller.py``
 (``AWC_METAR_URL`` + ``fetch_latest``). The v0.14.1 implementation is async
 (``httpx.AsyncClient``); this version is sync (``httpx.Client``) to stay
-consistent with ``tradewinds._internal._http.download_with_retry``.
+consistent with ``mostlyright._internal._http.download_with_retry``.
 
 Return contract: list of raw AWC METAR dicts. Empty list on 4xx, timeout, or
 exhausted retries — never raises (matches v0.14.1 ``fetch_latest`` behaviour
-so the orchestrator in :mod:`tradewinds.weather.observations` can degrade
+so the orchestrator in :mod:`mostlyright.weather.observations` can degrade
 gracefully when AWC is down). The caller composes with
-:func:`tradewinds.weather._awc.awc_to_observation` to produce schema-valid
+:func:`mostlyright.weather._awc.awc_to_observation` to produce schema-valid
 observation dicts.
 """
 
@@ -31,7 +31,7 @@ import time
 from typing import Any
 
 import httpx
-from tradewinds._internal._http import (
+from mostlyright._internal._http import (
     BASE_DELAY,
     HTTP_TIMEOUT,
     MAX_RETRIES,
@@ -57,7 +57,7 @@ def fetch_awc_metars(station_icaos: list[str], hours: int = 168) -> list[dict[st
             values above are still sent but the endpoint truncates server-side.
 
     Returns:
-        Raw AWC METAR dicts (passed to :func:`tradewinds.weather._awc.awc_to_observation`
+        Raw AWC METAR dicts (passed to :func:`mostlyright.weather._awc.awc_to_observation`
         by callers). Empty list on:
 
         - empty ``station_icaos`` (no request issued),

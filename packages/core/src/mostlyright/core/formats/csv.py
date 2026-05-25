@@ -42,7 +42,7 @@ def dumps(df: pd.DataFrame) -> str:
     converted to pandas at the boundary so the wire bytes stay
     identical regardless of caller backend.
     """
-    from tradewinds.core._narwhals_compat import to_pandas_if_polars
+    from mostlyright.core._narwhals_compat import to_pandas_if_polars
 
     df, _ = to_pandas_if_polars(df)
     return df.to_csv(index=False)

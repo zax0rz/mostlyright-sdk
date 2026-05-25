@@ -13,7 +13,7 @@ Version token design:
 
 Usage::
 
-    from tradewinds._internal.versioning import DataVersion
+    from mostlyright._internal.versioning import DataVersion
 
     dv = DataVersion.from_timestamps(
         station="NYC",

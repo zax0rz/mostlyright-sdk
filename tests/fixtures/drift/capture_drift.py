@@ -1,4 +1,4 @@
-"""Capture drift fixtures from the **current** tradewinds.research() build.
+"""Capture drift fixtures from the **current** mostlyright.research() build.
 
 This is the Phase 4 CI-05 watchdog complement to
 ``tests/fixtures/parity/capture_fixtures.py``. Where ``parity/`` is the
@@ -43,8 +43,6 @@ import sys
 import traceback
 from pathlib import Path
 
-import tradewinds
-
 #: Mirror of CASES in tests/test_parity.py and tests/fixtures/parity/capture_fixtures.py.
 #: Any change to the case list MUST land in all three locations in the same commit.
 CASES: list[tuple[int, str, str, str, str]] = [
@@ -66,7 +64,7 @@ def main() -> int:
     for n, station, frm, to, _why in CASES:
         fname = outdir / f"case_{n}_{station}_{frm}_{to}.parquet"
         try:
-            df = tradewinds.research(station, frm, to)
+            df = mostlyright.research(station, frm, to)
             df.to_parquet(fname)
             rows = len(df)
             size = fname.stat().st_size

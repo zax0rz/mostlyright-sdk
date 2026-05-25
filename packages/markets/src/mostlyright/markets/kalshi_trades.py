@@ -13,13 +13,13 @@ source-identity intact (the v0.1.0 invariant).
 No authentication required; no Kalshi API key needed. Calls go to the
 documented public endpoints under ``api.elections.kalshi.com``.
 
-Lives at flat module name :mod:`tradewinds.markets.kalshi_trades`
-(rather than a hypothetical ``tradewinds.markets.kalshi.trades``
-subpackage) because the existing ``tradewinds.markets.catalog.kalshi_*``
+Lives at flat module name :mod:`mostlyright.markets.kalshi_trades`
+(rather than a hypothetical ``mostlyright.markets.kalshi.trades``
+subpackage) because the existing ``mostlyright.markets.catalog.kalshi_*``
 modules already use the ``catalog/`` namespace for contract metadata;
 trades data is a separate flat module to avoid restructuring the
 catalog package layout. Phase 10 may revisit the namespace if a
-top-level ``tradewinds.markets.kalshi`` aggregate becomes desirable.
+top-level ``mostlyright.markets.kalshi`` aggregate becomes desirable.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
-from tradewinds.markets._kalshi_client import (
+from mostlyright.markets._kalshi_client import (
     fetch_candlesticks,
     fetch_orderbook,
     fetch_trades,
@@ -55,11 +55,11 @@ def _require_pandas() -> Any:
     try:
         import pandas as _pandas
     except ImportError as exc:
-        from tradewinds.core.exceptions import SourceUnavailableError
+        from mostlyright.core.exceptions import SourceUnavailableError
 
         raise SourceUnavailableError(
-            "tradewinds.markets.kalshi_trades requires pandas. Install with: "
-            "pip install tradewinds-markets[trades]",
+            "mostlyright.markets.kalshi_trades requires pandas. Install with: "
+            "pip install mostlyright-markets[trades]",
             source=_SOURCE,
             retryable=False,
             underlying=str(exc),
@@ -109,9 +109,7 @@ def candles(
     if from_ >= to:
         raise ValueError(f"from_ ({from_.isoformat()}) must be < to ({to.isoformat()})")
     if interval not in INTERVALS:
-        raise ValueError(
-            f"interval must be one of {sorted(INTERVALS)}; got {interval!r}"
-        )
+        raise ValueError(f"interval must be one of {sorted(INTERVALS)}; got {interval!r}")
     period_interval_minutes = INTERVALS[interval] // 60
     raw = fetch_candlesticks(
         ticker,
@@ -133,7 +131,7 @@ def candles(
         # Kalshi API (March 2026 migration) returns FixedPointDollars strings
         # (e.g. "0.5600") for prices and FixedPoint integer strings for
         # volume / open_interest (`*_fp` suffix). Canonical storage per
-        # `packages/core/src/tradewinds/_internal/specs/candle.json` is cents
+        # `packages/core/src/mostlyright/_internal/specs/candle.json` is cents
         # in [0, 100] (float — subpenny preserved). Conversion:
         #   cents = float(api_string) * 100
         # Legacy integer-cents fields (`open`/`high`/`low`/`close`/`volume`/
@@ -216,9 +214,7 @@ def fills(
     if until is not None:
         _validate_aware(until, "until")
     if since is not None and until is not None and since >= until:
-        raise ValueError(
-            f"since ({since.isoformat()}) must be < until ({until.isoformat()})"
-        )
+        raise ValueError(f"since ({since.isoformat()}) must be < until ({until.isoformat()})")
     min_ts = int(since.timestamp()) if since is not None else None
     max_ts = int(until.timestamp()) if until is not None else None
     raw = fetch_trades(
@@ -244,9 +240,7 @@ def fills(
         # yes_price_dollars / no_price_dollars / count_fp / taker_outcome_side.
         # Legacy unsuffixed names accepted as a fallback.
         taker_side = (
-            t.get("taker_outcome_side")
-            if "taker_outcome_side" in t
-            else t.get("taker_side")
+            t.get("taker_outcome_side") if "taker_outcome_side" in t else t.get("taker_side")
         )
         rows.append(
             {
@@ -309,9 +303,7 @@ def orderbook(
         per-row column because every row has the same wall-clock instant).
     """
     pd = _require_pandas()
-    payload = fetch_orderbook(
-        ticker, depth=depth, client=client, sleep_between=sleep_between
-    )
+    payload = fetch_orderbook(ticker, depth=depth, client=client, sleep_between=sleep_between)
     # Kalshi API (March 2026 migration) returns `orderbook_fp` with
     # `yes_dollars` / `no_dollars` arrays of [price_dollar_string,
     # count_fp_string]. Legacy `orderbook.yes` / `.no` accepted as fallback
@@ -364,13 +356,9 @@ def orderbook(
 # ----------------------------------------------------------------------
 def _validate_aware(dt: datetime, name: str) -> None:
     if not isinstance(dt, datetime):
-        raise TypeError(
-            f"{name} must be a datetime instance; got {type(dt).__name__}"
-        )
+        raise TypeError(f"{name} must be a datetime instance; got {type(dt).__name__}")
     if dt.tzinfo is None or dt.tzinfo.utcoffset(dt) is None:
-        raise TypeError(
-            f"{name} must be a tz-aware UTC datetime; got naive {dt!r}"
-        )
+        raise TypeError(f"{name} must be a tz-aware UTC datetime; got naive {dt!r}")
 
 
 def _maybe_float(v: Any) -> float | None:
@@ -386,7 +374,7 @@ def _dollars_to_cents(v: Any) -> float | None:
     """Parse a Kalshi FixedPointDollars string (e.g. ``"0.5600"``) → cents.
 
     Canonical conversion per
-    ``packages/core/src/tradewinds/_internal/specs/candle.json``:
+    ``packages/core/src/mostlyright/_internal/specs/candle.json``:
     ``cents = float(dollars_string) * 100``. Subpenny precision preserved
     (e.g. ``"0.567"`` → 56.7).
     """

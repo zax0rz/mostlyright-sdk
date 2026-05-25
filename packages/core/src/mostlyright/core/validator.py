@@ -1,7 +1,7 @@
 """DataFrame validator with source-identity enforcement.
 
 The Validator is the source-identity invariant gate: every canonical-schema
-DataFrame flowing through tradewinds must carry ``df.attrs["source"]``, and
+DataFrame flowing through mostlyright must carry ``df.attrs["source"]``, and
 that ``source`` must match the schema's registered canonical source unless
 the caller explicitly opts out via ``allow_source_drift``.
 
@@ -25,13 +25,13 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
-from tradewinds._internal._pandas_compat import is_string_like_dtype
-from tradewinds.core.exceptions import (
+from mostlyright._internal._pandas_compat import is_string_like_dtype
+from mostlyright.core.exceptions import (
     SchemaValidationError,
     SourceMismatchError,
 )
-from tradewinds.core.result import TradewindsResult
-from tradewinds.core.schema import Schema, SchemaRegistration
+from mostlyright.core.result import TradewindsResult
+from mostlyright.core.schema import Schema, SchemaRegistration
 
 if TYPE_CHECKING:
     pass
@@ -52,7 +52,7 @@ _SCHEMA_REGISTRY: dict[str, type[Schema]] = {}
 def register_schema(schema_cls: type[Schema]) -> None:
     """Register a Schema subclass by its ``schema_id``.
 
-    Called eagerly at ``tradewinds.core.schemas`` import for the three
+    Called eagerly at ``mostlyright.core.schemas`` import for the three
     canonical schemas. Idempotent — re-registering with the same class is
     a no-op; re-registering the same ID with a different class raises.
     """
@@ -224,7 +224,7 @@ def validate_dataframe(
     ``schema.observation.v1`` is registered to ``iem.archive``):
 
     >>> import pandas as pd
-    >>> from tradewinds.core import SourceMismatchError, validate_dataframe
+    >>> from mostlyright.core import SourceMismatchError, validate_dataframe
     >>> df = pd.DataFrame({"date": pd.to_datetime(["2025-01-06"])})
     >>> df.attrs["source"] = "awc.live"
     >>> try:

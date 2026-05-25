@@ -16,12 +16,12 @@ from datetime import UTC, datetime
 
 import pandas as pd
 import pytest
-from tradewinds.core._backend_dispatch import (
+from mostlyright.core._backend_dispatch import (
     convert_to_backend,
     validate_backend_kwargs,
     wrap_result,
 )
-from tradewinds.core.result import TradewindsResult
+from mostlyright.core.result import TradewindsResult
 
 # ----------------------- validate_backend_kwargs -----------------------
 
@@ -123,7 +123,7 @@ def test_convert_to_polars_returns_polars() -> None:
 
 
 def test_mode2_research_by_source_invalid_backend_raises() -> None:
-    from tradewinds.mode2 import research_by_source
+    from mostlyright.mode2 import research_by_source
 
     with pytest.raises(ValueError, match="backend must be one of"):
         # source kwarg is also invalid but we should hit the backend check first
@@ -138,7 +138,7 @@ def test_mode2_research_by_source_invalid_backend_raises() -> None:
 
 
 def test_mode2_research_by_source_polars_dataframe_combo_raises() -> None:
-    from tradewinds.mode2 import research_by_source
+    from mostlyright.mode2 import research_by_source
 
     with pytest.raises(ValueError, match="requires return_type='wrapper'"):
         research_by_source(
@@ -155,7 +155,7 @@ def test_daily_extremes_default_returns_list() -> None:
     """v0.1.0 zero-behaviour-change: default return type stays list[dict]."""
     from datetime import date
 
-    from tradewinds.international import daily_extremes
+    from mostlyright.international import daily_extremes
 
     # Cache is empty → returns [] (the default behaviour preserves this).
     out = daily_extremes("EGLL", date(2025, 1, 1), date(2025, 1, 1))
@@ -166,7 +166,7 @@ def test_daily_extremes_default_returns_list() -> None:
 def test_daily_extremes_polars_without_wrapper_raises() -> None:
     from datetime import date
 
-    from tradewinds.international import daily_extremes
+    from mostlyright.international import daily_extremes
 
     with pytest.raises(ValueError, match="requires return_type='wrapper'"):
         daily_extremes(

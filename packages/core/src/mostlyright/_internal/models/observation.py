@@ -10,11 +10,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, ClassVar
 
-from tradewinds._internal._convert import (
+from mostlyright._internal._convert import (
     compute_feels_like,
     compute_relative_humidity,
 )
-from tradewinds._internal.models._base import DictLikeMixin
+from mostlyright._internal.models._base import DictLikeMixin
 
 _REQUIRED_FIELDS = ("station_code", "observed_at", "observation_type", "source")
 

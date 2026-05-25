@@ -10,7 +10,7 @@ module-level ``_REGISTRY`` at import time.
 (``"iem.archive"``, ``"awc.live"``, ``"cli.archive"``, ``"ghcnh.archive"``)
 it returns a fresh adapter instance.
 
-The registry is eagerly populated when ``tradewinds.weather.catalog`` is
+The registry is eagerly populated when ``mostlyright.weather.catalog`` is
 imported. The four canonical adapter modules import this module first to
 get the ``_REGISTRY`` dict, then ``register_adapter()`` appends each.
 """
@@ -20,7 +20,7 @@ from __future__ import annotations
 from typing import ClassVar, Protocol
 
 import pandas as pd
-from tradewinds.core.exceptions import SourceUnavailableError
+from mostlyright.core.exceptions import SourceUnavailableError
 
 __all__ = [
     "WeatherAdapter",
@@ -93,4 +93,4 @@ def list_sources() -> list[str]:
 # Eager import of the four canonical adapters — each calls
 # ``register_adapter`` at import time. Done at the bottom to avoid
 # circular imports (each adapter imports symbols from this module).
-from tradewinds.weather.catalog import awc, cli, ghcnh, iem  # noqa: E402, F401
+from mostlyright.weather.catalog import awc, cli, ghcnh, iem  # noqa: E402, F401

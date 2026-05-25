@@ -1,4 +1,4 @@
-"""Canonical schemas shipped with tradewinds v0.1.
+"""Canonical schemas shipped with mostlyright v0.1.
 
 The three schemas — observation, forecast, settlement — are the shape
 contracts every weather-vertical adapter (IEM, AWC, NWS CLI) normalises
@@ -10,7 +10,7 @@ Each schema is eagerly registered with the Validator at import time so
 without any explicit register-call boilerplate.
 """
 
-from tradewinds.core.validator import register_schema
+from mostlyright.core.validator import register_schema
 
 from .forecast import ForecastSchema
 from .forecast_nwp import NwpForecastSchema

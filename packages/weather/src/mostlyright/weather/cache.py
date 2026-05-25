@@ -1,14 +1,14 @@
-"""Local parquet cache for tradewinds weather observations and climate.
+"""Local parquet cache for mostlyright weather observations and climate.
 
 NEW module (no v0.14.1 reference). v0.14.1 is a hosted-client SDK — merging
-and caching happen server-side there. The tradewinds local-first SDK ships
+and caching happen server-side there. The mostlyright local-first SDK ships
 caching client-side so re-runs of ``research()`` against the same date range
 hit a local parquet file instead of re-fetching from IEM/AWC/GHCNh.
 
 Path layout (CACHE-01)::
 
-    $HOME/.tradewinds/cache/v1/observations/<STATION>/<YYYY>/<MM>.parquet
-    $HOME/.tradewinds/cache/v1/climate/<STATION>/<YYYY>.parquet
+    $HOME/.mostlyright/cache/v1/observations/<STATION>/<YYYY>/<MM>.parquet
+    $HOME/.mostlyright/cache/v1/climate/<STATION>/<YYYY>.parquet
 
 Override the root via the ``TRADEWINDS_CACHE_DIR`` environment variable.
 
@@ -46,7 +46,7 @@ from typing import TYPE_CHECKING
 import pyarrow as pa
 import pyarrow.parquet as pq
 from filelock import FileLock
-from tradewinds._internal._bounds import (
+from mostlyright._internal._bounds import (
     assert_path_under,
     validate_icao_for_path,
 )
@@ -57,7 +57,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 CACHE_VERSION = "v1"
-DEFAULT_ROOT = Path.home() / ".tradewinds" / "cache"
+DEFAULT_ROOT = Path.home() / ".mostlyright" / "cache"
 
 # FileLock timeout in seconds. 30s is long enough to swallow a slow parquet
 # write under concurrent load but short enough to surface a deadlock rather
@@ -69,8 +69,8 @@ LOCK_TIMEOUT_SECONDS = 30
 # LST offset resolution
 # ---------------------------------------------------------------------------
 # Wave 1 originally shipped a 10-station whitelist fallback here, expecting
-# Task 1.1 to land ``_lst_offset`` under ``tradewinds._internal._stations``.
-# The actual lift kept ``_lst_offset`` in ``tradewinds.snapshot`` (where it
+# Task 1.1 to land ``_lst_offset`` under ``mostlyright._internal._stations``.
+# The actual lift kept ``_lst_offset`` in ``mostlyright.snapshot`` (where it
 # always lived in v0.14.1) - so the fallback became permanently active and
 # raised ``ValueError`` for the 11 stations missing from its hardcoded map
 # (KAUS, KDCA, KDFW, KHOU, KLAS, KMDW, KMSP, KOKC, KPHL, KSAT, KSFO). That
@@ -78,16 +78,16 @@ LOCK_TIMEOUT_SECONDS = 30
 # Wave 2 wired the public API through this cache layer.
 #
 # Resolution (Wave 2 codex iter-1 P1): delegate directly to
-# ``tradewinds.snapshot._lst_offset``, which lifts the full 20-station tz
+# ``mostlyright.snapshot._lst_offset``, which lifts the full 20-station tz
 # map from v0.14.1 verbatim and ALSO accepts a ``tz_override`` argument
 # (already supported by the v0.1.0 public surface). The import is local so
-# ``tradewinds.weather.cache`` does not pull ``snapshot`` at module import
+# ``mostlyright.weather.cache`` does not pull ``snapshot`` at module import
 # time - keeping the dependency one-directional (weather depends on core,
 # never the reverse).
 def _lst_offset(station: str) -> timedelta:
     """Return the Local Standard Time offset for ``station`` (no DST).
 
-    Thin wrapper over :func:`tradewinds.snapshot._lst_offset` - the canonical
+    Thin wrapper over :func:`mostlyright.snapshot._lst_offset` - the canonical
     home of the 20-station tz map (lifted verbatim from
     ``monorepo-v0.14.1/src/mostlyright/snapshot.py``). Accepts both the
     3-letter NWS code and the 4-letter ICAO; the snapshot helper normalizes
@@ -99,7 +99,7 @@ def _lst_offset(station: str) -> timedelta:
             ``research()`` rejects unknown stations earlier with the same
             error class).
     """
-    from tradewinds.snapshot import _lst_offset as _snapshot_lst_offset
+    from mostlyright.snapshot import _lst_offset as _snapshot_lst_offset
 
     return _snapshot_lst_offset(station)
 
@@ -112,7 +112,7 @@ def _observation_schema() -> pa.Schema | None:
     1; when that merge happens the schema is available and used explicitly.
     """
     try:
-        from tradewinds._internal.merge._schemas import OBSERVATION_SCHEMA
+        from mostlyright._internal.merge._schemas import OBSERVATION_SCHEMA
 
         return OBSERVATION_SCHEMA
     except ImportError:
@@ -122,7 +122,7 @@ def _observation_schema() -> pa.Schema | None:
 def _climate_schema() -> pa.Schema | None:
     """Return the pyarrow CLIMATE_SCHEMA from Task 1.2/1.3, or None."""
     try:
-        from tradewinds._internal.merge._schemas import CLIMATE_SCHEMA
+        from mostlyright._internal.merge._schemas import CLIMATE_SCHEMA
 
         return CLIMATE_SCHEMA
     except ImportError:
@@ -150,7 +150,7 @@ def cache_path(station: str, year: int, month: int) -> Path:
     Example::
 
         cache_path("KNYC", 2025, 1)
-        # -> Path("$HOME/.tradewinds/cache/v1/observations/KNYC/2025/01.parquet")
+        # -> Path("$HOME/.mostlyright/cache/v1/observations/KNYC/2025/01.parquet")
 
     The month is zero-padded to two digits so a lexicographic directory listing
     matches chronological order.
@@ -172,7 +172,7 @@ def climate_cache_path(station: str, year: int) -> Path:
     Example::
 
         climate_cache_path("KNYC", 2025)
-        # -> Path("$HOME/.tradewinds/cache/v1/climate/KNYC/2025.parquet")
+        # -> Path("$HOME/.mostlyright/cache/v1/climate/KNYC/2025.parquet")
 
     Same validation contract as :func:`cache_path` (Rob C1).
     """
@@ -436,7 +436,7 @@ def _has_cached_year(
 
     Looks under ``$TRADEWINDS_CACHE_DIR/v1/observations/{STATION}/{year}/*.parquet``.
     Used by the Phase 7 ``obs(strategy="auto")`` resolver in
-    ``tradewinds.weather.obs`` to decide whether to dispatch to ``warm_cache``
+    ``mostlyright.weather.obs`` to decide whether to dispatch to ``warm_cache``
     or ``exact_window``. Placed here (not in obs.py) so the parquet-layout
     contract has a single source of truth (I-4).
     """

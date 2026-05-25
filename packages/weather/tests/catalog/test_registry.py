@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import pytest
-
 # Importing the catalog package triggers eager registration of all
 # 4 canonical adapters.
-import tradewinds.weather.catalog as catalog
-from tradewinds.core.exceptions import SourceUnavailableError
-from tradewinds.weather.catalog import (
+import mostlyright.weather.catalog as catalog
+import pytest
+from mostlyright.core.exceptions import SourceUnavailableError
+from mostlyright.weather.catalog import (
     get_adapter,
     list_sources,
     register_adapter,

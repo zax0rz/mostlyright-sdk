@@ -9,7 +9,7 @@ Deterministic: same input always produces identical output.
 Spec: https://github.com/toon-format/spec (v3.0 Working Draft)
 
 Lifted verbatim from mostlyright v0.15.0 → mostlyright-mcp wave-1-core →
-tradewinds.core per design doc §F.
+mostlyright.core per design doc §F.
 """
 
 from __future__ import annotations

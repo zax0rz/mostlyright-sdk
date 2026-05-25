@@ -11,7 +11,7 @@ from dataclasses import replace
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tradewinds._internal.models.observation import Observation
+    from mostlyright._internal.models.observation import Observation
 
 _KT_TO_MPH = 1.15078
 _KT_TO_MS = 1852.0 / 3600.0  # Exact: 1 knot = 1852 m / 3600 s

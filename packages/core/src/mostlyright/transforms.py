@@ -23,7 +23,7 @@ import math
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
-from tradewinds.core._narwhals_compat import (
+from mostlyright.core._narwhals_compat import (
     pandas_series_to_polars,
     pandas_to_polars,
     to_pandas_if_polars,

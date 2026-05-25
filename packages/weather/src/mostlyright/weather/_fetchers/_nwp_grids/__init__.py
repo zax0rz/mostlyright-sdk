@@ -3,7 +3,7 @@
 Each submodule (``hrrr.py``, ``gfs.py``, ``nbm.py``) declares:
 
 - ``VARIABLE_MAP``: ``{canonical_column: (grib_variable, grib_level)}`` --
-  the subset of GRIB2 fields tradewinds extracts. The keys are the
+  the subset of GRIB2 fields mostlyright extracts. The keys are the
   output DataFrame column names (e.g. ``"temp_k_2m"``); the values
   match the ``(variable, level)`` strings as they appear in the
   ``.idx`` file.

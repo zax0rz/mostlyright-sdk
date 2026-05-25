@@ -11,7 +11,7 @@ Each entry in :data:`PROJECTION_SPEC` is ``(src_field, dst_field, converter)``.
 
 - ``None`` — passthrough, no unit change.
 - ``"kt_to_ms"`` / ``"mi_to_m"`` / ``"ft_to_m"`` / ``"in_to_mm"`` —
-  named conversion from :mod:`tradewinds._internal._convert`.
+  named conversion from :mod:`mostlyright._internal._convert`.
 
 The HIGH finding from codex Phase 2 review (Wave 4): without this
 conversion, adapters silently emitted DataFrames where ``wind_speed_ms``
@@ -25,7 +25,7 @@ from datetime import datetime
 from typing import Any
 
 import pandas as pd
-from tradewinds._internal._convert import (
+from mostlyright._internal._convert import (
     ft_to_m,
     inches_to_mm,
     kt_to_ms,
