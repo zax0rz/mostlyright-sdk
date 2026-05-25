@@ -34,7 +34,7 @@ Numbers update vs CONTEXT.md audit (run 2026-05-25 against worktree HEAD):
 |---|------|-------------|-----------|
 | W1 | Directory + pyproject + npm scope rename | `git mv packages/*/src/tradewinds packages/*/src/mostlyright`; rewrite each `pyproject.toml` `name` + `[tool.hatch.build.targets.wheel] packages`; rewrite inter-package version pins; rename 5 npm packages + workspace deps | `uv sync` succeeds; `uv build` produces 3 wheels; `pnpm install` succeeds; tests RED until W2 (DOCUMENTED expected RED) |
 | W2 | Python import rewrite (3 BATCHES) | scripted rewrite across `packages/`, `tests/`, `scripts/` | `uv run pytest -m "not live"` green after each batch; final `grep -rn 'tradewinds' --include='*.py'` returns 0 |
-| W3 | TS import rewrite | scripted `from "@tradewinds/...` → `from "@mostlyright/...` | `pnpm -r run typecheck` green; `CI=1 pnpm -r run test` green |
+| W3 | TS import rewrite | scripted `from "@tradewinds/...` → `from "@mostlyrightmd/...` | `pnpm -r run typecheck` green; `CI=1 pnpm -r run test` green |
 | W4 | Cache env var + back-compat shim | rename `TRADEWINDS_CACHE_DIR` → `MOSTLYRIGHT_CACHE_DIR` (75 sites); new `_cache_dir.py` reads both env vars with `DeprecationWarning`; default path `~/.tradewinds/cache/v1/` → `~/.mostlyright/cache/v1/` | 3 new tests in `test_cache_env_back_compat.py` pass; full suite green |
 | W5 | Docs + prose rewrite | rewrite ~85 mentions `docs/*.md`, ~20 `CLAUDE.md`, root `README.md`; install commands; code-fence examples; **LEAVE `.planning/` ARCHIVE ALONE** | `grep -rn 'tradewinds' docs/ CLAUDE.md README.md` returns 0 (excluding URL fields) |
 | W6 | CI workflow updates | keep `release.yml` + `release-ts.yml` filenames; update env-var names + hardcoded `tradewinds*` refs in YAML; verify trusted-publisher project names | `act` dry-run OR manual YAML review; in-repo CI for `test.yml`/`test-ts.yml` green |
@@ -43,8 +43,8 @@ Numbers update vs CONTEXT.md audit (run 2026-05-25 against worktree HEAD):
 **Operator pre-flight (BEFORE Wave 1):**
 - OP1: `mv ~/Documents/GitHub/mostlyright ~/Documents/GitHub/mostlyright-legacy` — manual
 - OP2: Register 3 PyPI pending publishers (`mostlyright`, `mostlyright-weather`, `mostlyright-markets`) — pypi.org manual
-- OP3: Claim `@mostlyright` npm scope — npmjs.com manual
-- OP4: Register 4 npm OIDC pending publishers (`@mostlyright/core`, `/weather`, `/markets`, unscoped meta `mostlyright`) — manual
+- OP3: Claim `@mostlyrightmd` npm scope — npmjs.com manual
+- OP4: Register 4 npm OIDC pending publishers (`@mostlyrightmd/core`, `/weather`, `/markets`, unscoped meta `mostlyright`) — manual
 
 **Rename safety rules (LOCKED):**
 1. `git mv` only (no `git rm` + `git add` — blame must follow file).
@@ -146,7 +146,7 @@ Numbers update vs CONTEXT.md audit (run 2026-05-25 against worktree HEAD):
 | Instead of | Could Use | Tradeoff |
 |------------|-----------|----------|
 | Custom Python rewriter | `bowler` / `libcst` | Heavier dep; bowler unmaintained as of 2024. The repo's needs are simple enough that stdlib `ast`-driven rewrite suffices. [VERIFIED: Bowler GitHub last release 2023; PyPI shows 0.9.0 as latest] |
-| Custom TS rewriter | `ts-morph` / `jscodeshift` | The only TS substitution we need (`from "@tradewinds/` → `from "@mostlyright/`) is uniquely identified by the leading `from "` quote token; safe with grep+sed. ts-morph adds ~5MB to devDependencies. |
+| Custom TS rewriter | `ts-morph` / `jscodeshift` | The only TS substitution we need (`from "@tradewinds/` → `from "@mostlyrightmd/`) is uniquely identified by the leading `from "` quote token; safe with grep+sed. ts-morph adds ~5MB to devDependencies. |
 | BSD sed (macOS) | GNU sed (CI) | `sed -i ''` vs `sed -i ''` syntax differs; planner MUST use a Python wrapper or the rewrite is unportable. CI is Linux-only but developers run macOS. |
 
 **Installation (Phase 12 introduces NO new install steps):** No new packages needed; everything is stdlib.
@@ -178,11 +178,11 @@ packages/
     └── (same pattern: src/mostlyright/markets/...)
 
 packages-ts/
-├── core/        package.json name = "@mostlyright/core"
-├── weather/     package.json name = "@mostlyright/weather"
-├── markets/     package.json name = "@mostlyright/markets"
+├── core/        package.json name = "@mostlyrightmd/core"
+├── weather/     package.json name = "@mostlyrightmd/weather"
+├── markets/     package.json name = "@mostlyrightmd/markets"
 ├── meta/        package.json name = "mostlyright"
-└── codegen/     package.json name = "@mostlyright/codegen"
+└── codegen/     package.json name = "@mostlyrightmd/codegen"
 ```
 
 ### Pattern 1: Python Rewriter Design (W2 — load-bearing for the 3-batch gate)
@@ -236,7 +236,7 @@ def rewrite_line(line: str) -> str:
 
 ### Pattern 2: TS Rewriter Design (W3)
 
-**What:** `sed` (via Python wrapper for portability) replacing `from "@tradewinds/` → `from "@mostlyright/`.
+**What:** `sed` (via Python wrapper for portability) replacing `from "@tradewinds/` → `from "@mostlyrightmd/`.
 
 **When:** Wave 3.
 
@@ -247,15 +247,15 @@ def rewrite_line(line: str) -> str:
 ```python
 # scripts/_phase12_rename_ts.py
 # Same Python driver as above, restricted to:
-#   from\s+"@tradewinds/  → from "@mostlyright/
+#   from\s+"@tradewinds/  → from "@mostlyrightmd/
 import re
 TS_IMPORT_RE = re.compile(r'from\s+"@tradewinds/')
 
 def rewrite_ts_line(line: str) -> str:
-    return TS_IMPORT_RE.sub('from "@mostlyright/', line)
+    return TS_IMPORT_RE.sub('from "@mostlyrightmd/', line)
 ```
 
-**Also rename in `package.json` files:** `"name": "@tradewinds/X"` → `"name": "@mostlyright/X"` and workspace deps `"@tradewinds/X": "workspace:*"` → `"@mostlyright/X": "workspace:*"`. These are W1, not W3.
+**Also rename in `package.json` files:** `"name": "@tradewinds/X"` → `"name": "@mostlyrightmd/X"` and workspace deps `"@tradewinds/X": "workspace:*"` → `"@mostlyrightmd/X": "workspace:*"`. These are W1, not W3.
 
 ### Pattern 3: Cache back-compat shim (W4 — already specified in CONTEXT.md)
 
@@ -410,7 +410,7 @@ This is a rename phase; the inventory applies.
 
 **How to avoid:** W7 task — `uv run python scripts/export_schemas.py && pnpm codegen && git diff schemas/ packages-ts/*/src/**/generated/`. Commit any diffs. (CONTEXT.md mentions this in W6; recommend moving to W7 since W6 is workflow YAML edits.)
 
-**Warning signs:** schema-drift.yml fails on PR; post-rename codegen produces a diff in `packages-ts/*/src/**/generated/*.ts` (the AUTO-GENERATED headers say `@tradewinds/codegen` and refresh to `@mostlyright/codegen`).
+**Warning signs:** schema-drift.yml fails on PR; post-rename codegen produces a diff in `packages-ts/*/src/**/generated/*.ts` (the AUTO-GENERATED headers say `@tradewinds/codegen` and refresh to `@mostlyrightmd/codegen`).
 
 ### Pitfall 9: ~/Documents/GitHub/mostlyright path collision (operator pre-flight)
 **What goes wrong:** The user has a legacy `~/Documents/GitHub/mostlyright` directory (the source repo lifted from). After Phase 12, `mostlyright` becomes a Python package name. If a developer runs `cd ~/Documents/GitHub/mostlyright && python -c "import mostlyright"` they'll get THAT directory in `sys.path[0]` and the import shadows the renamed tradewinds-now-mostlyright package. Operator MUST rename to `mostlyright-legacy` before any wave runs.
@@ -422,7 +422,7 @@ This is a rename phase; the inventory applies.
 **Warning signs:** Developer reports "`import mostlyright` is finding the wrong package"; `python -c "import mostlyright; print(mostlyright.__file__)"` shows the legacy path, not the new tradewinds-now-mostlyright path.
 
 ### Pitfall 10: CI workflow filenames vs. trusted-publisher OIDC binding
-**What goes wrong:** PyPI/npm OIDC trusted publishers bind to {repo, workflow filename, environment}. The filenames `release.yml` and `release-ts.yml` STAY (per CONTEXT decision). But the trusted-publisher REGISTRATION on PyPI/npm references the project name (`tradewinds` vs `mostlyright`). Operator must register NEW pending publishers for `mostlyright`, `mostlyright-weather`, `mostlyright-markets` (PyPI) + `@mostlyright/core`, `@mostlyright/weather`, `@mostlyright/markets`, `mostlyright` meta (npm). Old `tradewinds*` publishers stay orphaned.
+**What goes wrong:** PyPI/npm OIDC trusted publishers bind to {repo, workflow filename, environment}. The filenames `release.yml` and `release-ts.yml` STAY (per CONTEXT decision). But the trusted-publisher REGISTRATION on PyPI/npm references the project name (`tradewinds` vs `mostlyright`). Operator must register NEW pending publishers for `mostlyright`, `mostlyright-weather`, `mostlyright-markets` (PyPI) + `@mostlyrightmd/core`, `@mostlyrightmd/weather`, `@mostlyrightmd/markets`, `mostlyright` meta (npm). Old `tradewinds*` publishers stay orphaned.
 
 **Why it happens:** Trusted publishing is registered out-of-band on pypi.org/npmjs.com, not in the repo.
 
@@ -476,25 +476,25 @@ unzip -l dist/mostlyright-0.1.0rc1-py3-none-any.whl | head -20
 
 ```bash
 # 1. Rewrite 5 package.json files:
-#    packages-ts/core/package.json: "name": "@tradewinds/core" → "@mostlyright/core"
-#    packages-ts/weather/package.json: "name": "@tradewinds/weather" → "@mostlyright/weather"
-#    packages-ts/markets/package.json: "name": "@tradewinds/markets" → "@mostlyright/markets"
-#    packages-ts/codegen/package.json: "name": "@tradewinds/codegen" → "@mostlyright/codegen"
+#    packages-ts/core/package.json: "name": "@tradewinds/core" → "@mostlyrightmd/core"
+#    packages-ts/weather/package.json: "name": "@tradewinds/weather" → "@mostlyrightmd/weather"
+#    packages-ts/markets/package.json: "name": "@tradewinds/markets" → "@mostlyrightmd/markets"
+#    packages-ts/codegen/package.json: "name": "@tradewinds/codegen" → "@mostlyrightmd/codegen"
 #    packages-ts/meta/package.json: "name": "tradewinds" → "mostlyright"
 
 # 2. Rewrite workspace deps (workspace:* paths use package name, NOT path)
 #    packages-ts/meta/package.json:
-#      "@tradewinds/core": "workspace:*" → "@mostlyright/core": "workspace:*"
+#      "@tradewinds/core": "workspace:*" → "@mostlyrightmd/core": "workspace:*"
 #      (same for weather + markets)
 #    packages-ts/weather/package.json:
-#      peerDependencies: "@tradewinds/core" → "@mostlyright/core"
-#      devDependencies: "@tradewinds/core": "workspace:*" → "@mostlyright/core": "workspace:*"
+#      peerDependencies: "@tradewinds/core" → "@mostlyrightmd/core"
+#      devDependencies: "@tradewinds/core": "workspace:*" → "@mostlyrightmd/core": "workspace:*"
 #    packages-ts/markets/package.json:
 #      (same as weather)
 
 # 3. Update .changeset/config.json fixed group:
 #    "fixed": [["@tradewinds/core", "@tradewinds/weather", "@tradewinds/markets", "tradewinds"]]
-#      → [["@mostlyright/core", "@mostlyright/weather", "@mostlyright/markets", "mostlyright"]]
+#      → [["@mostlyrightmd/core", "@mostlyrightmd/weather", "@mostlyrightmd/markets", "mostlyright"]]
 
 # 4. Update root package.json `size-limit` entries that name @tradewinds/* packages
 
@@ -640,9 +640,9 @@ grep -rln 'mostlyright' packages/ packages-ts/ 2>/dev/null | wc -l
 |---|---|---|---|
 | `tradewinds` PyPI distro | `mostlyright` PyPI distro | W1 + operator OP2 | Old name orphaned on PyPI (operator follow-up) |
 | `tradewinds-weather`, `tradewinds-markets` | `mostlyright-weather`, `mostlyright-markets` | W1 + operator OP2 | Same |
-| `@tradewinds/{core,weather,markets,codegen}` + `tradewinds` meta | `@mostlyright/{core,weather,markets,codegen}` + `mostlyright` meta | W1 + operator OP3+OP4 | Same on npm |
+| `@tradewinds/{core,weather,markets,codegen}` + `tradewinds` meta | `@mostlyrightmd/{core,weather,markets,codegen}` + `mostlyright` meta | W1 + operator OP3+OP4 | Same on npm |
 | `from tradewinds import research` | `from mostlyright import research` | W2 | 1044 sites rewrite |
-| `from "@tradewinds/core"` | `from "@mostlyright/core"` | W3 | 61 quoted-import sites rewrite |
+| `from "@tradewinds/core"` | `from "@mostlyrightmd/core"` | W3 | 61 quoted-import sites rewrite |
 | `TRADEWINDS_CACHE_DIR` env var | `MOSTLYRIGHT_CACHE_DIR` env var + back-compat | W4 | One-release deprecation window; v0.3 removes the legacy branch |
 | `~/.tradewinds/cache/v1/` | `~/.mostlyright/cache/v1/` | W4 | User-side `mv` documented; no auto-migration |
 
@@ -687,7 +687,7 @@ grep -rln 'mostlyright' packages/ packages-ts/ 2>/dev/null | wc -l
      ```
      - [ ] OP1: `mv ~/Documents/GitHub/mostlyright ~/Documents/GitHub/mostlyright-legacy` (confirmed)
      - [ ] OP2: 3 PyPI pending publishers registered for mostlyright/mostlyright-weather/mostlyright-markets (confirmed)
-     - [ ] OP3: @mostlyright npm scope claimed (confirmed)
+     - [ ] OP3: @mostlyrightmd npm scope claimed (confirmed)
      - [ ] OP4: 4 npm OIDC pending publishers registered (confirmed)
      ```
      Implemented in `12-07-PLAN.md` Task 2 (README write step + verification regex `expect 4` for the 4-line checklist).

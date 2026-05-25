@@ -552,14 +552,14 @@ Evolves `research()` from station-only into the composable surface quants actual
 
 ### Phase 14 — npm Publication Pipeline
 
-- [ ] **NPM-01**: `@mostlyright` npm scope claimed on npmjs.com under the project owner's account; scope set to public access (mirrors PyPI public-by-default posture). Operator pre-flight; satisfies Phase 12 OP3.
-- [ ] **NPM-02**: 4 npm OIDC pending publishers registered for `@mostlyright/core`, `@mostlyright/weather`, `@mostlyright/markets`, unscoped meta `mostlyright` — bound to repo + `release-ts.yml` + GH environment `npm`. (Operator pre-flight; satisfies Phase 12 OP4.)
+- [ ] **NPM-01**: `@mostlyrightmd` npm scope claimed on npmjs.com under the project owner's account; scope set to public access (mirrors PyPI public-by-default posture). Operator pre-flight; satisfies Phase 12 OP3.
+- [ ] **NPM-02**: 4 npm OIDC pending publishers registered for `@mostlyrightmd/core`, `@mostlyrightmd/weather`, `@mostlyrightmd/markets`, unscoped meta `mostlyright` — bound to repo + `release-ts.yml` + GH environment `npm`. (Operator pre-flight; satisfies Phase 12 OP4.)
 - [ ] **NPM-03**: `vts-0.1.0rc1` tag fires `release-ts.yml` cleanly; 4 packages publish to npm with `--tag next` dist-tag (NOT `latest`); npm provenance attestation generated for each.
-- [ ] **NPM-04**: `npm install @mostlyright/core@next` in a clean Node 20 + pnpm 9 project works; `import { research } from '@mostlyright/core'` resolves via the package's exports map; TypeScript types load via `@mostlyright/core/dist/index.d.ts`.
-- [ ] **NPM-05**: Browser smoke test — `packages-ts/examples/chrome-extension-mvp/` rebuilt against `@mostlyright/core@next` IIFE bundle (`globalThis.mostlyrightCore`), loaded in Chrome MV3 service worker, hits AWC live endpoint successfully (no CORS issues, no CSP violations).
+- [ ] **NPM-04**: `npm install @mostlyrightmd/core@next` in a clean Node 20 + pnpm 9 project works; `import { research } from '@mostlyrightmd/core'` resolves via the package's exports map; TypeScript types load via `@mostlyrightmd/core/dist/index.d.ts`.
+- [ ] **NPM-05**: Browser smoke test — `packages-ts/examples/chrome-extension-mvp/` rebuilt against `@mostlyrightmd/core@next` IIFE bundle (`globalThis.mostlyrightCore`), loaded in Chrome MV3 service worker, hits AWC live endpoint successfully (no CORS issues, no CSP violations).
 - [ ] **NPM-06**: ≥1 week soak on npm `next` channel with at least one external installer (not the author) confirming the install + Node + browser quickstart works end-to-end.
-- [ ] **NPM-07**: `vts-0.1.0` final tag fires `release-ts.yml` with `--tag latest` dist-tag; `npm install @mostlyright/core` (no @next) resolves to 0.1.0; size-limit gates pass per `.size-limit.config.js` (core ≤25KB / weather ≤35KB / markets ≤10KB / meta ≤70KB).
-- [ ] **NPM-08**: `pnpm changeset` + `pnpm changeset version` workflow documented and lockstep-applied across the 4-package fixed group; release-ts-preflight.mjs script rewrites `peerDependencies['@mostlyright/core']` to the resolved version (verified by Phase 12 review-iter1 CRITICAL fix).
+- [ ] **NPM-07**: `vts-0.1.0` final tag fires `release-ts.yml` with `--tag latest` dist-tag; `npm install @mostlyrightmd/core` (no @next) resolves to 0.1.0; size-limit gates pass per `.size-limit.config.js` (core ≤25KB / weather ≤35KB / markets ≤10KB / meta ≤70KB).
+- [ ] **NPM-08**: `pnpm changeset` + `pnpm changeset version` workflow documented and lockstep-applied across the 4-package fixed group; release-ts-preflight.mjs script rewrites `peerDependencies['@mostlyrightmd/core']` to the resolved version (verified by Phase 12 review-iter1 CRITICAL fix).
 - [ ] **NPM-09**: Documented npm release runbook in `.planning/phases/14-npm-publication-pipeline/RUNBOOK.md`: pre-flight checklist (changeset → version bump → tag), in-flight monitoring, post-publish verification (`npm install` in clean Node + browser).
 
 ### Phase 15 — Docs Auto-Generation + Landing Site Integration
@@ -582,7 +582,7 @@ Evolves `research()` from station-only into the composable surface quants actual
 - [ ] **RELEASE-06**: New `SECURITY.md` — vuln-report process (maintainer email or GH private advisory), supported-versions table (1.0.x supported, 0.1.x security-fixes-only for 6 months, 0.0.x EOL), disclosure timeline (90 days standard).
 - [ ] **RELEASE-07**: Version-bump lockstep across all 8 packages (3 PyPI + 5 npm) from `0.1.0` → `1.0.0` — single PR `release/v1.0.0` updating `packages/*/pyproject.toml` + `packages-ts/*/package.json` + uv.lock + pnpm-lock.yaml + CHANGELOG.md. version-guard preflight on `release.yml` + `release-ts.yml` enforce tag matches.
 - [ ] **RELEASE-08**: `v1.0.0` Python tag + `vts-1.0.0` TS tag pushed; both release workflows fire and publish to PyPI `latest` + npm `latest`. Both publishes succeed (verified by version-guard, Requires-Dist gate, size-limit gates, OIDC provenance attestation).
-- [ ] **RELEASE-09**: External user runs the root README's quickstart end-to-end in <5 min (clock-timed, not the author) for both SDKs — `pip install mostlyright[research]` + Python research() call + `npm install @mostlyright/core` + TS research() call. Failures get fixed in a `1.0.1` patch within 72h; no silent regressions.
+- [ ] **RELEASE-09**: External user runs the root README's quickstart end-to-end in <5 min (clock-timed, not the author) for both SDKs — `pip install mostlyright[research]` + Python research() call + `npm install @mostlyrightmd/core` + TS research() call. Failures get fixed in a `1.0.1` patch within 72h; no silent regressions.
 - [ ] **RELEASE-10**: `.planning/STATE.md` closeout section for Phase 16 declares v1.0 production-shipped, lists supported-versions table, links to the runbooks for routine releases going forward (`.planning/RELEASE-RUNBOOK.md` summarizes Phase 13 + 14 + 15 runbooks).
 
 ### Phase 13-16 Traceability
