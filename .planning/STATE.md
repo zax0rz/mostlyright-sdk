@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v0.1.0
 milestone_name: — `@mostlyright/*` on npm)
-status: Phase 12 (Rename tradewinds → mostlyright) code-complete; operator pre-flight OP1-OP4 pending before PR merge. Phases 6 + 7 + 8 + 9 + 10 already on main. Python v0.1.0rc1 publish remains operator-gated. 8/8 TS phases code-complete (npm publish operator-gated).
-stopped_at: "Phase 12 closeout; phase-12/rename-to-mostlyright -> main PR queued (3-reviewer dispatch); operator OP1-OP4 required before merge"
+status: Phase 12 (Rename tradewinds → mostlyright) code-complete on top of merged Phase 11; operator pre-flight OP1-OP4 pending before PR merge. Phases 6 + 7 + 8 + 9 + 10 + 11 already on main. Python v0.1.0rc1 publish remains operator-gated. 8/8 TS phases code-complete (npm publish operator-gated).
+stopped_at: "Phase 12 closeout; phase-12/rename-to-mostlyright -> main PR queued (4-iter codex+python+ts architect review loop closed PASS at iter-4); operator OP1-OP4 required before merge"
 last_updated: "2026-05-25T11:00:00.000Z"
-last_activity: "2026-05-25 - Phase 12 mechanical rename tradewinds -> mostlyright code-complete; zero test regressions at every wave gate (Python 1980 / TS 1322 / parity 5/5 byte-equivalent)"
+last_activity: "2026-05-25 - Phase 12 mechanical rename tradewinds -> mostlyright code-complete on top of Phase 11 merge; zero test regressions at every wave gate (Python 1980 / TS 1324 / parity 5/5 byte-equivalent)"
 progress:
   total_phases: 23
-  completed_phases: 7
-  total_plans: 34
-  completed_plans: 30
-  percent: 88
+  completed_phases: 8
+  total_plans: 38
+  completed_plans: 35
+  percent: 92
 ---
 
 # Project State
@@ -84,6 +84,44 @@ Merge commit pending. Mechanical end-to-end rename of every in-repo identifier f
 7. v0.3: remove `TRADEWINDS_CACHE_DIR` back-compat branch.
 
 **Unblocks:** Phase 13+ on renamed identifiers.
+
+## Phase 11 closeout (2026-05-25) — Live Streaming Iterator
+
+Merge commit pending. Ships `tradewinds.live.stream()` (async generator) and `tradewinds.live.latest()` (one-shot) — a single-source TICKER surface that is intentionally distinct from `research()`'s DATABASE surface (multi-source fusion + parquet cache + QC). Same dual-SDK (Python + TS) parity contract as Phase 10.
+
+**Requirements shipped (9/9):**
+- LIVE-01: `live.stream(station, *, source, poll_seconds)` async generator (Python + TS AsyncGenerator).
+- LIVE-02: `live.latest(station, *, source)` one-shot — shares the same per-tick fetch path as stream().
+- LIVE-03: Two supported sources — `awc` (default, fastest) and `iem` (~10min delay alternative); mutually exclusive.
+- LIVE-04: Polite floors enforced at startup (AWC=30s, IEM=60s) with NaN/Infinity guard.
+- LIVE-05: Per-row source identity tag (`awc.live` / `iem.live`) preserved on every emitted observation.
+- LIVE-06: Dedup by `observed_at` — successive ticks for the same observation do NOT re-yield.
+- LIVE-07: Empty-tick errors do NOT abort the stream (loop continues after polite-floor sleep); validation errors DO propagate.
+- LIVE-08: Async cancellation clean — Python `async for` + `break` + `aclose()`; TS `AbortController` + abortable sleep with explicit listener cleanup.
+- LIVE-09: 7-section + 3-pattern docs at `docs/live-streaming.md`.
+
+**Review discipline:** 5-iteration loop (cap; codex + python-architect + typescript-architect in parallel).
+- iter-1: 3 findings closed — Python `_fetch_iem_latest` constructed `StationInfo(tz=)` instead of `timezone=` (P1 TypeError), TS abort-listener leak (P2), `@tradewinds/weather/live` subpath documented-not-exported (P2). Python + TS architects PASS.
+- iter-2: 3 findings closed — TS IEM URL injection (P2, STATION_CODE_RE guard added), `pollSeconds=NaN` bypassed polite floor (P2, isFinite guard added), Python IEM over-fetch (P2, end=today not tomorrow).
+- iter-3: 4 findings closed — Python `tradewinds.live` missing clear ImportError on weather-not-installed (P1, `_require_weather()` helper), TS IEM day1==day2 produced zero-day window (P1, nextDay endIso added), IEM SPECI miss (P2, both `report_type=3` + `report_type=4` per poll), `@tradewinds/weather/live` subpath properly exported (P2, package.json exports + tsup entry + vitest alias).
+- iter-4: 3 findings closed — TS self-package import in typechecked tests (P1, switched to source-relative), Python + TS stream swallowed validation ValueErrors (P2, upfront station validation + selective re-raise), IEM today-only window missed prior-day METARs right after 00:00 UTC (P2, prev-day fallback `(yesterday, today)`).
+- iter-5: 2 findings closed — TS test LiveObservation fixtures missing required fields (P1, aligned to exported Observation schema), `?.observed_at!.localeCompare()` undefined-narrowing (P1, explicit undefined-check). Plus 1 verify-pass finding handled defensively as a non-regression — `tradewinds.live` switched to lazy `__getattr__` so `import tradewinds` does not pull the live submodule (the underlying eager-pandas concern is pre-existing via `discover` + `research` imports, out of Phase 11 scope).
+
+**Test coverage delta:**
+- Python: 1971 → **1997** (+26 new — test_live_stream.py 16 + test_live_latest.py 10).
+- TS @tradewinds/weather: 218 → **249** (+31 new — stream.test.ts 18 + latest.test.ts 13).
+- TS workspace total: 1323 → **1354**.
+- Parity gate green (5 fixtures byte-equivalent).
+- Existing TS package typecheck baseline unchanged.
+
+**Public API additions (paired Python + TS):**
+- Python: `tradewinds.live.stream`, `tradewinds.live.latest`, `LiveStreamError`, `NoLiveDataError`, `SUPPORTED_SOURCES`, `POLITE_FLOORS_S`.
+- TS: same surface via `@tradewinds/weather` AND `@tradewinds/weather/live` AND `tradewinds` meta package.
+
+**Out of scope (deferred to v0.2.x / v0.3):**
+- Multi-source fusion in live (would be a hybrid live+research surface — research() handles that for point-in-time queries).
+- Cache writes on live ticks (intentional — live path is stateless).
+- QC on live rows (Phase 3.4 covers QC for research()).
 
 ## Phase 10 closeout (2026-05-25) — Composable research() (validation surface)
 

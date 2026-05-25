@@ -26,6 +26,8 @@ from ._json_safe import to_json_safe
 __all__ = [
     "GribIntegrityError",
     "LeakageError",
+    "LiveStreamError",
+    "NoLiveDataError",
     "NoLiveForNwpError",
     "NwpError",
     "NwpModelNotAvailableError",
@@ -484,6 +486,59 @@ class GribIntegrityError(NwpError):
             byte_end=self.byte_end,
             underlying=self.underlying,
         )
+        return payload
+
+
+# ----------------------------------------------------------------------
+# Live streaming (Phase 11)
+# ----------------------------------------------------------------------
+
+
+class LiveStreamError(TradewindsError):
+    """Base class for ``mostlyright.live.stream`` / ``live.latest`` failures.
+
+    Live-streaming errors are deliberately a separate sub-tree from
+    :class:`SourceUnavailableError` because the recovery path differs —
+    for a live stream, the caller is in a polling loop and "no data yet"
+    is the COMMON case, not an exception. :class:`NoLiveDataError` is
+    only raised by the one-shot :func:`mostlyright.live.latest` surface;
+    :func:`mostlyright.live.stream` swallows empty-tick errors and waits
+    for the next polite-floor cycle.
+    """
+
+    default_error_code = "LIVE_STREAM_ERROR"
+
+
+class NoLiveDataError(LiveStreamError):
+    """:func:`mostlyright.live.latest` returned no observations for the station.
+
+    Carries the resolved ICAO ``station`` and the canonical source identity
+    tag (``"awc.live"`` / ``"iem.live"``) so caller logs can branch by
+    source without re-parsing the message.
+    """
+
+    default_error_code = "NO_LIVE_DATA"
+
+    def __init__(
+        self,
+        message: str = "",
+        *,
+        station: str,
+        source: str,
+        request_id: str | None = None,
+        error_code: str | None = None,
+    ) -> None:
+        super().__init__(
+            message,
+            error_code=error_code,
+            source=source,
+            request_id=request_id,
+        )
+        self.station: str = station
+
+    def _payload(self) -> dict[str, Any]:
+        payload = super()._payload()
+        payload.update(station=self.station)
         return payload
 
 

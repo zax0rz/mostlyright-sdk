@@ -57,4 +57,27 @@ export {
 
 export { discover, type DiscoverResult, type DiscoverRow } from "./discover.js";
 
+// Phase 11 — `mostlyright.live` ticker surface re-exported through the
+// meta package so all three import shapes resolve to the same surface:
+//   import { stream, latest } from "mostlyright"                  // meta
+//   import { stream } from "@mostlyright/weather"                 // main barrel
+//   import { stream } from "@mostlyright/weather/live"            // subpath
+export {
+  POLITE_FLOORS_S,
+  SOURCE_IDENTITY_TAGS,
+  SUPPORTED_SOURCES,
+  isLiveSource,
+  latest,
+  sourceTag,
+  stream,
+  validatePollSeconds,
+  validateSource,
+  type LatestOptions,
+  type LiveObservation,
+  type LiveSource,
+  type LiveSourceTag,
+  type StreamOptions,
+} from "@mostlyright/weather";
+export { LiveStreamError, NoLiveDataError } from "@mostlyright/core";
+
 export const version = "0.0.0";

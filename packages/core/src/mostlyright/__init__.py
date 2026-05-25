@@ -25,4 +25,22 @@ __version__ = "0.1.0rc1"
 from mostlyright.discover import discover
 from mostlyright.research import research
 
-__all__ = ["__version__", "discover", "research"]
+__all__ = ["__version__", "discover", "live", "research"]
+
+
+# Lazy `mostlyright.live` access (Phase 11). Both `discover` and `research`
+# above already eagerly import `mostlyright.core` (which pulls pandas via
+# `core.validator`), so the eager-pandas path is pre-existing and NOT a
+# Phase 11 regression. Even so, we expose `live` through a module-level
+# `__getattr__` hook so `import mostlyright` doesn't pull in
+# `mostlyright.weather` (via the live module's deferred fetcher imports
+# that fire on first use, not first attribute access). First access via
+# `mostlyright.live.stream(...)` resolves and caches the submodule.
+def __getattr__(name: str):
+    if name == "live":
+        import mostlyright.live as _live
+
+        # Cache on the module so subsequent accesses skip __getattr__.
+        globals()["live"] = _live
+        return _live
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

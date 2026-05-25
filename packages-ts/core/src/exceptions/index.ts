@@ -502,3 +502,49 @@ export class ServerError extends TherminalError {
     super(message, { ...options, statusCode: options.statusCode ?? 500 });
   }
 }
+
+// ---------------------------------------------------------------------------
+// LiveStreamError + NoLiveDataError (Phase 11)
+// ---------------------------------------------------------------------------
+
+/**
+ * Base class for `mostlyright.live.stream` / `live.latest` failures.
+ *
+ * Mirrors Python `LiveStreamError`. Live-streaming errors are a separate
+ * sub-tree from `SourceUnavailableError` because the recovery path differs —
+ * `stream()` swallows empty-tick errors and waits for the next polite-floor
+ * cycle. Only `latest()` raises `NoLiveDataError` on empty responses.
+ */
+export class LiveStreamError extends TradewindsError {
+  static override defaultErrorCode = "LIVE_STREAM_ERROR";
+}
+
+export interface NoLiveDataErrorOptions extends TradewindsErrorOptions {
+  station: string;
+  source: string;
+}
+
+/**
+ * `mostlyright.live.latest` returned no observations for the station.
+ *
+ * Carries the resolved ICAO `station` and the canonical source identity
+ * tag (`"awc.live"` / `"iem.live"`) so caller logs can branch by source
+ * without re-parsing the message.
+ */
+export class NoLiveDataError extends LiveStreamError {
+  static override defaultErrorCode = "NO_LIVE_DATA";
+
+  readonly station: string;
+
+  constructor(message = "", options: NoLiveDataErrorOptions) {
+    super(message, { ...options, source: options.source });
+    this.station = options.station;
+  }
+
+  protected override payload(): Record<string, unknown> {
+    return {
+      ...super.payload(),
+      station: this.station,
+    };
+  }
+}
