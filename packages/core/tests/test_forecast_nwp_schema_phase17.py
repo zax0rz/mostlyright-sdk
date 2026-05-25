@@ -81,3 +81,48 @@ def test_model_column_enum_values_match_module_constant() -> None:
     model_col = next(c for c in NwpForecastSchema.COLUMNS if c.name == "model")
     assert model_col.dtype == "enum"
     assert model_col.enum_values == NWP_MODEL_VALUES
+
+
+# ---------------------------------------------------------------------------
+# Phase 17 Wave-2 iter-2: RTMA / URMA default-fxx coercion at the public
+# surface so analysis products are usable with the documented default.
+# ---------------------------------------------------------------------------
+def test_rtma_default_call_does_not_raise_analysis_guard() -> None:
+    """``forecast_nwp("KNYC", "rtma")`` with default ``fxx=1`` must NOT
+    raise the analysis-product ValueError from build_fetch_plan.
+
+    The public surface coerces ``fxx=1 (default)`` to ``fxx=0`` for
+    rtma/urma so callers get usable behavior. Without the coercion, the
+    documented default invocation would hard-fail before any network IO.
+
+    Acceptable downstream errors at this layer:
+        * ``SourceUnavailableError`` — no ``[nwp]`` extra installed (CI default)
+        * Any non-ValueError("analysis product") raised by the live path
+    """
+
+    from mostlyright.forecasts import forecast_nwp
+
+    # Catch anything; assert that whatever surfaces is NOT the analysis
+    # guard. This is robust whether or not [nwp] is installed.
+    try:
+        forecast_nwp("KNYC", "rtma")
+    except ValueError as exc:
+        assert "analysis product" not in str(exc), (
+            f"forecast_nwp default rtma call hit the analysis guard: {exc}. "
+            "The fxx=1 coercion to fxx=0 must happen at the public surface."
+        )
+    except Exception:
+        pass  # SourceUnavailableError / network / etc — out of scope here.
+    else:
+        # Either succeeded (network available) or the call returned. Both fine.
+        pass
+
+    # Same assertion for urma.
+    try:
+        forecast_nwp("KNYC", "urma")
+    except ValueError as exc:
+        assert "analysis product" not in str(exc), (
+            f"forecast_nwp default urma call hit the analysis guard: {exc}."
+        )
+    except Exception:
+        pass

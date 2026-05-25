@@ -230,6 +230,15 @@ def forecast_nwp(
             available_in="v0.2",
         )
 
+    # Phase 17 Wave-2 iter-2: RTMA / URMA are analysis products (no
+    # forecast hour). The public default ``fxx=1`` would otherwise trip
+    # ``build_fetch_plan``'s analysis-product guard for every default
+    # call. Coerce to ``fxx=0`` when the caller didn't override it.
+    # Explicit non-zero ``fxx`` for these models still propagates to the
+    # downstream guard so the user-as-author error is preserved.
+    if model in {"rtma", "urma"} and fxx == 1:
+        fxx = 0
+
     try:
         from mostlyright.weather.forecast_nwp import (
             forecast_nwp as _impl,
