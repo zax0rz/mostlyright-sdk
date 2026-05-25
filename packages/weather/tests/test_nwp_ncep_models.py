@@ -115,6 +115,35 @@ def test_urma_url_builder_2p5km_analysis() -> None:
     assert "noaa-urma-pds.s3.amazonaws.com/urma2p5.20260524" in plan.grib2_url
 
 
+@pytest.mark.parametrize("model", ["rtma", "urma"])
+def test_analysis_models_reject_nonzero_fxx(model: str) -> None:
+    """Phase 17 Wave-2 iter-1 review: RTMA / URMA are analysis products
+    (single time). ``build_fetch_plan`` must reject nonzero ``fxx`` so
+    callers don't silently get rows whose ``valid_at`` is shifted while
+    the GRIB bytes remain the analysis cycle.
+    """
+    with pytest.raises(ValueError, match="analysis product"):
+        build_fetch_plan(
+            model=model,
+            mirror="aws_bdp",
+            cycle=datetime(2026, 5, 24, 12, tzinfo=UTC),
+            fxx=1,
+        )
+
+
+@pytest.mark.parametrize("model", ["rtma", "urma"])
+def test_analysis_models_accept_fxx_zero(model: str) -> None:
+    """Phase 17 Wave-2 iter-1 review: the legal ``fxx=0`` path still works."""
+    plan = build_fetch_plan(
+        model=model,
+        mirror="aws_bdp",
+        cycle=datetime(2026, 5, 24, 12, tzinfo=UTC),
+        fxx=0,
+    )
+    assert plan.fxx == 0
+    assert plan.model == model
+
+
 def test_cfs_url_builder_member_kind_valid_date_kwargs() -> None:
     """CFS path encodes member + kind + valid_date as required kwargs."""
     plan = build_fetch_plan(

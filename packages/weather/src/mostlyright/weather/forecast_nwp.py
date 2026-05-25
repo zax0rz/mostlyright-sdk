@@ -553,23 +553,14 @@ def forecast_nwp(
         )
         raise_msc_historical_depth(model=model, requested_cycle=cycle_for_error)
 
-    # Phase 17 PLAN-06: legacy-model deprecation. NAM / HREF / HiResW
-    # retire 2026-08-31 per NWS scn26-47. Emit DeprecatedModelWarning so
-    # callers see the pre-retirement signal; the post-retirement
-    # NwpModelRetiredError gets raised by ``build_fetch_plan`` once the
-    # cycle crosses ``LEGACY_MODELS_RETIRE``. Stacklevel=2 so the warning
-    # points at the user's call site (not this line).
-    if model in {"nam", "href", "hiresw"}:
-        import warnings as _warnings
-
-        from mostlyright.core.exceptions import DeprecatedModelWarning
-
-        _warnings.warn(
-            f"{model} retires 2026-08-31 per NWS scn26-47 (Herbie #540). "
-            "Use HRRR / RAP / RRFS instead.",
-            category=DeprecatedModelWarning,
-            stacklevel=2,
-        )
+    # Phase 17 PLAN-06: legacy-model deprecation. The DeprecatedModelWarning
+    # emission lives in ``mostlyright.forecasts.forecast_nwp`` (the public
+    # dispatch surface) so it fires BEFORE the _WIRED_NWP_MODELS gate that
+    # raises NwpModelNotAvailableError. Once those models are wired end-to-
+    # end and reach this weather-package entry point, the warning will
+    # already have fired upstream — keeping the emission single-sourced.
+    # The post-retirement NwpModelRetiredError still gets raised by
+    # ``build_fetch_plan`` once the cycle crosses ``LEGACY_MODELS_RETIRE``.
 
     # Lazy-import the heavy deps so the module imports without [nwp].
     try:

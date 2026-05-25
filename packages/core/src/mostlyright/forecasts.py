@@ -30,6 +30,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from mostlyright.core.exceptions import (
+    DeprecatedModelWarning,
     NwpModelNotAvailableError,
     SourceUnavailableError,
 )
@@ -194,6 +195,23 @@ def forecast_nwp(
             model=model,
             requested_cycle=requested_cycle,
             archive_depth=None,
+        )
+
+    # Phase 17 PLAN-06 / Wave-2 iter-1 review: legacy-model deprecation
+    # warning. NAM / HREF / HiResW retire 2026-08-31 per NWS scn26-47.
+    # Emit BEFORE the _WIRED_NWP_MODELS gate below so callers see the
+    # deprecation signal even when the model isn't wired end-to-end yet
+    # (the gate would otherwise raise NwpModelNotAvailableError first and
+    # the warning would be unreachable). Stacklevel=2 so the warning
+    # points at the user's call site.
+    if model in {"nam", "href", "hiresw"}:
+        import warnings as _warnings
+
+        _warnings.warn(
+            f"{model} retires 2026-08-31 per NWS scn26-47 (Herbie #540). "
+            "Use HRRR / RAP / RRFS instead.",
+            category=DeprecatedModelWarning,
+            stacklevel=2,
         )
 
     # Surface NwpModelNotAvailableError eagerly for predeclared-but-not-

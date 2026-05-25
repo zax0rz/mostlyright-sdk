@@ -8,8 +8,10 @@ string.
 
 **Unit note:** ECMWF ``tp`` is in METERS, not millimeters. The downstream
 projection layer is responsible for ``× 1000`` conversion if mm output
-is desired. Mostlyright canonical name reflects this with the ``_m_``
-infix.
+is desired. The canonical column name (``precip_mm_1h``) matches
+``schema.forecast_nwp.v1`` so the row builder writes into the documented
+column; the unit-conversion wiring lands in Phase 17 PLAN-09 (research
+integration). Until then quants must convert tp (m) → mm themselves.
 """
 
 from __future__ import annotations
@@ -20,7 +22,7 @@ VARIABLE_MAP: dict[str, tuple[str, str]] = {
     "wind_u_ms_10m": ("10u", "sfc"),
     "wind_v_ms_10m": ("10v", "sfc"),
     "wind_gust_ms": ("10fg", "sfc"),
-    "precip_m_total": ("tp", "sfc"),
+    "precip_mm_1h": ("tp", "sfc"),
     "pressure_pa_surface": ("sp", "sfc"),
     "pressure_pa_mslp": ("msl", "sfc"),
 }

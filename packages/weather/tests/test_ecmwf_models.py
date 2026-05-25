@@ -141,7 +141,7 @@ def test_supported_nwp_models_includes_4_ecmwf() -> None:
 
 def test_variable_map_ecmwf_ifs_uses_eccodes_param_keys() -> None:
     assert ecmwf_ifs.VARIABLE_MAP["temp_k_2m"] == ("2t", "sfc")
-    assert ecmwf_ifs.VARIABLE_MAP["precip_m_total"] == ("tp", "sfc")
+    assert ecmwf_ifs.VARIABLE_MAP["precip_mm_1h"] == ("tp", "sfc")
     assert ecmwf_ifs.VARIABLE_MAP["pressure_pa_mslp"] == ("msl", "sfc")
 
 

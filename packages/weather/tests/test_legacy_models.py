@@ -152,3 +152,35 @@ def test_deprecated_model_warning_filterable_as_error() -> None:
                 category=DeprecatedModelWarning,
                 stacklevel=2,
             )
+
+
+# ---------------------------------------------------------------------------
+# Phase 17 Wave-2 iter-1 review: production emission test for
+# DeprecatedModelWarning. The previous filter-promotion test above stays as
+# a smoke check of stdlib behavior; this new test actually exercises the
+# production code path (``mostlyright.forecasts.forecast_nwp``) so a future
+# regression that removes the emission gets caught in CI.
+#
+# Runs without ``[nwp]`` extras because the warning fires BEFORE the
+# _WIRED_NWP_MODELS gate which raises ``NwpModelNotAvailableError`` — no
+# network IO, no cfgrib import.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("model", ["nam", "href", "hiresw"])
+def test_forecast_nwp_legacy_emits_deprecated_warning(model: str) -> None:
+    """Calling ``forecast_nwp`` with a legacy model MUST emit
+    ``DeprecatedModelWarning`` even though the wired-models gate
+    immediately raises ``NwpModelNotAvailableError``.
+
+    Uses nested context managers: ``pytest.warns`` outer (records the
+    warning) + ``pytest.raises`` inner (catches the not-available error).
+    """
+    from mostlyright.core.exceptions import NwpModelNotAvailableError
+    from mostlyright.forecasts import forecast_nwp
+
+    with (
+        pytest.warns(DeprecatedModelWarning, match="retires 2026-08-31"),
+        pytest.raises(NwpModelNotAvailableError),
+    ):
+        forecast_nwp("KNYC", model)

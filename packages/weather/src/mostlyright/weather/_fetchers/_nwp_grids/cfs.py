@@ -6,7 +6,11 @@ VARIABLE_MAP: dict[str, tuple[str, str]] = {
     "temp_k_2m": ("TMP", "2 m above ground"),
     "wind_u_ms_10m": ("UGRD", "10 m above ground"),
     "wind_v_ms_10m": ("VGRD", "10 m above ground"),
-    "precip_mm_total": ("PRATE", "surface"),
+    # NOTE: PRATE is a precipitation RATE (kg m-2 s-1), not a 1h accumulation;
+    # quants must convert to true accumulation if needed. Canonical column
+    # name kept schema-aligned (``precip_mm_1h``) so the row builder writes
+    # into the documented column instead of a rogue ``precip_mm_total`` one.
+    "precip_mm_1h": ("PRATE", "surface"),
     "pressure_pa_mslp": ("PRMSL", "mean sea level"),
 }
 

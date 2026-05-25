@@ -599,6 +599,16 @@ def build_fetch_plan(
         raise ValueError(f"mirror must be one of {sorted(SUPPORTED_NWP_MIRRORS)}; got {mirror!r}")
     if fxx < 0:
         raise ValueError(f"fxx must be non-negative; got {fxx}")
+    # Phase 17 Wave-2 iter-1 review: RTMA / URMA are analysis products
+    # (single time, no forecast hour). The URL builders ignore ``fxx`` and
+    # always return the analysis file, so a nonzero ``fxx`` would silently
+    # shift the row builder's ``valid_at`` by ``fxx`` hours while the
+    # GRIB bytes are still the analysis cycle. Reject loud here so the
+    # caller sees the mistake instead of getting mislabeled rows.
+    if model in {"rtma", "urma"} and fxx != 0:
+        raise ValueError(
+            f"{model} is an analysis product (no forecast hour); fxx must be 0, got {fxx}"
+        )
     if cycle.tzinfo is None or cycle.tzinfo.utcoffset(cycle) is None:
         raise ValueError(f"cycle must be timezone-aware (UTC); got naive {cycle!r}")
     # Normalize to UTC. NOAA paths use the UTC cycle hour (t12z etc.);
