@@ -57,4 +57,25 @@ export {
 
 export { discover, type DiscoverResult, type DiscoverRow } from "./discover.js";
 
+// Phase 11 — `tradewinds.live` ticker surface re-exported through the
+// meta package so `import { stream, latest } from "tradewinds"` works
+// alongside the scoped `import { stream } from "@tradewinds/weather/live"`.
+export {
+  POLITE_FLOORS_S,
+  SOURCE_IDENTITY_TAGS,
+  SUPPORTED_SOURCES,
+  isLiveSource,
+  latest,
+  sourceTag,
+  stream,
+  validatePollSeconds,
+  validateSource,
+  type LatestOptions,
+  type LiveObservation,
+  type LiveSource,
+  type LiveSourceTag,
+  type StreamOptions,
+} from "@tradewinds/weather";
+export { LiveStreamError, NoLiveDataError } from "@tradewinds/core";
+
 export const version = "0.0.0";
