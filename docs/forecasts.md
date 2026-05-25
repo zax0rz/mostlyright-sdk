@@ -8,11 +8,15 @@ Mostlyright supports two complementary forecast surfaces:
    Data Program / ECMWF Open Data / MSC Datamart. **24 models are
    declared in `schema.forecast_nwp.v1`; 11 NCEP-family models are
    wired end-to-end in v1.0** (HRRR, HRRRAK, GFS, GEFS, GDAS, NBM, RAP,
-   RRFS, RTMA, URMA, CFS). The remaining 13 (ECMWF×4, MSC×5, HAFS, NAM,
-   HREF, HiResW) ship URL patterns, QC rules, and idx-style dispatch
-   but `forecast_nwp()` raises `NwpModelNotAvailableError` for them
-   until end-to-end fetch+decode wiring lands in a follow-up. See the
-   **Wiring status** column on each family table below.
+   RRFS, RTMA, URMA, CFS). The remaining 13 ship URL patterns, QC
+   rules, and idx-style dispatch but `forecast_nwp()` raises:
+   - `HistoricalDepthError(archive_depth=None)` — MSC×5 (HRDPS, RDPS,
+     GDPS, GEPS, REPS), whose contract is "live-only Datamart, 24h
+     retention" so the right error class for callers to branch on is
+     historical-depth, not not-available.
+   - `NwpModelNotAvailableError` — ECMWF×4, HAFS, and legacy NAM /
+     HREF / HiResW until end-to-end fetch+decode wiring lands.
+   See the **Wiring status** column on each family table below.
 
 ## Quick Start
 
@@ -93,9 +97,12 @@ until the eccodes decode path is wired in a follow-up.
 | `reps` | reserved | 6-hourly | 10km regional ensemble (21 members) |
 
 URL patterns + 24h Datamart `LIVE_CYCLE_WINDOW` gating ship in v1.0;
-`forecast_nwp()` raises `NwpModelNotAvailableError` until MSC fetch is
-wired. When wired, calling MSC models with cycles outside the 24h
-Datamart window will raise `HistoricalDepthError(archive_depth=None)`.
+calling `forecast_nwp(model="hrdps" | "rdps" | "gdps" | "geps" |
+"reps", ...)` raises `HistoricalDepthError(archive_depth=None)` today
+(special-cased in `forecast_nwp.py:518-532` BEFORE the reserved-models
+gate, because the contract is "live-only Datamart, 24h retention" and
+historical-depth is the right branchable error class for callers).
+End-to-end MSC fetch is wired in a follow-up.
 
 ### NOMADS-only + Legacy
 

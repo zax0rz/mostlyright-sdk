@@ -128,11 +128,13 @@ DST handling, settlement-station mappings).
 (parity-compatible Mode 1) or per-model NWP (Mode 2 opt-in). Mostlyright
 declares a 24-model `schema.forecast_nwp.v1` catalog with the **11 NCEP
 models wired end-to-end in v1.0** (HRRR, HRRRAK, GFS, GEFS, GDAS, NBM,
-RAP, RRFS, RTMA, URMA, CFS). The remaining 13 (ECMWF×4, MSC×5, HAFS,
-NAM, HREF, HiResW) ship URL patterns + QC rules but `forecast_nwp()`
-raises `NwpModelNotAvailableError` until end-to-end fetch+decode wiring
-lands. Historical backfill via AWS Big Data Program (wired models).
-See [`docs/forecasts.md`](docs/forecasts.md) for the full forecast
+RAP, RRFS, RTMA, URMA, CFS). The remaining 13 ship URL patterns + QC
+rules but `forecast_nwp()` raises today: MSC×5 raise
+`HistoricalDepthError(archive_depth=None)` (live-only contract);
+ECMWF×4 / HAFS / legacy NAM-HREF-HiResW raise
+`NwpModelNotAvailableError` until their fetch+decode paths are wired.
+Historical backfill via AWS Big Data Program (wired models). See
+[`docs/forecasts.md`](docs/forecasts.md) for the full forecast
 catalog, wiring-status table, QC rules, and historical-depth schedule.
 
 TypeScript lane: `@mostlyright/weather/forecasts` ships `iemMosForecasts()`

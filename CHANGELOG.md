@@ -22,23 +22,28 @@ Program. This is the headline v1.0 feature.
   These return real DataFrames from `forecast_nwp()` /
   `research(include_forecast=True, forecast_models=[...])`.
 - **Reserved — URL patterns + QC rules + idx dispatch present;
-  `forecast_nwp()` raises `NwpModelNotAvailableError`** (deferred to a
-  follow-up release):
+  `forecast_nwp()` raises** (deferred to a follow-up release):
   - ECMWF family (4): IFS HRES, IFS ENS, AIFS single, AIFS ens — 4
     cloud mirrors (google, aws-eu, ecmwf-origin, azure) + eccodes
     `.index` dispatch + tp-meters QC ship in v1.0; eccodes decode path
-    not yet wired.
+    not yet wired. Raises `NwpModelNotAvailableError`.
   - MSC Canadian family (5, live-only, 24h Datamart retention): HRDPS,
-    RDPS, GDPS, GEPS, REPS.
+    RDPS, GDPS, GEPS, REPS. Special-cased BEFORE the reserved-models
+    gate: raises `HistoricalDepthError(archive_depth=None)` because
+    the contract is "live-only Datamart, 24h retention" so historical-
+    depth is the right branchable error class for callers (not
+    not-available).
   - HAFS (storm-following, `Storms()` resolver + basin-position QC
-    rule ship in v1.0; fetch path not yet wired).
+    rule ship in v1.0; fetch path not yet wired). Raises
+    `NwpModelNotAvailableError`.
   - Legacy (retiring 2026-08-31; emits `DeprecatedModelWarning` before
-    the not-wired error): NAM, HREF, HiResW.
+    the not-wired error): NAM, HREF, HiResW. Raises
+    `NwpModelNotAvailableError` after the warning.
 
 The full 24-model enum is locked in `schema.forecast_nwp.v1` so writing
-code today against a reserved model produces a clean
-`NwpModelNotAvailableError` instead of an empty DataFrame; the runtime
-arrives when the family's fetch+decode path is added (no schema bump).
+code today against a reserved model produces a clean exception (per
+family above) instead of an empty DataFrame; the runtime arrives when
+the family's fetch+decode path is added (no schema bump).
 
 **Historical backfill** via AWS BDP per-model depth (wired models):
 - HRRR ≥ 2014-07-30
