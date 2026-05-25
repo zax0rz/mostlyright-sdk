@@ -539,6 +539,63 @@ Evolves `research()` from station-only into the composable surface quants actual
 
 **Phase 10 coverage:** 9 requirements, all mapped to Phase 10 (paired Python + TS per Dual-SDK Rule).
 
+### Phase 13 — PyPI Publication Pipeline
+
+- [ ] **PYPI-01**: 3 PyPI pending publishers registered on pypi.org for `mostlyright`, `mostlyright-weather`, `mostlyright-markets` — bound to repo + `release.yml` + GH environment `pypi`. (Operator pre-flight; satisfies Phase 12 OP2.)
+- [ ] **PYPI-02**: 3 TestPyPI pending publishers registered on test.pypi.org for the same 3 distros — bound to repo + `release-testpypi.yml` + GH environment `testpypi`. Optional required-reviewer on the environment to prevent accidental rc tag publishes.
+- [ ] **PYPI-03**: `v0.1.0rc1` tag fires `release-testpypi.yml` cleanly; 3 wheels land on test.pypi.org; version-guard preflight passes (PEP 440 normalized tag == all 3 pyproject.toml versions).
+- [ ] **PYPI-04**: `pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ mostlyright==0.1.0rc1` works in a clean Python 3.12 venv; `python -c "import mostlyright; print(mostlyright.__version__)"` succeeds; smoke-test of `research()` Mode 1 against a known parity fixture passes.
+- [ ] **PYPI-05**: ≥1 week soak on test.pypi.org with at least one external installer (not the author) confirming the install + quickstart works end-to-end (no `BackendUnavailable`, no missing-extras errors).
+- [ ] **PYPI-06**: `v0.1.0` final tag fires `release.yml` cleanly; 3 wheels land on prod pypi.org; CI-04 `check_wheel_metadata.py` gate passes (Requires-Dist pin for sibling `mostlyright-*` packages present with explicit version range).
+- [ ] **PYPI-07**: `pip install mostlyright==0.1.0` from prod PyPI works in a clean venv; `mostlyright[research]` extra installs `mostlyright-weather` transitively; install hint paths work for all 3 distros.
+- [ ] **PYPI-08**: Documented PyPI release runbook in `.planning/phases/13-pypi-publication-pipeline/RUNBOOK.md`: pre-flight checklist (version-bump → CHANGELOG → tag), in-flight monitoring (Actions tab + Environments approval), post-publish verification (`pip install` in clean venv + smoke).
+
+### Phase 14 — npm Publication Pipeline
+
+- [ ] **NPM-01**: `@mostlyright` npm scope claimed on npmjs.com under the project owner's account; scope set to public access (mirrors PyPI public-by-default posture). Operator pre-flight; satisfies Phase 12 OP3.
+- [ ] **NPM-02**: 4 npm OIDC pending publishers registered for `@mostlyright/core`, `@mostlyright/weather`, `@mostlyright/markets`, unscoped meta `mostlyright` — bound to repo + `release-ts.yml` + GH environment `npm`. (Operator pre-flight; satisfies Phase 12 OP4.)
+- [ ] **NPM-03**: `vts-0.1.0rc1` tag fires `release-ts.yml` cleanly; 4 packages publish to npm with `--tag next` dist-tag (NOT `latest`); npm provenance attestation generated for each.
+- [ ] **NPM-04**: `npm install @mostlyright/core@next` in a clean Node 20 + pnpm 9 project works; `import { research } from '@mostlyright/core'` resolves via the package's exports map; TypeScript types load via `@mostlyright/core/dist/index.d.ts`.
+- [ ] **NPM-05**: Browser smoke test — `packages-ts/examples/chrome-extension-mvp/` rebuilt against `@mostlyright/core@next` IIFE bundle (`globalThis.mostlyrightCore`), loaded in Chrome MV3 service worker, hits AWC live endpoint successfully (no CORS issues, no CSP violations).
+- [ ] **NPM-06**: ≥1 week soak on npm `next` channel with at least one external installer (not the author) confirming the install + Node + browser quickstart works end-to-end.
+- [ ] **NPM-07**: `vts-0.1.0` final tag fires `release-ts.yml` with `--tag latest` dist-tag; `npm install @mostlyright/core` (no @next) resolves to 0.1.0; size-limit gates pass per `.size-limit.config.js` (core ≤25KB / weather ≤35KB / markets ≤10KB / meta ≤70KB).
+- [ ] **NPM-08**: `pnpm changeset` + `pnpm changeset version` workflow documented and lockstep-applied across the 4-package fixed group; release-ts-preflight.mjs script rewrites `peerDependencies['@mostlyright/core']` to the resolved version (verified by Phase 12 review-iter1 CRITICAL fix).
+- [ ] **NPM-09**: Documented npm release runbook in `.planning/phases/14-npm-publication-pipeline/RUNBOOK.md`: pre-flight checklist (changeset → version bump → tag), in-flight monitoring, post-publish verification (`npm install` in clean Node + browser).
+
+### Phase 15 — Docs Auto-Generation + Landing Site Integration
+
+- [ ] **DOCS-04**: Sphinx + sphinx-autodoc Python doc generator wired at `docs/sphinx/conf.py`; consumes NumPy-style docstrings on the full public surface (`mostlyright.research`, `mostlyright.discover`, `mostlyright.live`, `mostlyright.snapshot`, `mostlyright.core.*`, `mostlyright.weather.obs`, `mostlyright.markets.*`); emits MDX-compatible Markdown via `myst-parser` + `sphinx-markdown-builder` (or equivalent) for Starlight ingestion.
+- [ ] **DOCS-05**: TypeDoc TS doc generator wired at `packages-ts/typedoc.json`; consumes JSDoc/TSDoc on the published `.d.ts` surface across all 4 npm packages; emits MDX via the TypeDoc Markdown plugin into a per-package per-export tree.
+- [ ] **DOCS-06**: Auto-generated MDX written to `mostly-right-landing/src/content/docs/docs/sdk/` in a stable per-package per-export tree replacing the 3 current placeholder MDX files (`installation.mdx`, `therminal-client.mdx`, `weather-live.mdx`). Sidebar regeneration via Starlight's `astro-collection`-driven nav.
+- [ ] **DOCS-07**: New `.github/workflows/docs-publish.yml` fires on `v*` and `vts-*` non-rc tags: runs Sphinx + TypeDoc, opens a PR against `mostly-right-landing/main` with the regenerated MDX tree (Cloudflare Pages auto-deploys on merge). PR title: `docs: regenerate SDK reference for <tag>`. Maintainer approves; no auto-merge.
+- [ ] **DOCS-08**: Hand-curated content beside auto-generated: `quickstart.mdx` (Python + TS, side-by-side <60s install→first call), `concepts/temporal-safety.mdx` (KnowledgeView + LeakageDetector), `concepts/source-identity.mdx` (Mode 1 vs Mode 2), `migration/cache.mdx` (links existing `docs/cache-migration.md`), `migration/v0.0.x.mdx` (legacy `tradewinds*` → `mostlyright*` install commands).
+- [ ] **DOCS-09**: Cross-SDK parity table generated from `.planning/CROSS-SDK-SYNC.md` parity-ticket registry: which surfaces are paired, which are Python-only or TS-only, which carry parity-tickets. Published as `docs/sdk/parity.mdx`.
+- [ ] **DOCS-10**: Documented under landing repo `mostly-right-landing/CLAUDE.md`: how to ingest new SDK docs (CI-driven), how to override an auto-generated page (hand-edit then add to `.docsoverrides`), how to update a quickstart when the SDK surface changes (manual until automated in v1.x).
+
+### Phase 16 — v1.0.0 Production Release
+
+- [ ] **RELEASE-01**: Root `README.md` rewritten as user-facing marketing copy — opens with one-sentence value prop ("Local-first SDK for prediction-market weather settlements"); 60-second quickstart that fits in 20 lines; install commands for both SDKs; API surface map (one-line per public function/class); links to mostlyright.md/docs/sdk/; status badges (PyPI, npm, CI green, license, codecov %, test count).
+- [ ] **RELEASE-02**: Per-package READMEs (`packages/core/README.md`, `packages/weather/README.md`, `packages/markets/README.md`, `packages-ts/{core,weather,markets,meta,codegen}/README.md`) rewritten to be self-contained (anyone landing on the package via PyPI or npm sees install command + quickstart + link to full docs).
+- [ ] **RELEASE-03**: New `CHANGELOG.md` at repo root following Keep-A-Changelog format, with per-version sections aggregating the per-phase closeouts from `.planning/STATE.md`. Sections: `[1.0.0]`, `[0.1.0]`, `[0.1.0rc1]`, `[Unreleased]`. Each section links to the GitHub release notes for the corresponding tag.
+- [ ] **RELEASE-04**: New `CONTRIBUTING.md` — fork → branch → review-discipline (links to `.planning/REVIEW-DISCIPLINE.md`) → test gate → PR process. Sets expectation that internal-stability `_internal/*` modules are unsupported for external consumers.
+- [ ] **RELEASE-05**: New `CODE_OF_CONDUCT.md` — adopt Contributor Covenant 2.1 verbatim with maintainer contact email substituted.
+- [ ] **RELEASE-06**: New `SECURITY.md` — vuln-report process (maintainer email or GH private advisory), supported-versions table (1.0.x supported, 0.1.x security-fixes-only for 6 months, 0.0.x EOL), disclosure timeline (90 days standard).
+- [ ] **RELEASE-07**: Version-bump lockstep across all 8 packages (3 PyPI + 5 npm) from `0.1.0` → `1.0.0` — single PR `release/v1.0.0` updating `packages/*/pyproject.toml` + `packages-ts/*/package.json` + uv.lock + pnpm-lock.yaml + CHANGELOG.md. version-guard preflight on `release.yml` + `release-ts.yml` enforce tag matches.
+- [ ] **RELEASE-08**: `v1.0.0` Python tag + `vts-1.0.0` TS tag pushed; both release workflows fire and publish to PyPI `latest` + npm `latest`. Both publishes succeed (verified by version-guard, Requires-Dist gate, size-limit gates, OIDC provenance attestation).
+- [ ] **RELEASE-09**: External user runs the root README's quickstart end-to-end in <5 min (clock-timed, not the author) for both SDKs — `pip install mostlyright[research]` + Python research() call + `npm install @mostlyright/core` + TS research() call. Failures get fixed in a `1.0.1` patch within 72h; no silent regressions.
+- [ ] **RELEASE-10**: `.planning/STATE.md` closeout section for Phase 16 declares v1.0 production-shipped, lists supported-versions table, links to the runbooks for routine releases going forward (`.planning/RELEASE-RUNBOOK.md` summarizes Phase 13 + 14 + 15 runbooks).
+
+### Phase 13-16 Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| PYPI-01..PYPI-08 | 13 | Pending |
+| NPM-01..NPM-09 | 14 | Pending |
+| DOCS-04..DOCS-10 | 15 | Pending |
+| RELEASE-01..RELEASE-10 | 16 | Pending |
+
+**Phase 13-16 coverage:** 34 requirements total (8 + 9 + 7 + 10) closing the gap from "code-complete" to "v1.0 production-shipped to PyPI + npm with auto-published docs and full repo polish".
+
 ---
-*Requirements defined: 2026-05-21; Phase 8 added 2026-05-24; Phase 9 added 2026-05-24; Phase 10 added 2026-05-25*
-*Last updated: 2026-05-23 — Phase 6 (pandas 3 readiness + optional polars backend) added; PANDAS3-01..06 and POLARS-01..08 promoted from deferred; 14 new IDs mapped to Phase 6*
+*Requirements defined: 2026-05-21; Phase 8 added 2026-05-24; Phase 9 added 2026-05-24; Phase 10 added 2026-05-25; Phases 11-12 shipped 2026-05-25; Phases 13-16 added 2026-05-25 for v1.0 production stretch*
+*Last updated: 2026-05-25 — v1.0 production phases (Phase 13 PyPI / Phase 14 npm / Phase 15 docs / Phase 16 v1.0 release) added.*
