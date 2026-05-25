@@ -5,7 +5,7 @@
 // mergeObservations + mergeClimate + buildPairs. Mode 1 only — all
 // `fcst_*` columns are unconditionally null in this phase.
 //
-// Lives in `packages-ts/meta/` so `@mostlyright/core` stays dep-free; this
+// Lives in `packages-ts/meta/` so `@mostlyrightmd/core` stays dep-free; this
 // orchestrator imports from both core (snapshot math + station table +
 // merge + pairs) and weather (4 fetchers + 4 parsers).
 //
@@ -18,7 +18,7 @@ import {
   STATION_BY_CODE,
   STATION_BY_ICAO,
   settlementDateFor,
-} from "@mostlyright/core";
+} from "@mostlyrightmd/core";
 import {
   type CacheStore,
   cacheKeyForClimate,
@@ -30,14 +30,14 @@ import {
   isWritableYear,
   shouldSkipCacheForCurrentLstMonth,
   shouldSkipCacheForCurrentLstYear,
-} from "@mostlyright/core/internal/cache";
-import { mergeClimate, mergeObservations } from "@mostlyright/core/internal/merge";
+} from "@mostlyrightmd/core/internal/cache";
+import { mergeClimate, mergeObservations } from "@mostlyrightmd/core/internal/merge";
 import {
   type PairsClimateLike,
   type PairsObservationLike,
   type PairsRow,
   buildPairs,
-} from "@mostlyright/core/internal/pairs";
+} from "@mostlyrightmd/core/internal/pairs";
 import {
   type ClimateObservation,
   type Observation,
@@ -49,10 +49,10 @@ import {
   parseCliResponse,
   parseGhcnhPsv,
   parseIemCsv,
-} from "@mostlyright/weather";
+} from "@mostlyrightmd/weather";
 
 // Re-export PairsRow so callers can `import { research, type PairsRow } from "mostlyright"`.
-export type { PairsRow } from "@mostlyright/core/internal/pairs";
+export type { PairsRow } from "@mostlyrightmd/core/internal/pairs";
 
 const AWC_MAX_HOURS = 168;
 
@@ -110,7 +110,7 @@ export interface ResearchOptions {
   sources?: ReadonlyArray<string>;
   /** Mode 2 single-source pin — error on mismatch. Mutually exclusive with `sources`. */
   source?: string;
-  /** Attach per-issuer trade timeseries via @mostlyright/markets/trades.
+  /** Attach per-issuer trade timeseries via @mostlyrightmd/markets/trades.
    *  Requires `contract` or `contracts`. */
   includeTrades?: boolean;
   /** Callback receiving Phase 10 StationOverrideWarning (no `warnings.warn()`
@@ -836,7 +836,7 @@ export async function research(
     throw new Error(
       "research(): sources / source validation surface is shipped in Phase 10 v0.2 " +
         "but the data-selection wiring lands in v0.3. For Mode 2 single-source pinning " +
-        "today, use `researchBySource(station, source, ...)` from @mostlyright/meta.",
+        "today, use `researchBySource(station, source, ...)` from @mostlyrightmd/meta.",
     );
   }
   if (opts.stationOverride !== undefined && !hasContract) {

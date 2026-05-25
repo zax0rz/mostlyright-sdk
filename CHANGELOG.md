@@ -7,6 +7,15 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) once it ships
 
 ## [Unreleased]
 
+### Changed
+
+- **npm scope:** `@mostlyright/{codegen,core,markets,weather}` → `@mostlyrightmd/{codegen,core,markets,weather}`. The unscoped meta package `mostlyright` is unchanged. Rationale: matches GitHub org `mostlyrightmd` (the `mostlyright` org name was unavailable). PyPI packages (`mostlyright`, `mostlyright-weather`, `mostlyright-markets`) are unaffected (PyPI is a flat namespace; no scope concept).
+
+### Migration
+
+- TS users: `npm uninstall @mostlyright/<pkg> && npm install @mostlyrightmd/<pkg>` (when published) — N/A pre-publish.
+- No-op for Python users.
+
 ## v1.0.0 (Pending — Phase 17 + Phase 16)
 
 ### Headline Feature — Phase 17: Forecast Catalog Expansion
@@ -92,11 +101,11 @@ path is wired.
 
 ### Paired TypeScript Evolution
 
-- `@mostlyright/weather/forecasts` ships `iemMosForecasts()` — fully
+- `@mostlyrightmd/weather/forecasts` ships `iemMosForecasts()` — fully
   working text/JSON path, no GRIB2 dependency. F→C, kt→m/s, %→unit
   conversions; NBE runtime-hour cutover (2026-05-05); 404 silently
   skipped.
-- `@mostlyright/weather/forecasts` ships `forecastNwp()` v1.0 stub
+- `@mostlyrightmd/weather/forecasts` ships `forecastNwp()` v1.0 stub
   throwing `Error('TS NWP deferred to v1.1')`. Signature stable —
   callers can write code today and runtime arrives in v1.1.
 - TS NWP deferred to v1.1 per Phase 17 CONTEXT decision 7 (no

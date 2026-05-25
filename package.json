@@ -2,7 +2,7 @@
   "name": "mostlyright-ts-workspace",
   "version": "0.0.0",
   "private": true,
-  "description": "Workspace root for @mostlyright/* TypeScript SDK packages. Not published.",
+  "description": "Workspace root for @mostlyrightmd/* TypeScript SDK packages. Not published.",
   "packageManager": "pnpm@9.12.0",
   "engines": {
     "node": ">=20"
@@ -21,17 +21,17 @@
   },
   "size-limit": [
     {
-      "name": "@mostlyright/core (W1 surface, gzipped ESM)",
+      "name": "@mostlyrightmd/core (W1 surface, gzipped ESM)",
       "path": "packages-ts/core/dist/index.mjs",
       "limit": "25 KB"
     },
     {
-      "name": "@mostlyright/weather (W1: AWC+CLI only, gzipped ESM)",
+      "name": "@mostlyrightmd/weather (W1: AWC+CLI only, gzipped ESM)",
       "path": "packages-ts/weather/dist/index.mjs",
       "limit": "20 KB"
     },
     {
-      "name": "@mostlyright/markets (W1: Kalshi NHIGH/NLOW, gzipped ESM)",
+      "name": "@mostlyrightmd/markets (W1: Kalshi NHIGH/NLOW, gzipped ESM)",
       "path": "packages-ts/markets/dist/index.mjs",
       "limit": "15 KB"
     },

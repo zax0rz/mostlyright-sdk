@@ -5,7 +5,7 @@
 // discovery up to 10000 events. Gamma's Cloudfront edge 403s on blank
 // User-Agent, so we always set a mostlyright UA.
 
-import { NotFoundError, fetchWithRetry } from "@mostlyright/core";
+import { NotFoundError, fetchWithRetry } from "@mostlyrightmd/core";
 
 const GAMMA_BASE = "https://gamma-api.polymarket.com";
 const PAGE_SIZE = 100;

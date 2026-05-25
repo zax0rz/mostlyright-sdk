@@ -6,7 +6,7 @@
 // fetchFn-injection pattern from packages-ts/markets/src/polymarket/
 // client.ts so vitest can mock the HTTP layer.
 
-import { fetchWithRetry } from "@mostlyright/core";
+import { fetchWithRetry } from "@mostlyrightmd/core";
 
 export const KALSHI_API_BASE = "https://api.elections.kalshi.com/trade-api/v2";
 

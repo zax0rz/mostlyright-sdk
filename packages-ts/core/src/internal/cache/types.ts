@@ -1,4 +1,4 @@
-// CacheStore — pluggable key/value contract for the @mostlyright/core cache
+// CacheStore — pluggable key/value contract for the @mostlyrightmd/core cache
 // layer. Three concrete implementations land in TS-W3:
 //   - MemoryStore — Map-backed, no persistence (Cloudflare Workers default).
 //   - FsStore — node:fs/promises + proper-lockfile (Node default).

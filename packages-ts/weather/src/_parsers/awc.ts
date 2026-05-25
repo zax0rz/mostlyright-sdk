@@ -10,7 +10,7 @@
 // The `.live` / `.archive` suffix is a CATALOG / orchestrator source-id
 // (a higher layer concern), NOT a row-level field.
 //
-// Bounds + conversion constants are imported from `@mostlyright/core/internal/{bounds,convert}`
+// Bounds + conversion constants are imported from `@mostlyrightmd/core/internal/{bounds,convert}`
 // (subpath exports added in TS-W1 iter-1 HIGH 4). Any change to the
 // constants in core propagates here automatically — no drift.
 
@@ -30,8 +30,8 @@ import {
   boundedFloat,
   boundedFloatMin,
   boundedInt,
-} from "@mostlyright/core/internal/bounds";
-import { celsiusToFahrenheit, hpaToInhg } from "@mostlyright/core/internal/convert";
+} from "@mostlyrightmd/core/internal/bounds";
+import { celsiusToFahrenheit, hpaToInhg } from "@mostlyrightmd/core/internal/convert";
 
 import type { AwcMetarRaw } from "../_fetchers/awc.js";
 

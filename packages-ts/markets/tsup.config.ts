@@ -16,7 +16,7 @@ export default defineConfig([
     },
   },
   {
-    // TS-W5 — Polymarket surface at @mostlyright/markets/polymarket. Lives
+    // TS-W5 — Polymarket surface at @mostlyrightmd/markets/polymarket. Lives
     // at the subpath (NOT root barrel) so the IIFE bundle stays light:
     // Polymarket is server-side discover/settle by design (CORS-blocked
     // from browsers per .planning/research/TS-CORS-MATRIX.md).
@@ -33,7 +33,7 @@ export default defineConfig([
     },
   },
   {
-    // Phase 9 — trade-history surface at @mostlyright/markets/trades.
+    // Phase 9 — trade-history surface at @mostlyrightmd/markets/trades.
     // Same subpath rationale as Polymarket: trades endpoints (Kalshi
     // /trade-api/v2 + Polymarket Gamma) are server-side by design for
     // Node + Workers, kept out of the IIFE root bundle to preserve

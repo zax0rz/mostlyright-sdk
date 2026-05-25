@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { SourceMismatchError } from "@mostlyright/core";
+import { SourceMismatchError } from "@mostlyrightmd/core";
 
 import {
   MODE2_SOURCES,

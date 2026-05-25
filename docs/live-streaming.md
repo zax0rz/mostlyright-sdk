@@ -40,7 +40,7 @@ asyncio.run(main())
 
 ```ts
 // TypeScript
-import { stream } from "@mostlyright/weather";
+import { stream } from "@mostlyrightmd/weather";
 
 for await (const row of stream("KNYC")) {
   console.log(row.observed_at, row.temp_f);
@@ -258,7 +258,7 @@ asyncio.run(main())
 
 ```ts
 // Watch every Kalshi NHIGH-NY ICAO in parallel — one stream per station.
-import { stream } from "@mostlyright/weather";
+import { stream } from "@mostlyrightmd/weather";
 
 const stations = ["KNYC", "KLGA", "KJFK", "KEWR"];
 

@@ -35,7 +35,7 @@
 // to use browser conditions. The meta package's `index.bundle.mjs` build
 // inlines workspace siblings via tsup's `noExternal` for MV3 service
 // workers — but defaults to `platform: "node"`, so esbuild resolves the
-// "node" branch of `@mostlyright/core/internal/cache` and hoists FsStore +
+// "node" branch of `@mostlyrightmd/core/internal/cache` and hoists FsStore +
 // proper-lockfile + node:fs/promises into the bundle's sibling chunk
 // (`fs-XXXX.mjs`). The H18 assertion scans the ACTUAL MV3-deployed
 // artifact (`packages-ts/meta/dist/index.bundle.mjs`) — the H15/H16
@@ -73,7 +73,7 @@ const META_BUNDLE_MV3 = join(__dirname, "../../../../meta/dist/index.bundle.mjs"
 // directive. ESM/CJS kept workspace deps external (consumers resolve via
 // node_modules), but IIFE auto-inlines via `globalName` — and without
 // browser conditions esbuild resolves the "node" branch of
-// @mostlyright/core/internal/cache, inlining FsStore + proper-lockfile +
+// @mostlyrightmd/core/internal/cache, inlining FsStore + proper-lockfile +
 // node:fs/promises into the global bundle. Any browser <script> consumer
 // throws at evaluation. This assertion scans the actual emitted IIFE and
 // guards against the regression returning.
@@ -195,10 +195,10 @@ describe("cache subbundle browser-safety (iter-1 H3 + iter-2 H6 + iter-8 H15/H16
     // Iter-10 H19: the IIFE bundle is what plain HTML pages load via
     // `<script src="index.global.js">`. tsup's first defineConfig entry
     // historically emitted ESM + CJS + IIFE together. ESM/CJS keep
-    // `@mostlyright/*` external, so consumers resolve them via node_modules.
+    // `@mostlyrightmd/*` external, so consumers resolve them via node_modules.
     // IIFE auto-inlines workspace deps for `<script>` consumption — but
     // without `platform: "browser"`, esbuild defaults to node conditions
-    // and resolves the "node" branch of `@mostlyright/core/internal/cache`,
+    // and resolves the "node" branch of `@mostlyrightmd/core/internal/cache`,
     // hoisting FsStore + proper-lockfile + node:fs/promises straight into
     // `index.global.js`. Any browser that evaluates that script throws on
     // `__require("node:fs/promises")` / `__require("node:crypto")` /
@@ -225,7 +225,7 @@ describe("cache subbundle browser-safety (iter-1 H3 + iter-2 H6 + iter-8 H15/H16
     if (violations.length > 0) {
       const detail = violations.map((v) => `  - ${v.pattern} in ${v.file}`).join("\n");
       throw new Error(
-        `Meta IIFE bundle (packages-ts/meta/dist/index.global.js + any reachable chunks) must not import Node-only modules. This is the artifact <script>-tag consumers load.\nFound ${violations.length} violation(s):\n${detail}\n\nFix: ensure the IIFE entry in packages-ts/meta/tsup.config.ts has \`platform: "browser"\`. Without it, esbuild defaults to node conditions and resolves the "node" branch of @mostlyright/core/internal/cache, inlining FsStore + proper-lockfile + node:fs/promises into the IIFE.`,
+        `Meta IIFE bundle (packages-ts/meta/dist/index.global.js + any reachable chunks) must not import Node-only modules. This is the artifact <script>-tag consumers load.\nFound ${violations.length} violation(s):\n${detail}\n\nFix: ensure the IIFE entry in packages-ts/meta/tsup.config.ts has \`platform: "browser"\`. Without it, esbuild defaults to node conditions and resolves the "node" branch of @mostlyrightmd/core/internal/cache, inlining FsStore + proper-lockfile + node:fs/promises into the IIFE.`,
       );
     }
   });
@@ -238,7 +238,7 @@ describe("cache subbundle browser-safety (iter-1 H3 + iter-2 H6 + iter-8 H15/H16
     //   `packages-ts/meta/dist/index.bundle.mjs`.
     //
     // That bundle is built by tsup with `noExternal` for the three
-    // @mostlyright/* siblings. Without an explicit `platform: "browser"`
+    // @mostlyrightmd/* siblings. Without an explicit `platform: "browser"`
     // (or equivalent esbuild `conditions` override), esbuild defaults to
     // node conditions, resolves the `"node"` branch of the cache entry,
     // and hoists FsStore + proper-lockfile + node:fs/promises into a
@@ -263,7 +263,7 @@ describe("cache subbundle browser-safety (iter-1 H3 + iter-2 H6 + iter-8 H15/H16
     if (violations.length > 0) {
       const detail = violations.map((v) => `  - ${v.pattern} in ${v.file}`).join("\n");
       throw new Error(
-        `Meta MV3 bundle (packages-ts/meta/dist/index.bundle.mjs + reachable chunks) must not import Node-only modules — static OR dynamic. This is the artifact MV3 service workers load (see packages-ts/examples/chrome-extension-mvp/service-worker.js).\nFound ${violations.length} violation(s):\n${detail}\n\nFix: ensure packages-ts/meta/tsup.config.ts sets \`platform: "browser"\` on the bundled (noExternal) build entry. Without it, tsup/esbuild defaults to node conditions and resolves the "node" branch of @mostlyright/core/internal/cache, which pulls FsStore + proper-lockfile + node:fs/promises into the bundle.`,
+        `Meta MV3 bundle (packages-ts/meta/dist/index.bundle.mjs + reachable chunks) must not import Node-only modules — static OR dynamic. This is the artifact MV3 service workers load (see packages-ts/examples/chrome-extension-mvp/service-worker.js).\nFound ${violations.length} violation(s):\n${detail}\n\nFix: ensure packages-ts/meta/tsup.config.ts sets \`platform: "browser"\` on the bundled (noExternal) build entry. Without it, tsup/esbuild defaults to node conditions and resolves the "node" branch of @mostlyrightmd/core/internal/cache, which pulls FsStore + proper-lockfile + node:fs/promises into the bundle.`,
       );
     }
   });

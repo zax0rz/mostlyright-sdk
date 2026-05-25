@@ -5,10 +5,10 @@
 
 import { type MockInstance, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { NoLiveDataError } from "@mostlyright/core";
+import { NoLiveDataError } from "@mostlyrightmd/core";
 
-import { latest } from "../../src/live/latest.js";
 import * as fetchModule from "../../src/live/_fetch.js";
+import { latest } from "../../src/live/latest.js";
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -110,9 +110,9 @@ describe("latest()", () => {
   });
 
   it("unknown source raises Error", async () => {
-    await expect(
-      latest("KNYC", { source: "ghcnh" as never }),
-    ).rejects.toThrow(/unknown live source/);
+    await expect(latest("KNYC", { source: "ghcnh" as never })).rejects.toThrow(
+      /unknown live source/,
+    );
   });
 
   it("empty response → NoLiveDataError", async () => {
@@ -165,9 +165,7 @@ describe("latest()", () => {
     // `downloadIemAsos` was skipped — without an explicit STATION_CODE_RE
     // check, a station like `KNYC&data=foo` would alter the IEM request URL.
     // After the fix, `STATION_CODE_RE` is checked before `buildIemUrl`.
-    await expect(latest("KN&data=foo", { source: "iem" })).rejects.toThrow(
-      /STATION_CODE_RE/,
-    );
+    await expect(latest("KN&data=foo", { source: "iem" })).rejects.toThrow(/STATION_CODE_RE/);
     // Verify no HTTP request was issued (validation happens before fetch).
     expect(fetchSpy).not.toHaveBeenCalled();
   });
@@ -188,6 +186,7 @@ describe("latest()", () => {
     // with day1 < day2.
     await expect(latest("KNYC", { source: "iem" })).rejects.toThrow();
     expect(captured.length).toBeGreaterThan(0);
+    // biome-ignore lint/style/noNonNullAssertion: length guarded above
     const u = new URL(captured[0]!);
     const y1 = Number(u.searchParams.get("year1"));
     const m1 = Number(u.searchParams.get("month1"));
@@ -220,6 +219,7 @@ describe("latest()", () => {
       return new Response("", { status: 200 });
     });
     await expect(latest("KNYC", { source: "iem" })).rejects.toThrow();
+    // biome-ignore lint/style/noNonNullAssertion: captured populated by fetchSpy above
     const u = new URL(captured[0]!);
     const start = new Date(
       Date.UTC(
@@ -257,8 +257,8 @@ describe("latest()", () => {
 
   it("`live/index` barrel re-exports the documented surface", async () => {
     // Regression for iter-3 codex finding: the `live/` barrel was reachable
-    // only via the main `@mostlyright/weather` import; the documented
-    // `@mostlyright/weather/live` subpath was NOT in `package.json` exports
+    // only via the main `@mostlyrightmd/weather` import; the documented
+    // `@mostlyrightmd/weather/live` subpath was NOT in `package.json` exports
     // and was NOT a tsup entry. Phase 11 iter-3 added both.
     //
     // We use a SOURCE-RELATIVE import here (not the bare subpath) because

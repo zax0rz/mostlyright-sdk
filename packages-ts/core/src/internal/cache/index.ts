@@ -1,4 +1,4 @@
-// Barrel for @mostlyright/core/internal/cache.
+// Barrel for @mostlyrightmd/core/internal/cache.
 //
 // Plan 01: types + MemoryStore + FsStore.
 // Plan 02: IndexedDBStore + defaultCacheStore (runtime auto-detect).
@@ -11,7 +11,7 @@
 // service-worker bundles), even though `defaultCacheStore` itself uses
 // a dynamic `import('./fs.js')` per iter-1 H3. Node-only consumers
 // (FsStore unit tests + downstream Node users) MUST import from the
-// dedicated subpath `@mostlyright/core/internal/cache/fs`.
+// dedicated subpath `@mostlyrightmd/core/internal/cache/fs`.
 
 export type { CacheStore, CacheSetOptions, CacheEntry } from "./types.js";
 export { lockKeyFor } from "./types.js";

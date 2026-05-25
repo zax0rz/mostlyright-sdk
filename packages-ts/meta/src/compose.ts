@@ -8,8 +8,8 @@ import {
   KALSHI_SETTLEMENT_STATIONS,
   type KalshiStation,
   POLYMARKET_CITY_STATIONS,
-} from "@mostlyright/markets";
-import { POLYMARKET_KNOWN_WRONG_STATIONS } from "@mostlyright/markets/polymarket";
+} from "@mostlyrightmd/markets";
+import { POLYMARKET_KNOWN_WRONG_STATIONS } from "@mostlyrightmd/markets/polymarket";
 
 /** The four mutually-exclusive selector names. */
 export const SELECTOR_NAMES = ["station", "city", "contract", "contracts"] as const;

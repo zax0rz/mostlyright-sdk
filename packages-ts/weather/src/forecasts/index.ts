@@ -1,4 +1,4 @@
-// Phase 17 PLAN-11 — `@mostlyright/weather/forecasts` subpath barrel.
+// Phase 17 PLAN-11 — `@mostlyrightmd/weather/forecasts` subpath barrel.
 
 export type {
   IemMosModel,

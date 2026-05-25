@@ -75,11 +75,11 @@ async function main() {
     process.exit(1);
   }
 
-  // 2. Rewrite peerDependencies on @mostlyright/core to match the
+  // 2. Rewrite peerDependencies on @mostlyrightmd/core to match the
   //    expected version. pnpm publish rewrites `workspace:*` but leaves
   //    plain peerDependencies untouched (codex iter-5 P1; Phase 12 rename
-  //    moved the key from @tradewinds/core to @mostlyright/core).
-  const PEER_KEY = "@mostlyright/core";
+  //    moved the key from @tradewinds/core to @mostlyrightmd/core).
+  const PEER_KEY = "@mostlyrightmd/core";
   for (const pkg of ["packages-ts/weather", "packages-ts/markets"]) {
     const path = resolve(ROOT, pkg, "package.json");
     const pj = await readJson(path);

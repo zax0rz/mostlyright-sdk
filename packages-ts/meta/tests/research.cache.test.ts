@@ -15,7 +15,7 @@ import {
   MemoryStore,
   cacheKeyForClimate,
   cacheKeyForObservations,
-} from "@mostlyright/core/internal/cache";
+} from "@mostlyrightmd/core/internal/cache";
 import { research } from "../src/research.js";
 
 interface CliMockRecord {

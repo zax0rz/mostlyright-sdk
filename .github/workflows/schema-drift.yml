@@ -1,7 +1,7 @@
 name: Schema Drift Gate
 
 # TS-W0 / CROSS-SDK-SYNC.md §1 — runs the canonical exporter +
-# @mostlyright/codegen on every PR/push that could affect generated schemas
+# @mostlyrightmd/codegen on every PR/push that could affect generated schemas
 # or TS generated bindings. Fails on any diff in `schemas/` or
 # `packages-ts/*/src/**/generated/` — drift is fixed by re-running the
 # exporter + codegen locally and committing the result.

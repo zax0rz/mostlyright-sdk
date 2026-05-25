@@ -14,7 +14,7 @@ across SDKs even though each SDK keeps its own on-disk subdirectory.
 | `~/.tradewinds/cache/v1/`      | `~/.mostlyright/cache/v1/`       |
 | `TRADEWINDS_CACHE_DIR` env var | `MOSTLYRIGHT_CACHE_DIR` env var  |
 
-### TypeScript SDK (`@mostlyright/core` FsStore)
+### TypeScript SDK (`@mostlyrightmd/core` FsStore)
 
 | Old                            | New                              |
 |--------------------------------|----------------------------------|
@@ -89,7 +89,7 @@ default resolution order can only change in one place.
 ### TypeScript resolver
 
 The canonical resolver is `defaultFsRoot()` in
-`@mostlyright/core/internal/cache/fs`. It returns the full cache directory
+`@mostlyrightmd/core/internal/cache/fs`. It returns the full cache directory
 directly (`~/.mostlyright/cache-ts/` default; no `/v1` segment because TS
 uses per-key JSON files rather than per-month parquet). New `FsStore`
 instances accept an explicit `root` option for callers that want to bypass

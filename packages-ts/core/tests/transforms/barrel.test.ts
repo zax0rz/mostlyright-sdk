@@ -1,6 +1,6 @@
 // TS-W4 Plan 02 Task 3 — barrel re-export tests.
 //
-// Asserts the @mostlyright/core/transforms barrel surfaces lag, diff, diff2,
+// Asserts the @mostlyrightmd/core/transforms barrel surfaces lag, diff, diff2,
 // rolling, ROLLING_FNS, and the RollingFn type. Column-naming convention
 // `{col}_{op}_{param}` is verified end-to-end through the barrel.
 //
@@ -19,7 +19,7 @@ import {
   rolling,
 } from "../../src/transforms/index.js";
 
-describe("@mostlyright/core/transforms barrel", () => {
+describe("@mostlyrightmd/core/transforms barrel", () => {
   it("re-exports five transform functions (lag/diff/diff2/rolling/calendarFeatures)", () => {
     expect(typeof lag).toBe("function");
     expect(typeof diff).toBe("function");

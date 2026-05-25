@@ -1,4 +1,4 @@
-# @mostlyright/codegen
+# @mostlyrightmd/codegen
 
 Build-only codegen for the [mostlyright](https://github.com/helloiamvu/tradewinds) TypeScript SDK. Reads the canonical schema artifacts under `schemas/` (emitted by the Python-side `scripts/export_schemas.py`) and produces typed TS modules into the `src/**/generated/` directories of each consumer package. Private; never published to npm.
 
@@ -24,16 +24,16 @@ Outputs:
 - `packages-ts/markets/src/data/generated/polymarket-city-stations.ts` — `POLYMARKET_CITY_STATIONS`.
 - One `index.ts` barrel per `*/generated/` directory.
 
-Every emitted file carries a 3-line `// AUTO-GENERATED` header and ends with a single trailing newline (LF). Outputs are deterministic across runs (verified by `pnpm --filter @mostlyright/codegen run codegen:check`).
+Every emitted file carries a 3-line `// AUTO-GENERATED` header and ends with a single trailing newline (LF). Outputs are deterministic across runs (verified by `pnpm --filter @mostlyrightmd/codegen run codegen:check`).
 
 ## How to run
 
 ```bash
 # Emit all generated files into the consumer packages:
-pnpm --filter @mostlyright/codegen run codegen
+pnpm --filter @mostlyrightmd/codegen run codegen
 
 # Determinism check (runs codegen twice in memory, asserts byte-equality):
-pnpm --filter @mostlyright/codegen run codegen:check
+pnpm --filter @mostlyrightmd/codegen run codegen:check
 
 # Also wired as `prebuild` in each consumer package so `pnpm -r run build`
 # regenerates first.
@@ -53,4 +53,4 @@ export const VALIDATORS_DEFERRED_TO = "TS-W3 / TS-VALIDATOR-01";
 
 - Keeps consumer packages free of `json-schema-to-typescript` and the (future) `ajv-cli` dep — those are dev-only.
 - One place to enforce the AUTO-GENERATED banner + determinism contract.
-- Lets CI run `pnpm --filter @mostlyright/codegen run codegen:check` as a drift gate without booting the whole workspace.
+- Lets CI run `pnpm --filter @mostlyrightmd/codegen run codegen:check` as a drift gate without booting the whole workspace.

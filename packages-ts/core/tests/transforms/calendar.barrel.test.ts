@@ -1,6 +1,6 @@
 // TS-W4 Plan 03 Task 2 — calendarFeatures barrel re-export test.
 //
-// Asserts the @mostlyright/core/transforms barrel surfaces calendarFeatures
+// Asserts the @mostlyrightmd/core/transforms barrel surfaces calendarFeatures
 // alongside Wave 2's lag/diff/diff2/rolling. End-to-end smoke: import the
 // function from the barrel path consumers use, then verify all 8 derived
 // columns appear on the output row.
@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 
 import { calendarFeatures } from "../../src/transforms/index.js";
 
-describe("@mostlyright/core/transforms — calendarFeatures barrel re-export", () => {
+describe("@mostlyrightmd/core/transforms — calendarFeatures barrel re-export", () => {
   it("calendarFeatures is exported from the barrel", () => {
     expect(typeof calendarFeatures).toBe("function");
   });

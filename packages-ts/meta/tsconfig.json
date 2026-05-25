@@ -4,10 +4,10 @@
     "outDir": "./dist",
     "baseUrl": ".",
     "paths": {
-      "@mostlyright/core": ["../core/src/index.ts"],
-      "@mostlyright/weather": ["../weather/src/index.ts"],
-      "@mostlyright/markets": ["../markets/src/index.ts"],
-      "@mostlyright/markets/polymarket": ["../markets/src/polymarket/index.ts"]
+      "@mostlyrightmd/core": ["../core/src/index.ts"],
+      "@mostlyrightmd/weather": ["../weather/src/index.ts"],
+      "@mostlyrightmd/markets": ["../markets/src/index.ts"],
+      "@mostlyrightmd/markets/polymarket": ["../markets/src/polymarket/index.ts"]
     }
   },
   "include": ["src/**/*", "tests/**/*"],

@@ -2,7 +2,9 @@
   "$schema": "https://unpkg.com/@changesets/config@3.0.0/schema.json",
   "changelog": "@changesets/cli/changelog",
   "commit": false,
-  "fixed": [["@mostlyright/core", "@mostlyright/weather", "@mostlyright/markets", "mostlyright"]],
+  "fixed": [
+    ["@mostlyrightmd/core", "@mostlyrightmd/weather", "@mostlyrightmd/markets", "mostlyright"]
+  ],
   "linked": [],
   "access": "public",
   "baseBranch": "main",

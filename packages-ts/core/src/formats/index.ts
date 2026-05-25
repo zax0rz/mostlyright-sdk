@@ -1,4 +1,4 @@
-// Barrel for @mostlyright/core/formats — TS-W3 Plan 07.
+// Barrel for @mostlyrightmd/core/formats — TS-W3 Plan 07.
 //
 // Three serializer pairs ported from Python:
 //   - jsonDumps / jsonLoads (records form + empty-frame envelope)

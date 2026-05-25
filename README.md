@@ -18,9 +18,9 @@ Local-first **Python + TypeScript** SDK for quants researching prediction-market
 
 | npm | Path | v0.1.0 status |
 |---|---|---|
-| `@mostlyright/core` | [packages-ts/core/](packages-ts/core/) | TS-W6 shipped; npm publish operator-gated |
-| `@mostlyright/weather` | [packages-ts/weather/](packages-ts/weather/) | TS-W2 parity-gate passed |
-| `@mostlyright/markets` | [packages-ts/markets/](packages-ts/markets/) | TS-W5 shipped (Polymarket live + Kalshi resolver) |
+| `@mostlyrightmd/core` | [packages-ts/core/](packages-ts/core/) | TS-W6 shipped; npm publish operator-gated |
+| `@mostlyrightmd/weather` | [packages-ts/weather/](packages-ts/weather/) | TS-W2 parity-gate passed |
+| `@mostlyrightmd/markets` | [packages-ts/markets/](packages-ts/markets/) | TS-W5 shipped (Polymarket live + Kalshi resolver) |
 | `mostlyright` (meta) | [packages-ts/meta/](packages-ts/meta/) | re-exports the three scoped pkgs |
 
 See [`docs/ts-quickstart.md`](docs/ts-quickstart.md) for TS Node/browser quickstart and [`docs/browser-integration.md`](docs/browser-integration.md) for MV3 service-worker / content-script integration.
@@ -137,7 +137,7 @@ Historical backfill via AWS Big Data Program (wired models). See
 [`docs/forecasts.md`](docs/forecasts.md) for the full forecast
 catalog, wiring-status table, QC rules, and historical-depth schedule.
 
-TypeScript lane: `@mostlyright/weather/forecasts` ships `iemMosForecasts()`
+TypeScript lane: `@mostlyrightmd/weather/forecasts` ships `iemMosForecasts()`
 in v1.0; `forecastNwp()` is a v1.0 stub (deferred to v1.1 pending browser
 GRIB2 decode maturity).
 

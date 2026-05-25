@@ -5,7 +5,7 @@
 // resolve to a known city (logged for the caller). Surfaces deferred
 // markets (Taipei, HK-low) with `icao: null` so callers see they exist.
 
-import { DeferredMarketError } from "@mostlyright/core";
+import { DeferredMarketError } from "@mostlyrightmd/core";
 import { type FetchEventsOptions, type PolymarketEventRaw, fetchEvents } from "./client.js";
 import { extractResolutionSourceType, validateDescription } from "./description.js";
 import { PayloadTooLargeError, PolymarketEventError } from "./errors.js";

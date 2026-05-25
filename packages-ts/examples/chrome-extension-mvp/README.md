@@ -10,7 +10,7 @@ work without a proxy.
    `mkdir -p packages-ts/examples/chrome-extension-mvp/lib && cp packages-ts/meta/dist/index.bundle.mjs packages-ts/examples/chrome-extension-mvp/lib/`
 
    > Note: copy `index.bundle.mjs`, **not** `index.mjs`. The non-bundled
-   > variant uses bare specifiers (`@mostlyright/core`, etc.) which
+   > variant uses bare specifiers (`@mostlyrightmd/core`, etc.) which
    > Chrome MV3 service workers cannot resolve (no node_modules, no
    > import map). The bundled variant inlines all workspace siblings.
 3. Open `chrome://extensions/` → enable Developer Mode → "Load unpacked" →

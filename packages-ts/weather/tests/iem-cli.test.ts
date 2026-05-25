@@ -1,4 +1,4 @@
-import { NotFoundError } from "@mostlyright/core";
+import { NotFoundError } from "@mostlyrightmd/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MockInstance } from "vitest";
 

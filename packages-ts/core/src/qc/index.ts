@@ -1,4 +1,4 @@
-// Barrel for @mostlyright/core/qc — TS-W4 Plan 05.
+// Barrel for @mostlyrightmd/core/qc — TS-W4 Plan 05.
 //
 // Public API: QCEngine, QCRule, ALPHA_RULES, QC_ALPHA_RULES + the 5
 // per-rule evaluator functions (exposed for unit-testing + downstream
@@ -9,7 +9,7 @@
 // them so downstream consumers can introspect the rule registry without
 // reaching into internal paths.
 //
-// Lives at the subpath (NOT root barrel) to keep the @mostlyright/core
+// Lives at the subpath (NOT root barrel) to keep the @mostlyrightmd/core
 // main bundle under its 25 KB size-limit gate (TS-BUNDLE-01); same
 // pattern as temporal / formats / transforms / validator.
 

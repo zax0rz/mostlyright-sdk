@@ -33,8 +33,8 @@ import {
   boundedFloat,
   boundedFloatMin,
   boundedInt,
-} from "@mostlyright/core/internal/bounds";
-import { celsiusToFahrenheit, hpaToInhg } from "@mostlyright/core/internal/convert";
+} from "@mostlyrightmd/core/internal/bounds";
+import { celsiusToFahrenheit, hpaToInhg } from "@mostlyrightmd/core/internal/convert";
 
 import { extractStationCode } from "./_station_translator.js";
 import { type Observation, mapCloudCover } from "./awc.js";

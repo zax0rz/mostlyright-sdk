@@ -25,8 +25,8 @@
 // `.planning/research/TS-CORS-MATRIX.md` §IEM-ASOS. Works in browsers,
 // Node 20+, Cloudflare Workers, Deno.
 
-import { fetchWithRetry } from "@mostlyright/core";
-import type { FetchWithRetryOptions } from "@mostlyright/core";
+import { fetchWithRetry } from "@mostlyrightmd/core";
+import type { FetchWithRetryOptions } from "@mostlyrightmd/core";
 
 import { type IsoDate, yearlyChunksExclusiveEnd } from "./_iem_chunks.js";
 
@@ -43,7 +43,7 @@ export const IEM_POLITE_DELAY_MS = 1000;
 /**
  * Station code regex (3-4 uppercase letters). Mirrors the inline pattern
  * used by `iem-cli.ts::validateIcao` and the shared `STATION_CODE_RE` from
- * `@mostlyright/core/internal/bounds`. Inlined here so the fetcher does not
+ * `@mostlyrightmd/core/internal/bounds`. Inlined here so the fetcher does not
  * transitively pull in the validators barrel — keeps the per-fetcher
  * dep graph narrow per the TS-W1 review pattern.
  */

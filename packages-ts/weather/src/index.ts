@@ -1,4 +1,4 @@
-// @mostlyright/weather — weather fetchers + parsers.
+// @mostlyrightmd/weather — weather fetchers + parsers.
 //
 // TS-W1 ships AWC (Wave 3) + IEM CLI (Wave 4). TS-W2 Plan 01 adds IEM ASOS
 // (yearly-chunk historical METARs) + the IEM CSV parser. Subsequent TS-W2
@@ -7,7 +7,7 @@
 export const version = "0.0.0";
 
 export function helloWeather(): string {
-  return "hello @mostlyright/weather";
+  return "hello @mostlyrightmd/weather";
 }
 
 // TS-W1 Wave 3 — AWC live METARs.
@@ -105,10 +105,10 @@ export {
   type LiveSourceTag,
   type StreamOptions,
 } from "./live/index.js";
-export { LiveStreamError, NoLiveDataError } from "@mostlyright/core";
+export { LiveStreamError, NoLiveDataError } from "@mostlyrightmd/core";
 
 // Phase 17 PLAN-11 — IEM MOS forecast fetcher + NWP stub (v1.0 TS lane).
-// Available via the root barrel AND via the `@mostlyright/weather/forecasts`
+// Available via the root barrel AND via the `@mostlyrightmd/weather/forecasts`
 // subpath (subpath bundle stays lean for browser callers; root pulls all).
 export {
   forecastNwp,

@@ -1,5 +1,5 @@
 {
-  "name": "@mostlyright/core",
+  "name": "@mostlyrightmd/core",
   "version": "0.0.0",
   "description": "Core types, schemas, and primitives for the mostlyright TypeScript SDK (placeholder scaffold; implementation lands in TS-W1+).",
   "license": "MIT",
@@ -84,13 +84,13 @@
   },
   "files": ["dist"],
   "scripts": {
-    "prebuild": "pnpm --filter @mostlyright/codegen run codegen",
+    "prebuild": "pnpm --filter @mostlyrightmd/codegen run codegen",
     "build": "tsup",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist coverage .tsbuildinfo",
-    "codegen": "echo \"@mostlyright/core — no codegen step at this layer (consumes from @mostlyright/codegen output)\""
+    "codegen": "echo \"@mostlyrightmd/core — no codegen step at this layer (consumes from @mostlyrightmd/codegen output)\""
   },
   "devDependencies": {
     "@types/node": "^20.16.10",

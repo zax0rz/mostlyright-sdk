@@ -32,7 +32,7 @@
 // exhausted retries — NEVER throws (matches Python `fetch_awc_metars` so the
 // caller can degrade gracefully when AWC is down).
 
-import { type FetchWithRetryOptions, TherminalError, fetchWithRetry } from "@mostlyright/core";
+import { type FetchWithRetryOptions, TherminalError, fetchWithRetry } from "@mostlyrightmd/core";
 
 /** Canonical AWC METAR endpoint. */
 export const AWC_METAR_URL = "https://aviationweather.gov/api/data/metar";

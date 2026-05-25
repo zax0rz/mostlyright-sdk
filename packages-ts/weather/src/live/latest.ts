@@ -4,7 +4,7 @@
 // IEM ONCE, parse the response, return the most-recent observation row
 // with its live source identity tag. No fusion, no cache, no QC.
 
-import { NoLiveDataError } from "@mostlyright/core";
+import { NoLiveDataError } from "@mostlyrightmd/core";
 
 import { fetchLatest, normalizeStation, pickMostRecent } from "./_fetch.js";
 import { type LiveSource, sourceTag, validateSource } from "./sources.js";

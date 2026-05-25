@@ -5,7 +5,7 @@
 // future column proves IEEE-non-stable across platforms, refactor away the
 // precision-loss path or document the divergence — NOT a blanket tolerance.
 
-import type { PairsRow } from "@mostlyright/core/internal/pairs";
+import type { PairsRow } from "@mostlyrightmd/core/internal/pairs";
 import { expect } from "vitest";
 
 export function canonicalSort(rows: ReadonlyArray<PairsRow>): PairsRow[] {

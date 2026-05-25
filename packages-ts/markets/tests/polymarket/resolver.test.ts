@@ -1,4 +1,4 @@
-import { DeferredMarketError } from "@mostlyright/core";
+import { DeferredMarketError } from "@mostlyrightmd/core";
 import { describe, expect, it } from "vitest";
 
 import {

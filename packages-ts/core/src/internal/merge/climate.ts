@@ -1,7 +1,7 @@
 // Climate-row dedup — keep highest `report_type_priority` per (station, date).
 //
 // Migrated from `packages-ts/weather/src/_parsers/cli.ts::mergeClimate`
-// (TS-W1 Wave 4) to its canonical home under @mostlyright/core/internal/merge
+// (TS-W1 Wave 4) to its canonical home under @mostlyrightmd/core/internal/merge
 // in TS-W2 Plan 04. Behavior is unchanged — only the module location moves.
 //
 // Byte-faithful TS port of `mostlyright._internal.merge.climate.merge_climate`
@@ -9,8 +9,8 @@
 // `monorepo-v0.14.1/ingest/storage/parquet.py:477-494`.
 //
 // Type strategy: structural `ClimateKey` interface (3 fields) so this
-// module does not pull `ClimateObservation` from @mostlyright/weather into
-// @mostlyright/core. Callers pass the full row type and the generic
+// module does not pull `ClimateObservation` from @mostlyrightmd/weather into
+// @mostlyrightmd/core. Callers pass the full row type and the generic
 // preserves it.
 
 /**

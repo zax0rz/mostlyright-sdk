@@ -13,7 +13,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { NotFoundError } from "@mostlyright/core";
+import { NotFoundError } from "@mostlyrightmd/core";
 
 import { type Mode2Source, researchBySource } from "../src/mode2.js";
 

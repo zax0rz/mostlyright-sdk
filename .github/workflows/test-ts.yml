@@ -55,7 +55,7 @@ jobs:
         run: pnpm codegen
 
       # Build BEFORE typecheck — workspace packages (weather, meta) import
-      # @mostlyright/core/internal/{merge,pairs,bounds,convert} via package
+      # @mostlyrightmd/core/internal/{merge,pairs,bounds,convert} via package
       # exports that point at dist/. Without a build, TS sees only
       # missing-declaration errors. Codex TS-W2 review iter-1 caught this.
       - name: Build packages (produces dist/ for subpath imports)

@@ -1,12 +1,12 @@
 // TS-W4 Plan 06 Task 2 — barrel re-export of crosscheckIemGhcnh from
-// @mostlyright/core/qc subpath. Confirms the public surface ships
+// @mostlyrightmd/core/qc subpath. Confirms the public surface ships
 // alongside QCEngine + ALPHA_RULES (Wave 5).
 
 import { describe, expect, it } from "vitest";
 
 import { type CrosscheckDisagreement, crosscheckIemGhcnh } from "../../src/qc/index.js";
 
-describe("@mostlyright/core/qc — crosscheckIemGhcnh barrel re-export", () => {
+describe("@mostlyrightmd/core/qc — crosscheckIemGhcnh barrel re-export", () => {
   it("crosscheckIemGhcnh is exported from the barrel", () => {
     expect(typeof crosscheckIemGhcnh).toBe("function");
   });

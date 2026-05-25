@@ -242,20 +242,20 @@ clean-only rows with `df[df["qc_status"] == "clean"]`.
 
 ## TypeScript Lane (v1.0)
 
-`@mostlyright/weather` v1.0 ships IEM MOS only:
+`@mostlyrightmd/weather` v1.0 ships IEM MOS only:
 
 ```typescript
-import { iemMosForecasts } from '@mostlyright/weather/forecasts';
+import { iemMosForecasts } from '@mostlyrightmd/weather/forecasts';
 
 const rows = await iemMosForecasts('KNYC', '2026-05-01', '2026-05-07', { model: 'nbe' });
 console.log(rows[0].tempC, rows[0].source);  // 20.0, "iem.archive"
 ```
 
-`@mostlyright/weather/forecasts.forecastNwp()` is shipped as a v1.0
+`@mostlyrightmd/weather/forecasts.forecastNwp()` is shipped as a v1.0
 STUB:
 
 ```typescript
-import { forecastNwp } from '@mostlyright/weather/forecasts';
+import { forecastNwp } from '@mostlyrightmd/weather/forecasts';
 // Throws Error('TS NWP deferred to v1.1') at runtime.
 // Signature stable; runtime arrives in v1.1.
 ```

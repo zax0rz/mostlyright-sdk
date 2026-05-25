@@ -5,9 +5,9 @@
 // inside the fetcher are NOT caught here — callers (`stream`, `latest`)
 // have different error semantics and handle their own try/catch.
 
+import { fetchAwcMetars } from "../_fetchers/awc.js";
 import type { Observation } from "../_parsers/awc.js";
 import { awcToObservation } from "../_parsers/awc.js";
-import { fetchAwcMetars } from "../_fetchers/awc.js";
 
 import { type LiveSource, sourceTag } from "./sources.js";
 import type { LiveObservation } from "./types.js";
@@ -93,8 +93,8 @@ function previousDayIso(iso: string): string {
 export async function fetchIemLatest(station: string): Promise<LiveObservation[]> {
   const [{ fetchWithRetry }, { STATION_CODE_RE }, { buildIemUrl }, { parseIemCsv }] =
     await Promise.all([
-      import("@mostlyright/core"),
-      import("@mostlyright/core/internal/bounds"),
+      import("@mostlyrightmd/core"),
+      import("@mostlyrightmd/core/internal/bounds"),
       import("../_fetchers/iem-asos.js"),
       import("../_parsers/iem.js"),
     ]);
@@ -158,8 +158,10 @@ export async function fetchLatest(station: string, source: LiveSource): Promise<
  */
 export function pickMostRecent(rows: ReadonlyArray<LiveObservation>): LiveObservation | null {
   if (rows.length === 0) return null;
+  // biome-ignore lint/style/noNonNullAssertion: length guarded above
   let best = rows[0]!;
   for (let i = 1; i < rows.length; i++) {
+    // biome-ignore lint/style/noNonNullAssertion: i bounded by rows.length
     const cur = rows[i]!;
     if (cur.observed_at > best.observed_at) {
       best = cur;

@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest";
 import { QC_ALPHA_RULES, QC_ALPHA_RULES_BY_ID } from "../../src/data/generated/qc-alpha-rules.js";
 import { ALPHA_RULES } from "../../src/qc/index.js";
 
-describe("@mostlyright/core/qc — codegen-parity guard", () => {
+describe("@mostlyrightmd/core/qc — codegen-parity guard", () => {
   it("ALPHA_RULES length === QC_ALPHA_RULES length (5)", () => {
     expect(ALPHA_RULES.length).toBe(5);
     expect(QC_ALPHA_RULES.length).toBe(5);

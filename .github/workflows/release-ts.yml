@@ -7,7 +7,7 @@ name: Release (npm OIDC trusted publishing)
 # release (operator-gated, mirrors Python release.yml playbook):
 #
 #   1. On npmjs.com, register each scoped package as a "pending publisher":
-#        @mostlyright/core, @mostlyright/weather, @mostlyright/markets, mostlyright
+#        @mostlyrightmd/core, @mostlyrightmd/weather, @mostlyrightmd/markets, mostlyright
 #      pointed at repo helloiamvu/tradewinds, workflow filename
 #      `release-ts.yml`, environment name `npm`.
 #      https://docs.npmjs.com/generating-provenance-statements
@@ -62,7 +62,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Codegen
-        run: pnpm --filter @mostlyright/codegen run codegen
+        run: pnpm --filter @mostlyrightmd/codegen run codegen
 
       - name: Typecheck
         run: pnpm -r run typecheck
@@ -95,7 +95,7 @@ jobs:
         #    (normalize vts-0.1.0rc1 → 0.1.0-rc.1). A stale-commit tag would
         #    otherwise publish whatever's in the files, leaving a partial
         #    release that can't be redone (npm versions are immutable).
-        # 2. Rewrite weather/markets peerDependencies['@mostlyright/core']
+        # 2. Rewrite weather/markets peerDependencies['@mostlyrightmd/core']
         #    from the workspace-time ^0.0.0 placeholder to ^<expected>.
         #    pnpm publish rewrites `workspace:*` but leaves plain
         #    peerDependencies untouched.
@@ -110,7 +110,7 @@ jobs:
             echo "tag=latest" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Publish — @mostlyright/core
+      - name: Publish — @mostlyrightmd/core
         working-directory: packages-ts/core
         # Use `pnpm publish` (NOT `npm publish`) because the meta package
         # depends on the scoped packages via `workspace:*`. `pnpm publish`
@@ -121,7 +121,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
 
-      - name: Publish — @mostlyright/weather
+      - name: Publish — @mostlyrightmd/weather
         working-directory: packages-ts/weather
         # Use `pnpm publish` (NOT `npm publish`) because the meta package
         # depends on the scoped packages via `workspace:*`. `pnpm publish`
@@ -132,7 +132,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
 
-      - name: Publish — @mostlyright/markets
+      - name: Publish — @mostlyrightmd/markets
         working-directory: packages-ts/markets
         # Use `pnpm publish` (NOT `npm publish`) because the meta package
         # depends on the scoped packages via `workspace:*`. `pnpm publish`

@@ -4,7 +4,7 @@ import { defineConfig } from "tsup";
 //   - Standard ESM/CJS: external workspace deps (consumers resolve via node_modules).
 //   - IIFE (index.global.js): inlines workspace deps for <script> consumption;
 //     MUST target browser so esbuild picks the browser conditional-export of
-//     @mostlyright/core/internal/cache (else FsStore + proper-lockfile +
+//     @mostlyrightmd/core/internal/cache (else FsStore + proper-lockfile +
 //     node:fs/promises get hoisted in via the "node" condition).
 //   - Bundled (index.bundle.mjs): single-file ESM with workspace deps inlined
 //     for Chrome MV3 service workers / plain <script type="module"> with no
@@ -36,7 +36,7 @@ export default defineConfig([
     globalName: "mostlyright",
     // IIFE auto-inlines workspace deps for <script> consumption. Without
     // `platform: "browser"`, esbuild defaults to node conditions and
-    // resolves the "node" branch of @mostlyright/core/internal/cache,
+    // resolves the "node" branch of @mostlyrightmd/core/internal/cache,
     // hoisting FsStore + proper-lockfile + node:fs/promises into the
     // bundle. Browser platform routes the cache import to the browser
     // entry (no FsStore reference, static OR dynamic). Verified by the
@@ -51,12 +51,12 @@ export default defineConfig([
   {
     entry: { "index.bundle": "src/index.ts" },
     format: ["esm"],
-    // Inline the three @mostlyright/* siblings so the output is loadable
+    // Inline the three @mostlyrightmd/* siblings so the output is loadable
     // from environments that don't support bare specifiers.
-    noExternal: ["@mostlyright/core", "@mostlyright/weather", "@mostlyright/markets"],
+    noExternal: ["@mostlyrightmd/core", "@mostlyrightmd/weather", "@mostlyrightmd/markets"],
     // Iter-9 H17: target Chrome MV3 service workers explicitly. tsup's
     // default `platform: "node"` makes esbuild resolve the "node" branch
-    // of @mostlyright/core/internal/cache (via its conditional exports
+    // of @mostlyrightmd/core/internal/cache (via its conditional exports
     // map), pulling FsStore + proper-lockfile + node:fs/promises into a
     // sibling chunk that the bundle dynamic-imports. With
     // `platform: "browser"`, esbuild uses ["browser", "import",

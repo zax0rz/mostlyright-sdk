@@ -27,7 +27,7 @@ describe("fetchEventById", () => {
     // than a Response, so we exercise the catch branch even from a fetchFn
     // override (acceptable: the catch handles whatever throws).
     const fetchFn = vi.fn(async () => {
-      const { NotFoundError } = await import("@mostlyright/core");
+      const { NotFoundError } = await import("@mostlyrightmd/core");
       throw new NotFoundError("simulated 404");
     });
     const ev = await fetchEventById("missing-evt", { fetchFn });

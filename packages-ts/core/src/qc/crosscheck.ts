@@ -18,8 +18,8 @@
 // conversion to snake_case happens at the JSON serializer boundary
 // (TS-W3 Plan 07 `jsonDumps`).
 //
-// Lives at the `@mostlyright/core/qc` subpath (NOT root barrel) to keep
-// the main `@mostlyright/core` bundle under its 25 KB size-limit gate.
+// Lives at the `@mostlyrightmd/core/qc` subpath (NOT root barrel) to keep
+// the main `@mostlyrightmd/core` bundle under its 25 KB size-limit gate.
 
 /** Options for {@link crosscheckIemGhcnh}. */
 export interface CrosscheckOptions {

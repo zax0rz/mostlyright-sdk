@@ -1,7 +1,7 @@
 // TS-W5 Wave 4 — polymarketSettle().
 //
 // Settlement engine that consumes internationalDailyExtremes() from
-// @mostlyright/core/discovery (TS-W6) as the resolution source, applies
+// @mostlyrightmd/core/discovery (TS-W6) as the resolution source, applies
 // the security/validation gates (event-id regex, 16 KB description cap,
 // netloc allowlist), and gates on the per-source publication-delay
 // window via TooEarlyToSettleError.
@@ -14,8 +14,8 @@
 // This matches the contract the plan documents: "ports the resolution
 // path, not the bucket-parser".
 
-import { STATIONS } from "@mostlyright/core";
-import { type InternationalRow, internationalDailyExtremes } from "@mostlyright/core/discovery";
+import { STATIONS } from "@mostlyrightmd/core";
+import { type InternationalRow, internationalDailyExtremes } from "@mostlyrightmd/core/discovery";
 
 import { type PolymarketEventRaw, fetchEventById } from "./client.js";
 import { extractResolutionSourceType, validateDescription } from "./description.js";

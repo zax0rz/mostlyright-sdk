@@ -3,7 +3,7 @@
 // Byte-faithful TS port of
 // `packages/core/src/mostlyright/_internal/merge/observations.py::merge_observations`.
 //
-// Why this lives in @mostlyright/core (not @mostlyright/weather): the merge
+// Why this lives in @mostlyrightmd/core (not @mostlyrightmd/weather): the merge
 // policy is a mostlyright-wide invariant — every settlement-grade path that
 // joins multi-source observations depends on it. Putting it in core keeps
 // the dep direction clean (weather + meta → core), avoids a circular
@@ -11,7 +11,7 @@
 // Python layout (`_internal/merge/`).
 //
 // Type strategy: a STRUCTURAL `ObservationKey` interface (4 fields) avoids
-// pulling the full `Observation` shape from @mostlyright/weather into core.
+// pulling the full `Observation` shape from @mostlyrightmd/weather into core.
 // The function is generic over `T extends ObservationKey` so callers can
 // pass the full row type without losing fields.
 

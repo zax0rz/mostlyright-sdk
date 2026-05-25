@@ -1,5 +1,5 @@
 {
-  "name": "@mostlyright/codegen",
+  "name": "@mostlyrightmd/codegen",
   "version": "0.0.0",
   "description": "Build-only codegen for the mostlyright TypeScript SDK. Reads schemas/*.json + schemas/json/*.json (emitted by Python scripts/export_schemas.py) and produces .d.ts types, ajv-standalone validators, and typed data modules into packages-ts/*/src/**/generated/. Private — not published to npm.",
   "license": "MIT",

@@ -17,7 +17,7 @@ TypeScript packages. Read [the Changesets docs](https://github.com/changesets/ch
    pnpm changeset version
    ```
    Updates the four packages' `package.json` versions in lockstep
-   (`@mostlyright/core` + `@mostlyright/weather` + `@mostlyright/markets` +
+   (`@mostlyrightmd/core` + `@mostlyrightmd/weather` + `@mostlyrightmd/markets` +
    `mostlyright` meta are configured as a `fixed` set), regenerates
    `CHANGELOG.md` per package, and consumes the changeset markdown files.
 
@@ -71,4 +71,4 @@ applies to the first publish.
 - `fixed`: all four packages bump together. v0.1.x patch bumps for one
   package will move all four — keeps the meta package's inter-pin sound.
 - `access: public` — the workflow publishes with `npm publish --access
-  public` so first-publish of `@mostlyright/*` scoped packages succeeds.
+  public` so first-publish of `@mostlyrightmd/*` scoped packages succeeds.

@@ -35,7 +35,7 @@ import {
   MemoryStore,
   cacheKeyForObservations,
   isLiveSource,
-} from "@mostlyright/core/internal/cache";
+} from "@mostlyrightmd/core/internal/cache";
 import { research } from "../src/research.js";
 
 import fixtureData from "../../core/tests/internal/cache/fixtures/skip-rules-behavior.json" with {

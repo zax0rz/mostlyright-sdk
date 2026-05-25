@@ -4,7 +4,7 @@
 // Uses the existing Gamma client pattern (fetchFn injection, 0.2 s polite
 // floor). Row shapes mirror Python column-for-column.
 
-import { fetchWithRetry } from "@mostlyright/core";
+import { fetchWithRetry } from "@mostlyrightmd/core";
 
 import type { PolymarketHistoryRow, PolymarketSnapshotRow, TradesResult } from "./types.js";
 

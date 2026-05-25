@@ -9,7 +9,7 @@
 // we walk them in priority order and return the first ICAO-prefixed value
 // that resolves to a valid station code.
 
-import { STATION_CODE_RE } from "@mostlyright/core/internal/bounds";
+import { STATION_CODE_RE } from "@mostlyrightmd/core/internal/bounds";
 
 import { icaoToStationCode } from "./awc.js";
 

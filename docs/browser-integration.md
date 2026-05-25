@@ -1,4 +1,4 @@
-# Browser integration guide (`@mostlyright/*` in MV3 + web apps)
+# Browser integration guide (`@mostlyrightmd/*` in MV3 + web apps)
 
 The TS SDK is engineered for browser runtimes alongside Node. This guide
 covers the four patterns we test against:
@@ -50,7 +50,7 @@ Background scripts in MV3 run as ES module service workers. They have `fetch`, `
 ```ts
 // background.ts → bundled to background.js as ES module
 import { research } from "mostlyright";
-import { kalshiSettlementFor } from "@mostlyright/markets";
+import { kalshiSettlementFor } from "@mostlyrightmd/markets";
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === "research") {
@@ -71,7 +71,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
 **CSP-safe:** all bundles are CSP-clean (`script-src 'self'`); no `eval`, no `new Function(...)`, no remote code. ajv runs in `ajv-standalone` precompiled form, never runtime.
 
-**Bundle size:** the `@mostlyright/core` main entry stays under 25 KB min+gzip (the [`TS-BUNDLE-01`](../.planning/REVIEW-DISCIPLINE.md) gate). Subpath imports (`@mostlyright/core/temporal`, `/discovery`, `/transforms`, etc.) tree-shake separately.
+**Bundle size:** the `@mostlyrightmd/core` main entry stays under 25 KB min+gzip (the [`TS-BUNDLE-01`](../.planning/REVIEW-DISCIPLINE.md) gate). Subpath imports (`@mostlyrightmd/core/temporal`, `/discovery`, `/transforms`, etc.) tree-shake separately.
 
 ## Pattern 2 — MV3 content script
 
@@ -101,7 +101,7 @@ The meta IIFE bundle (`mostlyright`) INLINES the three scoped packages, so a sin
 </script>
 ```
 
-If you only need one scoped surface (e.g. just `@mostlyright/core` for temporal primitives), the scoped IIFEs are available as `mostlyrightCore`, `mostlyrightWeather`, `mostlyrightMarkets` globals at `https://unpkg.com/@mostlyright/<pkg>/dist/index.global.js` — but `research()` itself only ships from the meta global.
+If you only need one scoped surface (e.g. just `@mostlyrightmd/core` for temporal primitives), the scoped IIFEs are available as `mostlyrightCore`, `mostlyrightWeather`, `mostlyrightMarkets` globals at `https://unpkg.com/@mostlyrightmd/<pkg>/dist/index.global.js` — but `research()` itself only ships from the meta global.
 
 For SDK-style use, ESM via a bundler (vite/esbuild/webpack) is preferred. The IIFE is for quick scratch pages and Kalshi-page overlays that can't run a build step.
 
@@ -113,7 +113,7 @@ cross-request persistence if needed:
 
 ```ts
 import { research } from "mostlyright";
-import { MemoryStore } from "@mostlyright/core/internal/cache";
+import { MemoryStore } from "@mostlyrightmd/core/internal/cache";
 
 export default {
   async fetch(req: Request, env: Env) {

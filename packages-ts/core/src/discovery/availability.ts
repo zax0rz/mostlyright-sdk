@@ -5,7 +5,7 @@
 // CacheStore implementation (Memory / IndexedDB / Fs) is the persistence layer.
 //
 // The keys we scan match `cacheKeyForObservations(station, year, month, source?)`
-// and `cacheKeyForClimate(station, year)`. @mostlyright/meta's `research()` writes
+// and `cacheKeyForClimate(station, year)`. @mostlyrightmd/meta's `research()` writes
 // cache entries under the 3-letter NWS code (`resolved.code` from
 // STATION_BY_ICAO / STATION_BY_CODE) for US stations — e.g. `KNYC` resolves to
 // `NYC` and the cache key reads `...:observations:NYC:...`. Codex iter-2 P2:

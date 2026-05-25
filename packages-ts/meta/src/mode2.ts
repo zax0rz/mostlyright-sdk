@@ -6,9 +6,9 @@
 // training pairs (the workflow Vojtech wanted for backtests that
 // need source-identity invariants).
 //
-// Lives in @mostlyright/meta (alongside `research()`), NOT in
-// @mostlyright/core — `assertSourceIdentity` consumes the
-// @mostlyright/weather `Observation` type, which @mostlyright/core
+// Lives in @mostlyrightmd/meta (alongside `research()`), NOT in
+// @mostlyrightmd/core — `assertSourceIdentity` consumes the
+// @mostlyrightmd/weather `Observation` type, which @mostlyrightmd/core
 // must not depend on (would create a cycle).
 //
 // ── Vocabulary ───────────────────────────────────────────────────────
@@ -27,7 +27,7 @@ import {
   STATION_BY_ICAO,
   SourceMismatchError,
   type SourceMismatchRole,
-} from "@mostlyright/core";
+} from "@mostlyrightmd/core";
 import {
   type Observation,
   awcToObservation,
@@ -36,7 +36,7 @@ import {
   fetchAwcMetars,
   parseGhcnhPsv,
   parseIemCsv,
-} from "@mostlyright/weather";
+} from "@mostlyrightmd/weather";
 
 export type { SourceMismatchRole };
 

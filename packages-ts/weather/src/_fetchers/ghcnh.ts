@@ -22,8 +22,8 @@
 // `.planning/research/TS-CORS-MATRIX.md` §GHCNh — OPEN. Works in browsers,
 // Node 20+, Cloudflare Workers, Deno.
 
-import { NotFoundError, fetchWithRetry } from "@mostlyright/core";
-import type { FetchWithRetryOptions } from "@mostlyright/core";
+import { NotFoundError, fetchWithRetry } from "@mostlyrightmd/core";
+import type { FetchWithRetryOptions } from "@mostlyrightmd/core";
 
 /** NCEI GHCNh public archive base URL (no trailing slash). Mirrors Python `GHCNH_BASE_URL`. */
 export const GHCNH_BASE_URL =

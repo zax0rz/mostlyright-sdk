@@ -49,8 +49,8 @@ import {
   boundedFloat,
   boundedFloatMin,
   boundedInt,
-} from "@mostlyright/core/internal/bounds";
-import { fahrenheitToCelsius } from "@mostlyright/core/internal/convert";
+} from "@mostlyrightmd/core/internal/bounds";
+import { fahrenheitToCelsius } from "@mostlyrightmd/core/internal/convert";
 
 import { type Observation, icaoToStationCode, mapCloudCover } from "./awc.js";
 

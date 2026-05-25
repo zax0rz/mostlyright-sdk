@@ -357,7 +357,7 @@ describe("iemToObservation — output shape", () => {
     const out = parseIemCsv(csvBody([makeRow({ metar: longMetar })]));
     const row = out[0] as Observation;
     expect(row.raw_metar).not.toBeNull();
-    // MAX_RAW_METAR_LEN = 2048 per @mostlyright/core/internal/bounds
+    // MAX_RAW_METAR_LEN = 2048 per @mostlyrightmd/core/internal/bounds
     expect((row.raw_metar as string).length).toBe(2048);
   });
 });
