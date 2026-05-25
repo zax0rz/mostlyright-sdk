@@ -476,7 +476,7 @@ def forecast_nwp(
     cycle: datetime | None = None,
     cycle_range_start: datetime | None = None,
     cycle_range_end: datetime | None = None,
-    fxx: int = 1,
+    fxx: int | None = None,
     mirror: str | None = None,
     client: httpx.Client | None = None,
     backend: str = "pandas",
@@ -539,6 +539,14 @@ def forecast_nwp(
             f"(or reserved in {sorted(NWP_MIRROR_VALUES)} for v0.2); "
             f"got {mirror!r}"
         )
+
+    # Phase 17 Wave-2 iter-3: model-aware fxx default. RTMA / URMA are
+    # analysis products with no forecast hour -- default to 0. All other
+    # models default to fxx=1. The None sentinel lets us distinguish an
+    # explicit ``fxx=1`` (passes through unchanged so the
+    # analysis-product guard still fires) from the omitted default.
+    if fxx is None:
+        fxx = 0 if model in {"rtma", "urma"} else 1
 
     # Phase 17 PLAN-05: MSC Canadian family bypass. MSC Datamart has a 24h
     # retention window; PLAN-09 will wire the per-variable fetcher once

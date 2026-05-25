@@ -128,7 +128,7 @@ def forecast_nwp(
     model: str,
     *,
     cycle: datetime | None = None,
-    fxx: int = 1,
+    fxx: int | None = None,
     mirror: str | None = None,
     client: httpx.Client | None = None,
 ) -> pd.DataFrame:
@@ -230,14 +230,15 @@ def forecast_nwp(
             available_in="v0.2",
         )
 
-    # Phase 17 Wave-2 iter-2: RTMA / URMA are analysis products (no
-    # forecast hour). The public default ``fxx=1`` would otherwise trip
-    # ``build_fetch_plan``'s analysis-product guard for every default
-    # call. Coerce to ``fxx=0`` when the caller didn't override it.
-    # Explicit non-zero ``fxx`` for these models still propagates to the
-    # downstream guard so the user-as-author error is preserved.
-    if model in {"rtma", "urma"} and fxx == 1:
-        fxx = 0
+    # Phase 17 Wave-2 iter-3: model-aware fxx default. RTMA / URMA are
+    # analysis products with no forecast hour -- the documented default
+    # must be 0 for those so build_fetch_plan's analysis-product guard
+    # doesn't fire on the default call. All other models default to fxx=1
+    # (next-hour forecast). Using a None sentinel lets us distinguish an
+    # explicit ``fxx=1`` (passes through unchanged) from the omitted
+    # default (gets model-aware coercion).
+    if fxx is None:
+        fxx = 0 if model in {"rtma", "urma"} else 1
 
     try:
         from mostlyright.weather.forecast_nwp import (

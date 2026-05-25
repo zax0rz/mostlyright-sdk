@@ -141,8 +141,12 @@ def test_supported_nwp_models_includes_4_ecmwf() -> None:
 
 def test_variable_map_ecmwf_ifs_uses_eccodes_param_keys() -> None:
     assert ecmwf_ifs.VARIABLE_MAP["temp_k_2m"] == ("2t", "sfc")
-    assert ecmwf_ifs.VARIABLE_MAP["precip_mm_1h"] == ("tp", "sfc")
     assert ecmwf_ifs.VARIABLE_MAP["pressure_pa_mslp"] == ("msl", "sfc")
+    # ECMWF tp omitted from VARIABLE_MAP: tp is in METERS not mm, so
+    # writing it raw into precip_mm_1h would under-report by 1000x.
+    # PLAN-09 (research wiring) lands the unit-conversion layer and
+    # re-introduces the precip mapping with tp * 1000.
+    assert "precip_mm_1h" not in ecmwf_ifs.VARIABLE_MAP
 
 
 def test_variable_map_ecmwf_aifs_omits_wind_gust() -> None:
