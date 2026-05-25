@@ -163,17 +163,36 @@ def cycle_range(model: str, start_dt: datetime, end_dt: datetime) -> list[dateti
     return out
 
 
+#: Live-cycle tolerance for ``depth=None`` (live-only) models — cycles
+#: newer than ``now() - LIVE_CYCLE_WINDOW`` are accepted; older cycles
+#: raise :class:`HistoricalDepthError`. Phase 17 Wave 3 iter-5 review:
+#: live-only models (HAFS, HREF, HiResW, MSC family on NOMADS-only paths)
+#: previously raised for ANY explicit cycle, which incorrectly rejected
+#: current cycles the caller actually wanted to fetch. The 7-day window
+#: covers the typical NOMADS retention floor while still rejecting truly
+#: historical backfill requests.
+LIVE_CYCLE_WINDOW: timedelta = timedelta(days=7)
+
+
 def check_historical_depth(model: str, requested_cycle: datetime) -> None:
     """Raise :class:`HistoricalDepthError` if ``requested_cycle`` is older
-    than the model's AWS BDP depth (or the model is live-only).
+    than the model's AWS BDP depth.
+
+    For live-only models (``archive_depth=None`` in
+    :data:`NWP_HISTORICAL_DEPTH`), the rule is "recent cycles OK,
+    historical cycles raise". A cycle within :data:`LIVE_CYCLE_WINDOW`
+    of wall-clock ``now()`` is treated as live and passes through; any
+    older cycle raises :class:`HistoricalDepthError` because the mirror
+    no longer holds the bytes.
 
     Args:
         model: Phase 17 model id.
         requested_cycle: Cycle the caller asked for (UTC-aware).
 
     Raises:
-        HistoricalDepthError: pre-depth cycle OR ``archive_depth=None``
-            (MSC retention / NOMADS-only no-archive families).
+        HistoricalDepthError: pre-depth cycle for an archived model, OR
+            an older-than-:data:`LIVE_CYCLE_WINDOW` cycle for a live-only
+            model (``archive_depth=None``).
         ValueError: ``model`` unknown.
     """
     if model not in NWP_HISTORICAL_DEPTH:
@@ -183,13 +202,28 @@ def check_historical_depth(model: str, requested_cycle: datetime) -> None:
         )
     depth = NWP_HISTORICAL_DEPTH[model]
     if depth is None:
-        raise HistoricalDepthError(
-            f"{model}: live-only (MSC 24h retention OR NOMADS-only with no "
-            "archive); historical backfill not supported. Use a live cycle.",
-            model=model,
-            requested_cycle=requested_cycle,
-            archive_depth=None,
-        )
+        # Phase 17 Wave 3 iter-5 review: live-only models accept current
+        # cycles, reject truly historical ones. Without this branch
+        # callers asking for an explicit *live* cycle (e.g. HAFS during
+        # an active storm, HREF for today) would see HistoricalDepthError
+        # even though the mirror has the bytes — the old behavior was a
+        # blanket reject regardless of cycle freshness.
+        now_utc = datetime.now(UTC)
+        live_floor = now_utc - LIVE_CYCLE_WINDOW
+        if requested_cycle < live_floor:
+            raise HistoricalDepthError(
+                f"{model}: live-only (NOMADS-only with no AWS BDP archive); "
+                f"requested cycle {requested_cycle.isoformat()} is older than "
+                f"the {LIVE_CYCLE_WINDOW.days}-day live-cycle window "
+                f"(floor {live_floor.isoformat()}). Historical backfill is "
+                "not supported for live-only models; use a recent cycle.",
+                model=model,
+                requested_cycle=requested_cycle,
+                archive_depth=None,
+            )
+        # Recent cycle on a live-only model: pass through and let the
+        # downstream fetcher try the mirror.
+        return
     if requested_cycle < depth:
         raise HistoricalDepthError(
             f"{model}: requested cycle {requested_cycle.isoformat()} is "
@@ -204,6 +238,7 @@ def check_historical_depth(model: str, requested_cycle: datetime) -> None:
 __all__ = [
     "CYCLE_FREQ_HOURS",
     "CYCLE_HOURS",
+    "LIVE_CYCLE_WINDOW",
     "NWP_HISTORICAL_DEPTH",
     "check_historical_depth",
     "cycle_range",

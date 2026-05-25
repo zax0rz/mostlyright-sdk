@@ -76,11 +76,41 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 
-#: Models declared in the public schema enum that v0.1.0 does NOT serve.
-#: Calling :func:`forecast_nwp` with one raises
-#: :class:`NwpModelNotAvailableError` — never returns an empty DataFrame
-#: (anti-pattern noted in 03.2-RESEARCH.md).
-_RESERVED_MODELS: frozenset[str] = frozenset(NWP_MODEL_VALUES) - SUPPORTED_NWP_MODELS
+#: Models with end-to-end fetch + decode wiring on the weather impl.
+#: Phase 17 Wave 3 iter-2 review: ``SUPPORTED_NWP_MODELS`` now covers
+#: the full predeclared catalog (24 entries) for SSRF-allowlist purposes;
+#: the actual fetch path only handles the NCEP family that PLAN-03
+#: wired (HRRR/GFS/NBM + 8 Phase-17 NCEP additions). ECMWF / HAFS /
+#: MSC / legacy raise :class:`NwpModelNotAvailableError` from this entry
+#: point until their respective downstream plans land.
+_WIRED_NWP_MODELS: frozenset[str] = frozenset(
+    {
+        # v0.1.0
+        "hrrr",
+        "gfs",
+        "nbm",
+        # Phase 17 PLAN-03 NCEP family
+        "hrrrak",
+        "gefs",
+        "gdas",
+        "rap",
+        "rrfs",
+        "rtma",
+        "urma",
+        "cfs",
+    }
+)
+
+
+#: Models declared in the public schema enum that the weather impl
+#: does NOT end-to-end serve today. Calling :func:`forecast_nwp` with
+#: one raises :class:`NwpModelNotAvailableError` — never returns an
+#: empty DataFrame (anti-pattern noted in 03.2-RESEARCH.md). Mirrors
+#: ``mostlyright.forecasts._WIRED_NWP_MODELS`` so the two entry points
+#: agree on what's served.
+_RESERVED_MODELS: frozenset[str] = (
+    frozenset(NWP_MODEL_VALUES) - _WIRED_NWP_MODELS
+)
 
 
 #: cfgrib's canonical short-name for each GRIB2 ``(variable, level)`` pair
@@ -518,20 +548,40 @@ def forecast_nwp(
             structural failures (Pitfall 1 territory — cfgrib raises
             for a truncated final-record byte range).
     """
-    # Public schema enum split: mostlyright-served vs reserved (ECMWF).
-    if model in _RESERVED_MODELS:
-        raise NwpModelNotAvailableError(
-            f"NWP model {model!r} is reserved in schema.forecast_nwp.v1 "
-            "but not implemented in v0.1.0 (deferred to v0.2 — ECMWF "
-            "Tier-2 requires hosted infrastructure).",
-            model=model,
-            available_in="v0.2",
-        )
+    # Public schema enum membership: typo / unknown model.
     if model not in SUPPORTED_NWP_MODELS:
         raise ValueError(
             f"model must be one of {sorted(SUPPORTED_NWP_MODELS)} "
             f"(or reserved in {sorted(NWP_MODEL_VALUES)} for v0.2); "
             f"got {model!r}"
+        )
+    # Phase 17 PLAN-05: MSC Canadian family bypass — raise
+    # HistoricalDepthError(archive_depth=None) for any caller before the
+    # reserved-models gate decides MSC isn't wired. MSC's contract is
+    # "live-only Datamart, 24h retention" and the right error class for
+    # callers to branch on is HistoricalDepthError, not
+    # NwpModelNotAvailableError.
+    from ._fetchers._msc_archive import MSC_MODELS, raise_msc_historical_depth
+
+    if model in MSC_MODELS:
+        cycle_for_error = (
+            cycle.astimezone(UTC)
+            if cycle is not None and cycle.tzinfo is not None
+            else (cycle if cycle is not None else datetime.now(UTC))
+        )
+        raise_msc_historical_depth(model=model, requested_cycle=cycle_for_error)
+    # Reserved (predeclared-but-not-wired) models — ECMWF + HAFS + legacy
+    # NAM/HREF/HiResW until their downstream plans land. Surface
+    # NwpModelNotAvailableError so callers see the right error class
+    # before falling through to the [nwp] extra imports.
+    if model in _RESERVED_MODELS:
+        raise NwpModelNotAvailableError(
+            f"NWP model {model!r} is reserved in schema.forecast_nwp.v1 "
+            "but not implemented in v0.1.0 (deferred to v0.2 — ECMWF "
+            "Tier-2 + HAFS + legacy NAM/HREF/HiResW require additional "
+            "wiring).",
+            model=model,
+            available_in="v0.2",
         )
     if mirror is not None and mirror not in SUPPORTED_NWP_MIRRORS:
         raise ValueError(
@@ -548,20 +598,8 @@ def forecast_nwp(
     if fxx is None:
         fxx = 0 if model in {"rtma", "urma"} else 1
 
-    # Phase 17 PLAN-05: MSC Canadian family bypass. MSC Datamart has a 24h
-    # retention window; PLAN-09 will wire the per-variable fetcher once
-    # research integration lands. Short-circuit BEFORE the [nwp] extra
-    # imports so MSC callers see a clean ``HistoricalDepthError`` rather
-    # than ``SourceUnavailableError`` about missing cfgrib.
-    from ._fetchers._msc_archive import MSC_MODELS, raise_msc_historical_depth
-
-    if model in MSC_MODELS:
-        cycle_for_error = (
-            cycle.astimezone(UTC)
-            if cycle is not None and cycle.tzinfo is not None
-            else (cycle if cycle is not None else datetime.now(UTC))
-        )
-        raise_msc_historical_depth(model=model, requested_cycle=cycle_for_error)
+    # (MSC bypass already fired above — pre-RESERVED-gate. No duplicate
+    # needed here; see iter-2 review reorganisation.)
 
     # Phase 17 PLAN-07: cycle vs cycle_range_start mutual-exclusion +
     # historical-depth guard. Lives BEFORE the [nwp] extra imports so a

@@ -241,22 +241,41 @@ def fetch_iem_mos(
 
     if not rows:
         empty = pd.DataFrame(columns=list(_CANONICAL_COLUMNS))
-        # Schema validator requires both attrs to match
-        # schema.forecast.iem_mos.v1 — stamp them so an empty return
-        # passes validation just like a populated one.
         empty.attrs["source"] = "iem.archive"
         empty.attrs["retrieved_at"] = retrieved_at
-        # Pin sky_cover_pct dtype: validator checks dtype on nullable
-        # columns when present. IEM MOS never emits sky cover so the
-        # column stays all-NaN; coerce to pandas Int64 (nullable int).
-        empty["sky_cover_pct"] = empty["sky_cover_pct"].astype("Int64")
-        return empty
+        return _coerce_canonical_dtypes(empty)
     df = pd.DataFrame(rows, columns=list(_CANONICAL_COLUMNS))
     df.attrs["source"] = "iem.archive"
     df.attrs["retrieved_at"] = retrieved_at
-    # sky_cover_pct is always None in IEM MOS rows; coerce to nullable
-    # Int64 so the column matches schema.forecast.iem_mos.v1 dtype.
-    df["sky_cover_pct"] = df["sky_cover_pct"].astype("Int64")
+    return _coerce_canonical_dtypes(df)
+
+
+def _coerce_canonical_dtypes(df: pd.DataFrame) -> pd.DataFrame:
+    """Coerce IEM MOS columns to the canonical
+    ``schema.forecast.iem_mos.v1`` dtypes (Phase 17 Wave 3 iter-2 review).
+
+    Uses pandas nullable dtypes (``Int64``, ``Float64``, ``string``) so
+    missing fields survive without forcing the column to ``object``.
+    Empty DataFrames also get the right per-column dtype so
+    :func:`validate_dataframe` accepts them.
+    """
+    df["station"] = df["station"].astype("string")
+    df["model"] = df["model"].astype("string")
+    df["source"] = df["source"].astype("string")
+    df["issued_at"] = pd.to_datetime(df["issued_at"], utc=True, errors="coerce")
+    df["valid_at"] = pd.to_datetime(df["valid_at"], utc=True, errors="coerce")
+    df["retrieved_at"] = pd.to_datetime(df["retrieved_at"], utc=True, errors="coerce")
+    df["forecast_hour"] = pd.to_numeric(df["forecast_hour"], errors="coerce").astype(
+        "Int64"
+    )
+    df["wind_dir_deg"] = pd.to_numeric(df["wind_dir_deg"], errors="coerce").astype(
+        "Int64"
+    )
+    df["sky_cover_pct"] = pd.to_numeric(df["sky_cover_pct"], errors="coerce").astype(
+        "Int64"
+    )
+    for fcol in ("temp_c", "dew_point_c", "wind_speed_ms", "precip_probability"):
+        df[fcol] = pd.to_numeric(df[fcol], errors="coerce").astype("Float64")
     return df
 
 

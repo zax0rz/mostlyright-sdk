@@ -135,3 +135,52 @@ def test_public_forecasts_wrapper_forwards_cycle_range_kwargs() -> None:
             cycle_range_start=datetime(2026, 5, 24, 0, tzinfo=UTC),
             cycle_range_end=datetime(2026, 5, 24, 23, tzinfo=UTC),
         )
+
+
+# ---------------------------------------------------------------------------
+# Phase 17 Wave 3 iter-5 review: live-only model live-cycle acceptance.
+#
+# Models with ``NWP_HISTORICAL_DEPTH[model] is None`` (HAFS, HREF, HiResW,
+# the MSC family) previously raised ``HistoricalDepthError`` for ANY cycle
+# — even an explicit current/live cycle the caller actually wanted. The
+# fix: ``check_historical_depth`` now accepts cycles within
+# ``LIVE_CYCLE_WINDOW`` (7 days) of wall-clock now() for live-only models,
+# and raises only for truly historical requests.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("model", ["hafs", "href", "hiresw"])
+def test_live_only_model_accepts_current_cycle(model: str) -> None:
+    """A 1-hour-old cycle on a live-only model (depth=None) must NOT
+    raise ``HistoricalDepthError`` — these models are served by NOMADS
+    with short retention and the caller is asking for bytes the mirror
+    still holds.
+    """
+    from datetime import timedelta
+
+    from mostlyright.weather._fetchers._nwp_cycle_chunks import (
+        check_historical_depth,
+    )
+
+    one_hour_ago = datetime.now(UTC) - timedelta(hours=1)
+    # Should NOT raise.
+    check_historical_depth(model, one_hour_ago)
+
+
+@pytest.mark.parametrize("model", ["hafs", "href", "hiresw"])
+def test_live_only_model_rejects_historical_cycle(model: str) -> None:
+    """A 30-day-old cycle on a live-only model must still raise
+    ``HistoricalDepthError`` — the bytes are gone from the mirror and
+    historical backfill is not supported for these families.
+    """
+    from datetime import timedelta
+
+    from mostlyright.weather._fetchers._nwp_cycle_chunks import (
+        check_historical_depth,
+    )
+
+    thirty_days_ago = datetime.now(UTC) - timedelta(days=30)
+    with pytest.raises(HistoricalDepthError) as exc_info:
+        check_historical_depth(model, thirty_days_ago)
+    assert exc_info.value.archive_depth is None
+    assert exc_info.value.model == model

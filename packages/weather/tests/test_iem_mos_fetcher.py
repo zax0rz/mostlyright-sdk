@@ -177,3 +177,72 @@ def test_parse_mos_row_missing_runtime_returns_none() -> None:
         retrieved_at=datetime.now(UTC),
     )
     assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Phase 17 Wave 3 iter-5 review: canonical-dtype regression coverage.
+#
+# ``fetch_iem_mos`` MUST coerce every canonical column to its schema dtype
+# on BOTH return paths (empty and populated) so ``validate_dataframe(...,
+# "schema.forecast.iem_mos.v1")`` succeeds in the documented no-data case
+# and on populated frames where every numeric field is ``None`` (IEM ``M``
+# sentinel). Without coercion pandas infers ``object`` and the validator
+# would surface ``dtype_mismatch`` violations for callers exercising the
+# documented schema contract.
+# ---------------------------------------------------------------------------
+
+
+def test_fetch_iem_mos_empty_dataframe_validates_against_schema() -> None:
+    """Empty DataFrame (404 chain / no-data) must pass ``validate_dataframe``.
+
+    Regression for codex iter-5 HIGH: prior to iter-2's
+    ``_coerce_canonical_dtypes`` helper, the empty path returned columns
+    of dtype ``object`` and the validator raised ``dtype_mismatch`` for
+    every timestamp / numeric column.
+    """
+    from mostlyright.core import validate_dataframe
+
+    client = _make_mock_client(None)
+    df = fetch_iem_mos("KNYC", "2026-05-01", "2026-05-01", model="nbe", client=client)
+    assert df.empty
+    # Spot-check the dtypes the validator dispatches on.
+    assert str(df["issued_at"].dtype) == "datetime64[ns, UTC]"
+    assert str(df["valid_at"].dtype) == "datetime64[ns, UTC]"
+    assert str(df["retrieved_at"].dtype) == "datetime64[ns, UTC]"
+    assert str(df["forecast_hour"].dtype) == "Int64"
+    assert str(df["wind_dir_deg"].dtype) == "Int64"
+    assert str(df["sky_cover_pct"].dtype) == "Int64"
+    assert str(df["temp_c"].dtype) == "Float64"
+    assert str(df["dew_point_c"].dtype) == "Float64"
+    assert str(df["wind_speed_ms"].dtype) == "Float64"
+    assert str(df["precip_probability"].dtype) == "Float64"
+    # Validator must accept the empty frame.
+    reg = validate_dataframe(df, "schema.forecast.iem_mos.v1")
+    assert reg.rows == 0
+    assert reg.source == "iem.archive"
+
+
+def test_fetch_iem_mos_all_missing_numeric_validates_against_schema() -> None:
+    """Populated DataFrame where every numeric field is ``M`` must also
+    validate — without coercion, all-null nullable numeric columns infer
+    ``object`` dtype and the validator rejects them.
+    """
+    from mostlyright.core import validate_dataframe
+
+    row = dict(_SAMPLE_ROW)
+    row["tmp"] = "M"
+    row["dpt"] = "M"
+    row["wsp"] = "M"
+    row["wdr"] = "M"
+    row["pop12"] = "M"
+    client = _make_mock_client({"data": [row]})
+    df = fetch_iem_mos("KNYC", "2026-05-01", "2026-05-01", model="nbe", client=client)
+    assert len(df) > 0
+    # All numeric columns null, but their dtype must still be
+    # nullable-numeric (not ``object``).
+    assert str(df["temp_c"].dtype) == "Float64"
+    assert str(df["wind_dir_deg"].dtype) == "Int64"
+    # Validator must accept the all-null populated frame.
+    reg = validate_dataframe(df, "schema.forecast.iem_mos.v1")
+    assert reg.rows == len(df)
+    assert reg.source == "iem.archive"
