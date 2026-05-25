@@ -474,6 +474,8 @@ def forecast_nwp(
     model: str,
     *,
     cycle: datetime | None = None,
+    cycle_range_start: datetime | None = None,
+    cycle_range_end: datetime | None = None,
     fxx: int = 1,
     mirror: str | None = None,
     client: httpx.Client | None = None,
@@ -552,6 +554,40 @@ def forecast_nwp(
             else (cycle if cycle is not None else datetime.now(UTC))
         )
         raise_msc_historical_depth(model=model, requested_cycle=cycle_for_error)
+
+    # Phase 17 PLAN-07: cycle vs cycle_range_start mutual-exclusion +
+    # historical-depth guard. Lives BEFORE the [nwp] extra imports so a
+    # caller without cfgrib still sees the right ValueError /
+    # NotImplementedError / HistoricalDepthError rather than
+    # ``SourceUnavailableError`` about missing optional deps.
+    from ._fetchers._nwp_cycle_chunks import check_historical_depth, cycle_range
+
+    if cycle is not None and cycle_range_start is not None:
+        raise ValueError(
+            "forecast_nwp(): cycle and cycle_range_start are mutually exclusive."
+        )
+    if cycle_range_start is not None:
+        if cycle_range_end is None:
+            raise ValueError(
+                "forecast_nwp(): cycle_range_start requires cycle_range_end."
+            )
+        cycles_to_fetch = cycle_range(model, cycle_range_start, cycle_range_end)
+        raise NotImplementedError(
+            f"forecast_nwp(cycle_range_start, cycle_range_end) iteration is "
+            f"wired in PLAN-09. Wave 3 ships cycle_range() + "
+            f"check_historical_depth(); Wave 4 wires execution. "
+            f"Computed {len(cycles_to_fetch)} cycles."
+        )
+
+    # If the caller supplied a single cycle, validate its archive depth
+    # BEFORE the [nwp] extra imports so callers without cfgrib still see
+    # HistoricalDepthError for pre-archive cycles.
+    if cycle is not None:
+        if cycle.tzinfo is None or cycle.tzinfo.utcoffset(cycle) is None:
+            raise ValueError(
+                f"cycle must be timezone-aware (UTC); got naive {cycle!r}"
+            )
+        check_historical_depth(model, cycle.astimezone(UTC))
 
     # Phase 17 PLAN-06: legacy-model deprecation. The DeprecatedModelWarning
     # emission lives in ``mostlyright.forecasts.forecast_nwp`` (the public

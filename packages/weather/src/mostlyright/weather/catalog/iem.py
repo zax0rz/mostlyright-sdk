@@ -68,11 +68,37 @@ class IEMAdapter:
         from_date: str,
         to_date: str,
     ) -> pd.DataFrame:
-        """MOS forecast leg — deferred to Phase 3 (Open Q1 resolution)."""
-        raise NotImplementedError(
-            "MOS forecasts deferred to Phase 3; see Open Q1 resolution in "
-            "Phase 2 PLAN.md (parser confirmed absent in packages/weather/ "
-            "on 2026-05-21)."
+        """Fetch IEM MOS forecasts via :func:`fetch_iem_mos` (Phase 17 PLAN-08).
+
+        Replaces the Phase-2 ``NotImplementedError`` stub. The default
+        model is ``nbe`` (preferred for US stations); other supported
+        models (gfs / lav / met / ecm) are reachable via direct
+        :func:`fetch_iem_mos` calls.
+
+        Args:
+            source: ``"iem.archive"`` (historical) or ``"iem.live"``
+                (v0.2 — currently raises NotImplementedError).
+            station: ICAO code.
+            from_date: ISO YYYY-MM-DD lower bound (inclusive).
+            to_date: ISO YYYY-MM-DD upper bound (inclusive).
+
+        Returns:
+            DataFrame matching ``schema.forecast.iem_mos.v1``.
+
+        Raises:
+            ValueError: unknown ``source``.
+            NotImplementedError: ``source="iem.live"``.
+        """
+        from mostlyright.weather._fetchers._iem_mos import fetch_iem_mos
+
+        if source == "iem.archive":
+            return fetch_iem_mos(station, from_date, to_date, model="nbe")
+        if source == "iem.live":
+            raise NotImplementedError(
+                "iem.live MOS deferred to v0.2; use source='iem.archive'."
+            )
+        raise ValueError(
+            f"source must be one of {{'iem.archive', 'iem.live'}}; got {source!r}"
         )
 
     @staticmethod
