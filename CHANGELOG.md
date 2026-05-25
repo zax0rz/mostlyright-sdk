@@ -76,7 +76,8 @@ path is wired.
 - **ECMWF**: NCEP base + tp-meters rule (ECMWF tp unit is meters, not mm).
 - **GEFS / HREF / REPS**: NCEP base + ensemble-dispersion sanity.
 - **HAFS**: NCEP base + basin-position sanity (storm_lat ∈ [0, 60]).
-- **MSC HRDPS**: NCEP base + regional-grid bounds (`grid_dist_km < 50`).
+- **MSC HRDPS**: NCEP base + regional-grid bounds (`grid_dist_km > 50`
+  flags `suspect` — outside the HRDPS continental grid footprint).
 - Worst-case semantics: suspect > flagged > clean per row.
 
 **Herbie-pattern adoption**:

@@ -164,7 +164,7 @@ today:
 # Future signature; not callable in v1.0.
 df = forecast_nwp(
     station="KNYC", model="hafs", storm="laura",
-    cycle=datetime(2026, 9, 1, 12, tzinfo=UTC), fxx=range(0, 25),
+    cycle=datetime(2026, 9, 1, 12, tzinfo=UTC), fxx=24,
 )
 ```
 
@@ -174,14 +174,33 @@ df = forecast_nwp(
 from datetime import UTC, datetime
 from mostlyright.forecasts import forecast_nwp
 
-# Fetch ALL HRRR cycles in May 2024
+# Fetch HRRR cycles in May 2024 at fxx=1 (next-hour forecast)
 df = forecast_nwp(
     station="KNYC", model="hrrr",
     cycle_range_start=datetime(2024, 5, 1, 0, tzinfo=UTC),
     cycle_range_end=datetime(2024, 5, 31, 23, tzinfo=UTC),
-    fxx=range(0, 25),
+    fxx=1,
 )
-# ~744 HRRR cycles × 25 forecast hours each
+# ~744 HRRR cycles × 1 forecast hour each
+```
+
+`fxx` is a single `int` (default `1`; `0` for analysis-only RTMA /
+URMA). To collect multiple forecast hours per cycle, call
+`forecast_nwp` per-hour and concatenate:
+
+```python
+import pandas as pd
+
+frames = [
+    forecast_nwp(
+        station="KNYC", model="hrrr",
+        cycle_range_start=datetime(2024, 5, 1, 0, tzinfo=UTC),
+        cycle_range_end=datetime(2024, 5, 31, 23, tzinfo=UTC),
+        fxx=h,
+    )
+    for h in range(0, 25)
+]
+df = pd.concat(frames, ignore_index=True)
 ```
 
 `cycle=` and `cycle_range_start=` are mutually exclusive. Per-model AWS
@@ -214,8 +233,9 @@ from `weather.qc.rules_nwp.QC_RULES_NWP[model]`:
 - **GEFS / HREF / REPS**: NCEP base + ensemble-dispersion sanity
   (cross-row).
 - **HAFS**: NCEP base + basin-position sanity (`storm_lat ∈ [0, 60]`).
-- **MSC HRDPS**: NCEP base + regional-grid bounds
-  (`grid_dist_km < 50`).
+- **MSC HRDPS**: NCEP base + regional-grid bounds — rows whose
+  `grid_dist_km > 50` (i.e. farther than 50 km from the HRDPS
+  continental grid) are flagged `suspect`.
 
 Worst-case semantics: suspect > flagged > clean per row. Filter
 clean-only rows with `df[df["qc_status"] == "clean"]`.
