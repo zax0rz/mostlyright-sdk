@@ -17,7 +17,6 @@ from typing import Any
 
 import httpx
 import pandas as pd
-
 from mostlyright._internal._http import HTTP_TIMEOUT
 
 log = logging.getLogger(__name__)
@@ -33,6 +32,34 @@ _KT_TO_MS: float = 0.5144444
 
 #: IEM polite-floor delay between MOS GETs (reused convention from iem_asos).
 _MOS_POLITE_DELAY_S: float = 1.0
+
+#: NBE runtime-cycle transition: IEM moved NBE from {01,07,13,19}Z to
+#: {00,06,12,18}Z on 2026-05-05. Historical backfills that span this
+#: cutover need both sets covered.
+_NBE_CYCLE_CUTOVER: datetime = datetime(2026, 5, 5, tzinfo=UTC)
+
+
+def _runtime_hours_for(
+    model: str, from_dt: datetime, to_dt: datetime
+) -> tuple[int, ...]:
+    """Return the runtime-hours tuple for ``model`` in ``[from_dt, to_dt]``.
+
+    NBE: ``{01,07,13,19}Z`` pre-cutover, ``{00,06,12,18}Z`` post-cutover.
+    Ranges that span the cutover get the UNION so neither half silently
+    returns empty 404s (Phase 17 Wave 3 iter-4 review).
+
+    All other models default to ``{00,06,12,18}Z`` (GFS / LAV / MET / ECM
+    follow the standard 6-hourly NCEP cycle).
+    """
+    if model == "nbe":
+        pre = from_dt < _NBE_CYCLE_CUTOVER
+        post = to_dt >= _NBE_CYCLE_CUTOVER
+        if pre and post:
+            return (0, 1, 6, 7, 12, 13, 18, 19)
+        if pre:
+            return (1, 7, 13, 19)
+        return (0, 6, 12, 18)
+    return (0, 6, 12, 18)
 
 #: Canonical column list matching ``schema.forecast.iem_mos.v1.COLUMNS``.
 #: Returned empty DataFrame uses these so dtype inference is consistent
@@ -197,11 +224,19 @@ def fetch_iem_mos(
     rows: list[dict[str, Any]] = []
     retrieved_at = datetime.now(UTC)
     try:
-        # Build the 00/06/12/18Z runtimes covering [from_dt, to_dt].
+        # Phase 17 Wave 3 iter-4 review: model-aware runtime hours.
+        # NBE cycle hours moved from {01,07,13,19}Z to {00,06,12,18}Z on
+        # 2026-05-05; pre-cutover historical backfills would 404 on every
+        # canonical-hour request and silently return an empty DataFrame.
+        # The safe strategy is to iterate BOTH hour sets when the cycle
+        # transition is in or near the requested window. The 404-skip
+        # path absorbs the wrong-runtime requests at the cost of ~1
+        # extra GET per day per side.
         runtimes: list[datetime] = []
+        hours = _runtime_hours_for(model, from_dt, to_dt)
         cur = from_dt.replace(hour=0, minute=0, second=0, microsecond=0)
         while cur <= to_dt:
-            for h in (0, 6, 12, 18):
+            for h in hours:
                 rt = cur.replace(hour=h)
                 if from_dt <= rt <= to_dt:
                     runtimes.append(rt)

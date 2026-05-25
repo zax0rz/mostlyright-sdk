@@ -184,3 +184,31 @@ def test_forecast_nwp_legacy_emits_deprecated_warning(model: str) -> None:
         pytest.raises(NwpModelNotAvailableError),
     ):
         forecast_nwp("KNYC", model)
+
+
+# ---------------------------------------------------------------------------
+# Phase 17 Wave 3 iter-5 review: defensive emission at the weather entry
+# point. Direct callers of ``mostlyright.weather.forecast_nwp`` (bypassing
+# the public ``mostlyright.forecasts`` dispatch surface) must also see the
+# retirement signal. Both layers emit; Python's per-location warning
+# de-dup handles the dual emission when both run in sequence.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("model", ["nam", "href", "hiresw"])
+def test_weather_forecast_nwp_direct_import_emits_deprecated_warning(
+    model: str,
+) -> None:
+    """Direct ``from mostlyright.weather.forecast_nwp import forecast_nwp``
+    callers must see the ``DeprecatedModelWarning`` even though the
+    ``_RESERVED_MODELS`` gate immediately raises
+    ``NwpModelNotAvailableError`` for these legacy models.
+    """
+    from mostlyright.core.exceptions import NwpModelNotAvailableError
+    from mostlyright.weather.forecast_nwp import forecast_nwp as weather_forecast_nwp
+
+    with (
+        pytest.warns(DeprecatedModelWarning, match="retires 2026-08-31"),
+        pytest.raises(NwpModelNotAvailableError),
+    ):
+        weather_forecast_nwp("KNYC", model)

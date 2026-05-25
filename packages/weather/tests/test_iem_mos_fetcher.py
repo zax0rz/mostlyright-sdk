@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import httpx
 import pandas as pd
 import pytest
-
 from mostlyright.weather._fetchers._iem_mos import (
     SUPPORTED_MOS_MODELS,
     _parse_mos_row,
+    _runtime_hours_for,
     fetch_iem_mos,
 )
 
@@ -50,7 +51,7 @@ _SAMPLE_ROW = {
 
 
 def test_supported_mos_models_set() -> None:
-    assert SUPPORTED_MOS_MODELS == frozenset({"nbe", "gfs", "lav", "met", "ecm"})
+    assert frozenset({"nbe", "gfs", "lav", "met", "ecm"}) == SUPPORTED_MOS_MODELS
 
 
 def test_fetch_iem_mos_returns_dataframe() -> None:
@@ -246,3 +247,33 @@ def test_fetch_iem_mos_all_missing_numeric_validates_against_schema() -> None:
     reg = validate_dataframe(df, "schema.forecast.iem_mos.v1")
     assert reg.rows == len(df)
     assert reg.source == "iem.archive"
+
+
+# Phase 17 Wave 3 iter-4 review hardening: NBE runtime-hour cutover.
+
+
+def test_runtime_hours_for_nbe_post_cutover() -> None:
+    """Post-2026-05-05: NBE on canonical 6-hourly grid {00,06,12,18}Z."""
+    post = datetime(2026, 5, 10, tzinfo=UTC)
+    assert _runtime_hours_for("nbe", post, post) == (0, 6, 12, 18)
+
+
+def test_runtime_hours_for_nbe_pre_cutover() -> None:
+    """Pre-2026-05-05: NBE on legacy {01,07,13,19}Z grid."""
+    pre = datetime(2026, 5, 1, tzinfo=UTC)
+    assert _runtime_hours_for("nbe", pre, pre) == (1, 7, 13, 19)
+
+
+def test_runtime_hours_for_nbe_spanning_cutover() -> None:
+    """Span the cutover → union of both hour sets (8 hours)."""
+    pre = datetime(2026, 5, 1, tzinfo=UTC)
+    post = datetime(2026, 5, 10, tzinfo=UTC)
+    assert _runtime_hours_for("nbe", pre, post) == (0, 1, 6, 7, 12, 13, 18, 19)
+
+
+def test_runtime_hours_for_gfs_always_canonical() -> None:
+    """Non-NBE models always use {00,06,12,18}Z regardless of date range."""
+    pre = datetime(2025, 1, 1, tzinfo=UTC)
+    post = datetime(2026, 12, 31, tzinfo=UTC)
+    for model in ("gfs", "lav", "met", "ecm"):
+        assert _runtime_hours_for(model, pre, post) == (0, 6, 12, 18)

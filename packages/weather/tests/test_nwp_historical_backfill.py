@@ -6,7 +6,6 @@ import inspect
 from datetime import UTC, datetime
 
 import pytest
-
 from mostlyright.core.exceptions import HistoricalDepthError
 
 

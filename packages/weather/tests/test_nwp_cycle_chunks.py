@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
-
 from mostlyright.core.exceptions import HistoricalDepthError
 from mostlyright.weather._fetchers._nwp_cycle_chunks import (
     CYCLE_FREQ_HOURS,
