@@ -13,14 +13,14 @@ Mechanical end-to-end rename of every in-repo identifier from `tradewinds` to
   `tradewinds-markets` → `mostlyright` / `mostlyright-weather` /
   `mostlyright-markets`
 - 5 npm package names renamed: `@tradewinds/{codegen,core,weather,markets}` +
-  unscoped meta `tradewinds` → `@mostlyright/*` + unscoped meta `mostlyright`
+  unscoped meta `tradewinds` → `@mostlyrightmd/*` + unscoped meta `mostlyright`
 - 3 Python source directories renamed via `git mv` (blame preserved)
 - ~993 Python `from tradewinds` / `import tradewinds` import-line rewrites +
   ~552 string-quoted module-path rewrites (`patch("tradewinds.…")`,
   `sys.modules["tradewinds.…"]`, bare `tradewinds.__version__`, etc.) — Wave 2
 - ~64 TypeScript `from "@tradewinds/…"` import-line rewrites + ~395 broader
   rewrites (comments, tsup.config.ts, codegen-source header strings, tests) +
-  pnpm codegen regen with `@mostlyright/codegen` AUTO-GENERATED header — Wave 3
+  pnpm codegen regen with `@mostlyrightmd/codegen` AUTO-GENERATED header — Wave 3
 - Cache env var `TRADEWINDS_CACHE_DIR` → `MOSTLYRIGHT_CACHE_DIR` with
   one-release back-compat shim emitting `DeprecationWarning` (Wave 4)
 - Default cache path `~/.tradewinds/cache/v1/` → `~/.mostlyright/cache/v1/`
@@ -55,8 +55,8 @@ confirms by replacing `[ ]` with `[x]` in the PR description before merge:
 
 - [ ] **OP1**: `mv ~/Documents/GitHub/mostlyright ~/Documents/GitHub/mostlyright-legacy` (confirmed)
 - [ ] **OP2**: 3 PyPI pending publishers registered (`mostlyright`, `mostlyright-weather`, `mostlyright-markets`, bound to repo + `release.yml` + env `pypi`) (confirmed)
-- [ ] **OP3**: `@mostlyright` npm scope claimed on npmjs.com (confirmed)
-- [ ] **OP4**: 4 npm OIDC pending publishers registered (`@mostlyright/core`, `@mostlyright/weather`, `@mostlyright/markets`, unscoped meta `mostlyright`, bound to repo + `release-ts.yml` + env `npm`) (confirmed)
+- [ ] **OP3**: `@mostlyrightmd` npm scope claimed on npmjs.com (confirmed)
+- [ ] **OP4**: 4 npm OIDC pending publishers registered (`@mostlyrightmd/core`, `@mostlyrightmd/weather`, `@mostlyrightmd/markets`, unscoped meta `mostlyright`, bound to repo + `release-ts.yml` + env `npm`) (confirmed)
 
 OP2-OP4 are critical: post-merge `release.yml` / `release-ts.yml` runs will
 fail with "trusted publisher not found" if NEW publishers are not registered

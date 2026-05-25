@@ -9,8 +9,8 @@
 
 Generate API reference documentation from source-of-truth — Sphinx + sphinx-autodoc for Python (consumes NumPy-style docstrings), TypeDoc for TypeScript (consumes JSDoc/TSDoc on `.d.ts` surfaces) — emit MDX, push into `mostly-right-landing/src/content/docs/docs/sdk/` (Starlight ingestion path), deploy via Cloudflare Pages on every `v*` / `vts-*` non-rc tag.
 
-**What this phase ships in the SDK repo (`mostlyright/mostlyright-sdk`):**
-**Pre-condition: Phase 13 W0 closed — repo already transferred from `helloiamvu/tradewinds` to `mostlyright/mostlyright-sdk`. All workflow paths, GitHub Actions URLs, and PR-against-landing references below use the new repo path.**
+**What this phase ships in the SDK repo (`mostlyrightmd/mostlyright-sdk`):**
+**Pre-condition: Phase 13 W0 closed — repo already transferred from `helloiamvu/tradewinds` to `mostlyrightmd/mostlyright-sdk`. All workflow paths, GitHub Actions URLs, and PR-against-landing references below use the new repo path.**
 - `docs/sphinx/conf.py` + Makefile + `docs/sphinx/index.rst` — Sphinx doc-build infra
 - `packages-ts/typedoc.json` (single root config that walks the 4 published packages) — TypeDoc config
 - `scripts/build_python_docs.sh` + `scripts/build_ts_docs.sh` — convenience local wrappers

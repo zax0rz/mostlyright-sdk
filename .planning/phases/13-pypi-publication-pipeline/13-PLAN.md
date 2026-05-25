@@ -40,17 +40,17 @@ must_haves:
 ---
 
 <objective>
-W0 (NEW 2026-05-25) — **Operator org + repo prep (BLOCKING all later waves):** (a) operator creates `mostlyright` GitHub org, (b) cleanup commit on `main` removes `.planning/` from tracking + dev artifacts (paired with Phase 16 W0), (c) operator transfers `helloiamvu/tradewinds` → `mostlyright/mostlyright-sdk`. Document each step in OPERATOR-PREFLIGHT.md before W1 publisher registration (PyPI OIDC bindings are keyed to `(owner, repo)` so they MUST be registered AFTER the transfer).
+W0 (NEW 2026-05-25) — **Operator org + repo prep (BLOCKING all later waves):** (a) operator creates `mostlyrightmd` GitHub org, (b) cleanup commit on `main` removes `.planning/` from tracking + dev artifacts (paired with Phase 16 W0), (c) operator transfers `helloiamvu/tradewinds` → `mostlyrightmd/mostlyright-sdk`. Document each step in OPERATOR-PREFLIGHT.md before W1 publisher registration (PyPI OIDC bindings are keyed to `(owner, repo)` so they MUST be registered AFTER the transfer).
 
-W1 — Operator pre-flight (OP1 recommended + OP2 REQUIRED): register 3 PyPI + 3 TestPyPI pending publishers **against `mostlyright/mostlyright-sdk`**, create GH Environments `pypi` + `testpypi` on the new repo. Write operator-confirmation checklist file.
+W1 — Operator pre-flight (OP1 recommended + OP2 REQUIRED): register 3 PyPI + 3 TestPyPI pending publishers **against `mostlyrightmd/mostlyright-sdk`**, create GH Environments `pypi` + `testpypi` on the new repo. Write operator-confirmation checklist file.
 
-W2 — `v0.1.0rc1` TestPyPI dry-run: bump versions across the 3 pyproject.toml files (already at 0.1.0rc1 from Phase 1), seed CHANGELOG.md `[0.1.0rc1]` section, push tag to `mostlyright/mostlyright-sdk`, monitor release-testpypi.yml, install-from-TestPyPI smoke test in a clean venv.
+W2 — `v0.1.0rc1` TestPyPI dry-run: bump versions across the 3 pyproject.toml files (already at 0.1.0rc1 from Phase 1), seed CHANGELOG.md `[0.1.0rc1]` section, push tag to `mostlyrightmd/mostlyright-sdk`, monitor release-testpypi.yml, install-from-TestPyPI smoke test in a clean venv.
 
 W3 — Soak: ≥1 week on TestPyPI with at least one external installer confirming the quickstart works end-to-end (clock-timed <5 min).
 
 W4 — `v0.1.0` prod PyPI promotion: bump versions to `0.1.0` (drop `rc1`), seed CHANGELOG.md `[0.1.0]` section, push tag, monitor release.yml, install-from-prod-PyPI smoke test. Write `RUNBOOK.md` documenting the routine for future 0.1.x / 0.2.x releases.
 
-Output: 3 wheels on prod pypi.org at v0.1.0 (publishers bound to `mostlyright/mostlyright-sdk`); clean-venv smoke install works; external installer confirms quickstart works; RUNBOOK.md committed.
+Output: 3 wheels on prod pypi.org at v0.1.0 (publishers bound to `mostlyrightmd/mostlyright-sdk`); clean-venv smoke install works; external installer confirms quickstart works; RUNBOOK.md committed.
 </objective>
 
 <execution_context>
@@ -87,12 +87,12 @@ Output: 3 wheels on prod pypi.org at v0.1.0 (publishers bound to `mostlyright/mo
 
       ## Operator pre-flight: org + cleanup + transfer (BLOCKING)
 
-      ### OP0a — Create `mostlyright` GitHub org
+      ### OP0a — Create `mostlyrightmd` GitHub org
         - Visit https://github.com/organizations/new (free tier OK for v1.0; v1.x may upgrade for SSO/team controls)
-        - Org name: `mostlyright` — confirm name is available
+        - Org name: `mostlyrightmd` — confirm name is available
         - Owner email: operator's primary github email
         - No teams needed yet (single-maintainer for v1.0)
-        - Verify: `gh api orgs/mostlyright -q .login` returns `mostlyright` (after creation)
+        - Verify: `gh api orgs/mostlyrightmd -q .login` returns `mostlyrightmd` (after creation)
 
       ### OP0b — Cleanup commit on `main` (BEFORE transfer)
         - Branch from `main`: `git checkout -b cleanup/prepare-public-transfer`
@@ -104,19 +104,19 @@ Output: 3 wheels on prod pypi.org at v0.1.0 (publishers bound to `mostlyright/mo
         - Review loop: codex `high` + python-architect per .planning/REVIEW-DISCIPLINE.md
         - Merge to `main` BEFORE OP0c
 
-      ### OP0c — Transfer `helloiamvu/tradewinds` → `mostlyright/mostlyright-sdk`
+      ### OP0c — Transfer `helloiamvu/tradewinds` → `mostlyrightmd/mostlyright-sdk`
         - Visit https://github.com/helloiamvu/tradewinds/settings → bottom of page → Transfer ownership
-        - New owner: `mostlyright`
+        - New owner: `mostlyrightmd`
         - New repo name: `mostlyright-sdk`
         - Confirm: type `helloiamvu/tradewinds` to authorize, click Transfer
-        - GitHub auto-redirects `helloiamvu/tradewinds` → `mostlyright/mostlyright-sdk` for 1 year per https://docs.github.com/en/repositories/creating-and-managing-repositories/renaming-a-repository#about-renaming-repositories
-        - Local clone update: `git remote set-url origin git@github.com:mostlyright/mostlyright-sdk.git`
-        - Verify: `gh repo view mostlyright/mostlyright-sdk -q .url` returns `https://github.com/mostlyright/mostlyright-sdk`
+        - GitHub auto-redirects `helloiamvu/tradewinds` → `mostlyrightmd/mostlyright-sdk` for 1 year per https://docs.github.com/en/repositories/creating-and-managing-repositories/renaming-a-repository#about-renaming-repositories
+        - Local clone update: `git remote set-url origin git@github.com:mostlyrightmd/mostlyright-sdk.git`
+        - Verify: `gh repo view mostlyrightmd/mostlyright-sdk -q .url` returns `https://github.com/mostlyrightmd/mostlyright-sdk`
 
       ### Confirmation checklist (operator marks these in PR description)
-      - [ ] OP0a: `mostlyright` GitHub org created
+      - [ ] OP0a: `mostlyrightmd` GitHub org created
       - [ ] OP0b: cleanup PR merged to `main` on `helloiamvu/tradewinds` (last commit before transfer)
-      - [ ] OP0c: repo transferred to `mostlyright/mostlyright-sdk`
+      - [ ] OP0c: repo transferred to `mostlyrightmd/mostlyright-sdk`
       - [ ] Local `origin` remote updated to new URL
       - [ ] CI workflows visible + passing under new repo URL (canary: re-trigger most recent workflow run from Actions tab)
 
@@ -128,7 +128,7 @@ Output: 3 wheels on prod pypi.org at v0.1.0 (publishers bound to `mostlyright/mo
     <automated>
     test -f .planning/phases/13-pypi-publication-pipeline/13-W0-ORG-TRANSFER.md
     grep -cE '^- \[ \] OP0[abc]' .planning/phases/13-pypi-publication-pipeline/13-W0-ORG-TRANSFER.md  # expect 3
-    grep -c 'mostlyright/mostlyright-sdk' .planning/phases/13-pypi-publication-pipeline/13-W0-ORG-TRANSFER.md  # expect >=3
+    grep -c 'mostlyrightmd/mostlyright-sdk' .planning/phases/13-pypi-publication-pipeline/13-W0-ORG-TRANSFER.md  # expect >=3
     grep -c 'github.com/organizations/new' .planning/phases/13-pypi-publication-pipeline/13-W0-ORG-TRANSFER.md  # expect >=1
     </automated>
   </verify>
@@ -148,20 +148,20 @@ Output: 3 wheels on prod pypi.org at v0.1.0 (publishers bound to `mostlyright/mo
   <action>
     Step 1 — write OPERATOR-PREFLIGHT.md with this structure (verbatim):
       - Pre-flight summary: 6 manual steps (OP1 recommended + OP2a + OP2b + OP2c three sub-steps for environments)
-      - **Pre-condition: W0 OP0a/OP0b/OP0c all checked off (org created, cleanup merged, repo transferred to `mostlyright/mostlyright-sdk`). All PyPI publisher bindings below MUST use the new repo coordinates.**
+      - **Pre-condition: W0 OP0a/OP0b/OP0c all checked off (org created, cleanup merged, repo transferred to `mostlyrightmd/mostlyright-sdk`). All PyPI publisher bindings below MUST use the new repo coordinates.**
       - Step-by-step instructions for each, including URLs, field-by-field values to enter on pypi.org / test.pypi.org / GH Settings → Environments
       - For each PyPI publisher form, the exact values are:
           * PyPI Project Name: `mostlyright` (or `-weather` / `-markets`)
-          * Owner: `mostlyright`
+          * Owner: `mostlyrightmd`
           * Repository name: `mostlyright-sdk`
           * Workflow filename: `release.yml` (prod) or `release-testpypi.yml` (TestPyPI)
           * Environment name: `pypi` (prod) or `testpypi` (TestPyPI)
       - Verification commands for each step (e.g. `curl -s https://pypi.org/pypi/mostlyright/json | jq '.info.name'` returns 404 = name available, 200 = need transfer; OIDC binding self-verifies only on first publish attempt)
       - 4-line PR-description-ready operator-confirmation checklist:
         - [ ] OP1: `mv ~/Documents/GitHub/mostlyright ~/Documents/GitHub/mostlyright-legacy` (recommended)
-        - [ ] OP2a: 3 prod PyPI publishers registered (owner=mostlyright, repo=mostlyright-sdk, workflow=release.yml, env=pypi)
-        - [ ] OP2b: 3 TestPyPI publishers registered (owner=mostlyright, repo=mostlyright-sdk, workflow=release-testpypi.yml, env=testpypi)
-        - [ ] OP2c: GH Environments `pypi` (required reviewer = operator) + `testpypi` created on `mostlyright/mostlyright-sdk`
+        - [ ] OP2a: 3 prod PyPI publishers registered (owner=mostlyrightmd, repo=mostlyright-sdk, workflow=release.yml, env=pypi)
+        - [ ] OP2b: 3 TestPyPI publishers registered (owner=mostlyrightmd, repo=mostlyright-sdk, workflow=release-testpypi.yml, env=testpypi)
+        - [ ] OP2c: GH Environments `pypi` (required reviewer = operator) + `testpypi` created on `mostlyrightmd/mostlyright-sdk`
     Step 2 — commit:
       git add .planning/phases/13-pypi-publication-pipeline/OPERATOR-PREFLIGHT.md
       git commit -m "phase13 W1: operator pre-flight checklist for PyPI publishers"
@@ -451,10 +451,10 @@ Output: 3 wheels on prod pypi.org at v0.1.0 (publishers bound to `mostlyright/mo
   <action>
     Step 1 — write RUNBOOK.md for routine future PyPI releases (0.1.1 / 0.2.0 / 1.0.0):
       sections:
-        - Header note: repo coordinates are `mostlyright/mostlyright-sdk` (operator transferred from `helloiamvu/tradewinds` in W0). All `gh` commands assume `origin = git@github.com:mostlyright/mostlyright-sdk.git`.
+        - Header note: repo coordinates are `mostlyrightmd/mostlyright-sdk` (operator transferred from `helloiamvu/tradewinds` in W0). All `gh` commands assume `origin = git@github.com:mostlyrightmd/mostlyright-sdk.git`.
         - Pre-flight checklist (8 items): pull main, parity gate green, version-bump PR opened, CHANGELOG section drafted, all 3 pyproject.toml in lockstep, uv.lock regenerated, local `uv build` clean, PR merged
         - Tag + push: `git tag v<N.N.N> && git push origin v<N.N.N>` (rc tags route to release-testpypi.yml; non-rc tags route to release.yml)
-        - In-flight monitoring: `gh run watch --workflow=release.yml` and Actions tab Environments approval gate (Settings → Environments → `pypi` on `mostlyright/mostlyright-sdk`)
+        - In-flight monitoring: `gh run watch --workflow=release.yml` and Actions tab Environments approval gate (Settings → Environments → `pypi` on `mostlyrightmd/mostlyright-sdk`)
         - Post-publish verification: clean-venv smoke install + import + research() call (5 lines reproduced verbatim from W2-T2)
         - Rollback / yank policy: prod PyPI artifacts can be yanked (`twine` or pypi.org UI), never deleted. Yank a version only if it ships a P0 bug; cut a new patch instead.
 
@@ -486,7 +486,7 @@ Output: 3 wheels on prod pypi.org at v0.1.0 (publishers bound to `mostlyright/mo
     test -f .planning/phases/13-pypi-publication-pipeline/OPERATOR-PREFLIGHT.md
     test -f CHANGELOG.md
     # New-repo binding check: origin must point at mostlyright-sdk after W0
-    git remote get-url origin | grep -q 'mostlyright/mostlyright-sdk'
+    git remote get-url origin | grep -q 'mostlyrightmd/mostlyright-sdk'
     grep -c '^## \[0.1.0\]' CHANGELOG.md | grep -q '^1$'
     git ls-remote --tags origin v0.1.0rc1 | wc -l | grep -q '^1$'
     git ls-remote --tags origin v0.1.0 | wc -l | grep -q '^1$'

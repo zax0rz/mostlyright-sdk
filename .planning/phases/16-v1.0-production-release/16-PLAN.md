@@ -2,7 +2,7 @@
 phase: 16-v1.0-production-release
 type: execute
 depends_on: [13-pypi-publication-pipeline, 14-npm-publication-pipeline, 15-docs-autogen-landing-site]
-# Phase 13 W0 (org create + repo transfer to mostlyright/mostlyright-sdk) is a HARD prerequisite.
+# Phase 13 W0 (org create + repo transfer to mostlyrightmd/mostlyright-sdk) is a HARD prerequisite.
 # Phase 16 W0 (cleanup wave: untrack .planning, prune dev artifacts, stub README) is BUNDLED with Phase 13 W0 — whichever ships first owns the commit.
 requirements:
   - RELEASE-01
@@ -53,7 +53,7 @@ must_haves:
 <objective>
 W0 (NEW 2026-05-25) — **Pre-public cleanup wave (BUNDLED with Phase 13 W0; whichever phase ships first owns the commit).** Untrack `.planning/` from git (kept locally; `.gitignore` already excludes it). Prune dev-only artifacts (`spike/`, `.scratch/`, any debug shell scripts not part of the documented workflow). Stub root README.md to production-grade (the full W1 rewrite supersedes this stub). Goal: the repo is safe to make public AS-IS before W1 prose lands. If Phase 13 W0 already shipped this cleanup, W0-T1 here is a no-op verify.
 
-W1 — Rewrite prose: root README.md (marketing copy + 60s quickstart + API map + badges pointing at `mostlyright/mostlyright-sdk`) + 8 per-package READMEs.
+W1 — Rewrite prose: root README.md (marketing copy + 60s quickstart + API map + badges pointing at `mostlyrightmd/mostlyright-sdk`) + 8 per-package READMEs.
 
 W2 — Governance files: CHANGELOG.md sections, CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md, LICENSE confirmation.
 
@@ -126,7 +126,7 @@ W4 — External validation: recruit external user, clock-time quickstart, fix an
       Local-first SDK for prediction-market weather settlement research.
 
       - PyPI: `pip install mostlyright`
-      - npm:  `npm install @mostlyright/core`
+      - npm:  `npm install @mostlyrightmd/core`
       - Docs: https://mostlyright.md/docs/sdk/
 
       Full README + quickstart shipping with v1.0 (Phase 16).
@@ -188,15 +188,15 @@ W4 — External validation: recruit external user, clock-time quickstart, fix an
     # mostlyright
 
     [![PyPI](https://img.shields.io/pypi/v/mostlyright?label=pypi%3A%20mostlyright)](https://pypi.org/project/mostlyright/)
-    [![npm](https://img.shields.io/npm/v/@mostlyright/core?label=npm%3A%20%40mostlyright%2Fcore)](https://www.npmjs.com/package/@mostlyright/core)
-    [![CI](https://github.com/mostlyright/mostlyright-sdk/actions/workflows/test.yml/badge.svg)](https://github.com/mostlyright/mostlyright-sdk/actions/workflows/test.yml)
+    [![npm](https://img.shields.io/npm/v/@mostlyrightmd/core?label=npm%3A%20%40mostlyright%2Fcore)](https://www.npmjs.com/package/@mostlyrightmd/core)
+    [![CI](https://github.com/mostlyrightmd/mostlyright-sdk/actions/workflows/test.yml/badge.svg)](https://github.com/mostlyrightmd/mostlyright-sdk/actions/workflows/test.yml)
     [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
     > Local-first SDK for prediction-market weather settlement research. No hosted backend.
 
     `research(contract, station, from_date, to_date)` returns clean, leakage-free, source-identified training pairs that backtest the same way they trade — and any train/infer source mismatch errors loudly instead of silently corrupting a model.
 
-    Available in **Python** ([PyPI](https://pypi.org/project/mostlyright/)) and **TypeScript** ([npm](https://www.npmjs.com/package/@mostlyright/core)). Same APIs, same canonical schemas, row-equivalent output.
+    Available in **Python** ([PyPI](https://pypi.org/project/mostlyright/)) and **TypeScript** ([npm](https://www.npmjs.com/package/@mostlyrightmd/core)). Same APIs, same canonical schemas, row-equivalent output.
 
     ## Quickstart
 
@@ -219,11 +219,11 @@ W4 — External validation: recruit external user, clock-time quickstart, fix an
     <details><summary><b>TypeScript</b></summary>
 
     ```bash
-    npm install @mostlyright/core
+    npm install @mostlyrightmd/core
     ```
 
     ```ts
-    import { research } from "@mostlyright/core";
+    import { research } from "@mostlyrightmd/core";
 
     const rows = await research("KNYC", "2025-01-06", "2025-01-12");
     console.log(rows[0]);
@@ -360,7 +360,7 @@ W4 — External validation: recruit external user, clock-time quickstart, fix an
       MIT
 
     Example for packages-ts/core/README.md:
-      # @mostlyright/core
+      # @mostlyrightmd/core
 
       Core types, schemas, and primitives for the Mostly Right TypeScript SDK. Includes `research()`, temporal-safety primitives (`KnowledgeView`, `LeakageDetector`), and the canonical schema registry.
 
@@ -369,13 +369,13 @@ W4 — External validation: recruit external user, clock-time quickstart, fix an
       ## Install
 
       ```bash
-      npm install @mostlyright/core
+      npm install @mostlyrightmd/core
       ```
 
       ## Quickstart
 
       ```ts
-      import { research } from "@mostlyright/core";
+      import { research } from "@mostlyrightmd/core";
       const rows = await research("KNYC", "2025-01-06", "2025-01-12");
       console.log(rows[0]);
       ```
@@ -428,7 +428,7 @@ W4 — External validation: recruit external user, clock-time quickstart, fix an
 
       ## Quick start
 
-      1. **Fork** the repository on GitHub: https://github.com/mostlyright/mostlyright-sdk
+      1. **Fork** the repository on GitHub: https://github.com/mostlyrightmd/mostlyright-sdk
       2. **Branch** from `main`: `git checkout -b your-feature-branch`
       3. **Install** workspace + dev deps: `uv sync` (Python) + `pnpm install` (TypeScript)
       4. **Test** locally: `uv run pytest -m "not live"` + `CI=1 pnpm -r run test`
@@ -447,9 +447,9 @@ W4 — External validation: recruit external user, clock-time quickstart, fix an
 
       ## What's stable vs internal
 
-      Public API surface lives at `mostlyright.*` (Python) and `@mostlyright/{core,weather,markets}` (TypeScript). Subject to SemVer guarantees starting v1.0.
+      Public API surface lives at `mostlyright.*` (Python) and `@mostlyrightmd/{core,weather,markets}` (TypeScript). Subject to SemVer guarantees starting v1.0.
 
-      `mostlyright._internal.*` (Python) and `@mostlyright/*/internal/*` (TypeScript) are internal — no SemVer guarantees. Do not import from these in external code.
+      `mostlyright._internal.*` (Python) and `@mostlyrightmd/*/internal/*` (TypeScript) are internal — no SemVer guarantees. Do not import from these in external code.
 
       `_vendor/` paths are lifted from `mostlyright==0.14.1` and pinned for parity; do not modify without re-running the parity gate.
 
@@ -486,7 +486,7 @@ W4 — External validation: recruit external user, clock-time quickstart, fix an
 
       Report privately via one of:
 
-      1. **GitHub Security Advisory** (preferred): https://github.com/mostlyright/mostlyright-sdk/security/advisories/new
+      1. **GitHub Security Advisory** (preferred): https://github.com/mostlyrightmd/mostlyright-sdk/security/advisories/new
       2. **Email**: `<maintainer-email>` (PGP key fingerprint on request)
 
       Include:
@@ -579,7 +579,7 @@ W4 — External validation: recruit external user, clock-time quickstart, fix an
 
       ### Migration from `tradewinds*`
       - `pip uninstall tradewinds tradewinds-weather tradewinds-markets` then `pip install 'mostlyright[research]==1.0.0'`
-      - `npm uninstall @tradewinds/core @tradewinds/weather @tradewinds/markets tradewinds` then `npm install @mostlyright/core` (or `mostlyright` meta)
+      - `npm uninstall @tradewinds/core @tradewinds/weather @tradewinds/markets tradewinds` then `npm install @mostlyrightmd/core` (or `mostlyright` meta)
       - `mv ~/.tradewinds ~/.mostlyright` (byte-equivalent parquet, no schema change)
       - `TRADEWINDS_CACHE_DIR` env var → `MOSTLYRIGHT_CACHE_DIR` (one-release back-compat with DeprecationWarning; removed in v0.3 of mostlyright)
 
@@ -715,7 +715,7 @@ W4 — External validation: recruit external user, clock-time quickstart, fix an
       curl -fsS 'https://pypi.org/pypi/mostlyright-markets/1.0.0/json' > /dev/null
 
     Step 5 — verify npm:
-      for pkg in @mostlyright/core @mostlyright/weather @mostlyright/markets mostlyright; do
+      for pkg in @mostlyrightmd/core @mostlyrightmd/weather @mostlyrightmd/markets mostlyright; do
         curl -fsS "https://registry.npmjs.org/${pkg}" | jq -r '."dist-tags".latest' | grep -q '^1.0.0$' || exit 1
       done
 
@@ -736,9 +736,9 @@ W4 — External validation: recruit external user, clock-time quickstart, fix an
     curl -fsS 'https://pypi.org/pypi/mostlyright/1.0.0/json' > /dev/null
     curl -fsS 'https://pypi.org/pypi/mostlyright-weather/1.0.0/json' > /dev/null
     curl -fsS 'https://pypi.org/pypi/mostlyright-markets/1.0.0/json' > /dev/null
-    curl -fsS 'https://registry.npmjs.org/@mostlyright/core' | jq -r '."dist-tags".latest' | grep -q '^1.0.0$'
-    curl -fsS 'https://registry.npmjs.org/@mostlyright/weather' | jq -r '."dist-tags".latest' | grep -q '^1.0.0$'
-    curl -fsS 'https://registry.npmjs.org/@mostlyright/markets' | jq -r '."dist-tags".latest' | grep -q '^1.0.0$'
+    curl -fsS 'https://registry.npmjs.org/@mostlyrightmd/core' | jq -r '."dist-tags".latest' | grep -q '^1.0.0$'
+    curl -fsS 'https://registry.npmjs.org/@mostlyrightmd/weather' | jq -r '."dist-tags".latest' | grep -q '^1.0.0$'
+    curl -fsS 'https://registry.npmjs.org/@mostlyrightmd/markets' | jq -r '."dist-tags".latest' | grep -q '^1.0.0$'
     curl -fsS 'https://registry.npmjs.org/mostlyright' | jq -r '."dist-tags".latest' | grep -q '^1.0.0$'
     </automated>
   </verify>
@@ -760,12 +760,12 @@ W4 — External validation: recruit external user, clock-time quickstart, fix an
       - Has Python 3.12 + Node 20 already installed
       - Has never used mostlyright OR tradewinds
 
-    Step 2 — Give them ONLY the URL to https://github.com/mostlyright/mostlyright-sdk (root README). No out-of-band help.
+    Step 2 — Give them ONLY the URL to https://github.com/mostlyrightmd/mostlyright-sdk (root README). No out-of-band help.
 
     Step 3 — Clock the wall time for the combined quickstart:
       1. `pip install 'mostlyright[research]==1.0.0'`
       2. First successful Python `research()` call returning a DataFrame
-      3. `npm install @mostlyright/core`
+      3. `npm install @mostlyrightmd/core`
       4. First successful TS `research()` call returning rows
 
     Target: <5 min combined.
@@ -843,7 +843,7 @@ W4 — External validation: recruit external user, clock-time quickstart, fix an
       ## Emergency rollback
 
       - **PyPI**: artifacts can be **yanked** (UI or `twine yank`) but NEVER deleted. Yank only if shipping a P0 bug; otherwise cut a new patch.
-      - **npm**: `npm deprecate @mostlyright/<pkg>@<version> "<reason>"` (unpublish only works <24h after publish for scoped public packages)
+      - **npm**: `npm deprecate @mostlyrightmd/<pkg>@<version> "<reason>"` (unpublish only works <24h after publish for scoped public packages)
       - **docs**: revert the landing repo PR; Cloudflare re-deploys previous state in <1 min
 
       ## Supported versions policy
@@ -871,16 +871,16 @@ W4 — External validation: recruit external user, clock-time quickstart, fix an
       - https://pypi.org/project/mostlyright/1.0.0/
       - https://pypi.org/project/mostlyright-weather/1.0.0/
       - https://pypi.org/project/mostlyright-markets/1.0.0/
-      - https://www.npmjs.com/package/@mostlyright/core/v/1.0.0
-      - https://www.npmjs.com/package/@mostlyright/weather/v/1.0.0
-      - https://www.npmjs.com/package/@mostlyright/markets/v/1.0.0
+      - https://www.npmjs.com/package/@mostlyrightmd/core/v/1.0.0
+      - https://www.npmjs.com/package/@mostlyrightmd/weather/v/1.0.0
+      - https://www.npmjs.com/package/@mostlyrightmd/markets/v/1.0.0
       - https://www.npmjs.com/package/mostlyright/v/1.0.0
 
       **Docs live:** https://mostlyright.md/docs/sdk/ regenerated against 1.0.0
 
       **Operator follow-ups (post-1.0; optional):**
       1. Transfer or delete orphaned `tradewinds*` PyPI distros + `@tradewinds/*` npm packages (legacy names from pre-Phase-12).
-      2. Tag a `support/v0.1` branch on `mostlyright/mostlyright-sdk` for 6-month security-fix backports per SECURITY.md.
+      2. Tag a `support/v0.1` branch on `mostlyrightmd/mostlyright-sdk` for 6-month security-fix backports per SECURITY.md.
       3. Archive `helloiamvu/mostlyright-legacy` (the operator's local folder pre-rename, per Phase 12 OP1) once 1.0 has soaked.
 
       **v1.x ready:** v1.0 SHIPS the surface; v1.x feature work (ECMWF Tier-2, hosted-backend MCP, polars-default) starts immediately.
@@ -925,7 +925,7 @@ W4 — External validation: recruit external user, clock-time quickstart, fix an
     git ls-remote --tags origin v1.0.0 | wc -l | grep -q '^1$'
     git ls-remote --tags origin vts-1.0.0 | wc -l | grep -q '^1$'
     curl -fsS 'https://pypi.org/pypi/mostlyright/1.0.0/json' > /dev/null
-    curl -fsS 'https://registry.npmjs.org/@mostlyright/core' | jq -r '."dist-tags".latest' | grep -q '^1.0.0$'
+    curl -fsS 'https://registry.npmjs.org/@mostlyrightmd/core' | jq -r '."dist-tags".latest' | grep -q '^1.0.0$'
     grep -c '^## Phase 16 closeout' .planning/STATE.md | grep -q '^1$'
   </automated>
 </verification>

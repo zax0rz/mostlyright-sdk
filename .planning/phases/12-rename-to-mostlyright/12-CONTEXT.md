@@ -11,7 +11,7 @@ Mechanical end-to-end rename of every in-repo identifier from `tradewinds` to `m
 
 **What this phase ships in-tree:**
 - 3 PyPI distribution names renamed (`tradewinds` / `tradewinds-weather` / `tradewinds-markets` → `mostlyright` / `mostlyright-weather` / `mostlyright-markets`)
-- 5 npm package names renamed (`@tradewinds/{codegen,core,weather,markets}` + unscoped meta `tradewinds` → `@mostlyright/*` + unscoped meta `mostlyright`)
+- 5 npm package names renamed (`@tradewinds/{codegen,core,weather,markets}` + unscoped meta `tradewinds` → `@mostlyrightmd/*` + unscoped meta `mostlyright`)
 - 3 Python source directories renamed (`packages/*/src/tradewinds/` → `packages/*/src/mostlyright/`)
 - ~1074 Python `import`/`from` rewrites
 - ~77 TypeScript import rewrites
@@ -23,7 +23,7 @@ Mechanical end-to-end rename of every in-repo identifier from `tradewinds` to `m
 **What this phase does NOT ship (operator-gated, out of plan scope):**
 - GitHub repo URL rename — repo stays `helloiamvu/tradewinds`. In-tree URLs to the repo (in `README.md` badges, package `repository` fields) stay pointing at `helloiamvu/tradewinds` for Phase 12. Operator may rename the GH repo out-of-band later.
 - PyPI trusted-publisher registration for the new names — **operator pre-flight step, manual on pypi.org**
-- npm `@mostlyright` scope claim — **operator pre-flight step, manual on npmjs.com**
+- npm `@mostlyrightmd` scope claim — **operator pre-flight step, manual on npmjs.com**
 - npm OIDC pending publisher registration — **operator pre-flight step**
 - `~/Documents/GitHub/mostlyright` → `mostlyright-legacy` rename — **operator pre-flight step (cannot be automated from the worktree)**
 - Old PyPI / npm package cleanup — `tradewinds*` / `@tradewinds/*` stay orphaned; operator transfers/deletes out-of-band
@@ -45,17 +45,17 @@ The user's 9-step order maps 1:1 to Wave 1 → Wave 9 (well — 7 in-tree waves 
 |---|------|-------------|---------------------|
 | W1 | Directory + pyproject + npm scope rename, atomic | `git mv packages/*/src/tradewinds packages/*/src/mostlyright`; rewrite each `pyproject.toml` `name` + `[tool.hatch.build.targets.wheel] packages`; rewrite inter-package version pins; rename 5 npm packages + workspace deps | `uv sync` succeeds; `uv build` produces 3 wheels; `pnpm install` succeeds; tests will RED until W2 — DOCUMENTED expected RED state |
 | W2 | Python import rewrite | scripted `from tradewinds` / `import tradewinds` → `mostlyright` across `packages/`, `tests/`, `scripts/`, in 3 BATCHES with test gate after each | `uv run pytest -m "not live" -q` green after each batch; final state: `grep -rn 'tradewinds' --include='*.py' packages/ tests/ scripts/ \| wc -l` returns 0 |
-| W3 | TS import rewrite | scripted `from "@tradewinds/...` → `from "@mostlyright/...` across `packages-ts/` | `pnpm -r run typecheck` green; `CI=1 pnpm -r run test` green |
+| W3 | TS import rewrite | scripted `from "@tradewinds/...` → `from "@mostlyrightmd/...` across `packages-ts/` | `pnpm -r run typecheck` green; `CI=1 pnpm -r run test` green |
 | W4 | Cache env var migration with back-compat shim | rename `TRADEWINDS_CACHE_DIR` → `MOSTLYRIGHT_CACHE_DIR` (~204 occurrences); add `_cache_dir.py` back-compat shim reading both env vars; default path `~/.tradewinds/cache/v1/` → `~/.mostlyright/cache/v1/` | New `test_cache_env_back_compat.py` asserts: (a) MOSTLYRIGHT_CACHE_DIR wins when both set, (b) TRADEWINDS_CACHE_DIR-only emits DeprecationWarning, (c) neither falls back to `~/.mostlyright/cache/v1/`. Full suite green. |
-| W5 | Docs + prose rewrite | rewrite ~85 mentions in `docs/*.md`, ~20 in `CLAUDE.md`, root `README.md`. Install commands → `pip install mostlyright[...]` / `npm install @mostlyright/*`. Code-fence examples updated. **LEAVE `.planning/` ARCHIVE ALONE.** | Lint: `grep -rn 'tradewinds' docs/ CLAUDE.md README.md` returns 0 (excluding URL fields). |
+| W5 | Docs + prose rewrite | rewrite ~85 mentions in `docs/*.md`, ~20 in `CLAUDE.md`, root `README.md`. Install commands → `pip install mostlyright[...]` / `npm install @mostlyrightmd/*`. Code-fence examples updated. **LEAVE `.planning/` ARCHIVE ALONE.** | Lint: `grep -rn 'tradewinds' docs/ CLAUDE.md README.md` returns 0 (excluding URL fields). |
 | W6 | CI workflow updates | keep `release.yml` + `release-ts.yml` filenames; update env-var names + any hardcoded `tradewinds*` references in YAML; verify trusted-publisher project names match new PyPI/npm names | `act` dry-run OR manual YAML review; in-repo CI run for `test.yml`/`test-ts.yml` green. |
 | W7 | Parity-gate pre-flight + full test run + STATE.md + Phase 12 README | `uv run pytest -q` (INCLUDING `@pytest.mark.live` parity fixtures); `CI=1 pnpm -r run test`; write `phases/12-rename-to-mostlyright/README.md` documenting rename, legacy folder rename, orphaned names, back-compat removal timeline; update `.planning/STATE.md` with Phase 12 closeout section. | Parity test (`tests/test_parity.py`) byte-equivalent under new module name; full Python suite green; full TS suite green. |
 
 **Operator pre-flight (BEFORE Wave 1 ships):**
 - OP1: `mv ~/Documents/GitHub/mostlyright ~/Documents/GitHub/mostlyright-legacy` — manual.
 - OP2: Register 3 PyPI pending publishers (`mostlyright`, `mostlyright-weather`, `mostlyright-markets`) bound to repo + `release.yml` + env `pypi` — manual on pypi.org.
-- OP3: Claim `@mostlyright` npm scope — manual on npmjs.com.
-- OP4: Register 4 npm OIDC pending publishers (`@mostlyright/core`, `@mostlyright/weather`, `@mostlyright/markets`, unscoped meta `mostlyright`) bound to repo + `release-ts.yml` + env `npm` — manual.
+- OP3: Claim `@mostlyrightmd` npm scope — manual on npmjs.com.
+- OP4: Register 4 npm OIDC pending publishers (`@mostlyrightmd/core`, `@mostlyrightmd/weather`, `@mostlyrightmd/markets`, unscoped meta `mostlyright`) bound to repo + `release-ts.yml` + env `npm` — manual.
 
 **Operator post-merge follow-ups (NOT in Phase 12):**
 - Tag `v0.2.0` to publish renamed PyPI distributions.
@@ -248,7 +248,7 @@ From the user brief + ROADMAP.md Phase 12 section, mapped 1:1 to REQUIREMENTS.md
 4. Parity gate byte-equivalent under new module name (`from mostlyright import research`).
 5. Env var resolution: new wins → no warn; legacy-only → returns + DeprecationWarning; neither → default new path.
 6. `python -c "import mostlyright; print(mostlyright.__version__)"` works after `uv sync`.
-7. `node -e "console.log(require('@mostlyright/core'))"` works after `pnpm install`.
+7. `node -e "console.log(require('@mostlyrightmd/core'))"` works after `pnpm install`.
 8. Operator pre-flight steps documented in PR description with confirmation lines.
 
 ### Test additions (Phase 12-specific)

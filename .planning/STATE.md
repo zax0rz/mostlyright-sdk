@@ -1,7 +1,7 @@
 ---
 gsd_state_version: 1.0
 milestone: v0.1.0
-milestone_name: — `@mostlyright/*` on npm)
+milestone_name: — `@mostlyrightmd/*` on npm)
 status: Phase 12 (Rename tradewinds → mostlyright) code-complete on top of merged Phase 11; operator pre-flight OP1-OP4 pending before PR merge. Phases 6 + 7 + 8 + 9 + 10 + 11 already on main. Python v0.1.0rc1 publish remains operator-gated. 8/8 TS phases code-complete (npm publish operator-gated).
 stopped_at: "Phase 12 closeout; phase-12/rename-to-mostlyright -> main PR queued (4-iter codex+python+ts architect review loop closed PASS at iter-4); operator OP1-OP4 required before merge"
 last_updated: "2026-05-25T11:00:00.000Z"
@@ -37,9 +37,9 @@ Progress: Python [██████████] 100% v0.1 (12/12 phases) + **P
 Merge commit pending. Mechanical end-to-end rename of every in-repo identifier from `tradewinds` to `mostlyright`. Zero behavior change. Zero test regressions at every wave gate. The repo `helloiamvu/tradewinds` URL stays unchanged for now (operator may rename out-of-band).
 
 **Requirements shipped (10/10):**
-- RENAME-01: W1 atomic — 3 Python source dirs `git mv`'d (blame preserved); 3 PyPI distros renamed (mostlyright / -weather / -markets); 5 npm packages renamed (`@mostlyright/{codegen,core,weather,markets}` + unscoped meta `mostlyright`); `uv.lock` + `pnpm-lock.yaml` regenerated; 3 wheels built cleanly with correct inter-package pins.
+- RENAME-01: W1 atomic — 3 Python source dirs `git mv`'d (blame preserved); 3 PyPI distros renamed (mostlyright / -weather / -markets); 5 npm packages renamed (`@mostlyrightmd/{codegen,core,weather,markets}` + unscoped meta `mostlyright`); `uv.lock` + `pnpm-lock.yaml` regenerated; 3 wheels built cleanly with correct inter-package pins.
 - RENAME-02: W2 — 993 Python import-line rewrites (Batch A packages/) + 49 (Batch B tests/) + 8 (Batch C scripts/) + 552 broader string-quoted module-path rewrites (`patch("tradewinds.…")`, `sys.modules`, bare attribute access). Schema `$id` URL `tradewinds.dev` → `mostlyright.dev` rewritten with lockstep test assertion. New `scripts/_phase12_rename.py` rewriter + 7 unit tests.
-- RENAME-03: W3 — 64 TS import-line rewrites + 395 broader rewrites (comments, tsup.config.ts, codegen-source header strings) + `pnpm codegen` regen with `@mostlyright/codegen` AUTO-GENERATED header. Idempotency verified (3rd run produces 0 diff). New `scripts/_phase12_rename_ts.py`.
+- RENAME-03: W3 — 64 TS import-line rewrites + 395 broader rewrites (comments, tsup.config.ts, codegen-source header strings) + `pnpm codegen` regen with `@mostlyrightmd/codegen` AUTO-GENERATED header. Idempotency verified (3rd run produces 0 diff). New `scripts/_phase12_rename_ts.py`.
 - RENAME-04: W4 — `TRADEWINDS_CACHE_DIR` → `MOSTLYRIGHT_CACHE_DIR` env var migration with `_cache_dir.py` back-compat shim emitting DeprecationWarning on legacy var. 3 new unit tests (canonical-wins, legacy-warns, default-fallback). 19 test files' monkeypatch sites bulk-renamed; 1 file (`test_discovery_real.py`) intentionally kept on legacy for back-compat coverage.
 - RENAME-05: W4 — default cache path `~/.tradewinds/cache/v1/` → `~/.mostlyright/cache/v1/`; `docs/cache-migration.md` documents user-side `mv ~/.tradewinds ~/.mostlyright`.
 - RENAME-06: W5 — 117 lines across 12 prose files (README + CLAUDE.md + docs/) rewritten. `.planning/` archive (~4858 mentions) preserved per CONTEXT decision.
@@ -77,8 +77,8 @@ Merge commit pending. Mechanical end-to-end rename of every in-repo identifier f
 **Operator-gated follow-ups (BLOCKED pending PR merge):**
 1. OP1 ~/Documents/GitHub/mostlyright → mostlyright-legacy (manual rename, prevents sys.path[0] collision).
 2. OP2 3 PyPI pending publishers (mostlyright, mostlyright-weather, mostlyright-markets) — pypi.org.
-3. OP3 @mostlyright npm scope claim — npmjs.com.
-4. OP4 4 npm OIDC pending publishers (@mostlyright/{core,weather,markets} + meta) — npmjs.com.
+3. OP3 @mostlyrightmd npm scope claim — npmjs.com.
+4. OP4 4 npm OIDC pending publishers (@mostlyrightmd/{core,weather,markets} + meta) — npmjs.com.
 5. Tag `v0.2.0` (or appropriate) → publish renamed PyPI distros.
 6. Tag `vts-0.2.0` (or appropriate) → publish renamed npm packages.
 7. v0.3: remove `TRADEWINDS_CACHE_DIR` back-compat branch.
