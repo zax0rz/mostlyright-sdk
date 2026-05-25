@@ -1,5 +1,5 @@
 [project]
-name = "tradewinds"
+name = "mostlyright"
 version = "0.1.0rc1"
 description = "Local-first SDK for quants researching prediction-market weather settlements. Meta package: research() join + shared utilities."
 readme = "README.md"
@@ -20,11 +20,11 @@ dependencies = [
     "httpx>=0.27",
     "jsonschema>=4.21",
     "tzdata; sys_platform == 'win32'",
-    # NOTE: `tradewinds-weather` is INTENTIONALLY NOT in runtime deps.
+    # NOTE: `mostlyright-weather` is INTENTIONALLY NOT in runtime deps.
     # Listing it here creates a runtime cycle (core <-> weather) that defeats
     # the three-package split — see .planning/REQUIREMENTS.md RESEARCH-05.
-    # Users who want `tradewinds.research()` install `tradewinds[research]`
-    # (or `tradewinds-weather` directly, which depends on core transitively).
+    # Users who want `mostlyright.research()` install `mostlyright[research]`
+    # (or `mostlyright-weather` directly, which depends on core transitively).
 ]
 
 [project.optional-dependencies]
@@ -39,14 +39,14 @@ parquet = [
     "pandas>=2.2,<4.0",
 ]
 # Pull in the sibling weather package + pandas/pyarrow so the default
-# `tradewinds.research(...)` call returns a DataFrame without `ImportError`.
-# Codex iter-1 P2 fix: previously `research` listed only `tradewinds-weather`,
+# `mostlyright.research(...)` call returns a DataFrame without `ImportError`.
+# Codex iter-1 P2 fix: previously `research` listed only `mostlyright-weather`,
 # leaving the soft `import pandas` in `pairs_to_dataframe` to blow up at call
 # time because `as_dataframe=True` is the default. Phase 6 (PANDAS3-02):
 # pandas upper bound aligned with `parquet` extra at <4.0; both backends
 # are exercised by the dual-pandas CI matrix.
 research = [
-    "tradewinds-weather>=0.1.0rc1,<0.2",
+    "mostlyright-weather>=0.1.0rc1,<0.2",
     "pyarrow>=17.0,<24.0",
     "pandas>=2.2,<4.0",
 ]
@@ -57,7 +57,7 @@ research = [
 # modules go through. pandas is required because the boundary shim
 # (core/_narwhals_compat.py) converts polars↔pandas via `pl.from_pandas`
 # and `pl.DataFrame.to_pandas()` — codex iter-3 P2 fix; a clean
-# `pip install tradewinds[polars]` would otherwise fail at first
+# `pip install mostlyright[polars]` would otherwise fail at first
 # `transforms.lag(pl_df, ...)` call with ImportError. pyarrow is
 # required by pl.from_pandas/to_pandas for non-trivial dtypes
 # (codex iter-5 P1 fix).
@@ -73,4 +73,4 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/tradewinds"]
+packages = ["src/mostlyright"]
