@@ -19,12 +19,15 @@ release cycle (removal scheduled for v0.3). Importing it emits a single
 from __future__ import annotations
 
 import warnings
+from datetime import datetime
 from typing import Any
 
 from ._json_safe import to_json_safe
 
 __all__ = [
+    "DeprecatedModelWarning",
     "GribIntegrityError",
+    "HistoricalDepthError",
     "LeakageError",
     "LiveStreamError",
     "NoLiveDataError",
@@ -487,6 +490,64 @@ class GribIntegrityError(NwpError):
             underlying=self.underlying,
         )
         return payload
+
+
+class HistoricalDepthError(NwpError):
+    """A requested NWP cycle is older than the archive's depth.
+
+    Per Phase 17 FORECAST-07: each NWP model has an AWS BDP depth
+    (HRRR ≥2014-07-30, GFS ≥2021-01-01, GEFS ≥2017-01-01, NBM ≥2020,
+    ECMWF IFS ≥2022-01-01, AIFS ≥2024-02-25). MSC family always raises
+    (24h Datamart retention) — pass ``archive_depth=None`` for the
+    live-only case.
+
+    Attributes:
+        model: Model id (e.g. ``"hrrr"``, ``"hrdps"``).
+        requested_cycle: UTC datetime the caller asked for.
+        archive_depth: Earliest cycle the archive holds, or ``None`` for
+            live-only models (MSC 24h retention, NOMADS-only legacy).
+    """
+
+    default_error_code = "NWP_HISTORICAL_DEPTH"
+
+    def __init__(
+        self,
+        message: str = "",
+        *,
+        model: str,
+        requested_cycle: datetime | None = None,
+        archive_depth: datetime | None = None,
+        request_id: str | None = None,
+        error_code: str | None = None,
+    ) -> None:
+        super().__init__(
+            message,
+            error_code=error_code,
+            source=f"nwp.{model}",
+            request_id=request_id,
+        )
+        self.model: str = model
+        self.requested_cycle: datetime | None = requested_cycle
+        self.archive_depth: datetime | None = archive_depth
+
+    def _payload(self) -> dict[str, Any]:
+        payload = super()._payload()
+        payload.update(
+            model=self.model,
+            requested_cycle=(self.requested_cycle.isoformat() if self.requested_cycle else None),
+            archive_depth=(self.archive_depth.isoformat() if self.archive_depth else None),
+        )
+        return payload
+
+
+class DeprecatedModelWarning(DeprecationWarning):
+    """Warning emitted when a deprecated NWP model is fetched.
+
+    Used for NAM / HREF / HiResW which retire 2026-08-31 per NWS scn26-47
+    (Herbie issue #540). Subclass of :class:`DeprecationWarning` so callers
+    can promote it to an error via ``warnings.filterwarnings("error",
+    category=DeprecatedModelWarning)``.
+    """
 
 
 # ----------------------------------------------------------------------

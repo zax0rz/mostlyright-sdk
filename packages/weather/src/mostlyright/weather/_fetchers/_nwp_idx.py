@@ -27,6 +27,16 @@ without the ``[nwp]`` extra installed.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from typing import Literal
+
+#: Idx-file format dispatch tag (Phase 17 FORECAST-04).
+#:
+#: - ``"wgrib2"`` — NCEP family ``.idx`` (colon-text). Parsed by
+#:   :func:`_parse_idx_wgrib2` and shipped in v0.1.0.
+#: - ``"eccodes"`` — ECMWF ``.index`` (JSON-lines). Body lands in
+#:   Phase 17 PLAN-04; PLAN-01 ships the dispatch shape only and raises
+#:   :class:`NotImplementedError`.
+IdxStyle = Literal["wgrib2", "eccodes"]
 
 
 @dataclass(frozen=True)
@@ -56,8 +66,41 @@ class IdxRecord:
     forecast_period: str
 
 
-def parse_idx(text: str) -> list[IdxRecord]:
-    """Parse the text content of an ``.idx`` file into ordered records.
+_VALID_IDX_STYLES: frozenset[str] = frozenset({"wgrib2", "eccodes"})
+
+
+def parse_idx(text: str, style: IdxStyle = "wgrib2") -> list[IdxRecord]:
+    """Parse an ``.idx`` (wgrib2) or ``.index`` (eccodes) file.
+
+    The ``style`` argument selects the parser implementation. ``"wgrib2"``
+    is the colon-text NCEP format shipped in v0.1.0; ``"eccodes"`` is the
+    ECMWF JSON-lines format whose parser body lands in Phase 17 PLAN-04.
+
+    Args:
+        text: Raw ``.idx`` / ``.index`` file content (UTF-8 decoded).
+        style: ``"wgrib2"`` (default, backward-compatible) or ``"eccodes"``.
+
+    Returns:
+        Records in source order. ``byte_end`` is always ``None`` on
+        return for the wgrib2 branch — call :func:`compute_byte_end` to
+        resolve it.
+
+    Raises:
+        ValueError: ``style`` is not in ``{"wgrib2", "eccodes"}``, OR
+            (wgrib2 path) a non-blank line cannot be parsed.
+        NotImplementedError: ``style="eccodes"`` — body lands in PLAN-04.
+    """
+    if style == "wgrib2":
+        return _parse_idx_wgrib2(text)
+    if style == "eccodes":
+        raise NotImplementedError(
+            "eccodes .index parser lands in Phase 17 PLAN-04 (ECMWF IFS + AIFS)."
+        )
+    raise ValueError(f"style must be one of {{'wgrib2', 'eccodes'}}; got {style!r}")
+
+
+def _parse_idx_wgrib2(text: str) -> list[IdxRecord]:
+    """Parse a wgrib2-style colon-text ``.idx`` file into ordered records.
 
     Args:
         text: Raw ``.idx`` file content (UTF-8 decoded ASCII).
@@ -174,4 +217,10 @@ def filter_records(
     return out
 
 
-__all__ = ["IdxRecord", "compute_byte_end", "filter_records", "parse_idx"]
+__all__ = [
+    "IdxRecord",
+    "IdxStyle",
+    "compute_byte_end",
+    "filter_records",
+    "parse_idx",
+]
