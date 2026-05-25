@@ -59,9 +59,13 @@ function iemLiveObservation(obsAt: string): LiveObservation {
     sky_base_4_ft: null,
     visibility_miles: null,
     weather_codes: null,
-    raw_metar: null,
-    precip_in: null,
+    precip_1hr_inches: null,
+    peak_wind_gust_kt: null,
+    peak_wind_dir: null,
+    peak_wind_time: null,
+    snow_depth_inches: null,
     qc_field: null,
+    raw_metar: null,
   };
 }
 
@@ -163,9 +167,16 @@ describe("stream()", () => {
     });
     const rows = await collectN(stream("KNYC"), 2);
     expect(rows).toHaveLength(2);
-    expect(rows[0]?.observed_at).not.toBe(rows[1]?.observed_at);
+    // `toHaveLength(2)` proves both rows exist — `noUncheckedIndexedAccess`
+    // still surfaces them as possibly-undefined, so narrow explicitly.
+    const r0 = rows[0];
+    const r1 = rows[1];
+    if (r0 === undefined || r1 === undefined) {
+      throw new Error("expected two rows after collectN");
+    }
+    expect(r0.observed_at).not.toBe(r1.observed_at);
     // ISO 8601 Z sorts lex == chrono.
-    expect(rows[0]?.observed_at!.localeCompare(rows[1]?.observed_at ?? "") < 0).toBe(true);
+    expect(r0.observed_at.localeCompare(r1.observed_at) < 0).toBe(true);
   });
 
   it("unknown source throws BEFORE the first poll", async () => {

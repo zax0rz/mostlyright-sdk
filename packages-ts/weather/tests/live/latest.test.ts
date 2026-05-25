@@ -94,9 +94,13 @@ describe("latest()", () => {
           sky_base_4_ft: null,
           visibility_miles: null,
           weather_codes: null,
-          raw_metar: null,
-          precip_in: null,
+          precip_1hr_inches: null,
+          peak_wind_gust_kt: null,
+          peak_wind_dir: null,
+          peak_wind_time: null,
+          snow_depth_inches: null,
           qc_field: null,
+          raw_metar: null,
         },
       ]);
     const row = await latest("KNYC", { source: "iem" });
