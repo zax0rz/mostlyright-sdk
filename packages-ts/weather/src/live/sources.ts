@@ -81,6 +81,18 @@ export function validatePollSeconds(
   if (pollSeconds === undefined || pollSeconds === null) {
     return floor;
   }
+  // Reject `NaN` and non-finite values BEFORE the floor comparison.
+  // `NaN < floor` returns false (all NaN comparisons are false), so the
+  // naive check would silently let `pollSeconds=NaN` through; `setTimeout(NaN)`
+  // then fires immediately and the loop hammers the upstream — a hard
+  // polite-floor violation. Same defence rejects `±Infinity`.
+  if (!Number.isFinite(pollSeconds)) {
+    throw new Error(
+      `pollSeconds=${pollSeconds} is not a finite number; polite floor ${floor}s required for source=${JSON.stringify(
+        source,
+      )}`,
+    );
+  }
   if (pollSeconds < floor) {
     throw new Error(
       `pollSeconds=${pollSeconds} below polite floor ${floor}s for source=${JSON.stringify(

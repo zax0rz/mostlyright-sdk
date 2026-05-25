@@ -226,6 +226,20 @@ describe("stream()", () => {
     await expect(agen.next()).rejects.toThrow(/below polite floor/);
   });
 
+  it("rejects pollSeconds=NaN (would bypass the floor comparison)", async () => {
+    // Regression for iter-2 codex finding: `NaN < floor` is false (all NaN
+    // comparisons are false), so without an explicit `Number.isFinite` guard
+    // a NaN would slip through, `setTimeout(NaN)` would fire immediately,
+    // and the loop would hammer the upstream.
+    const agen = stream("KNYC", { pollSeconds: Number.NaN });
+    await expect(agen.next()).rejects.toThrow(/not a finite number/);
+  });
+
+  it("rejects pollSeconds=Infinity (same isFinite guard)", async () => {
+    const agen = stream("KNYC", { pollSeconds: Number.POSITIVE_INFINITY });
+    await expect(agen.next()).rejects.toThrow(/not a finite number/);
+  });
+
   it("pollSeconds above polite floor works", async () => {
     let i = 0;
     fetchSpy.mockImplementation(async () => {

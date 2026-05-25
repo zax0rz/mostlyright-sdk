@@ -11,7 +11,7 @@ surfaces share the same fetch path.
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from tradewinds._internal._bounds import validate_icao_for_path
@@ -78,17 +78,22 @@ async def _fetch_iem_latest(station: str) -> list[dict[str, Any]]:
     )
 
     today = datetime.now(UTC).date()
-    tomorrow = date.fromordinal(today.toordinal() + 1)
     tag = source_tag("iem")
     rows: list[dict[str, Any]] = []
 
     with tempfile.TemporaryDirectory(prefix="tw-live-iem-") as tmp:
         dest_dir = Path(tmp)
+        # Pass `today` for BOTH start and end. `download_iem_asos(...,
+        # exact_window=True)` treats `end` as INCLUSIVE and internally
+        # advances `day2` by one day for IEM's exclusive-end semantics —
+        # so passing (today, today) gives a single-day [today, today+1)
+        # request. Earlier code passed `tomorrow` here which actually
+        # asked for [today, today+2), doubling the CSV window per poll.
         paths = await asyncio.to_thread(
             download_iem_asos,
             station_info,
             today,
-            tomorrow,
+            today,
             dest_dir,
             skip_cache=True,
             report_type=3,

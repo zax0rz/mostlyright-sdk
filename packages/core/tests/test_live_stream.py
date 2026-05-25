@@ -291,6 +291,36 @@ def test_stream_accepts_above_polite_floor(
     assert no_sleep[0] == 120.0
 
 
+def test_stream_rejects_nan_poll_seconds() -> None:
+    """poll_seconds=NaN must NOT slip through the polite-floor comparison.
+
+    Regression for iter-2 codex finding: `poll_seconds < floor` returns
+    False for NaN (all NaN comparisons are False). Without an explicit
+    `math.isfinite` guard, `NaN` would bypass the floor and downstream
+    `asyncio.sleep(NaN)` would fire immediately, hammering the upstream.
+    """
+    import math
+
+    async def drive() -> None:
+        async for _ in stream("KNYC", poll_seconds=math.nan):
+            return
+
+    with pytest.raises(ValueError, match="not a finite number"):
+        _run(drive())
+
+
+def test_stream_rejects_infinite_poll_seconds() -> None:
+    """poll_seconds=Infinity is also rejected (same `math.isfinite` guard)."""
+    import math
+
+    async def drive() -> None:
+        async for _ in stream("KNYC", poll_seconds=math.inf):
+            return
+
+    with pytest.raises(ValueError, match="not a finite number"):
+        _run(drive())
+
+
 def test_stream_empty_tick_does_not_abort(
     monkeypatch: pytest.MonkeyPatch, no_sleep: list[float]
 ) -> None:

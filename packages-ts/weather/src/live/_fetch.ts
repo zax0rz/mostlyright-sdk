@@ -79,16 +79,31 @@ function nextDayIso(iso: string): string {
  * browser AWC-only bundle doesn't pull the IEM parser tree.
  */
 export async function fetchIemLatest(station: string): Promise<LiveObservation[]> {
-  const [{ fetchWithRetry }, { buildIemUrl }, { parseIemCsv }] = await Promise.all([
-    import("@tradewinds/core"),
-    import("../_fetchers/iem-asos.js"),
-    import("../_parsers/iem.js"),
-  ]);
+  const [{ fetchWithRetry }, { STATION_CODE_RE }, { buildIemUrl }, { parseIemCsv }] =
+    await Promise.all([
+      import("@tradewinds/core"),
+      import("@tradewinds/core/internal/bounds"),
+      import("../_fetchers/iem-asos.js"),
+      import("../_parsers/iem.js"),
+    ]);
   const icao = normalizeStation(station);
   const stationCode = icao.length === 4 && icao.startsWith("K") ? icao.slice(1) : icao;
+  // Validate the station code at the URL boundary BEFORE any HTTP call —
+  // mirrors `downloadIemAsos::validateIcao`. We bypass `downloadIemAsos` (to
+  // skip its year-normalization) but the validation guard MUST still apply
+  // so a malformed station like `KNYC&data=foo` cannot inject IEM URL params.
+  if (!STATION_CODE_RE.test(stationCode)) {
+    throw new Error(
+      `station=${JSON.stringify(
+        stationCode,
+      )} does not match STATION_CODE_RE (3-4 uppercase letters); refusing to use as IEM URL component`,
+    );
+  }
   const startIso = todayUtcIso();
-  const endIso = nextDayIso(startIso);
-  const url = buildIemUrl(stationCode, startIso, endIso, 3);
+  // IEM's `day2=` is EXCLUSIVE — pass the same date for a one-day window.
+  // (Earlier code passed `nextDayIso(startIso)` which `download_iem_asos`
+  // would internally treat as TWO days under exact_window mode.)
+  const url = buildIemUrl(stationCode, startIso, startIso, 3);
   const response = await fetchWithRetry(url);
   const csv = await response.text();
   const obs = parseIemCsv(csv, { observationTypeOverride: "METAR" });

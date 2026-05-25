@@ -71,11 +71,21 @@ def validate_poll_seconds(poll_seconds: float | None, source: str) -> float:
         The cadence to use, in seconds.
 
     Raises:
-        ValueError: When ``poll_seconds`` is below the polite floor.
+        ValueError: When ``poll_seconds`` is below the polite floor or is
+            ``NaN`` / non-finite (TS parity — JS callers can pass ``NaN``
+            through the JSON-RPC boundary; the cross-SDK invariant is that
+            both SDKs reject the same set of values).
     """
+    import math
+
     floor = POLITE_FLOORS_S[source]
     if poll_seconds is None:
         return floor
+    if not math.isfinite(poll_seconds):
+        raise ValueError(
+            f"poll_seconds={poll_seconds} is not a finite number; "
+            f"polite floor {floor}s required for source={source!r}"
+        )
     if poll_seconds < floor:
         raise ValueError(
             f"poll_seconds={poll_seconds} below polite floor "

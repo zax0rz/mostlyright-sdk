@@ -153,4 +153,18 @@ describe("latest()", () => {
     expect(row.station_code).toBe("NYC");
     expect(row.source).toBe("awc.live");
   });
+
+  it("IEM path rejects malformed station codes (URL injection guard)", async () => {
+    // Regression for iter-2 codex finding: `fetchIemLatest` interpolates
+    // the station code into `buildIemUrl` directly (bypassing
+    // `downloadIemAsos`'s year-normalize). The `validateIcao` guard from
+    // `downloadIemAsos` was skipped — without an explicit STATION_CODE_RE
+    // check, a station like `KNYC&data=foo` would alter the IEM request URL.
+    // After the fix, `STATION_CODE_RE` is checked before `buildIemUrl`.
+    await expect(latest("KN&data=foo", { source: "iem" })).rejects.toThrow(
+      /STATION_CODE_RE/,
+    );
+    // Verify no HTTP request was issued (validation happens before fetch).
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
 });

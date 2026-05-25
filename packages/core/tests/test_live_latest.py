@@ -238,6 +238,9 @@ def test_latest_iem_construction_does_not_raise(monkeypatch: pytest.MonkeyPatch)
     """
     from pathlib import Path
 
+    from pathlib import Path as _PathType  # noqa: F401  (Path imported in outer scope)
+    captured: dict[str, Any] = {}
+
     def fake_download(
         station: Any,
         start: Any,
@@ -251,6 +254,8 @@ def test_latest_iem_construction_does_not_raise(monkeypatch: pytest.MonkeyPatch)
         assert station.icao == "KNYC"
         # Sentinel values for the remaining required fields — must not crash.
         assert station.timezone == "UTC"
+        captured["start"] = start
+        captured["end"] = end
         return []  # empty CSV → latest() will raise NoLiveDataError
 
     def fake_parse(path: Path, observation_type_override: str | None = None) -> list[Any]:
@@ -266,3 +271,13 @@ def test_latest_iem_construction_does_not_raise(monkeypatch: pytest.MonkeyPatch)
     )
     with pytest.raises(NoLiveDataError):
         _run(latest("KNYC", source="iem"))
+
+    # Regression for iter-2 codex finding: window must be ONE day, not two.
+    # `download_iem_asos(exact_window=True)` treats `end` as inclusive and
+    # internally advances `day2` for IEM's exclusive-end semantics — so passing
+    # (today, today) requests one day, while the earlier (today, tomorrow)
+    # would have asked for TWO. We assert `start == end == today_utc`.
+    from datetime import UTC, datetime as _dt
+    today_utc = _dt.now(UTC).date()
+    assert captured["start"] == today_utc
+    assert captured["end"] == today_utc
