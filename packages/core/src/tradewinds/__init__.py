@@ -22,7 +22,8 @@ __path__ = __import__("pkgutil").extend_path(__path__, __name__)
 
 __version__ = "0.1.0rc1"
 
+from tradewinds import live
 from tradewinds.discover import discover
 from tradewinds.research import research
 
-__all__ = ["__version__", "discover", "research"]
+__all__ = ["__version__", "discover", "live", "research"]
