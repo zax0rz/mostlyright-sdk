@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://tradewinds.dev/schemas/observation_ledger.json",
+  "$id": "https://mostlyright.dev/schemas/observation_ledger.json",
   "title": "Silver-tier Observation Ledger (rows-per-source)",
   "description": "Phase 2.1 silver-tier ledger schema (LINEAGE-01..05). Carries one row per (station_code, observed_at, source). Multiple rows per (station_code, observed_at) are valid (one per contributing source: AWC, IEM, GHCNh). Read-time ObservationMergePolicy.apply() materializes single-row-per-key gold for Mode-1 parity callers. Extends v0.14.1 observation.json with 9 lineage fields (all nullable for backward-compat). Source enum extends to reserve 'ncei' per D-2.1-09 — never written in v0.1.0.",
   "type": "object",

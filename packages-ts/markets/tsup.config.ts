@@ -4,7 +4,7 @@ export default defineConfig([
   {
     entry: ["src/index.ts"],
     format: ["esm", "cjs", "iife"],
-    globalName: "tradewindsMarkets",
+    globalName: "mostlyrightMarkets",
     dts: true,
     sourcemap: true,
     clean: true,

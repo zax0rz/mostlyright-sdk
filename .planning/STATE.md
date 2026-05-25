@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
 milestone: v0.1.0
-milestone_name: — `@tradewinds/*` on npm)
-status: Phase 10 (Composable research() — selectors + discover() v0.2 surface) code-complete + review-clean. Phases 6 + 7 + 8 + 9 already on main. Python v0.1.0rc1 publish remains operator-gated. 8/8 TS phases code-complete (npm publish operator-gated).
-stopped_at: "Phase 10 ready to merge to main on top of 6+7+8+9 (3 review iterations; codex + python+ts architects all PASS)"
-last_updated: "2026-05-25T03:00:00.000Z"
-last_activity: "2026-05-25 - Phase 10 (composable research() selector validation + cross-issuer slug alias table + discover() ergonomic surface) code-complete; v0.3 deliverable is the multi-station JOIN + trade attachment"
+milestone_name: — `@mostlyright/*` on npm)
+status: Phase 12 (Rename tradewinds → mostlyright) code-complete; operator pre-flight OP1-OP4 pending before PR merge. Phases 6 + 7 + 8 + 9 + 10 already on main. Python v0.1.0rc1 publish remains operator-gated. 8/8 TS phases code-complete (npm publish operator-gated).
+stopped_at: "Phase 12 closeout; phase-12/rename-to-mostlyright -> main PR queued (3-reviewer dispatch); operator OP1-OP4 required before merge"
+last_updated: "2026-05-25T11:00:00.000Z"
+last_activity: "2026-05-25 - Phase 12 mechanical rename tradewinds -> mostlyright code-complete; zero test regressions at every wave gate (Python 1980 / TS 1322 / parity 5/5 byte-equivalent)"
 progress:
-  total_phases: 22
-  completed_phases: 6
-  total_plans: 27
-  completed_plans: 23
-  percent: 85
+  total_phases: 23
+  completed_phases: 7
+  total_plans: 34
+  completed_plans: 30
+  percent: 88
 ---
 
 # Project State
@@ -31,6 +31,59 @@ Status: Phase 6 + Phase 7 + Phase 8 all merged to main. Phase 6 shipped via 5-it
 Last activity: 2026-05-25 - Phase 6 (TradewindsResult wrapper + pandas 3 dual-lock + opt-in polars backend) merged on top of Phase 7 + 8.
 
 Progress: Python [██████████] 100% v0.1 (12/12 phases) + **Phase 6 v0.2** + **Phase 7** + **Phase 8** | TS [8/8 phases shipped — TS-W0 → TS-W7 code-complete; 1228 TS tests; npm publish operator-gated]
+
+## Phase 12 closeout (2026-05-25) — Rename `tradewinds` → `mostlyright`
+
+Merge commit pending. Mechanical end-to-end rename of every in-repo identifier from `tradewinds` to `mostlyright`. Zero behavior change. Zero test regressions at every wave gate. The repo `helloiamvu/tradewinds` URL stays unchanged for now (operator may rename out-of-band).
+
+**Requirements shipped (10/10):**
+- RENAME-01: W1 atomic — 3 Python source dirs `git mv`'d (blame preserved); 3 PyPI distros renamed (mostlyright / -weather / -markets); 5 npm packages renamed (`@mostlyright/{codegen,core,weather,markets}` + unscoped meta `mostlyright`); `uv.lock` + `pnpm-lock.yaml` regenerated; 3 wheels built cleanly with correct inter-package pins.
+- RENAME-02: W2 — 993 Python import-line rewrites (Batch A packages/) + 49 (Batch B tests/) + 8 (Batch C scripts/) + 552 broader string-quoted module-path rewrites (`patch("tradewinds.…")`, `sys.modules`, bare attribute access). Schema `$id` URL `tradewinds.dev` → `mostlyright.dev` rewritten with lockstep test assertion. New `scripts/_phase12_rename.py` rewriter + 7 unit tests.
+- RENAME-03: W3 — 64 TS import-line rewrites + 395 broader rewrites (comments, tsup.config.ts, codegen-source header strings) + `pnpm codegen` regen with `@mostlyright/codegen` AUTO-GENERATED header. Idempotency verified (3rd run produces 0 diff). New `scripts/_phase12_rename_ts.py`.
+- RENAME-04: W4 — `TRADEWINDS_CACHE_DIR` → `MOSTLYRIGHT_CACHE_DIR` env var migration with `_cache_dir.py` back-compat shim emitting DeprecationWarning on legacy var. 3 new unit tests (canonical-wins, legacy-warns, default-fallback). 19 test files' monkeypatch sites bulk-renamed; 1 file (`test_discovery_real.py`) intentionally kept on legacy for back-compat coverage.
+- RENAME-05: W4 — default cache path `~/.tradewinds/cache/v1/` → `~/.mostlyright/cache/v1/`; `docs/cache-migration.md` documents user-side `mv ~/.tradewinds ~/.mostlyright`.
+- RENAME-06: W5 — 117 lines across 12 prose files (README + CLAUDE.md + docs/) rewritten. `.planning/` archive (~4858 mentions) preserved per CONTEXT decision.
+- RENAME-07: W6 — 9 CI workflow files rewritten with FILENAMES PRESERVED (OIDC trusted-publisher bindings stay valid). `TRADEWINDS_TS_LIVE` → `MOSTLYRIGHT_TS_LIVE`. `TW_HOSTED_URL` + repo URL preserved.
+- RENAME-08: W7 parity gate — `uv run pytest tests/test_parity.py -q` GREEN under `from mostlyright import research`. 5-fixture byte-equivalent. Full Python + TS suites GREEN.
+- RENAME-09: W7 operator pre-flight — Phase 12 README includes 4-line operator-confirmation checklist (OP1-OP4) for the PR description.
+- RENAME-10: W7 Phase 12 README at `.planning/phases/12-rename-to-mostlyright/README.md` documents rename history, legacy folder rename, orphaned PyPI/npm names, v0.3 back-compat removal timeline.
+
+**Preserve-list intact (these literals UNCHANGED):**
+- `MostlyRight*` deprecation aliases (CORE-04, scheduled v0.3 removal — separate decision)
+- `mostlyright_v1` parser_name enum (LINEAGE-01)
+- `monorepo-v0.14.1` lift-source citations
+- `mostlyright==0.14.1` parity citations (50+ docstrings)
+- `tradewinds-legacy` (operator's renamed folder reference)
+- `github.com/helloiamvu/tradewinds` repo URL (repo stays)
+- `TW_HOSTED_URL` env var (Phase 7 cryptic prefix, not brand)
+
+**Test coverage delta:**
+- Python: 1971 → 1980 (+9 net — 3 from test_cache_env_back_compat.py + 7 from test_phase12_rewriter.py - 1 reshuffled).
+- TS: 1323 → 1322 (codegen 6 + core 762 + weather 218 + markets 202 + meta 134 + 1 skipped + 6 todo; within rounding of pre-Phase-12 baseline).
+- Parity gate green (5 fixtures byte-equivalent under `from mostlyright import research`).
+
+**Files added:**
+- `packages/core/src/mostlyright/_internal/_cache_dir.py`
+- `packages/core/tests/test_cache_env_back_compat.py`
+- `scripts/_phase12_rename.py`, `scripts/_phase12_rename_ts.py`
+- `tests/test_phase12_rewriter.py`
+- `docs/cache-migration.md`
+- `.planning/phases/12-rename-to-mostlyright/{12-CONTEXT,12-RESEARCH,12-01-PLAN..12-07-PLAN,README}.md`
+
+**Notable pandas-version pin:** `uv lock` regen initially upgraded pandas to 3.0.3 (which introduces breaking dtype shifts — `object → str` — that fail the parity gate). Pinned to `pandas==2.3.3` to match pre-Phase-12 baseline; pandas-3 migration remains a Phase 6 v0.2 follow-up.
+
+**Notable cache-shim semantic note:** the `resolve_cache_dir()` shim returns the FULL cache path (with `/v1` default), but the existing 3 callers (discovery._cache_root, weather/cache._cache_root, markets/_trades_cache._cache_root) expect the cache ROOT (without `/v1`, since callers append `CACHE_VERSION`). The callers therefore inline the shim's resolution order (canonical → legacy + warn → default) rather than directly use `resolve_cache_dir()`'s return value. This preserves the legacy env-var contract for existing users. New callers should use `resolve_cache_dir()` directly.
+
+**Operator-gated follow-ups (BLOCKED pending PR merge):**
+1. OP1 ~/Documents/GitHub/mostlyright → mostlyright-legacy (manual rename, prevents sys.path[0] collision).
+2. OP2 3 PyPI pending publishers (mostlyright, mostlyright-weather, mostlyright-markets) — pypi.org.
+3. OP3 @mostlyright npm scope claim — npmjs.com.
+4. OP4 4 npm OIDC pending publishers (@mostlyright/{core,weather,markets} + meta) — npmjs.com.
+5. Tag `v0.2.0` (or appropriate) → publish renamed PyPI distros.
+6. Tag `vts-0.2.0` (or appropriate) → publish renamed npm packages.
+7. v0.3: remove `TRADEWINDS_CACHE_DIR` back-compat branch.
+
+**Unblocks:** Phase 13+ on renamed identifiers.
 
 ## Phase 10 closeout (2026-05-25) — Composable research() (validation surface)
 

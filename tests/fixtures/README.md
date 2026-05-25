@@ -9,7 +9,7 @@ Tradewinds keeps two independent fixture trees, with strict policy on each:
 
 ## Why two tiers?
 
-- `parity/` is the **immutable reference** — proves tradewinds reproduces the
+- `parity/` is the **immutable reference** — proves mostlyright reproduces the
   v0.14.1 lift baseline byte-for-byte. The 5 captured DataFrames + the
   `expected_dtypes.json` checked in at Day 0.5 are the source of truth for
   Phase 1's parity test.
@@ -39,7 +39,7 @@ against the 5 stations + windows used by `parity/`, writes the result to
 
 Drift is a signal, not a gate. The hard parity gate lives at
 `tests/test_parity.py` and is run pre-publish only. If `compare.py` finds
-real regression, the FIX is on the tradewinds side — never refresh
+real regression, the FIX is on the mostlyright side — never refresh
 `parity/`.
 
 ## How to NEVER refresh `parity/`

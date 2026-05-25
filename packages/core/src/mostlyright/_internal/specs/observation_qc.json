@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://tradewinds.dev/schemas/observation_qc.json",
+  "$id": "https://mostlyright.dev/schemas/observation_qc.json",
   "title": "Observation QC Sidecar",
   "description": "Phase 2.1 forward-compat declaration; QC engine + writer hooks land in Phase 3.4. One row per QC rule firing per (station_code, observed_at, source) ledger key. 13 fields per the Phase 2.1 spec: ledger lineage keys + QC system identifiers + detector metadata payload.",
   "type": "object",

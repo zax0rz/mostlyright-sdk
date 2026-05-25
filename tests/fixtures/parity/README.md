@@ -46,7 +46,7 @@ built-in auth; the script monkeypatches `_http.HttpSession` to forward
 
 **KORD (O'Hare) is NOT in the whitelist** — case 2 was switched from KORD to
 KMDW (Midway, also Chicago, IS in the whitelist) to capture a Chicago-area
-single-month fixture. The local-first tradewinds SDK calls public APIs directly
+single-month fixture. The local-first mostlyright SDK calls public APIs directly
 (IEM, AWC, NWS CLI) and will work for any ICAO station; parity vs v0.14.1 is
 only defined for the whitelist.
 
@@ -134,7 +134,7 @@ import pandas as pd
 from pandas.testing import assert_frame_equal
 from pathlib import Path
 
-import tradewinds
+import mostlyright
 
 FIXTURES = Path(__file__).parent / "fixtures" / "parity"
 
@@ -160,7 +160,7 @@ def test_parity_case(n: int, station: str, frm: str, to: str) -> None:
     expected = pd.read_parquet(
         FIXTURES / f"case_{n}_{station}_{frm}_{to}.parquet"
     )
-    actual = tradewinds.research(station, frm, to)
+    actual = mostlyright.research(station, frm, to)
     assert_frame_equal(_canon(actual), _canon(expected), check_exact=False)
 ```
 

@@ -2,7 +2,7 @@
 
 **Status:** Operator-pending. The `capture_recordings.ts` script (Plan 07) is built
 but the actual recordings have not been captured — Plan 07 Task 2 is
-operator-gated (requires `TRADEWINDS_TS_LIVE=1` env var + live network access).
+operator-gated (requires `MOSTLYRIGHT_TS_LIVE=1` env var + live network access).
 
 **Source:** Live public APIs (AWC, IEM ASOS, IEM CLI, GHCNh).
 **Consumed by:** `packages-ts/meta/tests/parity/parity.test.ts` (Plan 08).
@@ -29,7 +29,7 @@ recordings/
 From the repo root:
 
 ```bash
-TRADEWINDS_TS_LIVE=1 pnpm --filter tradewinds capture-parity
+MOSTLYRIGHT_TS_LIVE=1 pnpm --filter mostlyright capture-parity
 ```
 
 Expected runtime: 5–15 minutes (IEM ASOS rate-limited at 1 req/sec; case 4 spans
@@ -87,7 +87,7 @@ Only if the Python parquet fixtures change (see
 
 1. Re-run the Python re-capture (operator-gated, requires MOSTLYRIGHT_API_KEY).
 2. Re-run the JSON export: `uv run python tests/fixtures/parity/export_for_ts.py`.
-3. Re-run the TS recording capture: `TRADEWINDS_TS_LIVE=1 pnpm --filter tradewinds capture-parity`.
+3. Re-run the TS recording capture: `MOSTLYRIGHT_TS_LIVE=1 pnpm --filter mostlyright capture-parity`.
 4. Verify manifest sha256s changed (and only as expected for the changes).
 5. Commit all three sets together.
 

@@ -11,7 +11,7 @@ export default defineConfig([
   {
     entry: ["src/index.ts"],
     format: ["esm", "cjs", "iife"],
-    globalName: "tradewindsCore",
+    globalName: "mostlyrightCore",
     dts: true,
     sourcemap: true,
     clean: true,
