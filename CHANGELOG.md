@@ -7,6 +7,103 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) once it ships
 
 ## [Unreleased]
 
+## v1.0.0 (Pending — Phase 17 + Phase 16)
+
+### Headline Feature — Phase 17: Forecast Catalog Expansion
+
+Mostlyright's forecast surface grows from 3 live-only models (HRRR/GFS/NBM)
+to ~20 free-tier NWP models with historical backfill via AWS Big Data
+Program. This is the headline v1.0 feature.
+
+**New NWP models supported (~20):**
+- **NCEP family**: HRRR (CONUS), HRRRAK (Alaska), GFS, GEFS (ensemble),
+  GDAS, NBM, RAP, RRFS, RTMA, URMA, CFS.
+- **ECMWF family**: IFS HRES, IFS ENS, AIFS single, AIFS ens (4 cloud
+  mirrors: google, aws-eu, ecmwf-origin, azure).
+- **MSC Canadian family** (live-only, 24h Datamart retention): HRDPS,
+  RDPS, GDPS, GEPS, REPS.
+- **NOMADS-only family**: HAFS (storm-following, with `Storms()` resolver).
+- **Legacy** (retiring 2026-08-31, ship with `DeprecatedModelWarning`):
+  NAM, HREF, HiResW.
+
+**Historical backfill** via AWS BDP per-model depth:
+- HRRR ≥ 2014-07-30
+- GFS ≥ 2021-01-01
+- GEFS ≥ 2017-01-01
+- NBM ≥ 2020-01-01
+- ECMWF IFS ≥ 2022-01-01
+- ECMWF AIFS ≥ 2024-02-25
+
+**`research(include_forecast=True)` wired** (previously raised
+`NotImplementedError`):
+- Mode 1 (default): IEM MOS forecasts populate `fcst_high_f`, `fcst_low_f`,
+  `fcst_model`, `fcst_issued_at`, `fcst_pop_6hr_pct`, `fcst_qpf_6hr_in`
+  columns — parity-compatible additive.
+- Mode 2 (`forecast_models=["hrrr"]`): NWP forecasts populate
+  `fcst_*_nwp_<model>` per-model columns.
+- Settlement-day bucketing uses station LST (via
+  `settlement_date_for(observed_at, station)`) — not raw UTC — so
+  post-midnight tail rows roll into the correct calendar settlement.
+- 36-hour NWP envelope per settlement day: prior-day 12Z + current-day
+  00Z + current-day 12Z, `fxx=0..24`. Analysis-only products (RTMA, URMA)
+  are dispatched at `fxx=0`.
+
+**Per-model QC rules** via `weather.qc.rules_nwp.QC_RULES_NWP` registry:
+- **NCEP base**: 7 physics-bounds rules (temp/dewpoint/RH/gust/precip/
+  PRES_sfc/MSLP). PRES_sfc + MSLP retain the Phase 3.2 backward-compat
+  `<= 0 Pa → suspect` branch.
+- **ECMWF**: NCEP base + tp-meters rule (ECMWF tp unit is meters, not mm).
+- **GEFS / HREF / REPS**: NCEP base + ensemble-dispersion sanity.
+- **HAFS**: NCEP base + basin-position sanity (storm_lat ∈ [0, 60]).
+- **MSC HRDPS**: NCEP base + regional-grid bounds (`grid_dist_km < 50`).
+- Worst-case semantics: suspect > flagged > clean per row.
+
+**Herbie-pattern adoption**:
+- Per-model `SOURCES_BY_MODEL` dict (replaces single global mirror chain).
+- `IDX_SUFFIX_BY_MODEL` fallback chain (`.idx` for NCEP / `.index` for
+  ECMWF).
+- `IDX_STYLE_BY_MODEL` dispatch (`wgrib2` / `eccodes`).
+- Range-not-honored guard (Herbie `core.py:1108-1115` pattern).
+- NOMADS concurrency cap `N≤4` (per Herbie #371 IP-ban evidence).
+- 9 date-conditional URL transitions consolidated in `_url_transitions.py`.
+- HAFS `Storms()` resolver with 1h TTL cache.
+
+### Paired TypeScript Evolution
+
+- `@mostlyright/weather/forecasts` ships `iemMosForecasts()` — fully
+  working text/JSON path, no GRIB2 dependency. F→C, kt→m/s, %→unit
+  conversions; NBE runtime-hour cutover (2026-05-05); 404 silently
+  skipped.
+- `@mostlyright/weather/forecasts` ships `forecastNwp()` v1.0 stub
+  throwing `Error('TS NWP deferred to v1.1')`. Signature stable —
+  callers can write code today and runtime arrives in v1.1.
+- TS NWP deferred to v1.1 per Phase 17 CONTEXT decision 7 (no
+  production-ready browser GRIB2 decoder as of May 2026).
+
+### Parity Preserved
+
+- All 5 existing byte-equivalent parity fixtures still pass against
+  `research(include_forecast=False)` Mode 1 output.
+- `schema.forecast_nwp.v1` `schema_id` UNCHANGED — model enum extension
+  is purely additive (predeclared doctrine).
+- `schema.forecast.iem_mos.v1` unchanged.
+
+### Empirical Research
+
+- `.planning/research/FORECAST-LIMITS.md` — per-mirror concurrent-fetch
+  tolerance + `httpx.Limits` recommendations.
+- `.planning/research/FORECAST-CORS-MATRIX.md` — browser CORS posture
+  for forecast mirrors.
+
+### New Exception Classes
+
+- `HistoricalDepthError` — cycle older than archive depth.
+- `DeprecatedModelWarning` — NAM / HREF / HiResW fetched.
+- `NwpModelRetiredError` — post-2026-08-31 retired-model fetch.
+- `StormNotFoundError` — HAFS storm query unmatched.
+
+---
+
 ### Phase 6 — Pandas 3 readiness + Optional Polars Backend (v0.2)
 
 #### Added

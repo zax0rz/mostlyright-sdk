@@ -122,6 +122,20 @@ assert (nhigh.settlement_source, nhigh.settlement_station) == (
 See [docs/adapters/](docs/adapters/) for per-source notes (timezone gotchas,
 DST handling, settlement-station mappings).
 
+### Forecast catalog (Phase 17 — v1.0 headline)
+
+`research(include_forecast=True)` populates forecast columns from IEM MOS
+(parity-compatible Mode 1) or per-model NWP (Mode 2 opt-in). Mostlyright
+supports ~20 NWP models including HRRR, GFS, GEFS, ECMWF IFS+AIFS, Canadian
+MSC (HRDPS/RDPS/GDPS/GEPS/REPS), HAFS (hurricane), CFS, RTMA/URMA.
+Historical backfill via AWS Big Data Program. See
+[`docs/forecasts.md`](docs/forecasts.md) for the full forecast catalog,
+QC rules, and historical-depth table.
+
+TypeScript lane: `@mostlyright/weather/forecasts` ships `iemMosForecasts()`
+in v1.0; `forecastNwp()` is a v1.0 stub (deferred to v1.1 pending browser
+GRIB2 decode maturity).
+
 ## Ingest strategies
 
 `tw.weather.obs(...)` smart-routes between three ingest paths depending on
