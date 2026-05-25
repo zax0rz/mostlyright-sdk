@@ -1,6 +1,6 @@
 {
   "name": "@mostlyrightmd/core",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.2",
   "description": "Core types, schemas, and primitives for the mostlyright TypeScript SDK (placeholder scaffold; implementation lands in TS-W1+).",
   "license": "MIT",
   "type": "module",
@@ -82,7 +82,9 @@
       "require": "./dist/discovery/index.cjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "prebuild": "pnpm --filter @mostlyrightmd/codegen run codegen",
     "build": "tsup",
@@ -90,7 +92,7 @@
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist coverage .tsbuildinfo",
-    "codegen": "echo \"@mostlyrightmd/core — no codegen step at this layer (consumes from @mostlyrightmd/codegen output)\""
+    "codegen": "echo \"@mostlyrightmd/core \u2014 no codegen step at this layer (consumes from @mostlyrightmd/codegen output)\""
   },
   "devDependencies": {
     "@types/node": "^20.16.10",

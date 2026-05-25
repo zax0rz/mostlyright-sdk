@@ -1,7 +1,7 @@
 {
   "name": "mostlyright",
-  "version": "0.0.0",
-  "description": "Convenience meta-package re-exporting @mostlyrightmd/core + @mostlyrightmd/weather + @mostlyrightmd/markets. Use this when you want the full SDK from a single import. The unscoped 'mostlyright' npm name is reserved pending an npm availability check (see TS-SDK-DESIGN.md §13.1).",
+  "version": "0.1.0-rc.2",
+  "description": "Convenience meta-package re-exporting @mostlyrightmd/core + @mostlyrightmd/weather + @mostlyrightmd/markets. Use this when you want the full SDK from a single import. The unscoped 'mostlyright' npm name is reserved pending an npm availability check (see TS-SDK-DESIGN.md \u00a713.1).",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -14,14 +14,16 @@
       "require": "./dist/index.cjs"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "prebuild": "pnpm --filter @mostlyrightmd/codegen run codegen",
     "build": "tsup",
     "test": "vitest",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist coverage .tsbuildinfo",
-    "codegen": "echo \"mostlyright (meta) — no codegen step at this layer\"",
+    "codegen": "echo \"mostlyright (meta) \u2014 no codegen step at this layer\"",
     "capture-parity": "tsx tests/parity/capture_recordings.ts",
     "drift-capture": "tsx tests/parity/drift_capture.ts",
     "drift-compare": "tsx tests/parity/drift_compare.ts"
