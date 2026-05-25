@@ -1,13 +1,19 @@
-// Phase 11 — `@tradewinds/weather/live` public re-exports.
+// Phase 11 — internal `live/*` barrel.
+//
+// This file is the in-package barrel; the public entry point is the main
+// `@tradewinds/weather` barrel (`src/index.ts`), which re-exports
+// everything below. There is intentionally NO `@tradewinds/weather/live`
+// subpath export in the published package today — adding one needs both
+// a `package.json` `exports` map entry and a separate tsup entry, which
+// is deferred to a v0.2.x ergonomics pass.
 //
 // Three surfaces:
 //  - `stream()`     — AsyncGenerator yielding fresh observations on a polite-floor cadence
 //  - `latest()`     — one-shot fetch (same path as one `stream()` tick)
 //  - `sources`/`POLITE_FLOORS_S` — registry constants
 //
-// LiveStreamError + NoLiveDataError live on `@tradewinds/core` (already
-// exported via the core exceptions barrel); re-export here for ergonomic
-// `import { LiveStreamError } from "@tradewinds/weather/live"`.
+// LiveStreamError + NoLiveDataError live on `@tradewinds/core`
+// (re-exported here so the weather barrel picks them up).
 
 export { LiveStreamError, NoLiveDataError } from "@tradewinds/core";
 

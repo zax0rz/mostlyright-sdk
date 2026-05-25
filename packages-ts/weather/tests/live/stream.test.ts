@@ -287,4 +287,53 @@ describe("stream()", () => {
     const rows = await collectN(stream("KNYC", { source: "iem" }), 1);
     expect(rows[0]?.source).toBe("iem.live");
   });
+
+  it("abort listeners do NOT accumulate across polling cycles", async () => {
+    // Regression for the iter-1 codex finding: every polite-floor sleep was
+    // adding a fresh `abort` listener via addEventListener({once: true}). The
+    // `{once: true}` flag removes the listener only when the event fires —
+    // which never happens for the timeout path, so listeners accumulated one
+    // per cycle until either abort (or stream close without abort, leaking
+    // forever). Node's EventTarget emits MaxListenersExceededWarning at 11.
+    let i = 0;
+    fetchSpy.mockImplementation(async () => {
+      i += 1;
+      return jsonResponse([awcMetar(1748174400 + 60 * i)]);
+    });
+    const controller = new AbortController();
+    // Spy on the signal's add/remove counts.
+    const addSpy = vi.spyOn(controller.signal, "addEventListener");
+    const removeSpy = vi.spyOn(controller.signal, "removeEventListener");
+
+    const agen = stream("KNYC", { signal: controller.signal });
+    const yielded: LiveObservation[] = [];
+    const consumer = (async () => {
+      for await (const row of agen) {
+        yielded.push(row);
+      }
+    })();
+    // Cycle through 15 polite-floor windows (well past Node's default
+    // MaxListeners=10 threshold). Each cycle does:
+    //   poll → yield → sleep(30s) → next iteration
+    // Listener count after N cycles must NOT grow without bound; the
+    // remove count must roughly track the add count (mod the active listener).
+    for (let cycle = 0; cycle < 15; cycle++) {
+      await vi.advanceTimersByTimeAsync(POLITE_FLOORS_S.awc * 1000 + 10);
+      await Promise.resolve();
+    }
+    controller.abort();
+    await vi.advanceTimersByTimeAsync(1);
+    await consumer;
+
+    // Each polite-floor cycle adds exactly one `abort` listener and removes
+    // it on timeout. After N cycles, removeCalls === addCalls - 1 (the final
+    // listener is still attached when abort fires — `{once: true}` cleans
+    // that one up). This is the property the leak fix preserves.
+    const addCalls = addSpy.mock.calls.filter((c) => c[0] === "abort").length;
+    const removeCalls = removeSpy.mock.calls.filter((c) => c[0] === "abort").length;
+    expect(addCalls).toBeGreaterThanOrEqual(10);
+    // Allow off-by-one (the active listener at abort time is removed by
+    // the `{once: true}` flag, not the explicit removeEventListener call).
+    expect(addCalls - removeCalls).toBeLessThanOrEqual(2);
+  });
 });

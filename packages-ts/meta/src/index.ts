@@ -59,7 +59,10 @@ export { discover, type DiscoverResult, type DiscoverRow } from "./discover.js";
 
 // Phase 11 — `tradewinds.live` ticker surface re-exported through the
 // meta package so `import { stream, latest } from "tradewinds"` works
-// alongside the scoped `import { stream } from "@tradewinds/weather/live"`.
+// alongside the scoped `import { stream } from "@tradewinds/weather"`.
+// (No `/live` subpath export today — the surface is folded into the
+// weather barrel; adding a separate subpath requires a package.json
+// exports update + a tsup entry, deferred until a v0.2.x ergonomics pass.)
 export {
   POLITE_FLOORS_S,
   SOURCE_IDENTITY_TAGS,

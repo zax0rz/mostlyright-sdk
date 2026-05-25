@@ -38,19 +38,34 @@ export interface StreamOptions {
   readonly signal?: AbortSignal;
 }
 
-/** Abortable sleep helper — rejects-as-return on `signal`. */
+/**
+ * Abortable sleep helper — resolves on timeout OR on `signal.abort`.
+ *
+ * Critical: the abort listener MUST be removed once the sleep resolves
+ * naturally (timeout fired), otherwise long-running streams accumulate
+ * one listener per polling cycle until the signal aborts (or forever if
+ * the stream is closed via `.return()` without aborting). Without the
+ * removal, Node emits `MaxListenersExceededWarning` at 11 cycles + holds
+ * onto closure memory indefinitely.
+ */
 async function sleep(ms: number, signal: AbortSignal | undefined): Promise<void> {
   if (signal?.aborted) return;
   await new Promise<void>((resolve) => {
-    const t = setTimeout(resolve, ms);
-    signal?.addEventListener(
-      "abort",
-      () => {
-        clearTimeout(t);
-        resolve();
-      },
-      { once: true },
-    );
+    const onAbort = () => {
+      clearTimeout(t);
+      // Listener was registered with `{ once: true }` so we don't need
+      // to remove it explicitly here, but we DO need to keep this branch
+      // for the timeout case below.
+      resolve();
+    };
+    const t = setTimeout(() => {
+      // Remove the abort listener before resolving so it doesn't leak
+      // past this cycle. `removeEventListener` is a no-op if the listener
+      // wasn't attached (e.g. signal === undefined).
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener("abort", onAbort, { once: true });
   });
 }
 

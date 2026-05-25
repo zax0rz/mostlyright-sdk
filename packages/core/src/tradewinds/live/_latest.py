@@ -62,7 +62,20 @@ async def _fetch_iem_latest(station: str) -> list[dict[str, Any]]:
     icao = _normalize_station(station)
     station_code = icao[1:] if icao.startswith("K") and len(icao) == 4 else icao
     validate_icao_for_path(station_code)
-    station_info = StationInfo(code=station_code, icao=icao, name=icao, tz="UTC")
+    # `download_iem_asos` only reads `station.code` + `station.icao` (the rest
+    # are present on the dataclass for SDK consumers but unused here). Pass
+    # sentinel values for the remaining required fields — keeping them
+    # explicit so the lift surfaces if `download_iem_asos` ever starts
+    # reading extra fields off the StationInfo.
+    station_info = StationInfo(
+        code=station_code,
+        name=icao,
+        icao=icao,
+        timezone="UTC",
+        utc_offset_standard=0,
+        latitude=0.0,
+        longitude=0.0,
+    )
 
     today = datetime.now(UTC).date()
     tomorrow = date.fromordinal(today.toordinal() + 1)

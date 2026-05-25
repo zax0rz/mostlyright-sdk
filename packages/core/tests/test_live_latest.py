@@ -222,3 +222,47 @@ def test_latest_strips_unparseable_metars(monkeypatch: pytest.MonkeyPatch) -> No
     row = _run(latest("KNYC"))
     assert row["station_code"] == "NYC"
     assert row["source"] == "awc.live"
+
+
+def test_latest_iem_construction_does_not_raise(monkeypatch: pytest.MonkeyPatch) -> None:
+    """End-to-end IEM path: constructs StationInfo + invokes parser without raising.
+
+    Regression test for the iter-1 codex finding: `_fetch_iem_latest` was
+    constructing `StationInfo(tz="UTC")` which raised `TypeError` because
+    the dataclass requires `timezone`/`utc_offset_standard`/`latitude`/`longitude`
+    (not `tz`). The bug never surfaced earlier because the IEM source tests
+    mocked `_fetch_iem_latest` itself rather than its dependencies.
+
+    Here we mock at the LAYER BELOW — `download_iem_asos` + `parse_iem_file` —
+    so the StationInfo construction inside `_fetch_iem_latest` actually runs.
+    """
+    from pathlib import Path
+
+    def fake_download(
+        station: Any,
+        start: Any,
+        end: Any,
+        dest_dir: Path,
+        **kwargs: Any,
+    ) -> list[Path]:
+        # Verify the StationInfo construction worked (no TypeError raised)
+        # AND that the fields download_iem_asos reads are correctly populated.
+        assert station.code == "NYC"
+        assert station.icao == "KNYC"
+        # Sentinel values for the remaining required fields — must not crash.
+        assert station.timezone == "UTC"
+        return []  # empty CSV → latest() will raise NoLiveDataError
+
+    def fake_parse(path: Path, observation_type_override: str | None = None) -> list[Any]:
+        return []
+
+    monkeypatch.setattr(
+        "tradewinds.weather._fetchers.iem_asos.download_iem_asos",
+        fake_download,
+    )
+    monkeypatch.setattr(
+        "tradewinds.weather._iem.parse_iem_file",
+        fake_parse,
+    )
+    with pytest.raises(NoLiveDataError):
+        _run(latest("KNYC", source="iem"))
