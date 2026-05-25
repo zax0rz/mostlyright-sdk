@@ -191,6 +191,50 @@ def _is_nan(v: Any) -> bool:
 # ----------------------------------------------------------------------
 # Cycle selection
 # ----------------------------------------------------------------------
+#: Per-model cycle cadence in hours (Phase 17 RESEARCH §10).
+#:
+#: - Hourly (1h): HRRR, NBM, RAP, RTMA, URMA, RRFS — analysis + nowcast
+#:   models that run every wall-clock hour.
+#: - 3-hourly (3h): HRRRAK — Alaska runs every 3 hours.
+#: - 6-hourly (6h): GFS, GDAS, GEFS, CFS, ECMWF, HAFS, HRDPS, RDPS, REPS,
+#:   NAM, HREF — synoptic-scale models on the 00/06/12/18Z grid.
+#: - 12-hourly (12h): GDPS, GEPS, HiResW — model grids running 2x/day.
+#:
+#: Unlisted models fall back to 1h (hourly). New Wave-2 model entries
+#: must be registered here so ``_default_cycle_for`` returns a cycle the
+#: upstream mirror actually produces.
+_CYCLE_FREQUENCY_HOURS: dict[str, int] = {
+    # Hourly
+    "hrrr": 1,
+    "nbm": 1,
+    "rap": 1,
+    "rtma": 1,
+    "urma": 1,
+    "rrfs": 1,
+    # 3-hourly
+    "hrrrak": 3,
+    # 6-hourly
+    "gfs": 6,
+    "gdas": 6,
+    "gefs": 6,
+    "cfs": 6,
+    "ecmwf_ifs_hres": 6,
+    "ecmwf_ifs_ens": 6,
+    "ecmwf_aifs_single": 6,
+    "ecmwf_aifs_ens": 6,
+    "hafs": 6,
+    "hrdps": 6,
+    "rdps": 6,
+    "reps": 6,
+    "nam": 6,
+    "href": 6,
+    # 12-hourly
+    "gdps": 12,
+    "geps": 12,
+    "hiresw": 12,
+}
+
+
 def _default_cycle_for(model: str, *, fxx: int, now: datetime | None = None) -> datetime:
     """Pick a cycle hour the user is likely to mean by "the latest one".
 
@@ -199,9 +243,9 @@ def _default_cycle_for(model: str, *, fxx: int, now: datetime | None = None) -> 
 
         cycle + fxx*1h <= now - 90min
 
-    (90 min covers HRRR/GFS/NBM run + upload windows with some safety).
-    Rearranged: ``cycle <= now - 90min - fxx*1h``. We then floor to the
-    model's cycle grid — hourly for HRRR/NBM, 6-hourly for GFS.
+    (90 min covers run + upload windows with some safety). Rearranged:
+    ``cycle <= now - 90min - fxx*1h``. We then floor to the model's
+    cycle grid — see :data:`_CYCLE_FREQUENCY_HOURS`.
 
     Worked example (HRRR, ``now = 2026-05-23 12:00 UTC``, ``fxx = 1``)::
 
@@ -218,7 +262,7 @@ def _default_cycle_for(model: str, *, fxx: int, now: datetime | None = None) -> 
         now = datetime.now(UTC)
     if now.tzinfo is None:
         now = now.replace(tzinfo=UTC)
-    cycle_step_h = 6 if model == "gfs" else 1
+    cycle_step_h = _CYCLE_FREQUENCY_HOURS.get(model, 1)
     backoff = timedelta(minutes=90)
     upper_bound = now - backoff - timedelta(hours=fxx)
     # Floor to the model's cycle grid (top of the eligible hour).
@@ -492,6 +536,39 @@ def forecast_nwp(
             f"mirror must be one of {sorted(SUPPORTED_NWP_MIRRORS)} "
             f"(or reserved in {sorted(NWP_MIRROR_VALUES)} for v0.2); "
             f"got {mirror!r}"
+        )
+
+    # Phase 17 PLAN-05: MSC Canadian family bypass. MSC Datamart has a 24h
+    # retention window; PLAN-09 will wire the per-variable fetcher once
+    # research integration lands. Short-circuit BEFORE the [nwp] extra
+    # imports so MSC callers see a clean ``HistoricalDepthError`` rather
+    # than ``SourceUnavailableError`` about missing cfgrib.
+    from ._fetchers._msc_archive import MSC_MODELS, raise_msc_historical_depth
+
+    if model in MSC_MODELS:
+        cycle_for_error = (
+            cycle.astimezone(UTC)
+            if cycle is not None and cycle.tzinfo is not None
+            else (cycle if cycle is not None else datetime.now(UTC))
+        )
+        raise_msc_historical_depth(model=model, requested_cycle=cycle_for_error)
+
+    # Phase 17 PLAN-06: legacy-model deprecation. NAM / HREF / HiResW
+    # retire 2026-08-31 per NWS scn26-47. Emit DeprecatedModelWarning so
+    # callers see the pre-retirement signal; the post-retirement
+    # NwpModelRetiredError gets raised by ``build_fetch_plan`` once the
+    # cycle crosses ``LEGACY_MODELS_RETIRE``. Stacklevel=2 so the warning
+    # points at the user's call site (not this line).
+    if model in {"nam", "href", "hiresw"}:
+        import warnings as _warnings
+
+        from mostlyright.core.exceptions import DeprecatedModelWarning
+
+        _warnings.warn(
+            f"{model} retires 2026-08-31 per NWS scn26-47 (Herbie #540). "
+            "Use HRRR / RAP / RRFS instead.",
+            category=DeprecatedModelWarning,
+            stacklevel=2,
         )
 
     # Lazy-import the heavy deps so the module imports without [nwp].

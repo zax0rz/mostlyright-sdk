@@ -396,7 +396,18 @@ def _cfs_path(
     kind: str = "flxf",
     valid_date: str = "",
 ) -> str:
-    """CFS 6-hourly product. ``valid_date`` is %Y%m%d of the valid time."""
+    """CFS 6-hourly product.
+
+    ``valid_date`` is ``%Y%m%d`` of the valid time. If not supplied, it
+    is derived from ``cycle + fxx hours`` so default ``forecast_nwp``
+    calls (no per-model kwargs) produce a well-formed URL — per Phase 17
+    Wave-2 iter-1 review: an empty ``valid_date`` would emit a malformed
+    URL.
+    """
+    from datetime import timedelta
+
+    if not valid_date:
+        valid_date = (cycle + timedelta(hours=fxx)).strftime("%Y%m%d")
     return (
         f"/cfs.{cycle:%Y%m%d}/{cycle:%H}/6hrly_grib_{member}/"
         f"{kind}{valid_date}.{member}.{cycle:%Y%m%d%H}.grb2"

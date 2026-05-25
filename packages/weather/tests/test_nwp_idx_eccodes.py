@@ -72,6 +72,56 @@ def test_parse_idx_eccodes_missing_offset_raises_value_error() -> None:
         parse_idx('{"param": "2t", "levtype": "sfc"}', style="eccodes")
 
 
+# Phase 17 Wave-2 iter-1 review hardening: strict type / range checks.
+
+
+def test_parse_idx_eccodes_float_offset_rejected() -> None:
+    """JSON floats must NOT be silently truncated to int."""
+    with pytest.raises(ValueError, match="missing _offset"):
+        parse_idx(
+            '{"_offset": 0.5, "_length": 100, "param": "2t", "levtype": "sfc"}',
+            style="eccodes",
+        )
+
+
+def test_parse_idx_eccodes_negative_offset_rejected() -> None:
+    with pytest.raises(ValueError, match="negative _offset"):
+        parse_idx(
+            '{"_offset": -1, "_length": 100, "param": "2t", "levtype": "sfc"}',
+            style="eccodes",
+        )
+
+
+def test_parse_idx_eccodes_zero_length_rejected() -> None:
+    with pytest.raises(ValueError, match="non-positive _length"):
+        parse_idx(
+            '{"_offset": 0, "_length": 0, "param": "2t", "levtype": "sfc"}',
+            style="eccodes",
+        )
+
+
+def test_parse_idx_eccodes_missing_param_rejected() -> None:
+    with pytest.raises(ValueError, match=r"missing or empty 'param'"):
+        parse_idx(
+            '{"_offset": 0, "_length": 100, "levtype": "sfc"}',
+            style="eccodes",
+        )
+
+
+def test_parse_idx_eccodes_empty_levtype_rejected() -> None:
+    with pytest.raises(ValueError, match=r"missing or empty 'levtype'"):
+        parse_idx(
+            '{"_offset": 0, "_length": 100, "param": "2t", "levtype": ""}',
+            style="eccodes",
+        )
+
+
+def test_parse_idx_eccodes_top_level_array_rejected() -> None:
+    """A JSON array at the line level is not a record object."""
+    with pytest.raises(ValueError, match="not a JSON object"):
+        parse_idx("[1, 2, 3]", style="eccodes")
+
+
 def test_parse_idx_eccodes_record_numbering_sequential() -> None:
     records = parse_idx(SAMPLE_ECCODES_TEXT, style="eccodes")
     assert [r.record_no for r in records] == [1, 2, 3, 4, 5]

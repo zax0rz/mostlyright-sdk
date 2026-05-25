@@ -171,6 +171,31 @@ def forecast_nwp(
             f"(or reserved in {sorted(NWP_MODEL_VALUES)} for v0.2); "
             f"got {model!r}"
         )
+
+    # Phase 17 PLAN-05: surface MSC Canadian family's HistoricalDepthError
+    # at the public dispatch surface BEFORE the wired-models gate, so
+    # callers get the right error class (retention-window, not "model
+    # not available") even when the [nwp] extra isn't installed. PLAN-09
+    # will wire the per-variable MSC fetcher in research integration.
+    if model in {"hrdps", "rdps", "gdps", "geps", "reps"}:
+        from datetime import UTC as _UTC
+        from datetime import datetime as _dt
+
+        from mostlyright.core.exceptions import HistoricalDepthError
+
+        requested_cycle = (
+            cycle
+            if cycle is not None and getattr(cycle, "tzinfo", None) is not None
+            else _dt.now(_UTC)
+        )
+        raise HistoricalDepthError(
+            f"{model}: MSC Datamart has 24h retention; historical backfill "
+            "not supported. Use a live cycle within the last 24 hours.",
+            model=model,
+            requested_cycle=requested_cycle,
+            archive_depth=None,
+        )
+
     # Surface NwpModelNotAvailableError eagerly for predeclared-but-not-
     # yet-wired models so a user calling, e.g., ``forecast_nwp("KNYC",
     # "ecmwf_ifs_hres")`` sees a clean reserved-model error rather than

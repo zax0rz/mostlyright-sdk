@@ -155,3 +155,43 @@ def test_build_msc_fetch_plan_naive_cycle_raises_value_error() -> None:
             fxx=6,
             variables=["temp_k_2m"],
         )
+
+
+# Phase 17 Wave-2 iter-1 review hardening.
+
+
+def test_geps_url_rejects_unknown_member() -> None:
+    """Unknown GEPS members (e.g. ``m001``) must NOT silently route anywhere."""
+    with pytest.raises(ValueError, match="GEPS member must be one of"):
+        build_msc_fetch_plan(
+            model="geps",
+            cycle=CYCLE,
+            fxx=6,
+            variables=["temp_k_2m"],
+            member="m001",  # wrong layout — should be allmbrs/raw/prod
+        )
+
+
+def test_geps_url_accepts_prod_member() -> None:
+    """``member="prod"`` explicitly routes to the statistical-product layout."""
+    plan = build_msc_fetch_plan(
+        model="geps",
+        cycle=CYCLE,
+        fxx=6,
+        variables=["temp_k_2m"],
+        member="prod",
+    )
+    assert "ensemble/geps/grib2/products" in plan.variable_urls["temp_k_2m"]
+
+
+def test_public_forecast_nwp_msc_raises_historical_depth_error() -> None:
+    """MSC special-cased at the public surface BEFORE the wired-models gate."""
+    from mostlyright.core.exceptions import HistoricalDepthError
+    from mostlyright.forecasts import forecast_nwp
+
+    with pytest.raises(HistoricalDepthError) as exc_info:
+        forecast_nwp("KNYC", "hrdps")
+    err = exc_info.value
+    assert err.model == "hrdps"
+    assert err.archive_depth is None
+    assert "24h retention" in str(err)

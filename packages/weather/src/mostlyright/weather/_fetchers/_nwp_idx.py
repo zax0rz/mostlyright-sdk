@@ -248,14 +248,34 @@ def _parse_idx_eccodes(text: str) -> list[IdxRecord]:
             obj = json.loads(line)
         except json.JSONDecodeError as exc:
             raise ValueError(f"Malformed .index JSON line {line_no}: {raw_line!r}") from exc
-        try:
-            offset = int(obj["_offset"])
-            length = int(obj["_length"])
-        except (KeyError, ValueError, TypeError) as exc:
-            raise ValueError(f".index line {line_no} missing _offset/_length: {obj!r}") from exc
+        if not isinstance(obj, dict):
+            raise ValueError(f".index line {line_no} is not a JSON object: {obj!r}")
+        # Phase 17 iter-1: strict integer + range validation. JSON floats
+        # would silently truncate via int(); bool is a subclass of int and
+        # must be rejected too. Negative offsets / non-positive lengths
+        # would corrupt byte-range fetches.
+        offset_raw = obj.get("_offset")
+        length_raw = obj.get("_length")
+        if not isinstance(offset_raw, int) or isinstance(offset_raw, bool):
+            raise ValueError(f".index line {line_no} missing _offset/_length: {obj!r}")
+        if not isinstance(length_raw, int) or isinstance(length_raw, bool):
+            raise ValueError(f".index line {line_no} missing _offset/_length: {obj!r}")
+        if offset_raw < 0:
+            raise ValueError(f".index line {line_no} has negative _offset: {obj!r}")
+        if length_raw <= 0:
+            raise ValueError(f".index line {line_no} has non-positive _length: {obj!r}")
+        # Required descriptive fields — silently emitting empty-variable
+        # records would corrupt downstream filter_records lookups.
+        param_raw = obj.get("param")
+        if not isinstance(param_raw, str) or not param_raw:
+            raise ValueError(f".index line {line_no} missing or empty 'param': {obj!r}")
+        levtype_raw = obj.get("levtype")
+        if not isinstance(levtype_raw, str) or not levtype_raw:
+            raise ValueError(f".index line {line_no} missing or empty 'levtype': {obj!r}")
+        offset = offset_raw
+        length = length_raw
         record_no += 1
-        levtype = obj.get("levtype", "")
-        level = f"{levtype}:{obj['levelist']}" if "levelist" in obj else levtype
+        level = f"{levtype_raw}:{obj['levelist']}" if "levelist" in obj else levtype_raw
         date = obj.get("date", "")
         time_field = obj.get("time", "")
         ref_date = f"d={date}{time_field[:2]}" if (date and time_field) else ""
@@ -265,7 +285,7 @@ def _parse_idx_eccodes(text: str) -> list[IdxRecord]:
                 byte_offset=offset,
                 byte_end=offset + length - 1,
                 reference_date=ref_date,
-                variable=obj.get("param", ""),
+                variable=param_raw,
                 level=level,
                 forecast_period=f"{obj.get('step', '0')} hour fcst",
             )

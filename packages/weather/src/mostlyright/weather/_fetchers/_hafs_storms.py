@@ -50,6 +50,14 @@ def get_active_storms(
     Cached for :data:`_STORM_LIST_TTL`. Pass ``bust_cache=True`` to skip
     the cache and re-fetch.
 
+    Concurrency: the cache lock is held through the network I/O — a
+    deliberate "single-flight" pattern. Two concurrent callers on a cold
+    cache will not both fan out to NOMADS (that would double the request
+    count past the load-bearing :data:`_NOMADS_CONCURRENCY_CAP` per
+    Herbie issue #371). The second caller blocks briefly on the lock,
+    then reads the cache the first caller just populated. The 1h TTL
+    means at most one fetch per hour per process anyway.
+
     Args:
         client: Optional :class:`httpx.Client` to reuse a connection.
         bust_cache: If true, ignore any cached value and re-fetch.
@@ -60,40 +68,41 @@ def get_active_storms(
         (e.g. ``"laura"``).
     """
     with _cache_lock:
+        # Re-check cache inside the lock (defends against the
+        # thundering-herd cache fill).
         cached = _storm_cache.get("active")
         if cached is not None and not bust_cache:
             fetch_time, storms = cached
             if (_now() - fetch_time) < _STORM_LIST_TTL:
                 return dict(storms)
 
-    close_client = False
-    if client is None:
-        client = httpx.Client(timeout=HTTP_TIMEOUT)
-        close_client = True
+        close_client = False
+        if client is None:
+            client = httpx.Client(timeout=HTTP_TIMEOUT)
+            close_client = True
 
-    try:
-        resp = client.get(_STORM_LIST_URL)
-        resp.raise_for_status()
-        # NOMADS returns an HTML directory listing — regex out messageN
-        # filenames in document order (sorted for determinism).
-        messages = sorted(set(_MESSAGE_RE.findall(resp.text)))
+        try:
+            resp = client.get(_STORM_LIST_URL)
+            resp.raise_for_status()
+            # NOMADS returns an HTML directory listing — regex out messageN
+            # filenames in document order (sorted for determinism).
+            messages = sorted(set(_MESSAGE_RE.findall(resp.text)))
 
-        storms: dict[str, str] = {}
-        for message in messages:
-            mresp = client.get(_STORM_LIST_URL + message)
-            mresp.raise_for_status()
-            # Format: "<center> <storm_id> <storm_name> <extra...>"
-            parts = re.split(r"\s+", mresp.text.strip(), maxsplit=3)
-            if len(parts) >= 3:
-                _center, storm_id, storm_name = parts[0], parts[1], parts[2]
-                storms[storm_id.lower()] = storm_name.lower()
+            storms = {}
+            for message in messages:
+                mresp = client.get(_STORM_LIST_URL + message)
+                mresp.raise_for_status()
+                # Format: "<center> <storm_id> <storm_name> <extra...>"
+                parts = re.split(r"\s+", mresp.text.strip(), maxsplit=3)
+                if len(parts) >= 3:
+                    _center, storm_id, storm_name = parts[0], parts[1], parts[2]
+                    storms[storm_id.lower()] = storm_name.lower()
 
-        with _cache_lock:
             _storm_cache["active"] = (_now(), storms)
-        return dict(storms)
-    finally:
-        if close_client:
-            client.close()
+            return dict(storms)
+        finally:
+            if close_client:
+                client.close()
 
 
 def resolve_storm(

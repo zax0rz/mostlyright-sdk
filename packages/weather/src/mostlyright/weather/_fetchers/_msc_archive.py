@@ -71,6 +71,11 @@ def _gdps_url(cycle: datetime, fxx: int, variable: str, level: str) -> str:
     )
 
 
+#: Recognised GEPS member labels — ``raw`` / ``allmbrs`` route to the
+#: per-member grid; ``prod`` routes to the statistical-product grid.
+_GEPS_VALID_MEMBERS: frozenset[str] = frozenset({"allmbrs", "raw", "prod"})
+
+
 def _geps_url(
     cycle: datetime,
     fxx: int,
@@ -78,6 +83,10 @@ def _geps_url(
     level: str,
     member: str = "allmbrs",
 ) -> str:
+    if member not in _GEPS_VALID_MEMBERS:
+        raise ValueError(
+            f"GEPS member must be one of {sorted(_GEPS_VALID_MEMBERS)}; got {member!r}"
+        )
     if member in {"allmbrs", "raw"}:
         return (
             f"{_MSC_ROOT}/{cycle:%Y%m%d}/WXO-DD/ensemble/geps/grib2/raw/"
@@ -85,6 +94,7 @@ def _geps_url(
             f"CMC_geps-raw_{variable}_{level}_latlon0p5x0p5_"
             f"{cycle:%Y%m%d%H}_P{fxx:03d}_allmbrs.grib2"
         )
+    # member == "prod"
     return (
         f"{_MSC_ROOT}/{cycle:%Y%m%d}/WXO-DD/ensemble/geps/grib2/products/"
         f"{cycle:%H}/{fxx:03d}/"

@@ -247,3 +247,61 @@ def test_get_variable_map_for_ncep_model(model: str) -> None:
     # GRID_KIND is a non-empty label.
     gk = get_grid_kind(model)
     assert isinstance(gk, str) and gk
+
+
+# ---------------------------------------------------------------------------
+# Phase 17 Wave-2 iter-1 review hardening.
+# ---------------------------------------------------------------------------
+
+
+def test_cfs_path_derives_valid_date_from_cycle_plus_fxx() -> None:
+    """``forecast_nwp("KNYC", "cfs")`` calls build_fetch_plan with no
+    per-model kwargs — ``_cfs_path`` must compute ``valid_date`` from
+    ``cycle + fxx`` so the URL doesn't contain an empty placeholder.
+    """
+    plan = build_fetch_plan(
+        model="cfs",
+        mirror="aws_bdp",
+        cycle=datetime(2026, 5, 24, 0, tzinfo=UTC),
+        fxx=24,  # 24 hours forward → valid date 2026-05-25
+    )
+    assert "flxf20260525.01.2026052400.grb2" in plan.grib2_url
+
+
+def test_default_cycle_for_gefs_is_6_hourly() -> None:
+    """Phase 17 iter-1: GEFS / GDAS / CFS are 6-hourly (synoptic-scale).
+
+    Before iter-1 only GFS was treated as 6-hourly; GEFS/GDAS/CFS would
+    floor to invalid hourly cycles. _CYCLE_FREQUENCY_HOURS registry
+    fixes the dispatch.
+    """
+    from mostlyright.weather.forecast_nwp import (
+        _CYCLE_FREQUENCY_HOURS,
+        _default_cycle_for,
+    )
+
+    assert _CYCLE_FREQUENCY_HOURS["gefs"] == 6
+    assert _CYCLE_FREQUENCY_HOURS["gdas"] == 6
+    assert _CYCLE_FREQUENCY_HOURS["cfs"] == 6
+    # Deterministic: now = 2026-05-24 12:00 UTC, fxx=1 → upper bound
+    # = 10:30, floored to 6-hourly grid → 06:00.
+    now = datetime(2026, 5, 24, 12, tzinfo=UTC)
+    cycle = _default_cycle_for("gefs", fxx=1, now=now)
+    assert cycle.hour == 6
+    assert cycle.minute == 0
+
+
+def test_default_cycle_for_hrrrak_is_3_hourly() -> None:
+    """HRRRAK runs every 3 hours (Phase 17 RESEARCH §10)."""
+    from mostlyright.weather.forecast_nwp import _CYCLE_FREQUENCY_HOURS
+
+    assert _CYCLE_FREQUENCY_HOURS["hrrrak"] == 3
+
+
+def test_default_cycle_for_gdps_is_12_hourly() -> None:
+    """GDPS / GEPS / HiResW run twice per day (00 / 12 Z only)."""
+    from mostlyright.weather.forecast_nwp import _CYCLE_FREQUENCY_HOURS
+
+    assert _CYCLE_FREQUENCY_HOURS["gdps"] == 12
+    assert _CYCLE_FREQUENCY_HOURS["geps"] == 12
+    assert _CYCLE_FREQUENCY_HOURS["hiresw"] == 12
