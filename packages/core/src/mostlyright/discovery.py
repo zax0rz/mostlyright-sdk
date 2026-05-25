@@ -116,19 +116,47 @@ class DataVersion:
 
 
 def _cache_root() -> Path:
-    """Cache root resolver — local to avoid importing mostlyright.weather."""
-    import os
+    """Cache root resolver — local to avoid importing mostlyright.weather.
 
-    override = os.environ.get("TRADEWINDS_CACHE_DIR")
-    if override:
-        return Path(override).expanduser()
+    Returns the cache ROOT (without ``/v1``). Callers append ``/v1/{subdir}/...``
+    themselves. Resolves canonical ``MOSTLYRIGHT_CACHE_DIR`` env var first, falls
+    back to legacy ``TRADEWINDS_CACHE_DIR`` with a ``DeprecationWarning`` (W4
+    back-compat per Phase 12 plan), else the legacy default ``~/.mostlyright/cache``.
+
+    The :func:`mostlyright._internal._cache_dir.resolve_cache_dir` helper is the
+    canonical shim for *new* callers that want the full cache directory
+    (``~/.mostlyright/cache/v1``); ``_cache_root()`` mirrors its resolution
+    order but preserves the legacy "root without /v1" contract for existing
+    call sites that build paths like ``_cache_root() / "v1" / "observations"``.
+    """
+    import os
+    import warnings
+
+    from mostlyright._internal._cache_dir import _CANONICAL_ENV, _LEGACY_ENV, resolve_cache_dir
+
+    # Touch resolve_cache_dir to keep the shim discoverable to readers + the
+    # Phase 12 W4 import-gate; not used directly because of the contract delta.
+    _ = resolve_cache_dir
+
+    canonical = os.environ.get(_CANONICAL_ENV)
+    if canonical:
+        return Path(canonical).expanduser()
+    legacy = os.environ.get(_LEGACY_ENV)
+    if legacy:
+        warnings.warn(
+            f"{_LEGACY_ENV} is deprecated; use {_CANONICAL_ENV}. "
+            f"Support will be removed in v0.3. Run: mv ~/.tradewinds ~/.mostlyright",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return Path(legacy).expanduser()
     return Path.home() / ".mostlyright" / "cache"
 
 
 def _hash_cache_files(station: str) -> str:
     """Return a SHA-256 of the on-disk cache files relevant to ``station``.
 
-    Walks ``$TRADEWINDS_CACHE_DIR/v1/{observations,climate}/{station}/``
+    Walks ``$MOSTLYRIGHT_CACHE_DIR/v1/{observations,climate}/{station}/``
     and hashes the concatenated (path, size, mtime) tuples — content
     hashing would be more rigorous but is too slow for an interactive
     "stamp my DataFrame" call. Path+size+mtime catches every realistic

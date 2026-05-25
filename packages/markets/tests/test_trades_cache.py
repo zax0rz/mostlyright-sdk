@@ -15,7 +15,7 @@ from mostlyright.markets._trades_cache import (
 
 @pytest.fixture()
 def cache_dir(tmp_path, monkeypatch):
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
     return tmp_path
 
 

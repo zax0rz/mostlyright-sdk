@@ -45,7 +45,7 @@ class TestRunQcDirectly:
     def test_temp_out_of_range_fires_rule(self, tmp_path: Path, monkeypatch) -> None:
         from mostlyright.research import _run_qc_and_write_sidecar
 
-        monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+        monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
         # Construct two rows: one in-range, one with absurd temperature.
         raw = [
             {
@@ -79,7 +79,7 @@ class TestRunQcDirectly:
     def test_dewpoint_gt_temp_fires_rule(self, tmp_path: Path, monkeypatch) -> None:
         from mostlyright.research import _run_qc_and_write_sidecar
 
-        monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+        monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
         raw = [
             {
                 "station": "KNYC",
@@ -101,7 +101,7 @@ class TestRunQcDirectly:
     def test_crosscheck_runs_when_both_sources_present(self, tmp_path: Path, monkeypatch) -> None:
         from mostlyright.research import _run_qc_and_write_sidecar
 
-        monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+        monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
         raw = [
             {
                 "station": "KNYC",
@@ -133,7 +133,7 @@ class TestRunQcDirectly:
         from mostlyright.research import _run_qc_and_write_sidecar
         from mostlyright.weather.qc_sidecar import qc_sidecar_path
 
-        monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+        monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
         raw = [
             {
                 "station": "KNYC",
@@ -172,7 +172,7 @@ class TestProductionShapeIntegration:
         from mostlyright.research import _run_qc_and_write_sidecar
         from mostlyright.weather.qc_sidecar import qc_sidecar_path
 
-        monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+        monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
         raw = [
             {
                 "station_code": "KNYC",
@@ -208,7 +208,7 @@ class TestProductionShapeIntegration:
         """
         from mostlyright.research import _run_qc_and_write_sidecar
 
-        monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+        monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
         raw = [
             {
                 "station_code": "KNYC",
@@ -237,7 +237,7 @@ class TestProductionShapeIntegration:
     def test_production_row_shape_crosscheck_fires(self, tmp_path: Path, monkeypatch) -> None:
         from mostlyright.research import _run_qc_and_write_sidecar
 
-        monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+        monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
         raw = [
             {
                 "station_code": "KNYC",
@@ -271,7 +271,7 @@ class TestQcSidecarWriter:
     def test_empty_rows_no_io(self, tmp_path: Path, monkeypatch) -> None:
         from mostlyright.weather.qc_sidecar import write_qc_sidecar
 
-        monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+        monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
         out = write_qc_sidecar([], station="KNYC", year=2025, month=1)
         assert out is None
         # No file written.
@@ -281,7 +281,7 @@ class TestQcSidecarWriter:
         import pyarrow.parquet as pq
         from mostlyright.weather.qc_sidecar import write_qc_sidecar
 
-        monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+        monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
         rows = [
             {
                 "station_code": "KNYC",
@@ -306,7 +306,7 @@ class TestQcSidecarWriter:
     def test_path_invalid_station_rejected(self, tmp_path: Path, monkeypatch) -> None:
         from mostlyright.weather.qc_sidecar import qc_sidecar_path
 
-        monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+        monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
         with pytest.raises(ValueError):
             qc_sidecar_path("../escape", 2025, 1)
 
@@ -338,7 +338,7 @@ class TestResearchQcKwarg:
 
         research_module = importlib.import_module("mostlyright.research")
 
-        monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+        monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
 
         # Patch the fetchers to return synthetic data.
         synthetic_obs = [
@@ -387,7 +387,7 @@ class TestResearchQcKwarg:
 
         research_module = importlib.import_module("mostlyright.research")
 
-        monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+        monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
         monkeypatch.setattr(research_module, "_fetch_observations_range", lambda *a, **kw: [])
         monkeypatch.setattr(research_module, "_fetch_climate_range", lambda *a, **kw: [])
         monkeypatch.setattr(research_module, "_all_caches_warm", lambda *a, **kw: True)
@@ -406,7 +406,7 @@ class TestResearchQcKwarg:
 
         research_module = importlib.import_module("mostlyright.research")
 
-        monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+        monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
         synthetic_obs = [
             {
                 "station": "KNYC",

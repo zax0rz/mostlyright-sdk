@@ -42,7 +42,7 @@ def test_research_by_source_filters_by_parser_tag_in_production(tmp_path, monkey
     """
     import importlib
 
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
     research_module = importlib.import_module("mostlyright.research")
     synthetic_obs = [
         {
@@ -77,7 +77,7 @@ def test_research_by_source_bare_source_form_also_accepted(tmp_path, monkeypatch
     """The bare 'iem' / 'awc' / 'ghcnh' tags are also valid Mode 2 inputs."""
     import importlib
 
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
     research_module = importlib.import_module("mostlyright.research")
     monkeypatch.setattr(
         research_module,
@@ -101,7 +101,7 @@ def test_research_by_source_empty_carries_attrs(tmp_path, monkeypatch) -> None:
     """Even when no rows match, the empty DataFrame carries provenance."""
     import importlib
 
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
     research_module = importlib.import_module("mostlyright.research")
     monkeypatch.setattr(research_module, "_fetch_observations_range", lambda *a, **kw: [])
     monkeypatch.setattr(research_module, "_all_caches_warm", lambda *a, **kw: True)
@@ -114,7 +114,7 @@ def test_research_by_source_ghcnh_alias(tmp_path, monkeypatch) -> None:
     """`ghcnh` and `ghcnh.archive` are interchangeable (parser emits bare form)."""
     import importlib
 
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
     research_module = importlib.import_module("mostlyright.research")
     synthetic_obs = [
         {
@@ -138,7 +138,7 @@ def test_research_by_source_ghcnh_alias(tmp_path, monkeypatch) -> None:
 def test_research_by_source_as_dataframe_false(tmp_path, monkeypatch) -> None:
     import importlib
 
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
     research_module = importlib.import_module("mostlyright.research")
     raw = [
         {

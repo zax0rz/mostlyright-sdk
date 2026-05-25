@@ -101,7 +101,7 @@ CASES: list[tuple[int, str, str, str]] = [
 
 @pytest.fixture(autouse=True)
 def _isolated_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Force a fresh, per-test ``TRADEWINDS_CACHE_DIR`` for the parity gate.
+    """Force a fresh, per-test ``MOSTLYRIGHT_CACHE_DIR`` for the parity gate.
 
     Without this, ``mostlyright.research()`` reads and writes the user's
     persistent ``~/.mostlyright/cache``: a populated cache from an earlier
@@ -119,7 +119,7 @@ def _isolated_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     leaked-state calibration. Applies to ``test_dtypes_match_ground_truth``
     too (no-op there - it never touches the cache).
     """
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
 
 
 def _canon(df: pd.DataFrame) -> pd.DataFrame:

@@ -39,7 +39,7 @@ def test_exact_fetch_module_importable():
 
 
 def test_exact_fetch_source_none_invokes_all_three(tmp_path, monkeypatch):
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
     from mostlyright._exact_fetch import _exact_fetch_observations
 
     with (
@@ -68,7 +68,7 @@ def test_exact_fetch_source_none_invokes_all_three(tmp_path, monkeypatch):
 
 
 def test_exact_fetch_source_iem_skips_other_fetchers(tmp_path, monkeypatch):
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
     from mostlyright._exact_fetch import _exact_fetch_observations
 
     with (
@@ -85,7 +85,7 @@ def test_exact_fetch_source_iem_skips_other_fetchers(tmp_path, monkeypatch):
 
 
 def test_exact_fetch_source_awc_skips_other_fetchers(tmp_path, monkeypatch):
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
     from datetime import date, timedelta
 
     from mostlyright._exact_fetch import _exact_fetch_observations
@@ -107,7 +107,7 @@ def test_exact_fetch_source_awc_skips_other_fetchers(tmp_path, monkeypatch):
 
 
 def test_exact_fetch_source_ghcnh_skips_other_fetchers(tmp_path, monkeypatch):
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
     from mostlyright._exact_fetch import _exact_fetch_observations
 
     with (
@@ -124,7 +124,7 @@ def test_exact_fetch_source_ghcnh_skips_other_fetchers(tmp_path, monkeypatch):
 
 
 def test_exact_fetch_iem_called_with_exact_window_true_and_separate_dir(tmp_path, monkeypatch):
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
     from mostlyright._exact_fetch import _exact_fetch_observations
 
     with (
@@ -152,7 +152,7 @@ def test_exact_fetch_iem_called_with_exact_window_true_and_separate_dir(tmp_path
 
 def test_exact_fetch_does_not_write_canonical_parquet(tmp_path, monkeypatch):
     """The function imports neither write_cache nor cache_path — verifiable via source."""
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
     import mostlyright._exact_fetch as mod
 
     src = __import__("pathlib").Path(mod.__file__).read_text(encoding="utf-8")
@@ -169,7 +169,7 @@ def test_exact_fetch_does_not_write_canonical_parquet(tmp_path, monkeypatch):
 
 def test_exact_fetch_returns_merged_rows(tmp_path, monkeypatch):
     """merge_observations is called and its output returned."""
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
     from mostlyright._exact_fetch import _exact_fetch_observations
 
     fake_rows = [

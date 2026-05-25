@@ -115,7 +115,7 @@ def _resolve_station(station: str) -> StationInfo:
 def _sources_root() -> Path:
     """Return the root directory for raw-source downloads (IEM CSV, CLI JSON, GHCNh PSV).
 
-    Sits alongside the parquet cache under the same ``TRADEWINDS_CACHE_DIR``
+    Sits alongside the parquet cache under the same ``MOSTLYRIGHT_CACHE_DIR``
     (or ``$HOME/.mostlyright/cache/`` fallback) so a single cache wipe clears
     both layers. ``cache._cache_root()`` is the single source of truth - we
     deliberately do not duplicate the env-var lookup here.

@@ -34,7 +34,7 @@ def test_knyc_5yr_backfill_under_12min(tmp_path, monkeypatch) -> None:
     """
     import time
 
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path / "cache"))
 
     from mostlyright import research
 
@@ -62,7 +62,7 @@ def test_other_station_regression_within_baseline(tmp_path, monkeypatch, station
     """
     import time
 
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path / "cache"))
 
     from mostlyright import research
 
@@ -92,7 +92,7 @@ def test_prefetch_parallelism_ratio_under_check(tmp_path, monkeypatch) -> None:
     """
     import sys
 
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path / "cache"))
 
     import mostlyright.research  # noqa: F401 — populates sys.modules
 

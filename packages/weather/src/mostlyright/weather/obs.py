@@ -328,7 +328,7 @@ def _resolve_strategy(
         Environment mapping. Pass ``os.environ`` in production; pass a dict
         for tests.
     cache_root : Path | None
-        Override cache root for tests. Defaults to ``$TRADEWINDS_CACHE_DIR``
+        Override cache root for tests. Defaults to ``$MOSTLYRIGHT_CACHE_DIR``
         or ``~/.mostlyright/cache`` via ``_cache_root()``.
     source : {"iem", "ghcnh", "awc"} | None
         Source filter from the obs() caller. When set, forces exact_window

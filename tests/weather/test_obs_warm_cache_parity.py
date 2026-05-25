@@ -51,8 +51,8 @@ OBS_AGG_COLUMNS = [
 
 @pytest.fixture(autouse=True)
 def _isolated_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Per-test TRADEWINDS_CACHE_DIR — mirrors tests/test_parity.py."""
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+    """Per-test MOSTLYRIGHT_CACHE_DIR — mirrors tests/test_parity.py."""
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
 
 
 @pytest.mark.live  # research()/obs() hit live IEM/AWC/GHCNh

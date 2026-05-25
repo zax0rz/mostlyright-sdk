@@ -66,7 +66,7 @@ def test_warm_cache_current_lst_month_does_not_write_final_canonical(tmp_path, m
     """
     cache_root = tmp_path / "tw_cache"
     cache_root.mkdir()
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(cache_root))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(cache_root))
 
     from mostlyright.weather import obs
 
@@ -98,7 +98,7 @@ def test_auto_small_window_crossing_current_month_routes_to_exact_window(tmp_pat
     """
     cache_root = tmp_path / "tw_cache"
     cache_root.mkdir()
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(cache_root))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(cache_root))
     monkeypatch.delenv("TW_HOSTED_URL", raising=False)
 
     from mostlyright.weather.obs import _resolve_strategy, obs
@@ -136,7 +136,7 @@ def test_auto_large_window_warm_cache_routes_to_warm_cache(tmp_path, monkeypatch
     year_dir.mkdir(parents=True)
     (year_dir / "01.parquet").write_bytes(b"PARQ\x00" * 50)
 
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(cache_root))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(cache_root))
     monkeypatch.delenv("TW_HOSTED_URL", raising=False)
 
     from mostlyright.weather.obs import _resolve_strategy

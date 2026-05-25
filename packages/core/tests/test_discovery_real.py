@@ -1,11 +1,24 @@
-"""Phase 3.6 — discovery + DataVersion + settlement primitives."""
+"""Phase 3.6 — discovery + DataVersion + settlement primitives.
+
+NOTE: This test file intentionally uses the legacy ``TRADEWINDS_CACHE_DIR``
+env var (not the canonical ``MOSTLYRIGHT_CACHE_DIR``) to exercise the Phase 12
+W4 back-compat shim. The other test files were migrated to the canonical
+env var. Scheduled for removal in v0.3 when the deprecation window closes.
+"""
 
 from __future__ import annotations
 
+import warnings
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+
+# Silence DeprecationWarning for this whole module (legacy env-var usage is
+# intentional back-compat coverage; the back-compat shim's 3-test suite at
+# packages/core/tests/test_cache_env_back_compat.py is the canonical proof
+# the warning fires).
+warnings.filterwarnings("ignore", category=DeprecationWarning, message=r"TRADEWINDS_CACHE_DIR")
 
 
 class TestAvailability:

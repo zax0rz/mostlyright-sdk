@@ -138,7 +138,7 @@ def _cli_json_for_year(year: int) -> dict[str, Any]:
 @pytest.fixture
 def tmp_cache_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     """Redirect the mostlyright cache to ``tmp_path`` for the duration of the test."""
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
     return tmp_path
 
 

@@ -79,7 +79,7 @@ def test_obs_auto_dispatches_to_resolved_strategy(monkeypatch, tmp_path):
     """PLAN-07-04: auto routes through _resolve_strategy then dispatches once."""
     from mostlyright.weather.obs import obs
 
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
     monkeypatch.delenv("TW_HOSTED_URL", raising=False)
 
     with (

@@ -10,7 +10,7 @@ Path layout (CACHE-01)::
     $HOME/.mostlyright/cache/v1/observations/<STATION>/<YYYY>/<MM>.parquet
     $HOME/.mostlyright/cache/v1/climate/<STATION>/<YYYY>.parquet
 
-Override the root via the ``TRADEWINDS_CACHE_DIR`` environment variable.
+Override the root via the ``MOSTLYRIGHT_CACHE_DIR`` environment variable.
 
 Safety guarantees (CACHE-07):
     - **Atomic write:** write to a sibling ``.tmp`` file inside a FileLock,
@@ -135,12 +135,33 @@ def _climate_schema() -> pa.Schema | None:
 def _cache_root() -> Path:
     """Resolve the cache root from the env var or fall back to the default.
 
+    Returns the cache ROOT (without ``/v1``). Callers append ``CACHE_VERSION``.
+    Resolves canonical ``MOSTLYRIGHT_CACHE_DIR`` first, falls back to legacy
+    ``TRADEWINDS_CACHE_DIR`` with a ``DeprecationWarning`` (Phase 12 W4
+    back-compat; legacy var scheduled removal in v0.3), else ``DEFAULT_ROOT``.
+
     Resolved on each call (not cached at import time) so tests can monkeypatch
-    ``TRADEWINDS_CACHE_DIR`` between cases without a module reload.
+    the env var between cases without a module reload.
     """
-    override = os.environ.get("TRADEWINDS_CACHE_DIR")
-    if override:
-        return Path(override).expanduser()
+    import warnings
+
+    from mostlyright._internal._cache_dir import _CANONICAL_ENV, _LEGACY_ENV, resolve_cache_dir
+
+    # Keep resolve_cache_dir discoverable to new callers + Phase 12 W4 import-gate.
+    _ = resolve_cache_dir
+
+    canonical = os.environ.get(_CANONICAL_ENV)
+    if canonical:
+        return Path(canonical).expanduser()
+    legacy = os.environ.get(_LEGACY_ENV)
+    if legacy:
+        warnings.warn(
+            f"{_LEGACY_ENV} is deprecated; use {_CANONICAL_ENV}. "
+            f"Support will be removed in v0.3. Run: mv ~/.tradewinds ~/.mostlyright",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return Path(legacy).expanduser()
     return DEFAULT_ROOT
 
 
@@ -434,7 +455,7 @@ def _has_cached_year(
 ) -> bool:
     """True iff any monthly observation parquet exists for ``(station, year)``.
 
-    Looks under ``$TRADEWINDS_CACHE_DIR/v1/observations/{STATION}/{year}/*.parquet``.
+    Looks under ``$MOSTLYRIGHT_CACHE_DIR/v1/observations/{STATION}/{year}/*.parquet``.
     Used by the Phase 7 ``obs(strategy="auto")`` resolver in
     ``mostlyright.weather.obs`` to decide whether to dispatch to ``warm_cache``
     or ``exact_window``. Placed here (not in obs.py) so the parquet-layout

@@ -36,7 +36,7 @@ def test_prefetch_sources_returns_per_source_times_with_four_names(monkeypatch, 
     """
     from datetime import UTC, datetime
 
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path / "cache"))
     from mostlyright._internal._stations import STATIONS
     from mostlyright.research import _prefetch_sources
 
@@ -213,7 +213,7 @@ def test_prefetch_sources_no_asyncio_used() -> None:
 
 def test_prefetch_sources_awc_rows_returned(monkeypatch, tmp_path) -> None:
     """AWC worker's return value is captured into result['awc_rows']."""
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path / "cache"))
     from mostlyright._internal._stations import STATIONS
     from mostlyright.research import _prefetch_sources
 
@@ -253,7 +253,7 @@ def test_prefetch_sources_propagates_unexpected_exception(monkeypatch, tmp_path)
     its inner ``download_iem_asos`` — the post-iter-1 fix skips the prefetch
     for the current UTC year, which would otherwise mask the test.
     """
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path / "cache"))
     from mostlyright._internal._stations import STATIONS
     from mostlyright.research import _prefetch_sources
 
@@ -282,7 +282,7 @@ def test_prefetch_sources_swallows_network_errors(monkeypatch, tmp_path) -> None
     """
     import httpx
 
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path / "cache"))
     from mostlyright._internal._stations import STATIONS
     from mostlyright.research import _prefetch_sources
 
@@ -312,7 +312,7 @@ def test_prefetch_sources_swallows_network_errors(monkeypatch, tmp_path) -> None
 
 def test_all_caches_warm_returns_false_when_obs_cache_missing(monkeypatch, tmp_path) -> None:
     """Gate predicate: any obs-parquet miss returns False (so prefetch runs)."""
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path / "cache"))
     from mostlyright._internal._stations import STATIONS
     from mostlyright.research import _all_caches_warm
 
@@ -325,7 +325,7 @@ def test_per_source_times_are_positive(monkeypatch, tmp_path) -> None:
     """Per-source elapsed times should be ≥ 0 — a sanity check that
     submitted_at IS captured (would be ≈ wall_time, not negative, if not).
     """
-    monkeypatch.setenv("TRADEWINDS_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path / "cache"))
     from mostlyright._internal._stations import STATIONS
     from mostlyright.research import _prefetch_sources
 
