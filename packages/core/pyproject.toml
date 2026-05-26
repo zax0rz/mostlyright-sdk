@@ -1,6 +1,6 @@
 [project]
 name = "mostlyrightmd"
-version = "0.1.0rc3"
+version = "0.1.0"
 description = "Local-first SDK for quants researching prediction-market weather settlements. Meta package: research() join + shared utilities. Python module: `import mostlyright`."
 readme = "README.md"
 license = "MIT"
@@ -46,7 +46,7 @@ parquet = [
 # pandas upper bound aligned with `parquet` extra at <4.0; both backends
 # are exercised by the dual-pandas CI matrix.
 research = [
-    "mostlyrightmd-weather>=0.1.0rc1,<0.2",
+    "mostlyrightmd-weather>=0.1.0,<0.2",
     "pyarrow>=17.0,<24.0",
     "pandas>=2.2,<4.0",
 ]

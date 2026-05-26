@@ -7,15 +7,33 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) once it ships
 
 ## [Unreleased]
 
+(next 0.1.x / 0.2.x changes land here)
+
+## [0.1.0] — 2026-05-26 (prod PyPI — staggered publisher registration)
+
+**Partial first-publish: this `0.1.0` push lands `mostlyrightmd` (core) only on prod pypi.org.** PyPI's "1 pending publisher at a time" registration constraint means `mostlyrightmd-weather` and `mostlyrightmd-markets` ship in subsequent `0.1.1` / `0.1.2` releases (filename immutability on prod prevents republishing 0.1.0 once the core publish lands).
+
+**TestPyPI soak (Phase 13 W2):** all 3 distros at `0.1.0rc3` after the `v0.1.0rc{0,1,2,3}` rc cycle. Per-rc closeout:
+- `rc0` — canary; partial-publisher-registration probe; `mostlyrightmd-weather` published (only registered publisher at the time)
+- `rc1` — `mostlyrightmd-weather` re-publish (rc1 burned by an accidental `vts-0.1.0rc1` cross-trigger before the trigger-glob fix landed)
+- `rc2` — `mostlyrightmd` + `mostlyrightmd-weather` published; `mostlyrightmd-markets` 403'd (publisher not yet registered)
+- `rc3` — all 3 distros published; all publishers permanent
+
 ### Changed
 
 - **npm scope:** `@mostlyright/{codegen,core,markets,weather}` → `@mostlyrightmd/{codegen,core,markets,weather}`. The unscoped meta package `mostlyright` is unchanged. Rationale: matches GitHub org `mostlyrightmd` (the `mostlyright` org name was unavailable). Python PyPI distribution names handled separately below (see Phase 13 pre-flight rename).
 - **PyPI distribution names** (Phase 13 pre-flight): `mostlyright` → `mostlyrightmd`, `mostlyright-weather` → `mostlyrightmd-weather`, `mostlyright-markets` → `mostlyrightmd-markets`. **Python module names UNCHANGED** — `import mostlyright`, `from mostlyright.weather import ...`, `from mostlyright.markets import ...` continue to work exactly as before. Only the PyPI install name moves. Rationale: legacy `pypi.org/project/mostlyright` already publishes Robert Tarabcak's `mostlyright==0.14.1` (the parity baseline this SDK is byte-equivalent to); publishing a fresh `0.1.0rc1` under that name would version-shadow as PEP 440 orders `0.14.1 > 0.1.0rc1`, so `pip install mostlyright` would resolve to the legacy package. New `mostlyrightmd*` names start cleanly at `0.1.0rc1`. Aligns PyPI namespace with the `@mostlyrightmd/*` npm scope and the `mostlyrightmd/mostlyright-sdk` GH coordinates.
+- **Inter-package version pins bumped** (lockstep): `mostlyrightmd*>=0.1.0rc1,<0.2` → `mostlyrightmd*>=0.1.0,<0.2` across the 3 pyproject.toml files.
+
+### Known limitations of this `0.1.0` release
+
+- `mostlyrightmd-weather` is NOT on prod pypi.org yet — ships in `0.1.1`. The `mostlyrightmd[research]` extra (which depends on `mostlyrightmd-weather>=0.1.0,<0.2`) cannot resolve until `0.1.1` lands. Workaround until then: install from TestPyPI (`pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ mostlyrightmd-weather==0.1.0rc3`) for soak / dogfooding.
+- `mostlyrightmd-markets` is NOT on prod pypi.org yet — ships in `0.1.2`. The `mostlyrightmd-markets[polymarket]` and `[trades]` extras similarly unresolvable until then.
 
 ### Migration
 
 - TS users: `npm uninstall @mostlyright/<pkg> && npm install @mostlyrightmd/<pkg>` (when published) — N/A pre-publish.
-- Python users: install command becomes `pip install mostlyrightmd[parquet]` / `pip install mostlyrightmd-weather[parquet]` / `pip install mostlyrightmd-markets[polymarket]`. **Imports do NOT change** — keep writing `import mostlyright as tw`.
+- Python users: install command becomes `pip install mostlyrightmd[parquet]` (core only at 0.1.0; `[research]` extra unavailable until 0.1.1). **Imports do NOT change** — keep writing `import mostlyright as tw`.
 
 ## v1.0.0 (Pending — Phase 17 + Phase 16)
 
