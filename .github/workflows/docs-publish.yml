@@ -1,0 +1,415 @@
+# Phase 15 W3 — Regenerate SDK reference docs and open a cross-repo PR
+# against Tarabcak/mostly-right-landing on every v* / vts-* non-rc tag.
+# Reviewer (Tarabcak) approves; merge triggers Cloudflare Pages deploy.
+#
+# Triggers:
+#   - push tag v*   (Python SDK release) → builds Sphinx markdown
+#   - push tag vts-* (TypeScript SDK release) → builds TypeDoc markdown
+#   - rc tags (v*rc*, vts-*rc*) are EXCLUDED — release-candidate docs are
+#     soak builds and must not auto-publish to the production landing site
+#   - workflow_dispatch with `tag` input — manual smoke / re-run
+#
+# The parity table at src/content/docs/docs/sdk/parity.mdx is regenerated
+# on EVERY run regardless of SDK target so the cross-SDK status stays fresh
+# even when only one lane cuts a release.
+
+name: Docs publish (auto-PR to landing repo)
+
+on:
+  push:
+    tags:
+      - "v*"
+      - "!v*rc*"
+      - "vts-*"
+      - "!vts-*rc*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to regenerate docs from (e.g. v0.1.0, vts-0.1.0)"
+        required: true
+
+# Default-deny. Cross-repo write happens via the mostlyright-docs-sync
+# GitHub App (installed on Tarabcak/mostly-right-landing only), NOT via
+# GITHUB_TOKEN. The App's runtime token is minted per-run by
+# actions/create-github-app-token; it expires in 1 hour and is scoped
+# exclusively to the landing repo. Same App that legacy openapi-sync uses;
+# operator-confirmed reuse per 15-W3-PAUSE.md Path A.
+#
+# Required repo secrets (already provisioned per operator):
+#   - LANDING_REPO_APP_ID            — numeric App ID (3431044)
+#   - LANDING_REPO_APP_PRIVATE_KEY   — full .pem contents incl. BEGIN/END
+permissions:
+  contents: read
+
+# Concurrency groups split by event_name so that a manual smoke test
+# (workflow_dispatch) NEVER cancels an in-flight production publish
+# (push to v*/vts-* tag). Within each group cancel-in-progress holds:
+# a new tag push cancels any still-running tag-publish for the SAME group
+# key, and a new smoke run cancels any in-flight smoke run.
+# Mirrors the legacy sync-openapi-to-landing.yml pattern (round-5 Codex fix).
+concurrency:
+  group: ${{ format('docs-publish-{0}', github.event_name) }}
+  cancel-in-progress: true
+
+jobs:
+  regen-docs:
+    name: Regenerate docs and open PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # workflow_dispatch is otherwise open to any collaborator with write
+    # access. Restrict to known team members. Mirrors legacy: check BOTH
+    # github.actor (who started the run) AND github.triggering_actor
+    # (who started THIS attempt — different on reruns). Without checking
+    # triggering_actor, any collaborator with rerun permission can rerun
+    # a previously-authorized smoke test and bypass the allowlist.
+    # Push triggers (tag) are unrestricted — already gated by who can push
+    # tags to the repo via branch/tag protection.
+    if: >
+      github.event_name == 'push' || (
+        (github.actor == 'Tarabcak' || github.actor == 'helloiamvu') &&
+        (github.triggering_actor == 'Tarabcak' || github.triggering_actor == 'helloiamvu')
+      )
+
+    steps:
+      - name: Hard-fail if push trigger fired on an rc tag
+        # Belt-and-braces: the trigger filter already excludes *rc* tags,
+        # but if someone later widens it, this stops an rc soak build from
+        # spamming the production landing site with pre-release docs.
+        # workflow_dispatch with an rc tag is allowed (smoke testing).
+        # ${{ ... }} interpolation is NOT used inside `run:` here — bound
+        # to env: instead per GitHub's hardening guide. Even github.ref_name
+        # could in theory carry control chars in a future widening of
+        # the trigger filter.
+        if: github.event_name == 'push'
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          case "$REF_NAME" in
+            *rc*)
+              echo "::error::push trigger fired on rc tag '$REF_NAME' — refusing to publish soak docs"
+              exit 1
+              ;;
+          esac
+
+      - name: Log invocation
+        # ${{ ... }} bound to env: vars to defend against context-value
+        # injection. github.actor / github.ref_name carry restrictive
+        # charsets today but GitHub does not publish a security
+        # guarantee on those charsets — treating them as untrusted in
+        # `run:` blocks is the hardened pattern.
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          REF_NAME: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+          DISPATCH_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          printf 'event:        %s\n' "$EVENT_NAME"
+          printf 'ref:          %s\n' "$REF"
+          printf 'ref_name:     %s\n' "$REF_NAME"
+          printf 'sha:          %s\n' "$SHA"
+          printf 'actor:        %s\n' "$ACTOR"
+          printf 'dispatch_tag: %s\n' "$DISPATCH_TAG"
+
+      - name: Checkout source repo
+        # actions/checkout v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          # fetch-depth: 0 so build_ts_docs.sh / Sphinx can resolve git
+          # history (tag annotations, changesets workflow reads commit
+          # ancestry on release-ts.yml — same flag for consistency).
+          fetch-depth: 0
+
+      - name: Determine SDK target from tag
+        # tag (push) or input (workflow_dispatch) determines which docs
+        # tree we build. v* → Python (Sphinx), vts-* → TypeScript (TypeDoc).
+        # Anything else is a hard-fail; the trigger filter should have
+        # prevented it but defense in depth.
+        # ${{ ... }} bound to env: per hardening guide.
+        id: target
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          DISPATCH_TAG: ${{ github.event.inputs.tag }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            TAG="$DISPATCH_TAG"
+          else
+            TAG="$REF_NAME"
+          fi
+          # Sanitize: alphanumerics, dot, hyphen only — anything else
+          # collapses to '-'. Used downstream in PR branch + body so
+          # we never splice untrusted tag chars into shell or markdown.
+          SAFE_TAG=$(printf '%s' "$TAG" | tr -c 'a-zA-Z0-9.-' '-')
+          case "$TAG" in
+            vts-*)
+              SDK=typescript
+              ;;
+            v*)
+              SDK=python
+              ;;
+            *)
+              echo "::error::unrecognized tag '$TAG' — expected v* or vts-*"
+              exit 1
+              ;;
+          esac
+          echo "sdk=$SDK" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "safe_tag=$SAFE_TAG" >> "$GITHUB_OUTPUT"
+          echo "Tag '$TAG' → SDK '$SDK' (safe_tag='$SAFE_TAG')"
+
+      # ----------------------------------------------------------------
+      # Python docs build (Sphinx) — only on v* tags
+      # ----------------------------------------------------------------
+      - name: Install uv (Python docs path)
+        if: steps.target.outputs.sdk == 'python'
+        # astral-sh/setup-uv v3 — pinned major; uv binary is downloaded
+        # and integrity-checked by the action.
+        uses: astral-sh/setup-uv@v3
+
+      - name: Build Python docs (Sphinx → markdown)
+        if: steps.target.outputs.sdk == 'python'
+        # build_python_docs.sh runs `uv sync --group docs` + `sphinx-build
+        # -b markdown` and writes to docs/sphinx/_build/markdown/api/.
+        # The script is the same one used locally; CI/local parity is
+        # part of the W1 contract.
+        run: bash scripts/build_python_docs.sh
+
+      # ----------------------------------------------------------------
+      # TypeScript docs build (TypeDoc) — only on vts-* tags
+      # ----------------------------------------------------------------
+      - name: Setup pnpm (TS docs path)
+        if: steps.target.outputs.sdk == 'typescript'
+        uses: pnpm/action-setup@v4
+        # No `version:` — let action follow packageManager: pnpm@9.12.0
+        # in root package.json. Same rationale as release-ts.yml W2 fix:
+        # explicit version conflicts with packageManager => ERR_PNPM_BAD_PM_VERSION.
+
+      - name: Setup Node.js (TS docs path)
+        if: steps.target.outputs.sdk == 'typescript'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Build TS docs (TypeDoc → markdown)
+        if: steps.target.outputs.sdk == 'typescript'
+        # build_ts_docs.sh runs `pnpm install --frozen-lockfile` +
+        # `pnpm -r run build` + `pnpm typedoc --options packages-ts/typedoc.json`
+        # and writes to docs-ts-build/markdown/. The --frozen-lockfile in
+        # the script matches release-ts.yml + test-ts.yml + schema-drift.yml
+        # for supply-chain reproducibility.
+        run: bash scripts/build_ts_docs.sh
+
+      # ----------------------------------------------------------------
+      # Parity table — always regenerate, both SDK paths
+      # ----------------------------------------------------------------
+      - name: Setup Python (for parity table generator)
+        if: steps.target.outputs.sdk == 'typescript'
+        # On the TS path uv was not installed; the parity generator is
+        # plain Python 3 (stdlib only) so a vanilla setup-python is the
+        # cheaper dependency than installing uv just for this.
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate parity table
+        # Pure stdlib; runs on either path. Writes to /tmp so we can
+        # stage it into the landing checkout alongside the SDK MDX tree.
+        run: |
+          python3 scripts/generate_parity_table.py /tmp/parity.mdx
+          echo "--- parity.mdx head ---"
+          head -20 /tmp/parity.mdx
+
+      # ----------------------------------------------------------------
+      # Cross-repo PR flow
+      # ----------------------------------------------------------------
+      - name: Mint landing-repo App token
+        id: mint_token
+        # actions/create-github-app-token v3.1.1 (matches legacy openapi-sync).
+        # Mints a 1-hour-scoped installation token for the
+        # mostlyright-docs-sync App, restricted by the App's installation
+        # to Tarabcak/mostly-right-landing only.
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3
+        with:
+          app-id: ${{ secrets.LANDING_REPO_APP_ID }}
+          private-key: ${{ secrets.LANDING_REPO_APP_PRIVATE_KEY }}
+          owner: Tarabcak
+          repositories: mostly-right-landing
+
+      - name: Checkout landing repo
+        # actions/checkout v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: Tarabcak/mostly-right-landing
+          token: ${{ steps.mint_token.outputs.token }}
+          path: landing-repo
+          ref: main
+
+      - name: Reset stale dispatch-smoke branch
+        # peter-evans/create-pull-request will NOT reopen a PR that has
+        # been closed-without-merge. Dispatch smoke PRs are explicitly
+        # told to close-without-merge (the spec reflects unreleased docs),
+        # so without this reset the second smoke dispatch onward would
+        # push to the orphaned branch but no new PR would surface.
+        # Delete the branch (idempotent — ignore "not found") so the next
+        # create-pull-request opens a fresh PR.
+        # Tag-push runs use a different branch (auto/docs-regen-<tag>)
+        # and are unaffected.
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ steps.mint_token.outputs.token }}
+          SAFE_TAG: ${{ steps.target.outputs.safe_tag }}
+        run: |
+          gh api -X DELETE \
+            "repos/Tarabcak/mostly-right-landing/git/refs/heads/auto/docs-regen-dispatch-smoke-${SAFE_TAG}" \
+            2>&1 \
+            || echo "smoke branch did not exist or was already deleted (ok)"
+
+      - name: Stage MDX trees + parity table in landing checkout
+        # Wipe + replace the SDK-specific tree so removed Python/TS modules
+        # don't leave orphaned MDX pages behind. The OTHER SDK's tree is
+        # NOT touched — only the SDK that's being released gets its tree
+        # rewritten. The parity table is always refreshed regardless.
+        # ${{ ... }} bound to env: per hardening guide.
+        env:
+          SDK: ${{ steps.target.outputs.sdk }}
+        run: |
+          set -euo pipefail
+          if [ "$SDK" = "python" ]; then
+            rm -rf landing-repo/src/content/docs/docs/sdk/python
+            mkdir -p landing-repo/src/content/docs/docs/sdk/python
+            cp -r docs/sphinx/_build/markdown/api/* landing-repo/src/content/docs/docs/sdk/python/
+          elif [ "$SDK" = "typescript" ]; then
+            rm -rf landing-repo/src/content/docs/docs/sdk/typescript
+            mkdir -p landing-repo/src/content/docs/docs/sdk/typescript
+            cp -r docs-ts-build/markdown/* landing-repo/src/content/docs/docs/sdk/typescript/
+          else
+            echo "::error::unexpected sdk '$SDK' — internal logic error"
+            exit 1
+          fi
+          mkdir -p landing-repo/src/content/docs/docs/sdk
+          cp /tmp/parity.mdx landing-repo/src/content/docs/docs/sdk/parity.mdx
+
+      - name: Compute PR branch + title suffix
+        # Tag-push runs land on a per-tag branch (auto/docs-regen-<safe_tag>)
+        # so a re-publish of the SAME tag updates the same PR (idempotent
+        # by design — peter-evans handles this), but a NEW tag opens a
+        # fresh PR (docs for different releases shouldn't share a PR).
+        # workflow_dispatch runs — pre-merge smoke tests — use a single
+        # shared smoke branch per tag with force-push semantics. Smoke PRs
+        # clobber each other rather than accumulating in landing repo.
+        # ${{ ... }} bound to env: per hardening guide.
+        id: prmeta
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          ACTOR: ${{ github.actor }}
+          SAFE_TAG: ${{ steps.target.outputs.safe_tag }}
+          TAG: ${{ steps.target.outputs.tag }}
+          SDK: ${{ steps.target.outputs.sdk }}
+        run: |
+          if [ "$EVENT_NAME" = "push" ]; then
+            BRANCH="auto/docs-regen-${SAFE_TAG}"
+            TITLE_SUFFIX=""
+            LABEL="docs-sync"
+          else
+            BRANCH="auto/docs-regen-dispatch-smoke-${SAFE_TAG}"
+            # Sanitize ref_name for inclusion in PR title (workflow_dispatch
+            # may be invoked from a feature branch — ref_name carries
+            # whatever branch name the operator pushed).
+            SAFE_REF=$(printf '%s' "$REF_NAME" | tr -c 'a-zA-Z0-9._-' '-')
+            TITLE_SUFFIX=" [DISPATCH SMOKE — ${SAFE_REF}]"
+            LABEL="docs-sync-smoke"
+          fi
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "title_suffix=$TITLE_SUFFIX" >> "$GITHUB_OUTPUT"
+          echo "label=$LABEL" >> "$GITHUB_OUTPUT"
+
+          # Sanitize display fields used in PR body markdown. Allow only
+          # characters safe in a backtick code span: alphanumerics, slash,
+          # underscore, hyphen, dot. Anything else (backticks, brackets,
+          # pipes) collapses to '-'.
+          SAFE_REF_NAME=$(printf '%s' "$REF_NAME" | tr -c 'a-zA-Z0-9/_.-' '-')
+          SAFE_ACTOR=$(printf '%s' "$ACTOR" | tr -c 'a-zA-Z0-9/_.-' '-')
+          echo "safe_ref_name=$SAFE_REF_NAME" >> "$GITHUB_OUTPUT"
+          echo "safe_actor=$SAFE_ACTOR" >> "$GITHUB_OUTPUT"
+          echo "safe_tag=$SAFE_TAG" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "sdk=$SDK" >> "$GITHUB_OUTPUT"
+
+      - name: Open or update sync PR on landing repo
+        # peter-evans/create-pull-request v7.0.5 (matches legacy). Handles:
+        #   - diff detection (no PR if no file changes)
+        #   - branch update semantics (force-push to existing branch)
+        #   - delete-branch on merge
+        #   - reviewer assignment
+        # peter-evans creates the commit using the App's bot identity
+        # (mostlyright-docs-sync[bot]) via the minted token.
+        uses: peter-evans/create-pull-request@5e914681df9dc83aa4e4905692ca88beb2f9e91f
+        with:
+          path: landing-repo
+          token: ${{ steps.mint_token.outputs.token }}
+          branch: ${{ steps.prmeta.outputs.branch }}
+          delete-branch: true
+          base: main
+          commit-message: |
+            docs: regenerate ${{ steps.prmeta.outputs.sdk }} SDK reference for ${{ steps.prmeta.outputs.tag }}
+          title: "docs: regenerate ${{ steps.prmeta.outputs.sdk }} SDK reference for ${{ steps.prmeta.outputs.tag }}${{ steps.prmeta.outputs.title_suffix }}"
+          body: |
+            Auto-generated by [`docs-publish.yml`](https://github.com/${{ github.repository }}/blob/main/.github/workflows/docs-publish.yml)
+            in [${{ github.repository }}](https://github.com/${{ github.repository }}).
+
+            **SDK target**: `${{ steps.prmeta.outputs.sdk }}`
+            **Tag**: `${{ steps.prmeta.outputs.safe_tag }}`
+            **Source ref**: `${{ steps.prmeta.outputs.safe_ref_name }}`
+            **Source commit**: [`${{ github.sha }}`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
+            **Triggered by**: `${{ steps.prmeta.outputs.safe_actor }}` via `${{ github.event_name }}`
+
+            This PR updates the SDK reference docs under
+            `src/content/docs/docs/sdk/${{ steps.prmeta.outputs.sdk }}/`
+            plus the cross-SDK parity table at
+            `src/content/docs/docs/sdk/parity.mdx`.
+
+            **If this PR title contains `[DISPATCH SMOKE — ...]`** it was
+            opened by a manual `workflow_dispatch` from a feature branch.
+            Close it without merging — the docs reflect unreleased code,
+            not what will ship to production.
+
+            **Do not auto-merge.** Review the diff for unexpected page
+            removals or schema changes before landing. The merge triggers
+            a Cloudflare Pages deploy to https://mostlyright.md/docs/sdk/.
+
+            See [`.planning/CROSS-SDK-SYNC.md`](https://github.com/${{ github.repository }}/blob/main/.planning/CROSS-SDK-SYNC.md)
+            for the full cross-SDK sync contract.
+          labels: |
+            ${{ steps.prmeta.outputs.label }}
+          # Explicitly request Tarabcak (landing repo owner). Mirrors
+          # legacy openapi-sync rationale: mostly-right-landing has no
+          # CODEOWNERS today, so an unassigned PR would sit unnoticed
+          # and docs would silently go stale until someone manually
+          # spotted it. Hardcoding the owner is the right call for a
+          # bot that opens cross-repo PRs against exactly one repo,
+          # owned by exactly one person.
+          reviewers: |
+            Tarabcak
+
+      - name: Summary
+        if: always()
+        env:
+          SDK: ${{ steps.target.outputs.sdk }}
+          TAG: ${{ steps.target.outputs.tag }}
+          BRANCH: ${{ steps.prmeta.outputs.branch }}
+        run: |
+          {
+            echo "## Docs publish result"
+            echo ""
+            echo "- **SDK**: \`${SDK}\`"
+            echo "- **Tag**: \`${TAG}\`"
+            echo "- **PR branch on landing**: \`${BRANCH}\`"
+            echo ""
+            echo "If peter-evans/create-pull-request detected no diff,"
+            echo "no PR was opened. Otherwise the landing repo now has an"
+            echo "open or updated PR awaiting Tarabcak's review."
+          } >> "$GITHUB_STEP_SUMMARY"

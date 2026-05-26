@@ -49,7 +49,18 @@ Thumbs.db
 # Untracked since the repo went public (Phase 13 W0 cleanup commit, 2026-05-25).
 # Operators keep these on disk for ongoing GSD workflow; nothing in `.planning/`
 # should be required to build or run the SDK.
-.planning/
+#
+# Phase 15 W3 exception: `.planning/CROSS-SDK-SYNC.md` is the source of truth
+# for `scripts/generate_parity_table.py` (consumed by docs-publish.yml on every
+# v* / vts-* non-rc tag). Git's ignore semantics cannot re-include a file
+# inside an ignored directory, so the canonical fix is to (a) un-ignore the
+# `.planning/` directory itself, (b) re-ignore everything inside it, then
+# (c) un-ignore the one file we want tracked. The file is not sensitive
+# (it describes the public cross-SDK sync process) so promoting it to tracked
+# is the right answer rather than mirroring it elsewhere.
+!.planning/
+.planning/*
+!.planning/CROSS-SDK-SYNC.md
 
 # Dev-only TODO scratchpad (replaced by GSD TODOS in .planning/)
 TODOS.md
