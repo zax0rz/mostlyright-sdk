@@ -160,48 +160,55 @@ def test_all_three_packages_at_same_version() -> None:
     )
 
 
-def test_all_three_packages_at_0_1_x() -> None:
-    # PKG-01: 0.1.x line. v0.2.0 bumps this assertion. v1.0.0 also bumps.
+def test_all_three_packages_on_active_major() -> None:
+    # PKG-01: all 3 distros sit on the active SemVer major. v1.x is the
+    # stable line; v0.1.x was the pre-1.0 lockstep. Tests pass on either
+    # so the bump 0.1.x → 1.0.0 doesn't need a test change.
     core_version = _project("core")["version"]
-    assert core_version.startswith("0.1."), (
-        f"core version must be in the 0.1.x line until v0.2 / v1.0 is cut; got {core_version}"
+    major = core_version.split(".")[0]
+    assert major in ("0", "1"), (
+        f"core version major must be 0 (pre-1.0) or 1 (active stable); got {core_version}"
     )
 
 
-def test_markets_pins_core_to_0_1_range() -> None:
-    # PKG-03: prevent a user from mixing mostlyright 0.0.x with
-    # mostlyrightmd-markets 0.1.x (or vice versa). The Kalshi resolvers
-    # use mostlyright.markets.catalog (this package) but the wider
-    # settlement pipeline reads mostlyright.core.* schemas; a stale core
-    # would silently serve the wrong column set.
+def test_markets_pins_core_to_active_major() -> None:
+    # PKG-03: prevent a user from mixing the legacy mostlyright 0.0.x
+    # client with mostlyrightmd-markets. The pin must constrain to the
+    # active major (>=1.0.0,<2.0 at v1.x; >=0.1.0,<0.2 at v0.1.x).
     runtime_deps = _runtime_deps("markets")
     assert any(
-        d.startswith("mostlyrightmd") and ">=0.1.0" in d and "<0.2" in d for d in runtime_deps
+        d.startswith("mostlyrightmd")
+        and (">=1.0.0,<2.0" in d.replace(" ", "") or ">=0.1.0,<0.2" in d.replace(" ", ""))
+        for d in runtime_deps
     ), (
         "mostlyrightmd-markets runtime deps must constrain mostlyright to "
-        "the 0.1.x line (>=0.1.0,<0.2) — see PKG-03"
+        "the active major (>=1.0.0,<2.0 or >=0.1.0,<0.2) — see PKG-03"
     )
 
 
-def test_weather_pins_core_to_0_1_range() -> None:
-    # PKG-03: prevent a user from mixing mostlyright 0.0.x with
-    # mostlyrightmd-weather 0.1.x across the parity gate.
+def test_weather_pins_core_to_active_major() -> None:
+    # PKG-03: prevent a user from mixing the legacy mostlyright 0.0.x
+    # client with mostlyrightmd-weather across the parity gate.
     runtime_deps = _runtime_deps("weather")
     assert any(
-        d.startswith("mostlyrightmd") and ">=0.1.0" in d and "<0.2" in d for d in runtime_deps
+        d.startswith("mostlyrightmd")
+        and (">=1.0.0,<2.0" in d.replace(" ", "") or ">=0.1.0,<0.2" in d.replace(" ", ""))
+        for d in runtime_deps
     ), (
         "mostlyrightmd-weather runtime deps must constrain mostlyright to "
-        "the 0.1.x line (>=0.1.0,<0.2) — see PKG-03"
+        "the active major (>=1.0.0,<2.0 or >=0.1.0,<0.2) — see PKG-03"
     )
 
 
-def test_core_research_extra_pins_weather_to_0_1_range() -> None:
-    # Mirror of PKG-03 on the other side: `mostlyrightmd[research]` must pull
-    # a 0.1.x mostlyrightmd-weather, not any 0.x.
+def test_core_research_extra_pins_weather_to_active_major() -> None:
+    # Mirror of PKG-03 on the other side: `mostlyrightmd[research]` must
+    # pull an active-major mostlyrightmd-weather, not any 0.x.
     research = _extras("core").get("research", [])
     assert any(
-        d.startswith("mostlyrightmd-weather") and ">=0.1.0" in d and "<0.2" in d for d in research
+        d.startswith("mostlyrightmd-weather")
+        and (">=1.0.0,<2.0" in d.replace(" ", "") or ">=0.1.0,<0.2" in d.replace(" ", ""))
+        for d in research
     ), (
         "mostlyrightmd[research] extra must constrain mostlyrightmd-weather to "
-        "the 0.1.x line (>=0.1.0,<0.2)"
+        "the active major (>=1.0.0,<2.0 or >=0.1.0,<0.2)"
     )

@@ -6,7 +6,7 @@ All notable changes to `mostlyright`. The format follows [Keep a Changelog](http
 
 (next changes land here)
 
-## [1.0.0] — TBD
+## [1.0.0] — 2026-05-26
 
 First stable release. Promotes the 0.1.x line to SemVer-stable: the public API is committed to backward compatibility within the 1.x major.
 
@@ -16,6 +16,7 @@ First stable release. Promotes the 0.1.x line to SemVer-stable: the public API i
 
 ### Changed
 - Root README rewritten as user-facing copy. Positions the SDK as the public-data SDK for quants and AI agents, with weather + prediction-markets data shipping today and SEC filings (EDGAR) + Federal Reserve economic data (FRED) on the roadmap.
+- Cross-package pin bound from `>=0.1.0,<0.2` to `>=1.0.0,<2.0` on all 3 PyPI distros. Lockstep contract is now anchored to the 1.x major line.
 - No source-code or API changes vs. 0.1.4. `pip install mostlyrightmd==1.0.0` and `pip install mostlyrightmd==0.1.4` produce identical runtime behavior.
 
 ## [0.1.4] — 2026-05-26
