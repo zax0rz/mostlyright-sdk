@@ -44,12 +44,8 @@ jobs:
           node-version: "20"
           cache: pnpm
 
-      # NOTE (TS-W0 bootstrap): the first PR landing this workflow ships
-      # without a committed pnpm-lock.yaml. Once Wave 1's pnpm-workspace lands
-      # and the lockfile is committed, this MUST be swapped to
-      # `pnpm install --frozen-lockfile` to enforce reproducible installs.
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Codegen (schemas -> generated TS)
         run: pnpm codegen
