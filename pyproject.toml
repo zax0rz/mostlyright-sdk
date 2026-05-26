@@ -97,6 +97,14 @@ extend-exclude = [".venv", "dist", "build"]
 select = ["E", "F", "I", "B", "UP", "RUF", "SIM"]
 ignore = ["E501"]  # line length handled by formatter
 
+[tool.ruff.lint.per-file-ignores]
+# Drift + parity fixture scripts lazy-import `mostlyright` inside `main()`
+# so they can be parsed/linted in environments that do not have the SDK
+# installed. Ruff's static analysis flags the runtime-scope reference as
+# F821; suppress only here.
+"tests/fixtures/drift/capture_drift.py" = ["F821"]
+"tests/fixtures/parity/measure_ulp_drift.py" = ["F821"]
+
 [tool.pytest.ini_options]
 markers = [
     "live: tests that hit live public APIs (skipped by default per testing playbook)",

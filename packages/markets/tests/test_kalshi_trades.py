@@ -356,7 +356,7 @@ class TestFills:
         assert len(df) == 2
         assert (df["source"] == "kalshi").all()
         assert df["trade_id"].tolist() == ["t1", "t2"]
-        # cents (0–100), converted from dollars strings
+        # cents (0-100), converted from dollars strings
         assert df["yes_price"].tolist() == [52.0, 53.0]
         assert df["no_price"].tolist() == [48.0, 47.0]
         assert df["count"].tolist() == [10, 5]

@@ -104,12 +104,17 @@ def test_exactly_three_published_wheels(built_wheels: dict[str, Path]) -> None:
     )
 
 
-def test_rc_versions_in_wheel_filenames(built_wheels: dict[str, Path]) -> None:
-    # Phase 4 PKG-01: all three packages bump to 0.1.0rc1 in lockstep
-    # for the TestPyPI dry-run before the v0.1.0 final tag.
-    assert "0.1.0rc1" in built_wheels["core"].name, built_wheels["core"].name
-    assert "0.1.0rc1" in built_wheels["weather"].name, built_wheels["weather"].name
-    assert "0.1.0rc1" in built_wheels["markets"].name, built_wheels["markets"].name
+def test_wheel_versions_lockstep(built_wheels: dict[str, Path]) -> None:
+    # PKG-01: all three packages bump in lockstep on the same SHA. This
+    # test extracts the version string from each wheel filename and asserts
+    # they all match — agnostic to which specific version we're at.
+    # `pkg_name-VERSION-py3-none-any.whl` → split on `-` and take index 1.
+    versions = {
+        pkg: built_wheels[pkg].name.split("-")[1] for pkg in ("core", "weather", "markets")
+    }
+    assert versions["core"] == versions["weather"] == versions["markets"], (
+        f"wheel versions must match lockstep across all 3 packages; got {versions}"
+    )
 
 
 def test_only_core_ships_namespace_root(built_wheels: dict[str, Path]) -> None:

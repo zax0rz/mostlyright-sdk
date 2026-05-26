@@ -87,7 +87,7 @@ def _normalize_city_slugs(city: str) -> tuple[str, str]:
         long_poly, kalshi_upper = _CITY_SLUG_ALIASES[lower]
         return long_poly, kalshi_upper
     if lower in _CITY_SLUG_ALIASES_REVERSE:
-        short_kalshi, kalshi_upper = _CITY_SLUG_ALIASES_REVERSE[lower]
+        _short_kalshi, kalshi_upper = _CITY_SLUG_ALIASES_REVERSE[lower]
         return lower, kalshi_upper
     return lower, upper
 

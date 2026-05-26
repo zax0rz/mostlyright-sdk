@@ -279,7 +279,8 @@ def _parse_retry_after_seconds(value: str | None) -> float | None:
         s = float(value.strip())
     except (TypeError, ValueError):
         return None
-    if s < 0 or not (s == s) or s == float("inf"):
+    # NaN check via self-inequality is intentional (NaN != NaN is True).
+    if s < 0 or s != s or s == float("inf"):
         return None
     return s
 

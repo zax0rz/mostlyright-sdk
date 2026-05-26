@@ -27,7 +27,7 @@ def test_iem_live_source_raises_not_implemented_with_v02_hint() -> None:
     at iem.archive.
     """
     adapter = IEMAdapter()
-    with pytest.raises(NotImplementedError, match="iem.live MOS deferred to v0.2"):
+    with pytest.raises(NotImplementedError, match=r"iem\.live MOS deferred to v0\.2"):
         adapter.fetch_forecasts("iem.live", "KNYC", "2026-05-01", "2026-05-07")
 
 

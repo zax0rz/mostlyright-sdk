@@ -91,7 +91,7 @@ def candles(
 
         - ``ts`` (datetime UTC): end-of-period timestamp.
         - ``open`` / ``high`` / ``low`` / ``close`` (float | None): OHLC in
-          **cents** (0.0–100.0, subpenny precision preserved). Conversion
+          **cents** (0.0-100.0, subpenny precision preserved). Conversion
           from the Kalshi FixedPointDollars wire format (e.g. ``"0.5600"``)
           is ``cents = float(api_string) * 100`` per the canonical
           ``packages/core/.../specs/candle.json`` contract.
@@ -193,7 +193,7 @@ def fills(
 
         - ``trade_id`` (str | None)
         - ``ts`` (datetime UTC | None)
-        - ``yes_price`` / ``no_price`` (float | None): cents (0.0–100.0,
+        - ``yes_price`` / ``no_price`` (float | None): cents (0.0-100.0,
           subpenny precision). Converted from Kalshi's
           ``yes_price_dollars``/``no_price_dollars`` FixedPointDollars
           strings via ``cents = float(s) * 100``.
@@ -291,7 +291,7 @@ def orderbook(
         DataFrame, one row per (side, price level):
 
         - ``side`` (str): ``"yes"`` or ``"no"``.
-        - ``price`` (float | None): price in cents (0.0–100.0). Converted
+        - ``price`` (float | None): price in cents (0.0-100.0). Converted
           from Kalshi's ``orderbook_fp.{yes_dollars,no_dollars}`` levels
           (each level is ``[price_dollar_string, count_fp_string]``) via
           ``cents = float(price_dollar_string) * 100``.

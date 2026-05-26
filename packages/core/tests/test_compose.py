@@ -290,7 +290,7 @@ class TestResearchSignatureValidation:
         researchBySource for Mode-2 today + v0.3 for sources=[]."""
         from mostlyright import research
 
-        with pytest.raises(NotImplementedError, match="v0.3"):
+        with pytest.raises(NotImplementedError, match=r"v0\.3"):
             research(
                 station="NYC",
                 from_date="2025-01-06",
@@ -336,13 +336,13 @@ class TestResearchSignatureValidation:
         multi-station join to v0.3."""
         from mostlyright import research
 
-        with pytest.raises(NotImplementedError, match="v0.3"):
+        with pytest.raises(NotImplementedError, match=r"v0\.3"):
             research(city="NYC", from_date="2025-01-06", to_date="2025-01-12")
 
     def test_contract_selector_v02_raises_notimplemented(self):
         from mostlyright import research
 
-        with pytest.raises(NotImplementedError, match="v0.3"):
+        with pytest.raises(NotImplementedError, match=r"v0\.3"):
             research(
                 contract="kalshi:KHIGHNYC",
                 from_date="2025-01-06",
@@ -352,7 +352,7 @@ class TestResearchSignatureValidation:
     def test_contracts_selector_v02_raises_notimplemented(self):
         from mostlyright import research
 
-        with pytest.raises(NotImplementedError, match="v0.3"):
+        with pytest.raises(NotImplementedError, match=r"v0\.3"):
             research(
                 contracts=["kalshi:KHIGHNYC"],
                 from_date="2025-01-06",

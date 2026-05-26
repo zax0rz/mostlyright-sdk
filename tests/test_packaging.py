@@ -145,59 +145,63 @@ def test_pyarrow_cap_in_specific_known_locations() -> None:
         )
 
 
-def test_core_version_is_rc1() -> None:
-    # Phase 4 PKG-01: TestPyPI release candidate before v0.1.0 final.
-    # The release-testpypi.yml workflow tags v*rc* → publishes to
-    # test.pypi.org; after the external-person quickstart timer comes
-    # back green we bump to "0.1.0" and tag v0.1.0 for prod PyPI.
-    assert _project("core")["version"] == "0.1.0rc1"
+def test_all_three_packages_at_same_version() -> None:
+    # PKG-01: lockstep version bump across all 3 PyPI distros. The release
+    # workflow tags a single SHA and publishes all 3 at the same version
+    # number; this test fails loudly if the bump ever drifts.
+    core_version = _project("core")["version"]
+    assert _project("weather")["version"] == core_version, (
+        f"mostlyrightmd-weather version must match core; "
+        f"core={core_version}, weather={_project('weather')['version']}"
+    )
+    assert _project("markets")["version"] == core_version, (
+        f"mostlyrightmd-markets version must match core; "
+        f"core={core_version}, markets={_project('markets')['version']}"
+    )
 
 
-def test_weather_version_is_rc1() -> None:
-    assert _project("weather")["version"] == "0.1.0rc1"
+def test_all_three_packages_at_0_1_x() -> None:
+    # PKG-01: 0.1.x line. v0.2.0 bumps this assertion. v1.0.0 also bumps.
+    core_version = _project("core")["version"]
+    assert core_version.startswith("0.1."), (
+        f"core version must be in the 0.1.x line until v0.2 / v1.0 is cut; got {core_version}"
+    )
 
 
-def test_markets_version_is_rc1() -> None:
-    # Phase 2 Wave 5 shipped markets at 0.1.0a1 — Kalshi NHIGH/NLOW
-    # resolvers + 20-station whitelist (MARKETS-01..03). Phase 4
-    # PKG-01 bumps all three packages to 0.1.0rc1 in lockstep.
-    assert _project("markets")["version"] == "0.1.0rc1"
-
-
-def test_markets_pins_core_to_matching_rc() -> None:
+def test_markets_pins_core_to_0_1_range() -> None:
     # PKG-03: prevent a user from mixing mostlyright 0.0.x with
-    # mostlyrightmd-markets 0.1.0rc1 (or vice versa). The Kalshi resolvers
+    # mostlyrightmd-markets 0.1.x (or vice versa). The Kalshi resolvers
     # use mostlyright.markets.catalog (this package) but the wider
     # settlement pipeline reads mostlyright.core.* schemas; a stale core
     # would silently serve the wrong column set.
     runtime_deps = _runtime_deps("markets")
     assert any(
-        d.startswith("mostlyrightmd") and ">=0.1.0rc1" in d and "<0.2" in d for d in runtime_deps
+        d.startswith("mostlyrightmd") and ">=0.1.0" in d and "<0.2" in d for d in runtime_deps
     ), (
         "mostlyrightmd-markets runtime deps must constrain mostlyright to "
-        "matching rc (>=0.1.0rc1,<0.2) — see PKG-03 in PLAN.md Wave 5"
+        "the 0.1.x line (>=0.1.0,<0.2) — see PKG-03"
     )
 
 
-def test_weather_pins_core_to_matching_rc() -> None:
+def test_weather_pins_core_to_0_1_range() -> None:
     # PKG-03: prevent a user from mixing mostlyright 0.0.x with
-    # mostlyrightmd-weather 0.1.0rc1 (or vice versa) across the parity gate.
+    # mostlyrightmd-weather 0.1.x across the parity gate.
     runtime_deps = _runtime_deps("weather")
     assert any(
-        d.startswith("mostlyrightmd") and ">=0.1.0rc1" in d and "<0.2" in d for d in runtime_deps
+        d.startswith("mostlyrightmd") and ">=0.1.0" in d and "<0.2" in d for d in runtime_deps
     ), (
         "mostlyrightmd-weather runtime deps must constrain mostlyright to "
-        "matching rc (>=0.1.0rc1,<0.2) — see PKG-03 in PLAN.md Wave 4"
+        "the 0.1.x line (>=0.1.0,<0.2) — see PKG-03"
     )
 
 
-def test_core_research_extra_pins_weather_to_matching_rc() -> None:
+def test_core_research_extra_pins_weather_to_0_1_range() -> None:
     # Mirror of PKG-03 on the other side: `mostlyrightmd[research]` must pull
-    # a matching-rc mostlyrightmd-weather, not any 0.x.
+    # a 0.1.x mostlyrightmd-weather, not any 0.x.
     research = _extras("core").get("research", [])
     assert any(
-        d.startswith("mostlyrightmd-weather") and ">=0.1.0rc1" in d and "<0.2" in d for d in research
+        d.startswith("mostlyrightmd-weather") and ">=0.1.0" in d and "<0.2" in d for d in research
     ), (
         "mostlyrightmd[research] extra must constrain mostlyrightmd-weather to "
-        "matching rc (>=0.1.0rc1,<0.2)"
+        "the 0.1.x line (>=0.1.0,<0.2)"
     )

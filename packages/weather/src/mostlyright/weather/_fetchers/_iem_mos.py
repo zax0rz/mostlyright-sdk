@@ -144,7 +144,7 @@ def _parse_mos_row(
     valid_at = _parse_dt(row.get("ftime") or row.get("valid_time"))
     if issued_at is None or valid_at is None:
         return None
-    forecast_hour = int(round((valid_at - issued_at).total_seconds() / 3600))
+    forecast_hour = round((valid_at - issued_at).total_seconds() / 3600)
     return {
         "station": station,
         "issued_at": issued_at,
@@ -154,7 +154,7 @@ def _parse_mos_row(
         "temp_c": _f_to_c(_maybe_float(row, "tmp")),
         "dew_point_c": _f_to_c(_maybe_float(row, "dpt")),
         "wind_speed_ms": _kt_to_ms(_maybe_float(row, "wsp")),
-        "wind_dir_deg": (int(round(d)) if (d := _maybe_float(row, "wdr")) is not None else None),
+        "wind_dir_deg": (round(d) if (d := _maybe_float(row, "wdr")) is not None else None),
         "precip_probability": _pct_to_unit(_maybe_float(row, "pop12")),
         "sky_cover_pct": None,  # IEM MOS doesn't expose a single sky-cover %
         "source": "iem.archive",

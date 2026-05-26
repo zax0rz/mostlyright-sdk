@@ -113,7 +113,7 @@ def test_fetch_forecasts_iem_archive_wired_via_iem_mos() -> None:
 def test_fetch_forecasts_iem_live_deferred_to_v02() -> None:
     """``iem.live`` MOS still deferred — error message points at iem.archive."""
     a = IEMAdapter()
-    with pytest.raises(NotImplementedError, match="iem.live MOS deferred to v0.2"):
+    with pytest.raises(NotImplementedError, match=r"iem\.live MOS deferred to v0\.2"):
         a.fetch_forecasts("iem.live", "KNYC", "2025-01-01", "2025-01-02")
 
 

@@ -935,12 +935,12 @@ def _fetch_iem_mos_range(
     Returns an empty dict when IEM MOS yields zero rows (defensive — keeps
     downstream callers null-safe).
     """
-    from mostlyright.weather._fetchers._iem_mos import fetch_iem_mos
-
     # Phase 17 Wave 4 iter-2 review HIGH: pandas is an optional dep
     # ([parquet] / [research] extras), not a base dep. Lazy-import so the
     # base ``import mostlyright`` keeps working without those extras.
     import pandas as pd
+
+    from mostlyright.weather._fetchers._iem_mos import fetch_iem_mos
 
     df = fetch_iem_mos(info.icao, from_date, to_date, model=model)
     groups: dict[str, list[dict[str, Any]]] = {}
@@ -963,7 +963,7 @@ def _fetch_iem_mos_range(
                 ftime_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
                 info.code,
             )
-        except Exception:  # noqa: BLE001 — defensive against unknown station/tz
+        except Exception:
             date_iso = ftime_dt.strftime("%Y-%m-%d")
         # Build a forecast row that build_pairs_row understands. IEM MOS
         # already carries ``valid_at``; we also normalize it to the
