@@ -1,6 +1,6 @@
 [project]
 name = "mostlyrightmd-weather"
-version = "0.1.0rc2"
+version = "0.1.0rc3"
 description = "Weather data sources for mostlyright: AWC, IEM, GHCNh, NWS CLI. Direct public-API access; no hosted backend. Python module: `import mostlyright.weather`."
 readme = "README.md"
 license = "MIT"
