@@ -9,16 +9,28 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) once it ships
 
 (next 0.1.x / 0.2.x changes land here)
 
-## [0.1.2] — 2026-05-26 (prod PyPI — weather + markets first publish; staggered registration CLOSED)
+## [0.1.3] — 2026-05-26 (prod PyPI — markets first publish; staggered registration CLOSED)
 
-Third (and final) prod publish in the staggered publisher-registration sequence. Operator fixed the project-name typos on the weather + markets pending publishers (had been registered as `mostlyright-weather` / `mostlyright-markets` instead of `mostlyrightmd-weather` / `mostlyrightmd-markets` — see [0.1.1] post-mortem below). Both publishers are now correctly bound to the renamed distros.
+Fourth prod publish — actually closes the staggered publisher-registration sequence. Operator fixed the remaining markets publisher project-name typo (was `mostlyright-markets`, now `mostlyrightmd-markets`). All 3 prod publishers are now correctly bound to the renamed distros.
 
 **What's live on prod after this push:**
-- `mostlyrightmd` `[0.1.0, 0.1.1, 0.1.2]` — third re-publish (no code change; version bump only)
-- `mostlyrightmd-weather` `[0.1.2]` — **first successful publish on prod** (0.1.1 burned by the typo'd publisher; filename immutability)
-- `mostlyrightmd-markets` `[0.1.2]` — **first successful publish on prod** (0.1.1 also burned)
+- `mostlyrightmd` `[0.1.0, 0.1.1, 0.1.2, 0.1.3]` — fourth re-publish
+- `mostlyrightmd-weather` `[0.1.2, 0.1.3]` — re-publish at 0.1.3
+- `mostlyrightmd-markets` `[0.1.3]` — **first successful publish on prod** (0.1.1 + 0.1.2 burned by the typo'd publisher; filename immutability)
 
-All 3 publishers are now permanent on prod pypi.org. Future releases (`0.1.3`, `0.2.x`, etc.) will publish all 3 distros atomically per tag. The `mostlyrightmd[research]` and `mostlyrightmd-markets[polymarket]` / `[trades]` extras now resolve cleanly.
+All 3 publishers are now permanent on prod pypi.org. Future releases (`0.1.4`, `0.2.x`, etc.) publish all 3 distros atomically per tag. The `mostlyrightmd[research]` and `mostlyrightmd-markets[polymarket]` / `[trades]` extras now resolve cleanly.
+
+### Changed
+- Version bump 0.1.2 → 0.1.3 across all 3 PyPI distros. No source-code changes.
+
+## [0.1.2] — 2026-05-26 (prod PyPI — weather first publish; markets typo'd publisher still blocked)
+
+Third prod publish — intended to land both weather + markets first publishes, but markets job got the SAME `400 Non-user identities cannot create new projects` error as v0.1.1's weather/markets. Root cause: operator fixed weather's publisher project-name typo but missed markets' (both had been registered as `mostlyright-*` without the `md`).
+
+**What's live on prod after this push:**
+- `mostlyrightmd` `[0.1.0, 0.1.1, 0.1.2]` — re-publish at 0.1.2 succeeded
+- `mostlyrightmd-weather` `[0.1.2]` — **first successful publish on prod** (0.1.1 burned by the typo'd publisher; filename immutability). `mostlyrightmd[research]` extra now resolves.
+- `mostlyrightmd-markets` — still 404; **0.1.2 BURNED**. Cumulative burns: 0.1.1, 0.1.2. Ships in [0.1.3] below.
 
 ### Changed
 - Version bump 0.1.1 → 0.1.2 across all 3 PyPI distros. No source-code changes.

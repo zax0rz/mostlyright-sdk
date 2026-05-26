@@ -430,7 +430,7 @@ wheels = [
 
 [[package]]
 name = "mostlyrightmd"
-version = "0.1.2"
+version = "0.1.3"
 source = { editable = "packages/core" }
 dependencies = [
     { name = "httpx" },
@@ -474,7 +474,7 @@ provides-extras = ["parquet", "research", "polars"]
 
 [[package]]
 name = "mostlyrightmd-markets"
-version = "0.1.2"
+version = "0.1.3"
 source = { editable = "packages/markets" }
 dependencies = [
     { name = "httpx" },
@@ -524,7 +524,7 @@ provides-extras = ["parquet", "polymarket", "trades", "polars"]
 
 [[package]]
 name = "mostlyrightmd-weather"
-version = "0.1.2"
+version = "0.1.3"
 source = { editable = "packages/weather" }
 dependencies = [
     { name = "filelock" },
