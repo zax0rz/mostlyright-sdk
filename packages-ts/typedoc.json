@@ -5,8 +5,18 @@
   "tsconfig": "./tsconfig.docs.json",
   "entryPoints": [
     "core/src/index.ts",
+    "core/src/temporal/index.ts",
+    "core/src/formats/index.ts",
+    "core/src/transforms/index.ts",
+    "core/src/qc/index.ts",
+    "core/src/validator.ts",
+    "core/src/discovery/index.ts",
     "weather/src/index.ts",
+    "weather/src/live/index.ts",
+    "weather/src/forecasts/index.ts",
     "markets/src/index.ts",
+    "markets/src/polymarket/index.ts",
+    "markets/src/trades/index.ts",
     "meta/src/index.ts"
   ],
   "entryPointStrategy": "resolve",
@@ -17,7 +27,7 @@
   "excludePrivate": true,
   "excludeProtected": true,
   "excludeInternal": true,
-  "includeVersion": true,
+  "includeVersion": false,
   "sort": ["alphabetical"],
   "outputFileStrategy": "modules",
   "exclude": ["**/node_modules/**", "**/dist/**", "**/tests/**", "**/docs-ts-build/**"]
