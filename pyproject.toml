@@ -65,6 +65,29 @@ dev = [
     "polars>=1.0,<2.0",
 ]
 
+# Phase 15 W1: documentation toolchain (Sphinx + autodoc + Markdown builder).
+# Kept in a separate group so `uv sync` (default) does NOT pull these in for
+# regular dev work. CI's docs-publish.yml installs via `uv sync --group docs`;
+# local devs run `bash scripts/build_python_docs.sh` which does the same.
+#
+# Floor pins (per Phase 15 PLAN.md W1-T1 Step 1):
+#   sphinx 8.x — current major; 7.x is EOL-soon. Cap below 9 in case the
+#     upstream rev changes autodoc internals.
+#   myst-parser 4.x — paired with sphinx 8.x; renders MyST-Markdown inside docs.
+#   sphinx-markdown-builder 0.6+ — emits Markdown (consumed by Starlight MDX
+#     ingestion in the landing repo).
+#   furo 2024.8+ — only matters for local `make html` preview; the landing
+#     site overrides styling.
+#   sphinx-autodoc-typehints 2.5+ — moves type hints from signatures into the
+#     description block (cleaner MDX output).
+docs = [
+    "sphinx>=8.0,<9",
+    "myst-parser>=4.0,<5",
+    "sphinx-markdown-builder>=0.6,<1",
+    "furo>=2024.8",
+    "sphinx-autodoc-typehints>=2.5",
+]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"

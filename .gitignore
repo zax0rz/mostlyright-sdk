@@ -66,3 +66,12 @@ packages-ts/*/coverage/
 packages-ts/meta/tests/parity/drift/*.json
 packages-ts/meta/tests/parity/drift-report.md
 .claude/
+
+# Phase 15 W1 — Sphinx build artifacts.
+# `_build/` holds rendered HTML + Markdown output (regenerated each build).
+# `api/` is autosummary-emitted .rst stubs from the `:toctree: api` directive
+# in `docs/sphinx/index.rst` (regenerated each build by autosummary_generate=True).
+# Both are pure outputs; the docs source-of-truth is the docstrings in
+# `packages/*/src/`, plus the hand-written `conf.py` + `index.rst` + `_templates/`.
+docs/sphinx/_build/
+docs/sphinx/api/
