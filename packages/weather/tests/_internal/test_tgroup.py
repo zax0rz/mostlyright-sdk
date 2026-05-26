@@ -14,7 +14,6 @@ share a single source of truth (plans 18-01/02/03 of the precision fix).
 from __future__ import annotations
 
 import pytest
-
 from mostlyright.weather._internal.tgroup import parse_tgroup
 
 
