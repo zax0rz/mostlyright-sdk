@@ -1,8 +1,10 @@
 # mostlyrightmd
 
-Local-first Python SDK for quants researching prediction-market weather settlements.
+**The public data SDK for quants and AI agents.**
 
-Calls AWC, IEM, GHCNh, and NWS CLI directly; no hosted backend, no API key. Exposes `mostlyright.research(station, from_date, to_date)` — the observation × climate join that returns one row per settlement date.
+`mostlyrightmd` is the Python entry point: core types, schemas, validators, temporal-safety primitives, and the `research()` join that ties observations × climate into one row per settlement date. Direct calls to public APIs (NOAA, NWS, IEM, GHCNh, Kalshi, Polymarket). No hosted backend, no API key.
+
+Weather + prediction-markets data are live today. SEC filings (EDGAR) and Federal Reserve economic data (FRED) are next.
 
 ## Install
 
@@ -14,6 +16,15 @@ pip install mostlyrightmd-weather        # weather data sources only (brings cor
 
 `mostlyrightmd` and `mostlyrightmd-weather` share the `mostlyright.*` Python namespace but ship as separate PyPI distributions, so users who only need the helpers can skip the heavier weather deps. `research()` lazy-imports `mostlyright.weather` and raises a clear error if the weather package is not installed.
 
-## Docs
+## Quickstart
+
+```python
+import mostlyright
+
+df = mostlyright.research("KNYC", "2025-01-06", "2025-01-12")
+print(df.head())
+```
+
+## Documentation
 
 Quickstart, concepts, and the full API reference live at <https://mostlyright.md/docs/sdk/>.

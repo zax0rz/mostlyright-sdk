@@ -15,7 +15,7 @@ APIs.
 | Role | DATABASE (training pairs, settlement) | TICKER (real-time monitoring) |
 | Sources | AWC + IEM + GHCNh + CLI (fused) | ONE of `awc` \| `iem` |
 | Cache writes | Yes (parquet, year-aligned) | No |
-| QC | Yes (Phase 3.4) | No |
+| QC | Yes (when the QC engine lands) | No |
 | Loop semantics | None — point-in-time | Async generator |
 | Use case | Backtest, train a model, settle a contract | Watch live conditions, page on threshold, build a dashboard |
 

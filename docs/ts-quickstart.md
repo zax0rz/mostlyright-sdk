@@ -127,7 +127,7 @@ See [`docs/browser-integration.md`](./browser-integration.md) for service-worker
 
 Mirrors Python v0.1.0 deferrals:
 
-- Polymarket order book / fills (Sprint 0.5+).
+- Polymarket order book / fills (planned).
 - UMA oracle on-chain validation.
 - Taipei / HK-low markets (raise `DeferredMarketError`; CWA/HKO clients are v0.2).
 - Live HRRR/GFS/NBM forecast fetch (Python ships the dispatch seam; live wiring is v0.2).

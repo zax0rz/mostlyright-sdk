@@ -82,7 +82,7 @@ Notes:
   separation; no filename infix collisions).
 - `warm_cache` populates the canonical cache; subsequent calls with overlapping
   windows benefit from the year-aligned read path. Byte-equivalent to
-  `research()` Mode-1 obs aggregates for the 5 Phase 1 parity fixtures.
+  `research()` Mode-1 obs aggregates for the 5 parity fixtures.
 - `warm_cache` requires `source=None` — single-source warm_cache would corrupt
   the merge-priority semantics. For source-filtered queries use
   `exact_window` (fetcher-boundary enforcement preserves priority correctly).
@@ -127,6 +127,3 @@ mutable-period logic.
 ## See also
 
 - `mostlyright.research.research()` — the full obs + CLI + forecast join.
-- `.planning/research/INGEST-PLANNER-RESEARCH.md` — the empirical research
-  doc that informed this design.
-- `.planning/ROADMAP.md` — Phase 7 entry.

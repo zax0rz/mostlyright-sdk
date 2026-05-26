@@ -1,13 +1,13 @@
 # Cache Migration: tradewinds → mostlyright
 
-Phase 12 renamed the SDK from `tradewinds` to `mostlyright`. The on-disk cache
-directory and the environment variable that overrides it follow the same rename
-in **both the Python and the TypeScript SDKs** — the env var name is shared
-across SDKs even though each SDK keeps its own on-disk subdirectory.
+The SDK was previously named `tradewinds`. The on-disk cache directory and the
+environment variable that overrides it both follow the rename in the Python and
+the TypeScript SDKs — the env var name is shared across SDKs even though each
+SDK keeps its own on-disk subdirectory.
 
 ## Old → New
 
-### Python SDK (`mostlyrightmd` / `mostlyrightmdmd-weather` / `mostlyrightmd-markets`)
+### Python SDK (`mostlyrightmd` / `mostlyrightmd-weather` / `mostlyrightmd-markets`)
 
 | Old                            | New                              |
 |--------------------------------|----------------------------------|

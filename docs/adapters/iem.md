@@ -46,7 +46,7 @@ The projection from raw IEM parser rows applies the shared SI-unit transform
 | `source`                 | `"iem.archive"` or `"iem.live"`    | Set by `IEMAdapter.from_rows`                           |
 | `retrieved_at`           | wall-clock UTC of the fetch        | Tz-aware datetime64                                     |
 
-The `_v02` / Phase 2 `core.formats.dataframe` serializer roundtrips these rows
+The `core.formats.dataframe` serializer roundtrips these rows
 losslessly through parquet, JSON, and TOON.
 
 ## Gotchas
@@ -56,13 +56,13 @@ losslessly through parquet, JSON, and TOON.
   preserves `None` through unit conversion — downstream callers see `pd.NA` /
   `None` in the canonical DataFrame, never a silent zero. (CLAUDE.md Pitfall 8.)
 - **Year-spanning queries.** The ASOS endpoint streams CSV row-by-row; very
-  long ranges have rare row drops on server-side timeouts. The Phase 1.5 PERF-04
+  long ranges have rare row drops on server-side timeouts. The v0.1 PERF-04
   fix in `_fetchers/iem_asos.py` chunks any request whose span > 365 days into
   per-year sub-requests via `_iem_chunks.py`. Callers above the fetcher (e.g.
   `research()` callers requesting decade-long ranges) never see partial rows.
 - **Rate limit / etiquette.** IEM publishes no formal rate limit but the
   community convention is ≤1 req/sec from a single IP. Concurrent fetches in
-  `research()`'s Phase 1.5 PERF-04 fan-out are bounded by the four-source
+  `research()`'s fan-out are bounded by the four-source
   parallelism (one IEM ASOS request + one IEM CLI request at most simultaneously);
   no further throttling needed for v0.1.
 - **Two source IDs, same parser.** `iem.archive` and `iem.live` use the same
@@ -73,7 +73,7 @@ losslessly through parquet, JSON, and TOON.
 - **MOS forecast leg deferred.** `IEMAdapter.fetch_forecasts()` raises
   `NotImplementedError` in v0.1. IEM does serve MOS at
   `mesonet.agron.iastate.edu/json/mos.py`, but the forecast leg lands in
-  Phase 3.2 (multi-forecast HRRR + GFS + NBM via NOAA BDP).
+  the multi-forecast HRRR + GFS + NBM via NOAA BDP.
 
 ## Timezone Handling
 
@@ -106,7 +106,7 @@ losslessly through parquet, JSON, and TOON.
 ## Cache Layout
 
 - On-disk path: `$HOME/.mostlyright/cache/v1/observations/{station}/{year}/{month}.parquet`
-- `filelock`-guarded per-file (cross-process safe). Phase 1.5 PERF-04 added an
+- `filelock`-guarded per-file (cross-process safe). v0.1 PERF-04 added an
   iCloud/Dropbox auto-detect — cloud-sync filesystems fall back to `SoftFileLock`.
 - Cache-skip rules:
   - Current LST month for that station is never written (still volatile —
@@ -122,4 +122,4 @@ losslessly through parquet, JSON, and TOON.
 - [`ghcnh.md`](ghcnh.md) — international + multi-decade fallback
 - Source-of-truth code: `packages/weather/src/mostlyright/weather/catalog/iem.py`
 - Merge logic: `packages/core/src/mostlyright/_internal/merge/observations.py`
-- Phase 1.5 PERF-04 chunker: `packages/weather/src/mostlyright/weather/_fetchers/_iem_chunks.py`
+- v0.1 PERF-04 chunker: `packages/weather/src/mostlyright/weather/_fetchers/_iem_chunks.py`

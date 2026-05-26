@@ -54,7 +54,7 @@ The projection from raw AWC parser rows applies the shared SI-unit transform
   use IEM (see [`iem.md`](iem.md)).
 - **US-CONUS coverage only.** AWC's METAR JSON feed covers ICAO codes in the
   CONUS + Alaska + Hawaii. International stations return empty lists. The
-  Phase 3.1 international station expansion routes non-US Kalshi stations
+  International station expansion routes non-US Kalshi stations
   through IEM/GHCNh exclusively.
 - **`M1/4` visibility prefix.** AWC encodes "below 1/4 statute mile" as the
   string `"M1/4"`. The parser in `_awc.py` line 82 handles the `M` prefix
@@ -87,7 +87,7 @@ The projection from raw AWC parser rows applies the shared SI-unit transform
 - **Live priority** (CLAUDE.md "LIVE_V1 observations"): AWC > IEM > GHCNh.
   AWC is the default live source.
 - **Geographic constraint.** AWC contributes rows only for US-CONUS / AK / HI
-  Kalshi-traded stations. For international stations (Phase 3.1 expansion),
+  Kalshi-traded stations. For international stations (international expansion),
   the merge skips the AWC leg entirely — IEM and GHCNh carry the load.
 - **No archive overlap with IEM.** Because there is no `awc.archive`, IEM
   alone provides observation history beyond ~7 days. The merge logic does
@@ -101,7 +101,7 @@ The projection from raw AWC parser rows applies the shared SI-unit transform
 - `awc.live` is never written to disk in the current LST month — current-month
   rows live only in the in-memory pre-fetch path. Closed months are immutable.
 - `filelock`-guarded per parquet file. Cloud-sync filesystems use
-  `SoftFileLock` fallback (Phase 1.5 PERF-04).
+  `SoftFileLock` fallback (added in v0.1).
 
 ## See Also
 

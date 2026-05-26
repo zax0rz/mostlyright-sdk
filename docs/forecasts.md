@@ -40,7 +40,7 @@ print(df[["date", "fcst_high_f", "fcst_high_f_nwp_hrrr", "fcst_high_f_nwp_gfs"]]
 ```
 
 `research(include_forecast=True)` was previously raising
-`NotImplementedError`; Phase 17 wires both Mode 1 (IEM MOS) and Mode 2
+`NotImplementedError`; v1.0 wires both Mode 1 (IEM MOS) and Mode 2
 (per-NWP-model) end-to-end. Settlement-day bucketing uses station LST
 via `settlement_date_for(observed_at, station)` so post-midnight tail
 rows roll into the correct calendar settlement.
@@ -226,7 +226,7 @@ Each model row gets a `qc_status` enum (`clean`, `flagged`, `suspect`)
 from `weather.qc.rules_nwp.QC_RULES_NWP[model]`:
 
 - **NCEP base**: 7 physics-bounds rules (temp / dewpoint / RH / gust /
-  precip / `PRES_sfc` / `MSLP`). `PRES_sfc` + `MSLP` retain the Phase 3.2
+  precip / `PRES_sfc` / `MSLP`). `PRES_sfc` + `MSLP` retain the legacy
   backward-compat `<= 0 Pa → suspect` branch.
 - **ECMWF**: NCEP base + tp-in-meters rule (ECMWF tp unit is meters,
   not mm).
@@ -261,8 +261,7 @@ import { forecastNwp } from '@mostlyrightmd/weather/forecasts';
 ```
 
 **Why?** No production-ready browser GRIB2 decoder exists as of May
-2026 (see Phase 17 CONTEXT decision 7). v1.1 re-evaluates browser WASM
-GRIB2 decoders.
+2026. v1.1 re-evaluates browser WASM GRIB2 decoders.
 
 For TS NWP today, use the Python SDK (`mostlyright>=v1.0`) which wires
 the NCEP family end-to-end (see the Wiring-status tables above).

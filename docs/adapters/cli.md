@@ -38,7 +38,7 @@ parser records:
 | `product_release_time`   | `issued_at` (ISO → datetime64 UTC)  | Per `docs/design.md` §BB.3                             |
 | `station_tz`             | per-station IANA name               | Required for `event_time`; `"UTC"` sentinel fails loud |
 | `event_time`             | 00:00 station-local → UTC           | Derived in `_event_time_from_date`                     |
-| `cli_data_quality`       | `"clean"` (v0.1 default)            | Phase 3.4 QC engine populates richer values            |
+| `cli_data_quality`       | `"clean"` (v0.1 default)            | QC engine release populates richer values              |
 | `settlement_finality`    | `provisional` / `final`             | Mapped from `report_type` (final/correction → final)   |
 | `source`                 | `"cli.archive"` or `"cli.live"`     | Set by `CLIAdapter.from_records`                       |
 | `retrieved_at`           | wall-clock UTC of fetch             |                                                        |
@@ -56,16 +56,16 @@ parser records:
   **Strict `>` is critical** — `>=` would let a later `final` row replace an
   equal-priority earlier one and drift the parity fixtures. (CLAUDE.md
   "Climate LIVE_V1" section.)
-- **`cli_data_quality` enum.** Phase 3.4 (QC Engine Alpha) populates this with
+- **`cli_data_quality` enum.** The QC engine release populates this with
   richer values (`clean`, `quarantine`, `corrected`, …). v0.1 hard-codes
   `"clean"`. Downstream callers must treat unknown enum values as a soft
-  signal, not a hard failure, until Phase 3.4 lands.
+  signal, not a hard failure, until the QC engine lands.
 - **`settlement_finality` enum.** Maps from `report_type`:
   `preliminary → provisional`, `final → final`, `correction → final`. Any
   unmapped `report_type` falls through to `provisional` (defensive default).
 - **REMARKS regex.** CLI text records carry a REMARKS section that can flag
-  estimated data or corrections. The Phase 2 parser does basic regex
-  extraction; Phase 3.4's richer parse goes into `cli_data_quality`.
+  estimated data or corrections. The current parser does basic regex
+  extraction; the QC engine release's richer parse goes into `cli_data_quality`.
 - **Per-station IANA tz mapping.** The 20 Kalshi-traded stations carry a
   hard-coded `station_tz` lookup in
   `packages/weather/src/mostlyright/weather/catalog/_cli_station_tz.py`. Stations
@@ -75,7 +75,7 @@ parser records:
 - **`retrieved_at` must be tz-aware.** `CLIAdapter.from_records` rejects naive
   `retrieved_at` with a clear `ValueError` (defensive: pandas's tz-coerce of a
   naive datetime emits a cryptic error otherwise).
-- **Empty-pull path.** Phase 2 codex iter-6 fix: when zero records survive
+- **Empty-pull path.** When zero records survive
   dedup, the adapter still constructs a properly-typed empty DataFrame
   (`observation_date: object`, `product_release_time: datetime64[ns, UTC]`).
   Validator accepts the empty frame without a dtype mismatch.

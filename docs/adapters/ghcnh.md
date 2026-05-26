@@ -66,8 +66,8 @@ The projection from raw GHCNh parser rows applies the shared SI-unit transform
   NCEI lag is much longer (days to weeks). The 6-hour floor exists so that
   the temporal-safety primitives (`KnowledgeView`, `LeakageDetector`) treat
   the row as "not yet knowable" for at least one merge boundary cycle.
-- **International coverage post-Phase 3.1.** GHCNh is the primary archive
-  source for non-US Kalshi stations. The Phase 3.1 international station
+- **International coverage for international stations.** GHCNh is the primary archive
+  source for non-US Kalshi stations. The international station
   expansion routes non-CONUS stations through GHCNh (with IEM as a secondary
   for stations that happen to be in IEM's ASOS catalog).
 

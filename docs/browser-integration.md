@@ -144,7 +144,7 @@ console.assert(typeof rows[0].cli_high_f === "number", "CLI data missing");
 ```
 
 For an end-to-end browser smoke test against published packages, see
-[`packages-ts/examples/chrome-extension-mvp/`](../packages-ts/examples/chrome-extension-mvp/) — TS-W7 SC #5.
+[`packages-ts/examples/chrome-extension-mvp/`](../packages-ts/examples/chrome-extension-mvp/) — (see the chrome-extension example).
 
 ## Common pitfalls
 
