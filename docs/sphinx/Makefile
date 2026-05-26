@@ -14,10 +14,15 @@ BUILDDIR      = _build
 help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
-.PHONY: help Makefile markdown html clean
+.PHONY: help Makefile markdown
+# Do NOT add `html` or `clean` to .PHONY — they are handled by the catch-all
+# `%: Makefile` pattern below. Declaring them as phony WITHOUT a recipe makes
+# make skip the catch-all entirely (it sees the phony target with no recipe
+# and exits with "Nothing to be done"). Phase 15 W1 codex review caught this
+# on the first commit.
 
 # Catch-all target: route everything else to sphinx-build (handles html, dirhtml,
-# linkcheck, etc.). The leading `@` keeps output clean for CI logs.
+# linkcheck, clean, etc.). The leading `@` keeps output clean for CI logs.
 %: Makefile
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 

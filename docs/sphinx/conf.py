@@ -51,6 +51,14 @@ extensions = [
     "sphinx_markdown_builder",
 ]
 
+# Exclude the build output from the source tree. Without this, a SECOND
+# `sphinx-build` run reads its own previous Markdown output as input
+# (because _build/markdown lives under the source dir `.`) and produces a
+# recursive `_build/markdown/_build/markdown/...` tree with hundreds of
+# "duplicate document" warnings. Phase 15 W1 codex review caught this on
+# the first commit. The other entries are belt-and-braces OS/editor noise.
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+
 # autosummary drives the per-module page generation under `api/`. Enabled
 # so `:toctree: api` in index.rst materializes one .rst (and downstream .md)
 # per documented module.
