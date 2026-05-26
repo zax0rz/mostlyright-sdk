@@ -1,6 +1,6 @@
 [project]
 name = "mostlyrightmd"
-version = "0.1.0"
+version = "0.1.1"
 description = "Local-first SDK for quants researching prediction-market weather settlements. Meta package: research() join + shared utilities. Python module: `import mostlyright`."
 readme = "README.md"
 license = "MIT"

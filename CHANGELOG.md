@@ -9,6 +9,18 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) once it ships
 
 (next 0.1.x / 0.2.x changes land here)
 
+## [0.1.1] — 2026-05-26 (prod PyPI — weather first publish)
+
+Second prod publish in the staggered publisher-registration sequence. After v0.1.0 landed `mostlyrightmd` as a permanent publisher on prod pypi.org, the operator registered `mostlyrightmd-weather` as the next pending publisher.
+
+**What's live on prod after this push:**
+- `mostlyrightmd` `[0.1.0, 0.1.1]` — re-publish at 0.1.1 (no code change vs. 0.1.0; version bump only)
+- `mostlyrightmd-weather` `[0.1.1]` — **first publish on prod**; the `mostlyrightmd[research]` extra now resolves
+- `mostlyrightmd-markets` — still 404 (publisher registered next, ships in v0.1.2)
+
+### Changed
+- Version bump 0.1.0 → 0.1.1 across all 3 PyPI distros. No source-code changes.
+
 ## [0.1.0] — 2026-05-26 (prod PyPI — staggered publisher registration)
 
 **Partial first-publish: this `0.1.0` push lands `mostlyrightmd` (core) only on prod pypi.org.** PyPI's "1 pending publisher at a time" registration constraint means `mostlyrightmd-weather` and `mostlyrightmd-markets` ship in subsequent `0.1.1` / `0.1.2` releases (filename immutability on prod prevents republishing 0.1.0 once the core publish lands).
