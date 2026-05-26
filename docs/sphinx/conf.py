@@ -59,6 +59,13 @@ extensions = [
 # the first commit. The other entries are belt-and-braces OS/editor noise.
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
+# Tell Sphinx where to find our custom autosummary template. Without this,
+# Sphinx silently falls back to its bundled default template, making our
+# in-repo `_templates/autosummary/module.rst` dead code. Phase 15 W1
+# second-reviewer caught this empirically (added a marker to the custom
+# template; verified it did NOT appear in regenerated output).
+templates_path = ["_templates"]
+
 # autosummary drives the per-module page generation under `api/`. Enabled
 # so `:toctree: api` in index.rst materializes one .rst (and downstream .md)
 # per documented module.
