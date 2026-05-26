@@ -44,11 +44,19 @@ permissions:
 # Concurrency groups split by event_name so that a manual smoke test
 # (workflow_dispatch) NEVER cancels an in-flight production publish
 # (push to v*/vts-* tag). Within each group cancel-in-progress holds:
-# a new tag push cancels any still-running tag-publish for the SAME group
-# key, and a new smoke run cancels any in-flight smoke run.
-# Mirrors the legacy sync-openapi-to-landing.yml pattern (round-5 Codex fix).
+# a new tag push cancels any still-running tag-publish for the SAME tag,
+# and a new smoke run cancels any in-flight smoke run.
+#
+# Per-tag concurrency on push events (Phase 15 W3 codex review P2): without
+# the ref_name in the key, a lockstep release like `v0.1.0` followed by
+# `vts-0.1.0` would have the second push cancel the first run mid-flight,
+# silently skipping one SDK's docs PR. Including `github.ref_name` scopes
+# the group per-tag so the two tag pushes run independently.
+# workflow_dispatch keeps a single group (no ref_name) so back-to-back
+# manual smoke runs still de-dup (running the same prompt twice in a row
+# isn't useful — the latest input wins).
 concurrency:
-  group: ${{ format('docs-publish-{0}', github.event_name) }}
+  group: ${{ github.event_name == 'push' && format('docs-publish-push-{0}', github.ref_name) || format('docs-publish-{0}', github.event_name) }}
   cancel-in-progress: true
 
 jobs:
