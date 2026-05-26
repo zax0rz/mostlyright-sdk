@@ -63,14 +63,22 @@ jobs:
       - name: Codegen
         run: pnpm --filter @mostlyrightmd/codegen run codegen
 
+      - name: Build packages (produces dist/ for subpath imports)
+        # Phase 14 W2 npm-canary fix: Build MUST run before Typecheck because
+        # cross-package imports (e.g. `import { ... } from "@mostlyrightmd/core"`
+        # in packages-ts/markets) resolve via the published `main`/`types` paths
+        # in core/package.json — which point at dist/ artifacts that don't
+        # exist on a fresh CI checkout until Build runs. Mirrors the order in
+        # .github/workflows/test-ts.yml (which has this comment verbatim).
+        # Symptom before the fix: TS2307 "Cannot find module '@mostlyrightmd/core'"
+        # on the rc2 push (Build was originally below Typecheck).
+        run: pnpm -r run build
+
       - name: Typecheck
         run: pnpm -r run typecheck
 
       - name: Test (no live network)
         run: pnpm -r exec vitest run
-
-      - name: Build
-        run: pnpm -r run build
 
       - name: Size-limit gates (TS-BUNDLE-01)
         # The `size` npm script lives on the workspace ROOT (size-limit
