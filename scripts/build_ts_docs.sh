@@ -15,9 +15,13 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-# `pnpm install` ensures the workspace dev-deps (typedoc + plugin-markdown)
-# resolve cleanly, including when this script runs in a clean CI checkout.
-pnpm install
+# `pnpm install --frozen-lockfile` ensures the workspace dev-deps (typedoc +
+# plugin-markdown) resolve to the exact lockfile-pinned versions. Matches the
+# pattern in release-ts.yml + test-ts.yml + schema-drift.yml (all enforce
+# --frozen-lockfile per the pre-public audit's supply-chain reproducibility
+# requirement; see commit de3e883). Phase 15 W2 second-reviewer caught the
+# original `pnpm install` (no flag) as a CI drift risk.
+pnpm install --frozen-lockfile
 
 # `pnpm -r run build` produces `.d.ts` for every package — TypeDoc reads
 # the .ts sources directly (entryPointStrategy: "resolve"), but a successful
