@@ -6,8 +6,9 @@ Sprint 0 Wave 3B (Lane F). NEW code. Wraps:
 - ``mostlyright.weather._climate.parse_cli_response`` (consumed downstream).
 
 URL pattern + cache layout lifted READ-ONLY from monorepo-v0.14.1
-``ingest/sources/climate_sync.py::download_cli`` (see also Day 0.7 spike at
-``spike/research_spike.py::fetch_iem_cli``).
+``ingest/sources/climate_sync.py::download_cli`` (see also the Day 0.7 reachability
+probe at ``research/spike-archive/research_spike.py::fetch_iem_cli`` in the
+maintainer planning repo).
 
 Granularity is whole-year (one HTTP request per station-year). Callers that
 want a window filter the parsed records to their date range — IEM's cli.py

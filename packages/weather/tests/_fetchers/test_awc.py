@@ -14,8 +14,9 @@ Sprint 0 Wave 3B (Lane F, net-new code). Covers:
 - empty station list short-circuits with empty list, no request issued
 
 All tests mock ``httpx`` via ``respx``; none hit the live AWC endpoint. The
-live endpoint is exercised by Wave 4 parity tests and by the existing
-``spike/research_spike.py`` (out of scope for this fetcher's unit tests).
+live endpoint is exercised by Wave 4 parity tests and by the
+Day 0.7 reachability probe in the maintainer planning repo at
+``research/spike-archive/research_spike.py`` (out of scope for this fetcher's unit tests).
 """
 
 from __future__ import annotations
@@ -31,7 +32,7 @@ from mostlyright.weather._fetchers.awc import AWC_METAR_URL, fetch_awc_metars
 def _sample_metar(icao: str = "KNYC") -> dict[str, Any]:
     """Minimal AWC METAR JSON shape — matches the spike sample row.
 
-    See ``spike/SPIKE_REPORT.md`` for the full real-world response.
+    See ``research/spike-archive/SPIKE_REPORT.md`` in the maintainer planning repo for the full real-world response.
     """
     return {
         "icaoId": icao,

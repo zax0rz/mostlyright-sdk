@@ -160,7 +160,7 @@ def _month_overlaps_awc_window(year: int, month: int, *, now: datetime | None = 
     """True iff the month's UTC range overlaps ``[now - 168h, now]``.
 
     Used to gate AWC fetches: AWC's ``hours=168`` endpoint only returns the
-    last ~7 days of METARs (see ``spike/SPIKE_REPORT.md``). Months entirely
+    last ~7 days of METARs (see the maintainer planning repo, ``research/spike-archive/SPIKE_REPORT.md``). Months entirely
     before that window get zero AWC contribution; calling the AWC fetcher
     for them is wasted I/O and noisy logs.
     """

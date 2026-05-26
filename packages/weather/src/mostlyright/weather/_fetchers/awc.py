@@ -5,10 +5,11 @@ only recent observations — at most the last ~168 hours (7 days). For historica
 multi-day fetches use ``mostlyright.weather._fetchers.iem`` (IEM ASOS), which
 has arbitrary historical depth.
 
-Sprint 0 Day 0.7 spike confirmed reachability:
-- ``spike/research_spike.py::fetch_awc_live`` proved the endpoint works for the
+Sprint 0 Day 0.7 spike confirmed reachability (artifacts in the maintainer planning
+repo at ``research/spike-archive/``):
+- ``research_spike.py::fetch_awc_live`` proved the endpoint works for the
   last 7 days with no auth.
-- ``spike/SPIKE_REPORT.md`` documents the AWC live limitation: cannot reach
+- ``SPIKE_REPORT.md`` documents the AWC live limitation: cannot reach
   arbitrary historical dates.
 
 URL pattern lifted from ``monorepo-v0.14.1/ingest/sources/awc_poller.py``
