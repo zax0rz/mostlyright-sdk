@@ -1,0 +1,11 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "typeRoots": ["./core/node_modules/@types", "../node_modules/@types"],
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": ["core/src/**/*", "weather/src/**/*", "markets/src/**/*", "meta/src/**/*"],
+  "exclude": ["**/node_modules", "**/dist", "**/tests", "**/*.test.ts"]
+}

@@ -17,7 +17,8 @@
     "size": "size-limit",
     "changeset": "changeset",
     "changeset:version": "changeset version",
-    "changeset:publish": "pnpm -r run build && changeset publish"
+    "changeset:publish": "pnpm -r run build && changeset publish",
+    "docs:ts": "pnpm -r run build && pnpm typedoc --options packages-ts/typedoc.json"
   },
   "size-limit": [
     {
@@ -49,6 +50,8 @@
     "lefthook": "1.7.22",
     "size-limit": "11.1.6",
     "tsup": "8.3.5",
+    "typedoc": "^0.27",
+    "typedoc-plugin-markdown": ">=4.3 <4.5",
     "typescript": "5.6.3",
     "vitest": "2.1.9"
   }

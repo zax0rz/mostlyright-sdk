@@ -75,3 +75,10 @@ packages-ts/meta/tests/parity/drift-report.md
 # `packages/*/src/`, plus the hand-written `conf.py` + `index.rst` + `_templates/`.
 docs/sphinx/_build/
 docs/sphinx/api/
+
+# Phase 15 W2 — TypeDoc markdown build artifacts.
+# `docs-ts-build/markdown/` holds the rendered MDX output (regenerated each
+# build by `scripts/build_ts_docs.sh`). The docs source-of-truth is the
+# JSDoc/TSDoc on `packages-ts/*/src/`, plus the hand-written
+# `packages-ts/typedoc.json` config.
+docs-ts-build/

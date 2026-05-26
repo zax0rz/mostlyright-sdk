@@ -1,8 +1,19 @@
 // @mostlyrightmd/core — placeholder scaffold for TS-W0 Wave 1.
 // Real implementation (research, snapshot, mode2, transforms, qc, ...) lands in TS-W1+.
 
+/**
+ * Placeholder version string from the TS-W0 Wave 1 scaffold. The
+ * authoritative package version lives in `package.json#version`
+ * (currently `0.1.0-rc.7`); this constant has not been bumped.
+ */
 export const version = "0.0.0";
 
+/**
+ * Smoke-test export from the TS-W0 Wave 1 scaffold. Returns the literal
+ * string `"hello @mostlyrightmd/core"`. Retained so the published package
+ * has at least one importable runtime export until the scaffold is
+ * removed in a later phase.
+ */
 export function helloCore(): string {
   return "hello @mostlyrightmd/core";
 }

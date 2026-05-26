@@ -1,0 +1,24 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "name": "Mostlyright TypeScript SDK",
+  "out": "../docs-ts-build/markdown",
+  "tsconfig": "./tsconfig.docs.json",
+  "entryPoints": [
+    "core/src/index.ts",
+    "weather/src/index.ts",
+    "markets/src/index.ts",
+    "meta/src/index.ts"
+  ],
+  "entryPointStrategy": "resolve",
+  "plugin": ["typedoc-plugin-markdown"],
+  "readme": "none",
+  "githubPages": false,
+  "hideGenerator": true,
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "excludeInternal": true,
+  "includeVersion": true,
+  "sort": ["alphabetical"],
+  "outputFileStrategy": "modules",
+  "exclude": ["**/node_modules/**", "**/dist/**", "**/tests/**", "**/docs-ts-build/**"]
+}

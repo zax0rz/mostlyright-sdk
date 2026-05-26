@@ -80,4 +80,11 @@ export {
 } from "@mostlyrightmd/weather";
 export { LiveStreamError, NoLiveDataError } from "@mostlyrightmd/core";
 
+/**
+ * Placeholder version string for the meta package. The authoritative
+ * package version lives in `package.json#version` (currently
+ * `0.1.0-rc.7`); this constant has not been bumped. Sibling packages
+ * (`@mostlyrightmd/core` / `weather` / `markets`) each export their own
+ * `version` constant, exposed here via the namespaced module objects.
+ */
 export const version = "0.0.0";

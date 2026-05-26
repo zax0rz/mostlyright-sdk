@@ -4,8 +4,19 @@
 // (yearly-chunk historical METARs) + the IEM CSV parser. Subsequent TS-W2
 // plans add GHCNh + mergeObservations; TS-W3 adds the disk cache.
 
+/**
+ * Placeholder version string from the TS-W0 Wave 1 scaffold. The
+ * authoritative package version lives in `package.json#version`
+ * (currently `0.1.0-rc.7`); this constant has not been bumped.
+ */
 export const version = "0.0.0";
 
+/**
+ * Smoke-test export from the TS-W0 Wave 1 scaffold. Returns the literal
+ * string `"hello @mostlyrightmd/weather"`. Retained so the published
+ * package has at least one importable runtime export until the scaffold
+ * is removed in a later phase.
+ */
 export function helloWeather(): string {
   return "hello @mostlyrightmd/weather";
 }
