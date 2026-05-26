@@ -236,7 +236,10 @@ def fetch_iem_mos(
         for rt in runtimes:
             params = {
                 "station": station,
-                "model": model,
+                # IEM /api/1/mos.json regex ^(AVN|GFS|...|NBE|...)$ is
+                # uppercase-only; sending lowercase returns HTTP 422
+                # (issue #17). Mirrors the schema-column upper() at L153.
+                "model": model.upper(),
                 "runtime": rt.isoformat(),
             }
             resp = client.get(_IEM_MOS_URL, params=params)
