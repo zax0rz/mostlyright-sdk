@@ -1,39 +1,78 @@
-# Contributing to tradewinds
+# Contributing to mostlyright
 
-Read [`CLAUDE.md`](CLAUDE.md) first — it's the source of truth for collaboration rules, data + parity discipline, testing, and review process.
+Thanks for considering a contribution. Bug reports, feature requests, and pull requests are all welcome.
+
+## Code of Conduct
+
+This project follows the [Contributor Covenant 2.1](./CODE_OF_CONDUCT.md). By participating, you agree to abide by its terms. Report unacceptable behavior to <vu@mostlyright.md>.
 
 ## Quick start
 
 ```bash
-git clone <repo>
-cd tradewinds
-uv sync                                                # installs workspace + dev deps
+git clone https://github.com/mostlyrightmd/mostlyright-sdk.git
+cd mostlyright-sdk
+uv sync                                                # installs workspace + Python dev deps
+pnpm install --frozen-lockfile                          # installs TS workspace deps
 uv run pre-commit install                              # pre-commit hook (fast checks)
-uv run pre-commit install --hook-type pre-push         # pre-push hook (pytest)
-uv run pytest -m "not live" -q                         # fast tests, no network
+uv run pre-commit install --hook-type pre-push        # pre-push hook (test suite)
+uv run pytest -m "not live" -q                        # fast Python tests, no network
+pnpm -r run test                                       # TS tests across all packages
 ```
+
+Python 3.11+. Node 18+. macOS / Linux supported; Windows via WSL.
 
 ## Workflow
 
-1. **Branch per work unit.** Name format: `sprint0/<lane>-<task>`, e.g. `sprint0/vu-lift-core-internal`.
-2. **Write tests first** (TDD). RED → GREEN → REFACTOR.
-3. **Open PR.** Reviewer is the OTHER lane (Lane F authors → Vu reviews; Lane V authors → Founder reviews).
-4. **Review discipline:** every PR runs the two-reviewer loop (Codex + Python Architect) before merging to `merged-vision`. See [`.planning/REVIEW-DISCIPLINE.md`](.planning/REVIEW-DISCIPLINE.md) for the loop mechanics, severity gate, never-skip path list, and trivial-skip rules.
-5. **Pre-commit + pre-push hooks** mandatory. No `--no-verify`. Fix the issue. Pre-commit = fast (ruff/format/whitespace); pre-push = `pytest -m "not live"`. Install both: `uv run pre-commit install && uv run pre-commit install --hook-type pre-push`.
-6. **Merge only after approved review.**
+1. **Branch per change.** Format: `<type>/<short-description>`, e.g. `feat/edgar-10k-fetcher`, `fix/iem-asos-tz-offset`, `docs/snapshot-quickstart`.
+2. **Write tests first.** This repo follows TDD: RED → GREEN → REFACTOR. New code lands with tests; minimum 80% line coverage on touched files.
+3. **Pre-commit + pre-push hooks are mandatory.** No `--no-verify`. If a hook fails, fix the underlying issue. Pre-commit runs fast checks (ruff, format, YAML/TOML validation); pre-push runs the fast test suite.
+4. **Open a PR against `main`.** Describe the change in 2-3 sentences. Link relevant issues. Include before/after for visible behavior changes.
+5. **CI must be green.** The PR can't merge until the test matrix passes (Python 3.11/3.12/3.13 + TypeScript build + typecheck + lint).
+6. **Two-reviewer loop for changes that touch data semantics.** Anything that affects observation parsing, merge logic, schema versioning, or release plumbing gets a second-opinion review from a maintainer. Cosmetic / docs / trivial changes don't need this.
 
-## Phase planning
+## Repository structure
 
-Current authoritative plan lives under [`.planning/`](.planning/) (GSD structure):
+```
+mostlyright-sdk/
+├── packages/                      # Python packages (PyPI)
+│   ├── core/                      # mostlyrightmd — the join + schemas + temporal-safety
+│   ├── weather/                   # mostlyrightmd-weather — AWC, IEM, GHCNh, NWS CLI
+│   └── markets/                   # mostlyrightmd-markets — Kalshi, Polymarket
+├── packages-ts/                   # TypeScript packages (npm)
+│   ├── core/                      # @mostlyrightmd/core
+│   ├── weather/                   # @mostlyrightmd/weather
+│   ├── markets/                   # @mostlyrightmd/markets
+│   ├── meta/                      # mostlyright (unscoped meta)
+│   └── codegen/                   # build-only; not published
+├── schemas/                       # canonical JSON Schemas (Python emits; TS consumes via codegen)
+├── docs/                          # reference docs (sphinx config + adapter notes + migration guides)
+├── tests/                         # repo-root integration tests + parity fixtures
+└── scripts/                       # build wrappers + release helpers
+```
 
-- [`.planning/ROADMAP.md`](.planning/ROADMAP.md) — 4 phases + Phase 1.5 (v0.14.1 Parity Lift → Fetcher Optimization → Core Primitives → Mode 2 → Release), Days 1-14
-- [`.planning/PROJECT.md`](.planning/PROJECT.md) — vision + requirement IDs
-- [`.planning/REQUIREMENTS.md`](.planning/REQUIREMENTS.md) — full requirement specs
-- [`.planning/STATE.md`](.planning/STATE.md) — current execution position
-- [`.planning/phase-NN-<slug>/PLAN.md`](.planning/phase-01-v0-14-1-parity-lift/PLAN.md) — per-phase executable plan
+The `mostlyright` Python module namespace and the `@mostlyrightmd/*` npm scope have first-class peer semantics — schemas, station registries, and source-priority policies are byte-identical across runtimes (Python emits the canonical JSON; TypeScript regenerates types from it on every build).
 
-Lane assignments (Lane V = Vu lifts from `monorepo-v0.14.1/`; Lane F = Founder builds new code) are described in `.planning/PROJECT.md` § Execution model. The earlier `roadmap/sprint0.md` + `roadmap/lanes/` lane-based plan is **superseded and archived** — see [`roadmap/README.md`](roadmap/README.md) for the redirect.
+## Reporting issues
 
-## Issues / TODOs
+Use [GitHub Issues](https://github.com/mostlyrightmd/mostlyright-sdk/issues) for:
 
-See [`TODOS.md`](TODOS.md) for tracked follow-ups. Format follows monorepo's TODOS.md convention.
+- **Bugs.** Include the SDK version, Python/Node version, OS, and a minimal reproducer.
+- **Feature requests.** Describe the use case — what are you trying to do? What does the current API force you to work around?
+- **Documentation gaps.** Linking to a specific section that's wrong or unclear is the fastest way to fix it.
+
+For **security vulnerabilities**, do NOT file a public issue. See [`SECURITY.md`](./SECURITY.md) for the private disclosure process.
+
+## Adding a new data source
+
+Adding a new public-data vertical (SEC EDGAR, FRED, options data, etc.) follows the same pattern as the existing weather + markets verticals:
+
+1. **New package directory.** `packages/<vertical>/` (Python) + `packages-ts/<vertical>/` (TypeScript). Mirror the structure of `packages/markets/` for reference.
+2. **Schemas first.** Define the canonical JSON Schema(s) under `schemas/json/schema.<vertical>.v1.json`. Add to the registration list in `packages/core/src/mostlyright/core/schemas/__init__.py`.
+3. **Python implementation.** Adapter, fetcher, parser. Source identity stamped on every DataFrame. Tests cover the parser + the merge into the canonical schema.
+4. **TS port.** Mirror the Python public surface. Verify byte-equivalence on the parity fixtures.
+5. **Docs.** Quickstart MDX + concept doc on the landing site. Update the Packages table in the root `README.md`.
+6. **Release.** Bump versions in lockstep; tag `v<X.Y.Z>` (Python) + `vts-<X.Y.Z>` (TypeScript).
+
+## License
+
+By contributing, you agree that your contributions will be licensed under the [MIT License](./LICENSE).

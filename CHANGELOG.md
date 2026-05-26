@@ -1,378 +1,55 @@
 # Changelog
 
-All notable changes to mostlyright. The format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project adheres
-to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+All notable changes to `mostlyright`. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-(next 0.1.x / 0.2.x changes land here)
+(next changes land here)
 
-## [0.1.4] — 2026-05-26 (prod PyPI + npm — copy refresh; TS SDK first non-rc release)
+## [1.0.0] — TBD
 
-Coordinated release refreshes the registry-visible copy (descriptions + READMEs) on PyPI + npm, and graduates the TypeScript SDK from `0.1.0-rc.*` to `0.1.0` final.
+First stable release. Promotes the 0.1.x line to SemVer-stable: the public API is committed to backward compatibility within the 1.x major.
 
-**PyPI side (`mostlyrightmd` / `mostlyrightmd-weather` / `mostlyrightmd-markets`):**
-- Version bump `0.1.3 → 0.1.4` across all 3 distros. No source-code or API changes.
-- Pushes the cleaned Phase 15 W4 production copy to PyPI: per-package descriptions no longer leak "Phase 3.3" or "Sprint 0.5"; per-package READMEs no longer reference internal `CLAUDE.md` or claim `v0.0.1 placeholder` for markets.
-
-**npm side (`@mostlyrightmd/{core,weather,markets}` + unscoped `mostlyright`):**
-- Version bump `0.1.0-rc.7 → 0.1.0` (first non-rc TS release). Tag `vts-0.1.0` routes via `release-ts.yml`'s `dist_tag` step to `--tag latest`, promoting these packages from the `@next` track to the default `latest` dist-tag.
-- Updated descriptions no longer say "placeholder scaffold; implementation lands in TS-W1+". Per-package READMEs no longer link to the dead `helloiamvu/tradewinds` repo URL.
-- Phase 15 W4-T2 verification fires automatically: `docs-publish.yml` triggers on both `v0.1.4` (Python) and `vts-0.1.0` (TypeScript) non-rc tags, opens a PR on `Tarabcak/mostly-right-landing` with the auto-generated `/docs/sdk/python/` + `/docs/sdk/typescript/` reference trees and the parity table.
-
-**P0 parity gate (release-ts.yml):** 0 open P0 parity tickets at `vts-0.1.0` cut time; gate releases the publish.
+### Added
+- Code of conduct (Contributor Covenant 2.1) and SECURITY.md disclosure policy
+- Status badges in the root README (PyPI version, npm version, license, docs)
 
 ### Changed
-- Version bump 0.1.3 → 0.1.4 across all 3 PyPI distros (no source-code changes).
-- Version bump 0.1.0-rc.7 → 0.1.0 across all 4 publishable npm packages (no source-code changes; rc → final).
-- CHANGELOG header corrected: "All notable changes to tradewinds" → "All notable changes to mostlyright".
+- Root README rewritten as user-facing copy. Positions the SDK as the public-data SDK for quants and AI agents, with weather + prediction-markets data shipping today and SEC filings (EDGAR) + Federal Reserve economic data (FRED) on the roadmap.
+- No source-code or API changes vs. 0.1.4. `pip install mostlyrightmd==1.0.0` and `pip install mostlyrightmd==0.1.4` produce identical runtime behavior.
 
-## [0.1.3] — 2026-05-26 (prod PyPI — markets first publish; staggered registration CLOSED)
+## [0.1.4] — 2026-05-26
 
-Fourth prod publish — actually closes the staggered publisher-registration sequence. Operator fixed the remaining markets publisher project-name typo (was `mostlyright-markets`, now `mostlyrightmd-markets`). All 3 prod publishers are now correctly bound to the renamed distros.
-
-**What's live on prod after this push:**
-- `mostlyrightmd` `[0.1.0, 0.1.1, 0.1.2, 0.1.3]` — fourth re-publish
-- `mostlyrightmd-weather` `[0.1.2, 0.1.3]` — re-publish at 0.1.3
-- `mostlyrightmd-markets` `[0.1.3]` — **first successful publish on prod** (0.1.1 + 0.1.2 burned by the typo'd publisher; filename immutability)
-
-All 3 publishers are now permanent on prod pypi.org. Future releases (`0.1.4`, `0.2.x`, etc.) publish all 3 distros atomically per tag. The `mostlyrightmd[research]` and `mostlyrightmd-markets[polymarket]` / `[trades]` extras now resolve cleanly.
+Coordinated release on PyPI + npm: refreshes registry-visible copy and graduates the TypeScript SDK from `0.1.0-rc.*` to its `0.1.0` final.
 
 ### Changed
-- Version bump 0.1.2 → 0.1.3 across all 3 PyPI distros. No source-code changes.
+- **PyPI:** `mostlyrightmd`, `mostlyrightmd-weather`, `mostlyrightmd-markets` bumped `0.1.3 → 0.1.4`. No source-code or API changes. Per-package descriptions and READMEs cleaned for public consumption.
+- **npm:** `@mostlyrightmd/core`, `@mostlyrightmd/weather`, `@mostlyrightmd/markets`, and the unscoped `mostlyright` meta-package shipped `0.1.0` (first non-rc release). All four moved from the `@next` dist-tag to `latest`.
+- CHANGELOG header corrected.
 
-## [0.1.2] — 2026-05-26 (prod PyPI — weather first publish; markets typo'd publisher still blocked)
+## [0.1.0] — [0.1.3] — 2026-05-26
 
-Third prod publish — intended to land both weather + markets first publishes, but markets job got the SAME `400 Non-user identities cannot create new projects` error as v0.1.1's weather/markets. Root cause: operator fixed weather's publisher project-name typo but missed markets' (both had been registered as `mostlyright-*` without the `md`).
+Initial production releases on PyPI. Versions `0.1.0` through `0.1.3` shipped on the same day during a staggered first-publish sequence: each release iterated on trusted-publisher registration for one PyPI package at a time, with the prior versions re-publishing alongside.
 
-**What's live on prod after this push:**
-- `mostlyrightmd` `[0.1.0, 0.1.1, 0.1.2]` — re-publish at 0.1.2 succeeded
-- `mostlyrightmd-weather` `[0.1.2]` — **first successful publish on prod** (0.1.1 burned by the typo'd publisher; filename immutability). `mostlyrightmd[research]` extra now resolves.
-- `mostlyrightmd-markets` — still 404; **0.1.2 BURNED**. Cumulative burns: 0.1.1, 0.1.2. Ships in [0.1.3] below.
+### Live on PyPI after [0.1.3]
+- `mostlyrightmd` — versions `[0.1.0, 0.1.1, 0.1.2, 0.1.3]`
+- `mostlyrightmd-weather` — versions `[0.1.2, 0.1.3]` (versions 0.1.0 and 0.1.1 were not published due to a publisher-registration typo at the time; the gap is intentional and harmless because the package-extra resolves transitively to the newest available version)
+- `mostlyrightmd-markets` — version `[0.1.3]` (first available version on PyPI; the 0.1.0–0.1.2 gap mirrors the weather story above)
 
-### Changed
-- Version bump 0.1.1 → 0.1.2 across all 3 PyPI distros. No source-code changes.
+### Added
+- `mostlyright.research(station, from_date, to_date)` — the canonical observation × climate join, byte-equivalent to `mostlyright==0.14.1`'s `client.pairs()` on the captured parity fixtures
+- `mostlyright.weather` — direct fetchers for AWC, IEM ASOS, IEM CLI, GHCNh, NWS CLI
+- `mostlyright.markets.catalog.kalshi_nhigh` / `kalshi_nlow` — Kalshi NHIGH/NLOW contract resolvers
+- `mostlyright.markets.polymarket` — Polymarket discovery + settlement helpers
+- `mostlyright.core` — schemas, validators, temporal-safety primitives (`KnowledgeView`, `LeakageDetector`), source-identity invariants (`SourceMismatchError`)
+- Local parquet cache at `~/.mostlyright/cache/` (Python) — deterministic, file-locked, year-aligned
+- Three-package PyPI layout: `mostlyrightmd` (core) + `mostlyrightmd-weather` + `mostlyrightmd-markets`
 
-## [0.1.1] — 2026-05-26 (prod PyPI — core re-publish only; weather/markets typo'd publishers blocked)
-
-Second prod publish — intended to land `mostlyrightmd-weather` first publish, but both weather + markets jobs got HTTP 400 from upload.pypi.org with:
-
-> Non-user identities cannot create new projects. This was probably caused by successfully using a pending publisher but specifying the project name incorrectly (either in the publisher or in your project's metadata).
-
-Root cause: the operator's pending publishers on pypi.org were registered against `mostlyright-weather` and `mostlyright-markets` (the OLD pre-Phase-13 distro names) instead of `mostlyrightmd-weather` / `mostlyrightmd-markets`. OIDC binding (owner/repo/workflow/env) was correct — only the project-name field was typo'd. The fix lands in [0.1.2] below.
-
-**What's live on prod after this push:**
-- `mostlyrightmd` `[0.1.0, 0.1.1]` — re-publish at 0.1.1 succeeded
-- `mostlyrightmd-weather` — still 404; **0.1.1 BURNED** (filename immutability prevents republishing)
-- `mostlyrightmd-markets` — still 404; **0.1.1 BURNED**
-
-### Changed
-- Version bump 0.1.0 → 0.1.1 across all 3 PyPI distros. No source-code changes.
-
-## [0.1.0] — 2026-05-26 (prod PyPI — staggered publisher registration)
-
-**Partial first-publish: this `0.1.0` push lands `mostlyrightmd` (core) only on prod pypi.org.** PyPI's "1 pending publisher at a time" registration constraint means `mostlyrightmd-weather` and `mostlyrightmd-markets` ship in subsequent `0.1.1` / `0.1.2` releases (filename immutability on prod prevents republishing 0.1.0 once the core publish lands).
-
-**TestPyPI soak (Phase 13 W2):** all 3 distros at `0.1.0rc3` after the `v0.1.0rc{0,1,2,3}` rc cycle. Per-rc closeout:
-- `rc0` — canary; partial-publisher-registration probe; `mostlyrightmd-weather` published (only registered publisher at the time)
-- `rc1` — `mostlyrightmd-weather` re-publish (rc1 burned by an accidental `vts-0.1.0rc1` cross-trigger before the trigger-glob fix landed)
-- `rc2` — `mostlyrightmd` + `mostlyrightmd-weather` published; `mostlyrightmd-markets` 403'd (publisher not yet registered)
-- `rc3` — all 3 distros published; all publishers permanent
-
-### Changed
-
-- **npm scope:** `@mostlyright/{codegen,core,markets,weather}` → `@mostlyrightmd/{codegen,core,markets,weather}`. The unscoped meta package `mostlyright` is unchanged. Rationale: matches GitHub org `mostlyrightmd` (the `mostlyright` org name was unavailable). Python PyPI distribution names handled separately below (see Phase 13 pre-flight rename).
-- **PyPI distribution names** (Phase 13 pre-flight): `mostlyright` → `mostlyrightmd`, `mostlyright-weather` → `mostlyrightmd-weather`, `mostlyright-markets` → `mostlyrightmd-markets`. **Python module names UNCHANGED** — `import mostlyright`, `from mostlyright.weather import ...`, `from mostlyright.markets import ...` continue to work exactly as before. Only the PyPI install name moves. Rationale: legacy `pypi.org/project/mostlyright` already publishes Robert Tarabcak's `mostlyright==0.14.1` (the parity baseline this SDK is byte-equivalent to); publishing a fresh `0.1.0rc1` under that name would version-shadow as PEP 440 orders `0.14.1 > 0.1.0rc1`, so `pip install mostlyright` would resolve to the legacy package. New `mostlyrightmd*` names start cleanly at `0.1.0rc1`. Aligns PyPI namespace with the `@mostlyrightmd/*` npm scope and the `mostlyrightmd/mostlyright-sdk` GH coordinates.
-- **Inter-package version pins bumped** (lockstep): `mostlyrightmd*>=0.1.0rc1,<0.2` → `mostlyrightmd*>=0.1.0,<0.2` across the 3 pyproject.toml files.
-
-### Known limitations of this `0.1.0` release
-
-- `mostlyrightmd-weather` is NOT on prod pypi.org yet — ships in `0.1.1`. The `mostlyrightmd[research]` extra (which depends on `mostlyrightmd-weather>=0.1.0,<0.2`) cannot resolve until `0.1.1` lands. Workaround until then: install from TestPyPI (`pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ mostlyrightmd-weather==0.1.0rc3`) for soak / dogfooding.
-- `mostlyrightmd-markets` is NOT on prod pypi.org yet — ships in `0.1.2`. The `mostlyrightmd-markets[polymarket]` and `[trades]` extras similarly unresolvable until then.
-
-### Migration
-
-- TS users: `npm uninstall @mostlyright/<pkg> && npm install @mostlyrightmd/<pkg>` (when published) — N/A pre-publish.
-- Python users: install command becomes `pip install mostlyrightmd[parquet]` (core only at 0.1.0; `[research]` extra unavailable until 0.1.1). **Imports do NOT change** — keep writing `import mostlyright as tw`.
-
-## v1.0.0 (Pending — Phase 17 + Phase 16)
-
-### Headline Feature — Phase 17: Forecast Catalog Expansion
-
-Mostlyright's forecast surface grows from 3 live-only models (HRRR / GFS
-/ NBM) to a 24-model `schema.forecast_nwp.v1` catalog with the NCEP
-family wired end-to-end and historical backfill via AWS Big Data
-Program. This is the headline v1.0 feature.
-
-**Wiring status — 24 models declared, 11 wired in v1.0:**
-- **✓ Wired end-to-end (11 NCEP-family models)**: HRRR (CONUS), HRRRAK
-  (Alaska), GFS, GEFS (ensemble), GDAS, NBM, RAP, RRFS, RTMA, URMA, CFS.
-  These return real DataFrames from `forecast_nwp()` /
-  `research(include_forecast=True, forecast_models=[...])`.
-- **Reserved — URL patterns + QC rules + idx dispatch present;
-  `forecast_nwp()` raises** (deferred to a follow-up release):
-  - ECMWF family (4): IFS HRES, IFS ENS, AIFS single, AIFS ens — 4
-    cloud mirrors (google, aws-eu, ecmwf-origin, azure) + eccodes
-    `.index` dispatch + tp-meters QC ship in v1.0; eccodes decode path
-    not yet wired. Raises `NwpModelNotAvailableError`.
-  - MSC Canadian family (5, live-only, 24h Datamart retention): HRDPS,
-    RDPS, GDPS, GEPS, REPS. Special-cased BEFORE the reserved-models
-    gate: raises `HistoricalDepthError(archive_depth=None)` because
-    the contract is "live-only Datamart, 24h retention" so historical-
-    depth is the right branchable error class for callers (not
-    not-available).
-  - HAFS (storm-following, `Storms()` resolver + basin-position QC
-    rule ship in v1.0; fetch path not yet wired). Raises
-    `NwpModelNotAvailableError`.
-  - Legacy (retiring 2026-08-31; emits `DeprecatedModelWarning` before
-    the not-wired error): NAM, HREF, HiResW. Raises
-    `NwpModelNotAvailableError` after the warning.
-
-The full 24-model enum is locked in `schema.forecast_nwp.v1` so writing
-code today against a reserved model produces a clean exception (per
-family above) instead of an empty DataFrame; the runtime arrives when
-the family's fetch+decode path is added (no schema bump).
-
-**Historical backfill** via AWS BDP per-model depth (wired models):
-- HRRR ≥ 2014-07-30
-- GFS ≥ 2021-01-01
-- GEFS ≥ 2017-01-01
-- NBM ≥ 2020-01-01
-
-ECMWF IFS (≥ 2022-01-01) and ECMWF AIFS (≥ 2024-02-25) URL transitions
-are documented in `_url_transitions.py` for when the eccodes decode
-path is wired.
-
-**`research(include_forecast=True)` wired** (previously raised
-`NotImplementedError`):
-- Mode 1 (default): IEM MOS forecasts populate `fcst_high_f`, `fcst_low_f`,
-  `fcst_model`, `fcst_issued_at`, `fcst_pop_6hr_pct`, `fcst_qpf_6hr_in`
-  columns — parity-compatible additive.
-- Mode 2 (`forecast_models=["hrrr"]`): NWP forecasts populate
-  `fcst_*_nwp_<model>` per-model columns.
-- Settlement-day bucketing uses station LST (via
-  `settlement_date_for(observed_at, station)`) — not raw UTC — so
-  post-midnight tail rows roll into the correct calendar settlement.
-- 36-hour NWP envelope per settlement day: prior-day 12Z + current-day
-  00Z + current-day 12Z, `fxx=0..24`. Analysis-only products (RTMA, URMA)
-  are dispatched at `fxx=0`.
-
-**Per-model QC rules** via `weather.qc.rules_nwp.QC_RULES_NWP` registry:
-- **NCEP base**: 7 physics-bounds rules (temp/dewpoint/RH/gust/precip/
-  PRES_sfc/MSLP). PRES_sfc + MSLP retain the Phase 3.2 backward-compat
-  `<= 0 Pa → suspect` branch.
-- **ECMWF**: NCEP base + tp-meters rule (ECMWF tp unit is meters, not mm).
-- **GEFS / HREF / REPS**: NCEP base + ensemble-dispersion sanity.
-- **HAFS**: NCEP base + basin-position sanity (storm_lat ∈ [0, 60]).
-- **MSC HRDPS**: NCEP base + regional-grid bounds (`grid_dist_km > 50`
-  flags `suspect` — outside the HRDPS continental grid footprint).
-- Worst-case semantics: suspect > flagged > clean per row.
-
-**Herbie-pattern adoption**:
-- Per-model `SOURCES_BY_MODEL` dict (replaces single global mirror chain).
-- `IDX_SUFFIX_BY_MODEL` fallback chain (`.idx` for NCEP / `.index` for
-  ECMWF).
-- `IDX_STYLE_BY_MODEL` dispatch (`wgrib2` / `eccodes`).
-- Range-not-honored guard (Herbie `core.py:1108-1115` pattern).
-- NOMADS concurrency cap `N≤4` (per Herbie #371 IP-ban evidence).
-- 9 date-conditional URL transitions consolidated in `_url_transitions.py`.
-- HAFS `Storms()` resolver with 1h TTL cache.
-
-### Paired TypeScript Evolution
-
-- `@mostlyrightmd/weather/forecasts` ships `iemMosForecasts()` — fully
-  working text/JSON path, no GRIB2 dependency. F→C, kt→m/s, %→unit
-  conversions; NBE runtime-hour cutover (2026-05-05); 404 silently
-  skipped.
-- `@mostlyrightmd/weather/forecasts` ships `forecastNwp()` v1.0 stub
-  throwing `Error('TS NWP deferred to v1.1')`. Signature stable —
-  callers can write code today and runtime arrives in v1.1.
-- TS NWP deferred to v1.1 per Phase 17 CONTEXT decision 7 (no
-  production-ready browser GRIB2 decoder as of May 2026).
-
-### Parity Preserved
-
-- All 5 existing byte-equivalent parity fixtures still pass against
-  `research(include_forecast=False)` Mode 1 output.
-- `schema.forecast_nwp.v1` `schema_id` UNCHANGED — model enum extension
-  is purely additive (predeclared doctrine).
-- `schema.forecast.iem_mos.v1` unchanged.
-
-### Empirical Research
-
-- `.planning/research/FORECAST-LIMITS.md` — per-mirror concurrent-fetch
-  tolerance + `httpx.Limits` recommendations.
-- `.planning/research/FORECAST-CORS-MATRIX.md` — browser CORS posture
-  for forecast mirrors.
-
-### New Exception Classes
-
-- `HistoricalDepthError` — cycle older than archive depth.
-- `DeprecatedModelWarning` — NAM / HREF / HiResW fetched.
-- `NwpModelRetiredError` — post-2026-08-31 retired-model fetch.
-- `StormNotFoundError` — HAFS storm query unmatched.
-
----
-
-### Phase 6 — Pandas 3 readiness + Optional Polars Backend (v0.2)
-
-#### Added
-- **`tradewinds.core.TradewindsResult`** — backend-neutral provenance
-  wrapper (frame + source + retrieved_at + schema_id + qc + data_version).
-  Both pandas and polars backends produce the same wrapper shape;
-  `.legacy_df_with_attrs()` bridges callers still consuming
-  `df.attrs["source"]` directly for one release cycle.
-- **Opt-in `backend="polars"` kwarg** on every public DataFrame-returning
-  entry point: `research()`, `research_by_source()`, `polymarket_discover()`,
-  `forecast_nwp()`, `daily_extremes()`. Default stays `backend="pandas"`
-  so v0.1.0 callers see zero behaviour change. Pairs with a new
-  `return_type="dataframe"|"wrapper"` kwarg; polars output requires
-  `return_type="wrapper"` (polars frames have no `df.attrs`).
-- **`[polars]` optional extra** on all three packages (`polars>=1.0,<2.0`
-  + `narwhals>=1.20,<2.0`). Calling `backend="polars"` without the extra
-  raises `SourceUnavailableError` with install hint (mirrors `[nwp]`).
-- **Pandas 3 compatibility** — the `pandas<3.0` cap is dropped across
-  all 6 affected extras (`pandas>=2.2,<4.0`). Dual-pandas CI matrix
-  re-runs the fast suite on the latest pandas 3.x lockfile.
-  `tests/fixtures/parity/coerce_pd3.py` defines the invertible
-  `ns→us` + `object→string` bridge; `ulp_drift_pd3.json` carries the
-  committed per-column max-abs drift measurement; `measure_ulp_drift.py`
-  refreshes the artifact under pandas 3.x.
-- **`@pytest.mark.polars` marker** registered + cross-backend CI job
-  (`polars-suite`) that installs the `[polars]` extra on each member
-  package and runs the polars-marked tests. `with-polars=false` runs
-  default install with `pytest -m "not live and not polars"`.
-- 5 cleanly-portable modules (`transforms`, `preprocessing`,
-  `qc.crosscheck_iem_ghcnh`, `core.formats.{json,csv,toon}`,
-  `KnowledgeView` via wrapper) now accept pandas OR polars input via a
-  narwhals-mediated boundary shim — return type follows caller backend.
-
-#### Changed
-- Parity-locked modules (`_internal/_pairs`, `core/merge`,
-  `core/validator`, `core/_json_safe`, `core/temporal/timepoint`,
-  `core/temporal/leakage`, `core/_climate`) stay pandas end-to-end;
-  polars-mode `research()` converts ONLY at the outer return boundary.
-  Defense-in-depth grep test rejects future narwhals/polars imports
-  in these modules.
-
-#### Migration
-- v0.1.0 `df = research(...)` continues to work unchanged.
-- New v0.2: `result = research(..., return_type="wrapper")` returns a
-  `TradewindsResult` with `result.frame`, `result.source`,
-  `result.retrieved_at`.
-- New v0.2: `result = research(..., backend="polars", return_type="wrapper")`
-  returns a polars `DataFrame` on `result.frame` plus the same
-  provenance fields.
-- Callers consuming `df.attrs["source"]` directly should migrate to
-  `result.source` over the v0.2 → v0.3 window; v0.2 supports both.
-
-### Phase 4 — Coverage, Docs, CI/CD, Release
-
-#### Added
-- `.github/workflows/test.yml` — fast test suite (`pytest -m "not live"`) +
-  ruff lint + ruff format check on every push (no branch filter) /
-  PR (Python 3.11/3.12/3.13 matrix). Separate `coverage-gate` job enforces
-  **≥90% branch coverage on the CORE SEMANTIC SURFACE of `tradewinds.core`**
-  (Phase 4 SC-1 HARD GATE) via `--cov-fail-under=90 --cov-branch`.
-  Scope explicitly excludes `core/schemas/*` (pure-data ColumnSpec lists)
-  and `core/formats/_toon*` (~557 LOC of internal TOON encoder edge cases;
-  direct coverage deferred to Phase 5 MCP when TOON starts going over the
-  wire). Documented as a known coverage gap; the SC-1 wording should be
-  read as "core semantic surface", not "every byte under `core/`".
-- `.github/workflows/wheel-metadata-check.yml` — runs on every push that
-  touches `packages/*/pyproject.toml`; builds all three sibling wheels and
-  greps each one's `METADATA` for the explicit `Requires-Dist: tradewinds
-  >=0.1.0,<0.2` pin. Blocks merges that drop the pin (Phase 4 SC-4 / CI-04).
-- `.github/workflows/release.yml` — PEP 740 trusted-publishing workflow that
-  fires on every `v*` tag and publishes the three sibling distributions to
-  PyPI (one job per package because trusted publishing is registered
-  per-package). Includes the CI-04 METADATA gate before publish (Phase 4
-  SC-3 / CI-03).
-- `scripts/check_wheel_metadata.py` — local + CI script that greps each
-  built wheel's `Requires-Dist` line for both the `<0.2` upper bound AND a
-  `>=0.1.0` lower bound (any order; hatchling normalizes the order in
-  METADATA). Exits 0 when every sibling-package wheel passes.
-- `tests/fixtures/README.md` + `tests/fixtures/drift/.gitkeep` — scaffolds
-  the two-tier fixture policy (Phase 4 SC-5): `parity/` is FROZEN (Phase 1
-  Day 0.5 baseline), `drift/` will be weekly-rotated by a cron job in a
-  follow-up alpha. README documents the never-refresh policy on `parity/`
-  + the refresh mechanism + drift-tolerance band.
-- README expanded: Mode 1 v0.14.1 parity example,
-  `TimePoint`/`KnowledgeView`/`LeakageDetector` temporal-safety primitives,
-  `validate_dataframe()` source-identity invariant, `kalshi_nhigh`/`kalshi_nlow`
-  Kalshi resolvers, "Why local-first" rationale, link to per-adapter docs.
-
-#### Changed
-- `pyproject.toml` adds `[tool.coverage.run]` + `[tool.coverage.report]`
-  config so a local
-  `uv run pytest --cov=packages/core/src/tradewinds/core --cov-branch`
-  matches the CI gate. `omit` excludes `core/schemas/*` (pure-data
-  ColumnSpec lists; coverage dominated by import-time evaluation already
-  asserted by the existing contract tests).
-
-### Phase 1.5 — Fetcher Optimization + Cross-Source Parallelism
-
-#### Added
-- `tradewinds.weather._fetchers._iem_chunks` — shared calendar-year chunkers
-  (`yearly_chunks_inclusive`, `yearly_chunks_exclusive_end`), leap-year-safe.
-- `tradewinds.research._prefetch_sources` — PERF-04 concurrent fan-out of the
-  4 source-fetch operations (IEM ASOS, IEM CLI, GHCNh, AWC) via
-  `concurrent.futures.ThreadPoolExecutor(max_workers=4)`. Implements **Option C**
-  from `.planning/research/SOURCE-LIMITS.md` (no shared `threading.Lock`; each
-  fetcher preserves its own politeness delay; spike confirmed zero 503s at
-  this load). Pitfall 6 timing pattern: `submitted_at[name]` captured
-  immediately after `ex.submit()` so per-source timing measures actual work,
-  not iteration-order accident. Empirical: KNYC 5-year backfill ~50s wall
-  time vs the 720s (12 min) ROADMAP gate.
-- `tests/test_live_perf.py` — `@pytest.mark.live` KNYC 5-year wall-time gate
-  + KMDW other-station regression. Excluded from CI; run manually pre-merge.
-- `spike/source_limits/` — 3 stand-alone CLI scripts characterizing AWC,
-  GHCNh, and IEM concurrent-request behavior; `.planning/research/SOURCE-LIMITS.md`
-  documents the Option-C recommendation grounded in real spike data.
-
-#### Changed
-- **IEM ASOS fetcher now uses 365-day calendar-aligned chunks** (was: monthly).
-  Lift target: mostlyright PR #85 commit `cf9eb85` (2026-05-12). ~12x fewer HTTP
-  requests, ~12x larger payload per request. PR #85 measured KNYC 5-year backfill
-  at ~10 min; tradewinds gates at 12 min (20% headroom). PERF-01.
-- **IEM ASOS cache filename now encodes the full chunk window**
-  (`iem_{start_iso}_{end_iso}_{suffix}.csv` canonical;
-  `iem_{start_iso}_{end_iso}_partial_{suffix}.csv` partial). Old
-  `iem_<YYYYMM>_<suffix>.csv` files are harmless and will be regenerated by the
-  next backfill into the new yearly-chunk format — no migration required.
-  `skip_cache=True` OR `chunk_end > today_utc` routes to the `_partial_`
-  namespace that backfill never reads (closes three cache-poisoning paths PR #85
-  documented). Cutoff uses `datetime.now(UTC).date()`, NOT `date.today()` —
-  non-UTC hosts (e.g. Europe/Prague UTC+1/+2) would silently truncate at the day
-  boundary. PERF-02.
-- **`tradewinds._internal._http.HTTP_TIMEOUT` raised 30 → 60 seconds** to match
-  the ~12x payload increase per yearly chunk. Retry policy (`MAX_RETRIES=3`,
-  `BASE_DELAY=1.0`, `TRANSIENT_CODES={429,500,502,503,504}`) and atomic-write
-  path are unchanged. PERF-03.
-- `tradewinds.research._fetch_iem_month` now filters parsed IEM rows back to the
-  requested `(year, month)` after parsing. Required by the chunker swap — the
-  yearly fetcher returns Jan–Dec rows; without the boundary filter the per-month
-  merge loop would see Jan–Dec IEM rows mixed with the month's AWC/GHCNh slice,
-  changing merge composition (and therefore tie-break order on strict-`>`
-  priority) at month boundaries. The 5-fixture parity gate gates this fix.
-
-#### Tradewinds-specific deviations from PR #85 verbatim
-- `iem_asos.download_iem_asos` normalizes the caller's `start` to
-  `date(start.year, 1, 1)` before invoking the chunker. PR #85's chunker uses
-  `chunk_start = max(current, start)` — that's fine for one-shot backfills but
-  defeats cache idempotence when tradewinds' `research.py` calls the fetcher
-  month-by-month. Normalization gives a year-stable cache key so per-month
-  callers hit the cache on every month after the first. The chunker module
-  itself remains PR-#85 verbatim.
-
-## [0.1.0a1] — Phase 1 prepublish hygiene (2026-05-22, on `main`)
-
-See git history for the four-wave Phase 1 lift (parity foundation): `_v02`
-foundations port, `research.py` orchestrator, parity test harness + 5-fixture
-HARD GATE green, prepublish pins + lift inventory.
+### Renamed (from earlier scaffold)
+- PyPI distribution names migrated from `mostlyright*` to `mostlyrightmd*`. The Python import path remains `import mostlyright`. The PyPI install name move avoids version-shadowing the legacy `mostlyright==0.14.1` package.
+- npm scope migrated from `@mostlyright/*` to `@mostlyrightmd/*`. The unscoped `mostlyright` meta-package is unchanged.
+- Cache directory renamed from `~/.tradewinds/cache/` to `~/.mostlyright/cache/`. Environment variable renamed from `TRADEWINDS_CACHE_DIR` to `MOSTLYRIGHT_CACHE_DIR`. Back-compat shim accepts both names during the 0.1.x line; the legacy name will be removed at v0.3.
 
 ## [0.0.1] — Initial scaffold
 
-Workspace + three-package layout (`tradewinds`, `tradewinds-weather`,
-`tradewinds-markets`); `_v02` foundations ported from mostlyright-mcp.
+Workspace + three-package layout. SDK foundations ported from the predecessor codebase (`tradewinds*`).
