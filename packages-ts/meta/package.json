@@ -1,6 +1,6 @@
 {
   "name": "mostlyright",
-  "version": "0.1.0-rc.3",
+  "version": "0.1.0-rc.4",
   "description": "Convenience meta-package re-exporting @mostlyrightmd/core + @mostlyrightmd/weather + @mostlyrightmd/markets. Use this when you want the full SDK from a single import. The unscoped 'mostlyright' npm name is reserved pending an npm availability check (see TS-SDK-DESIGN.md \u00a713.1).",
   "license": "MIT",
   "type": "module",

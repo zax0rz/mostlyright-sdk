@@ -1,6 +1,6 @@
 {
   "name": "@mostlyrightmd/weather",
-  "version": "0.1.0-rc.3",
+  "version": "0.1.0-rc.4",
   "description": "Weather fetchers and parsers (AWC, IEM ASOS, IEM CLI, GHCNh) for the mostlyright TypeScript SDK (placeholder scaffold; implementation lands in TS-W1+).",
   "license": "MIT",
   "type": "module",
