@@ -9,14 +9,32 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) once it ships
 
 (next 0.1.x / 0.2.x changes land here)
 
-## [0.1.1] — 2026-05-26 (prod PyPI — weather first publish)
+## [0.1.2] — 2026-05-26 (prod PyPI — weather + markets first publish; staggered registration CLOSED)
 
-Second prod publish in the staggered publisher-registration sequence. After v0.1.0 landed `mostlyrightmd` as a permanent publisher on prod pypi.org, the operator registered `mostlyrightmd-weather` as the next pending publisher.
+Third (and final) prod publish in the staggered publisher-registration sequence. Operator fixed the project-name typos on the weather + markets pending publishers (had been registered as `mostlyright-weather` / `mostlyright-markets` instead of `mostlyrightmd-weather` / `mostlyrightmd-markets` — see [0.1.1] post-mortem below). Both publishers are now correctly bound to the renamed distros.
 
 **What's live on prod after this push:**
-- `mostlyrightmd` `[0.1.0, 0.1.1]` — re-publish at 0.1.1 (no code change vs. 0.1.0; version bump only)
-- `mostlyrightmd-weather` `[0.1.1]` — **first publish on prod**; the `mostlyrightmd[research]` extra now resolves
-- `mostlyrightmd-markets` — still 404 (publisher registered next, ships in v0.1.2)
+- `mostlyrightmd` `[0.1.0, 0.1.1, 0.1.2]` — third re-publish (no code change; version bump only)
+- `mostlyrightmd-weather` `[0.1.2]` — **first successful publish on prod** (0.1.1 burned by the typo'd publisher; filename immutability)
+- `mostlyrightmd-markets` `[0.1.2]` — **first successful publish on prod** (0.1.1 also burned)
+
+All 3 publishers are now permanent on prod pypi.org. Future releases (`0.1.3`, `0.2.x`, etc.) will publish all 3 distros atomically per tag. The `mostlyrightmd[research]` and `mostlyrightmd-markets[polymarket]` / `[trades]` extras now resolve cleanly.
+
+### Changed
+- Version bump 0.1.1 → 0.1.2 across all 3 PyPI distros. No source-code changes.
+
+## [0.1.1] — 2026-05-26 (prod PyPI — core re-publish only; weather/markets typo'd publishers blocked)
+
+Second prod publish — intended to land `mostlyrightmd-weather` first publish, but both weather + markets jobs got HTTP 400 from upload.pypi.org with:
+
+> Non-user identities cannot create new projects. This was probably caused by successfully using a pending publisher but specifying the project name incorrectly (either in the publisher or in your project's metadata).
+
+Root cause: the operator's pending publishers on pypi.org were registered against `mostlyright-weather` and `mostlyright-markets` (the OLD pre-Phase-13 distro names) instead of `mostlyrightmd-weather` / `mostlyrightmd-markets`. OIDC binding (owner/repo/workflow/env) was correct — only the project-name field was typo'd. The fix lands in [0.1.2] below.
+
+**What's live on prod after this push:**
+- `mostlyrightmd` `[0.1.0, 0.1.1]` — re-publish at 0.1.1 succeeded
+- `mostlyrightmd-weather` — still 404; **0.1.1 BURNED** (filename immutability prevents republishing)
+- `mostlyrightmd-markets` — still 404; **0.1.1 BURNED**
 
 ### Changed
 - Version bump 0.1.0 → 0.1.1 across all 3 PyPI distros. No source-code changes.

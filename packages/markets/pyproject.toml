@@ -1,6 +1,6 @@
 [project]
 name = "mostlyrightmd-markets"
-version = "0.1.1"
+version = "0.1.2"
 description = "Prediction market data for mostlyright: Kalshi (NHIGH/NLOW contract specs in v0.1.0rc1, market metadata in Sprint 0.5), Polymarket (Phase 3.3). Python module: `import mostlyright.markets`."
 readme = "README.md"
 license = "MIT"
