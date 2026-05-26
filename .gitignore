@@ -22,9 +22,6 @@ ENV/
 htmlcov/
 .tox/
 
-# Local cache (tradewinds runtime cache lives in $HOME/.tradewinds/; this catches any test-time fixtures that leak)
-.tradewinds-cache/
-
 # Phase 4 CI-05 — drift watchdog populates tests/fixtures/drift/ from the
 # weekly cron. The scripts + README are tracked; the captured parquets
 # and the drift-report are not (rotation is the whole point — git history
@@ -43,7 +40,6 @@ tests/fixtures/drift/drift-report.md
 # OS
 .DS_Store
 Thumbs.db
-.claude/scheduled_tasks.lock
 
 # Planning artifacts — local GSD planning workspace; NOT for public consumption.
 # Untracked since the repo went public (Phase 13 W0 cleanup commit, 2026-05-25).
