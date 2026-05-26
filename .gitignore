@@ -42,21 +42,18 @@ tests/fixtures/drift/drift-report.md
 Thumbs.db
 
 # Planning artifacts — local GSD planning workspace; NOT for public consumption.
-# Untracked since the repo went public (Phase 13 W0 cleanup commit, 2026-05-25).
-# Operators keep these on disk for ongoing GSD workflow; nothing in `.planning/`
-# should be required to build or run the SDK.
+# Untracked since the repo went public (Phase 13 W0 cleanup, 2026-05-25).
+# Operators keep these on disk for ongoing GSD workflow (nested-clone of the
+# private planning repo into `.planning/` — see PLANNING-SETUP.md). Nothing
+# in `.planning/` is required to build or run the SDK.
 #
-# Phase 15 W3 exception: `.planning/CROSS-SDK-SYNC.md` is the source of truth
-# for `scripts/generate_parity_table.py` (consumed by docs-publish.yml on every
-# v* / vts-* non-rc tag). Git's ignore semantics cannot re-include a file
-# inside an ignored directory, so the canonical fix is to (a) un-ignore the
-# `.planning/` directory itself, (b) re-ignore everything inside it, then
-# (c) un-ignore the one file we want tracked. The file is not sensitive
-# (it describes the public cross-SDK sync process) so promoting it to tracked
-# is the right answer rather than mirroring it elsewhere.
-!.planning/
-.planning/*
-!.planning/CROSS-SDK-SYNC.md
+# Phase 16 dev-env cleanup (2026-05-26): the prior Phase 15 W3 exception for
+# `.planning/CROSS-SDK-SYNC.md` was removed. The planning repo is now the
+# single source of truth for that file; `scripts/generate_parity_table.py`
+# falls back to its built-in default registry when the file isn't present
+# (e.g. for external contributors without the planning repo cloned), so the
+# docs-publish CI job still works end-to-end.
+.planning/
 
 # Dev-only TODO scratchpad (replaced by GSD TODOS in .planning/)
 TODOS.md
