@@ -1,6 +1,6 @@
 {
   "name": "@mostlyrightmd/core",
-  "version": "0.1.0-rc.6",
+  "version": "0.1.0-rc.7",
   "description": "Core types, schemas, and primitives for the mostlyright TypeScript SDK (placeholder scaffold; implementation lands in TS-W1+).",
   "license": "MIT",
   "type": "module",
