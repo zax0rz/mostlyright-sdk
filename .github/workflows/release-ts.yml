@@ -124,7 +124,7 @@ jobs:
         # rewrites those to the actual versions at pack time; `npm publish`
         # would emit the literal `workspace:*` token and EUNSUPPORTEDPROTOCOL
         # any consumer. Also covers the scoped packages with a uniform path.
-        run: pnpm publish --provenance --access public --tag ${{ steps.dist_tag.outputs.tag }} --no-git-checks
+        run: pnpm publish --access public --tag ${{ steps.dist_tag.outputs.tag }} --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
 
@@ -135,7 +135,7 @@ jobs:
         # rewrites those to the actual versions at pack time; `npm publish`
         # would emit the literal `workspace:*` token and EUNSUPPORTEDPROTOCOL
         # any consumer. Also covers the scoped packages with a uniform path.
-        run: pnpm publish --provenance --access public --tag ${{ steps.dist_tag.outputs.tag }} --no-git-checks
+        run: pnpm publish --access public --tag ${{ steps.dist_tag.outputs.tag }} --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
 
@@ -146,7 +146,7 @@ jobs:
         # rewrites those to the actual versions at pack time; `npm publish`
         # would emit the literal `workspace:*` token and EUNSUPPORTEDPROTOCOL
         # any consumer. Also covers the scoped packages with a uniform path.
-        run: pnpm publish --provenance --access public --tag ${{ steps.dist_tag.outputs.tag }} --no-git-checks
+        run: pnpm publish --access public --tag ${{ steps.dist_tag.outputs.tag }} --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
 
@@ -157,6 +157,6 @@ jobs:
         # rewrites those to the actual versions at pack time; `npm publish`
         # would emit the literal `workspace:*` token and EUNSUPPORTEDPROTOCOL
         # any consumer. Also covers the scoped packages with a uniform path.
-        run: pnpm publish --provenance --access public --tag ${{ steps.dist_tag.outputs.tag }} --no-git-checks
+        run: pnpm publish --access public --tag ${{ steps.dist_tag.outputs.tag }} --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
