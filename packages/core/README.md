@@ -1,17 +1,19 @@
 # mostlyrightmd
 
-Local-first SDK for quants researching prediction-market weather settlements.
+Local-first Python SDK for quants researching prediction-market weather settlements.
 
-Meta package: exposes `mostlyright.research()` (the observation × climate join) and re-exports common utilities.
+Calls AWC, IEM, GHCNh, and NWS CLI directly; no hosted backend, no API key. Exposes `mostlyright.research(station, from_date, to_date)` — the observation × climate join that returns one row per settlement date.
 
 ## Install
 
 ```bash
 pip install mostlyrightmd                # core only (helpers + snapshot primitives)
-pip install mostlyrightmd[research]      # core + weather, enables `mostlyright.research()`
-pip install mostlyrightmd-weather        # weather data sources (transitively brings core)
+pip install 'mostlyrightmd[research]'    # core + weather; enables research()
+pip install mostlyrightmd-weather        # weather data sources only (brings core transitively)
 ```
 
-`mostlyrightmd` and `mostlyrightmd-weather` share the `mostlyright.*` Python namespace but ship as separate PyPI distributions so users who need only the helpers can skip the heavier weather deps. `research()` lazy-imports `mostlyright.weather` and raises a clear error if the weather package is not installed.
+`mostlyrightmd` and `mostlyrightmd-weather` share the `mostlyright.*` Python namespace but ship as separate PyPI distributions, so users who only need the helpers can skip the heavier weather deps. `research()` lazy-imports `mostlyright.weather` and raises a clear error if the weather package is not installed.
 
-See the workspace [README](../../README.md) and [CLAUDE.md](../../CLAUDE.md) for project rules.
+## Docs
+
+Quickstart, concepts, and the full API reference live at <https://mostlyright.md/docs/sdk/>.

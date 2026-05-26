@@ -1,7 +1,13 @@
 # mostlyrightmd-markets
 
-Prediction market data for `mostlyright`: Kalshi, Polymarket.
+Prediction-market data (Kalshi NHIGH/NLOW contract specs, Polymarket discovery + settlement) for the `mostlyright` Python SDK.
 
-🚧 **v0.0.1 is a placeholder.** Real Kalshi metadata client lands in v0.1.0 (Sprint 0.5) — port from `therminal/therminal-ingest/src/sources/kalshi/` (TypeScript reference). Public endpoints, no auth required.
+## Install
 
-See the workspace [README](../../README.md) and [CLAUDE.md](../../CLAUDE.md) for project rules.
+```bash
+pip install mostlyrightmd-markets       # brings mostlyrightmd transitively
+```
+
+## Docs
+
+See <https://mostlyright.md/docs/sdk/> for quickstart and the full API reference.

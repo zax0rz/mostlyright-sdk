@@ -1,3 +1,14 @@
 # @mostlyrightmd/core
 
-Core types, schemas, and primitives for the [mostlyright](https://github.com/helloiamvu/tradewinds) TypeScript SDK. This package will host `research()`, `snapshot`, mode-2 selectors, transforms, QC, discovery, international, forecasts, and shared `_internal` utilities (temporal, validator, formats, merge, exceptions) — mirroring the Python `mostlyright` distribution. The current scaffold ships only a placeholder hello function; real implementation lands in TS-W1 onward.
+Core types, schemas, and primitives for the [mostlyright](https://github.com/mostlyrightmd/mostlyright-sdk) TypeScript SDK: the `research()` join, snapshot primitives, mode-2 source-pinned selectors, transforms, QC, discovery, temporal-safety, validators, formats, merge logic, and the full exception hierarchy. Mirrors the Python `mostlyrightmd` distribution.
+
+## Install
+
+```bash
+pnpm add @mostlyrightmd/core
+# or: npm install @mostlyrightmd/core
+```
+
+## Docs
+
+Quickstart, concepts, and the full API reference live at <https://mostlyright.md/docs/sdk/>.

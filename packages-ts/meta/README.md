@@ -1,3 +1,16 @@
-# mostlyright (meta)
+# mostlyright
 
-Convenience meta-package for the [mostlyright](https://github.com/helloiamvu/tradewinds) TypeScript SDK. Re-exports the surface of `@mostlyrightmd/core`, `@mostlyrightmd/weather`, and `@mostlyrightmd/markets` so a single `import { research } from "mostlyright"` works. The unscoped npm name `mostlyright` is reserved pending an availability check (see `.planning/research/TS-SDK-DESIGN.md` §13.1); if unavailable at publish time the meta will be re-named (e.g. `@mostlyrightmd/sdk`). The current scaffold ships only placeholder hello functions; real implementation tracks the underlying packages.
+Convenience meta-package for the [mostlyright](https://github.com/mostlyrightmd/mostlyright-sdk) TypeScript SDK. Re-exports the surfaces of `@mostlyrightmd/core`, `@mostlyrightmd/weather`, and `@mostlyrightmd/markets` so a single `import { research } from "mostlyright"` works.
+
+If you only need one slice of the SDK, depend on the scoped packages directly. If you want everything in one import, this is the package.
+
+## Install
+
+```bash
+pnpm add mostlyright
+# or: npm install mostlyright
+```
+
+## Docs
+
+See <https://mostlyright.md/docs/sdk/> for quickstart, concepts, and the full API reference.

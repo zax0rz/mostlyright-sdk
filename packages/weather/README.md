@@ -1,7 +1,13 @@
 # mostlyrightmd-weather
 
-Weather data sources for `mostlyright`: AWC, IEM, GHCNh, NWS CLI.
+Weather data fetchers (AWC, IEM ASOS, GHCNh, NWS CLI) for the `mostlyright` Python SDK. Direct public-API access; no hosted backend, no API key. Local parquet cache at `$HOME/.mostlyright/cache/`.
 
-Direct public-API access. No hosted backend. Local parquet cache at `$HOME/.mostlyright/cache/`.
+## Install
 
-See the workspace [README](../../README.md) and [CLAUDE.md](../../CLAUDE.md) for project rules.
+```bash
+pip install mostlyrightmd-weather       # brings mostlyrightmd transitively
+```
+
+## Docs
+
+See <https://mostlyright.md/docs/sdk/quickstart-python/> for a 60-second quickstart, or the full API reference at <https://mostlyright.md/docs/sdk/>.
