@@ -1,13 +1,32 @@
 # Changelog
 
-All notable changes to tradewinds. The format follows
+All notable changes to mostlyright. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project adheres
-to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) once it ships
-0.1.0 to PyPI.
+to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
 (next 0.1.x / 0.2.x changes land here)
+
+## [0.1.4] — 2026-05-26 (prod PyPI + npm — copy refresh; TS SDK first non-rc release)
+
+Coordinated release refreshes the registry-visible copy (descriptions + READMEs) on PyPI + npm, and graduates the TypeScript SDK from `0.1.0-rc.*` to `0.1.0` final.
+
+**PyPI side (`mostlyrightmd` / `mostlyrightmd-weather` / `mostlyrightmd-markets`):**
+- Version bump `0.1.3 → 0.1.4` across all 3 distros. No source-code or API changes.
+- Pushes the cleaned Phase 15 W4 production copy to PyPI: per-package descriptions no longer leak "Phase 3.3" or "Sprint 0.5"; per-package READMEs no longer reference internal `CLAUDE.md` or claim `v0.0.1 placeholder` for markets.
+
+**npm side (`@mostlyrightmd/{core,weather,markets}` + unscoped `mostlyright`):**
+- Version bump `0.1.0-rc.7 → 0.1.0` (first non-rc TS release). Tag `vts-0.1.0` routes via `release-ts.yml`'s `dist_tag` step to `--tag latest`, promoting these packages from the `@next` track to the default `latest` dist-tag.
+- Updated descriptions no longer say "placeholder scaffold; implementation lands in TS-W1+". Per-package READMEs no longer link to the dead `helloiamvu/tradewinds` repo URL.
+- Phase 15 W4-T2 verification fires automatically: `docs-publish.yml` triggers on both `v0.1.4` (Python) and `vts-0.1.0` (TypeScript) non-rc tags, opens a PR on `Tarabcak/mostly-right-landing` with the auto-generated `/docs/sdk/python/` + `/docs/sdk/typescript/` reference trees and the parity table.
+
+**P0 parity gate (release-ts.yml):** 0 open P0 parity tickets at `vts-0.1.0` cut time; gate releases the publish.
+
+### Changed
+- Version bump 0.1.3 → 0.1.4 across all 3 PyPI distros (no source-code changes).
+- Version bump 0.1.0-rc.7 → 0.1.0 across all 4 publishable npm packages (no source-code changes; rc → final).
+- CHANGELOG header corrected: "All notable changes to tradewinds" → "All notable changes to mostlyright".
 
 ## [0.1.3] — 2026-05-26 (prod PyPI — markets first publish; staggered registration CLOSED)
 

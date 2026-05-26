@@ -1,6 +1,6 @@
 {
   "name": "@mostlyrightmd/core",
-  "version": "0.1.0-rc.7",
+  "version": "0.1.0",
   "description": "Local-first TypeScript SDK core for prediction-market weather research: types, schemas, validators, temporal-safety primitives, and the research() join.",
   "license": "MIT",
   "type": "module",
