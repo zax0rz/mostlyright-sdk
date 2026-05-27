@@ -85,14 +85,50 @@ function fromObservation(o: NonNullable<ReturnType<typeof awcToObservation>>): O
   };
 }
 
+/**
+ * IEM fetch helper. Phase 21 21-04 fix-iter-3 (codex HIGH): the byte-range
+ * URL the upstream IEM ASOS endpoint accepts is honored by `downloadIemAsos`
+ * — passing date-bounded `start`/`end` produces a date-bounded payload.
+ *
+ *   - `exact_window` strategy: pass the caller's [fromDate, toDate] verbatim.
+ *     A 1-day call pulls ~1 day of bytes, not a whole year. Matches Python
+ *     `obs(strategy="exact_window")` semantics.
+ *   - `warm_cache` strategy: pad to year-boundaries to maximize cache reuse
+ *     for callers that hit overlapping windows. Matches Python
+ *     `obs(strategy="warm_cache")` semantics.
+ *
+ * Post-fetch trim still runs in both cases — the upstream may include
+ * boundary observations slightly outside [fromDate, toDate] depending on
+ * METAR reporting cadence.
+ */
 async function fetchIemForWindow(
   station: string,
   fromDate: string,
   toDate: string,
+  resolvedStrategy: Exclude<ObsStrategy, "auto" | "hosted">,
 ): Promise<ObsRow[]> {
+  const out: ObsRow[] = [];
+
+  if (resolvedStrategy === "exact_window") {
+    // Date-bounded fetch — pull only the bytes the caller asked for.
+    const chunks = await downloadIemAsos(station, fromDate, toDate, {
+      reportType: 3,
+      politenessMs: 1000,
+    });
+    for (const chunk of chunks) {
+      const rows = parseIemCsv(chunk.csv, { observationTypeOverride: "METAR" });
+      for (const r of rows) {
+        const d = r.observed_at.slice(0, 10);
+        if (d >= fromDate && d <= toDate) out.push(fromObservation(r));
+      }
+    }
+    return out;
+  }
+
+  // warm_cache: span the [fromYear, toYear] calendar-year range so future
+  // calls hitting overlapping windows can reuse cached year-chunks.
   const fromYear = Number.parseInt(fromDate.slice(0, 4), 10);
   const toYear = Number.parseInt(toDate.slice(0, 4), 10);
-  const out: ObsRow[] = [];
   for (let year = fromYear; year <= toYear; year++) {
     const chunks = await downloadIemAsos(station, `${year}-01-01`, `${year}-12-31`, {
       reportType: 3,
@@ -132,18 +168,18 @@ async function fetchByStrategy(
   resolvedStrategy: Exclude<ObsStrategy, "auto" | "hosted">,
   source: ObsOptions["source"],
 ): Promise<ObsRow[]> {
-  // For both `exact_window` and `warm_cache` we route to the existing
-  // fetchers. The strategy distinction (year-padded vs window-trimmed)
-  // is honored at the URL boundary inside downloadIemAsos itself in
-  // Python; in TS we trim post-fetch but issue the same year-spanning
-  // request — caching downstream is what makes warm_cache cheaper.
-  void resolvedStrategy;
-
+  // Phase 21 21-04 fix-iter-3 (codex HIGH): `resolvedStrategy` now drives
+  // the IEM fetch shape. `exact_window` issues a date-bounded request so
+  // small calls pull small payloads (matches Python's Phase 7 ingest-
+  // planner semantics); `warm_cache` pads to year-boundaries so
+  // overlapping callers reuse cached chunks. AWC is always the live
+  // 168-hour endpoint regardless of strategy — the request shape doesn't
+  // change with strategy in either Python or TS.
   const wantsIem = source === null || source === undefined || source === "iem";
   const wantsAwc = source === null || source === undefined || source === "awc";
 
   const tasks: Promise<ObsRow[]>[] = [];
-  if (wantsIem) tasks.push(fetchIemForWindow(station, fromDate, toDate));
+  if (wantsIem) tasks.push(fetchIemForWindow(station, fromDate, toDate, resolvedStrategy));
   if (wantsAwc) tasks.push(fetchAwcForWindow(station, fromDate, toDate).catch(() => []));
 
   const results = await Promise.all(tasks);

@@ -101,4 +101,37 @@ describe("obs — strategy=exact_window over an empty fetch", () => {
     });
     expect(out).toEqual([]);
   });
+
+  // Phase 21 21-04 fix-iter-3 (codex HIGH): exact_window must issue a
+  // date-bounded IEM request (not year-padded). Asserts the IEM fetcher
+  // is called with the caller's [fromDate, toDate], not 2025-01-01..-12-31.
+  it("strategy='exact_window' passes date-bounded range to IEM (not whole year)", async () => {
+    const iemSpy = vi.spyOn(iemFetcher, "downloadIemAsos").mockResolvedValueOnce([]);
+    vi.spyOn(awcFetcher, "fetchAwcMetars").mockResolvedValueOnce([]);
+    await obs("KNYC", "2025-01-06", "2025-01-08", {
+      source: "iem",
+      strategy: "exact_window",
+    });
+    expect(iemSpy).toHaveBeenCalledWith(
+      "KNYC",
+      "2025-01-06",
+      "2025-01-08",
+      expect.objectContaining({ reportType: 3 }),
+    );
+  });
+
+  it("strategy='warm_cache' pads IEM request to year boundaries (cache reuse)", async () => {
+    const iemSpy = vi.spyOn(iemFetcher, "downloadIemAsos").mockResolvedValueOnce([]);
+    vi.spyOn(awcFetcher, "fetchAwcMetars").mockResolvedValueOnce([]);
+    await obs("KNYC", "2025-01-06", "2025-01-08", {
+      source: "iem",
+      strategy: "warm_cache",
+    });
+    expect(iemSpy).toHaveBeenCalledWith(
+      "KNYC",
+      "2025-01-01",
+      "2025-12-31",
+      expect.objectContaining({ reportType: 3 }),
+    );
+  });
 });

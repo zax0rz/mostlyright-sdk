@@ -10,7 +10,44 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { type JSONSchema, compile } from "json-schema-to-typescript";
+import ts from "typescript";
 import { describe, expect, it } from "vitest";
+
+/**
+ * Phase 21 21-08 fix-iter-3 (codex HIGH): assert the codegen output is
+ * SYNTACTICALLY VALID TypeScript, not just that the description text +
+ * field declaration both appear. Without this, a raw `*\/` in the
+ * description could close the TSDoc early, leave the field declaration
+ * intact, and pass the substring assertions — while the generated file
+ * doesn't compile.
+ *
+ * Uses `ts.transpileModule` (no type-checking, just parse) so the test
+ * doesn't need to resolve project tsconfig + lib types.
+ */
+function assertCompiles(src: string, label: string): void {
+  const result = ts.transpileModule(src, {
+    compilerOptions: {
+      target: ts.ScriptTarget.ES2022,
+      module: ts.ModuleKind.ESNext,
+      strict: false,
+    },
+    reportDiagnostics: true,
+  });
+  const diagnostics = result.diagnostics ?? [];
+  if (diagnostics.length > 0) {
+    const messages = diagnostics
+      .map((d) => {
+        const msg = ts.flattenDiagnosticMessageText(d.messageText, "\n");
+        if (d.file && d.start !== undefined) {
+          const { line, character } = d.file.getLineAndCharacterOfPosition(d.start);
+          return `${label}:${line + 1}:${character + 1}: ${msg}`;
+        }
+        return `${label}: ${msg}`;
+      })
+      .join("\n");
+    throw new Error(`Generated TS failed to parse:\n${messages}\n--- source ---\n${src}`);
+  }
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -47,11 +84,12 @@ describe("codegen: description → TSDoc propagation (plan 21-08)", () => {
     // The description must appear in TSDoc form somewhere in the output.
     expect(out).toMatch(/\/\*\*/);
     expect(out).toContain("Description with closing comment marker");
-    // The emitted TS must parse — i.e. the raw `*/` must not terminate the
-    // TSDoc prematurely. We check this by asserting the column declaration
-    // is still present AFTER the comment payload, which would be impossible
-    // if the comment had closed mid-stream.
     expect(out).toMatch(/column_a:\s*string;/);
+    // Phase 21 21-08 fix-iter-3 (codex HIGH): the emitted TS must actually
+    // PARSE. A substring assertion alone would pass even if `*/` in the
+    // description closed the TSDoc early, leaving a syntactically broken
+    // file. Use ts.transpileModule to check the parser is happy.
+    assertCompiles(out, "TestSpecialCharsRow");
   });
 
   it("does not emit empty /** */ stubs when description is missing", async () => {
