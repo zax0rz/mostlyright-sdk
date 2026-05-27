@@ -1,6 +1,6 @@
 {
   "name": "mostlyright",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Convenience meta-package for the mostlyright TypeScript SDK. Re-exports @mostlyrightmd/core + @mostlyrightmd/weather + @mostlyrightmd/markets so a single `import { research } from 'mostlyright'` works.",
   "license": "MIT",
   "type": "module",

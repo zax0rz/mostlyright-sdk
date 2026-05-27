@@ -6,6 +6,35 @@ All notable changes to `mostlyright`. The format follows [Keep a Changelog](http
 
 (next changes land here)
 
+## [1.1.0] — 2026-05-27
+
+Phase 18 release. Recovers native integer-°F precision for U.S. ASOS stations and fixes the `temp_f` false-precision bug surfaced in issue [#16](https://github.com/mostlyrightmd/mostlyright-sdk/issues/16). ASOS sensors observe in integer °F; the Tgroup in METAR remarks (`T########`) is a downstream encoding of the whole-°F internal value, not an independent precision tier. Pre-Phase-18 code back-converted Tgroup tenths-°C → °F via `celsius_to_fahrenheit()`, producing artifacts like `80.06°F` where the native reading was `80°F`. After this release, `temp_f` is integer-valued for ASOS rows recovered from Tgroup; non-Tgroup (international) stations keep the legacy float path.
+
+### Added
+- **PyPI + npm:** shared `parse_tgroup` / `parseTgroup` helper at `_internal/tgroup.py` / `_internal/tgroup.ts` — single source of truth for ASOS Tgroup parsing across AWC + IEM parsers.
+- **PyPI + npm:** AWC integer-°F recovery — when raw METAR contains a Tgroup, `temp_f` / `dewpoint_f` are emitted as the recovered integer °F (e.g. `T02670122` → `temp_f=80.0`, NOT `80.06`).
+- **PyPI + npm:** IEM Tgroup override of `temp_c` / `dewpoint_c` — when raw METAR contains a Tgroup, override the back-derived tenths with the source-truth Tgroup tenths. Critical: `temp_f` stays as `raw_tmpf` (NOT derived from `temp_c`); the two fields are different coded views of the same integer-°F sensor reading.
+- **PyPI:** parquet observation cache embeds `_cache_schema_version = "v2-phase18-integer-f"` in file metadata + auto-invalidate on read mismatch. Existing pre-Phase-18 user caches silently re-fetch on next call. (`packages/weather/src/mostlyright/weather/cache.py`)
+- **PyPI:** new property test (hypothesis) covering every integer °F in [-50, 140] round-trip through Tgroup tenths-°C; new 12-station AWC↔IEM cross-source consistency test.
+- **PyPI:** new live anti-regression test at `packages/weather/tests/live/test_12_station_asos_integer_f.py` covering KLGA / KJFK / KEWR / KBOS / KORD / KDFW / KLAX / KMIA / KDEN / KSEA / KATL / KPHX (gated behind `-m live`; run pre-publish).
+- **npm:** 5 new TypeScript test files (25 new tests + 12 skipped live) covering the same invariants as the Python suite — Tgroup helper unit tests, AWC integer-°F recovery, IEM Tgroup-override + consistency, exhaustive 191-value round-trip, 12-station live anti-regression.
+- **npm:** `internationalDailyExtremes` Phase 18 lattice-rationale comment documenting how callers should pick `precision=1` for US-ASOS-lattice data vs `precision=0` for international.
+
+### Changed
+- **PyPI:** schema description language updated in `observation.json` / `daily_extreme.json` / `synoptic_extremes.json` — "0.1°C precision for US stations" was overstated; the tenths-°C is a Tgroup-encoded display precision, not independent source resolution.
+- **PyPI:** `_ghcnh.py` carries a Phase 18 boundary-marker comment above the `celsius_to_fahrenheit(temp_c)` path documenting the deferral pending NCEI native-units documentation.
+- **PyPI:** `mostlyright.international.daily_extremes` precision-rationale comment documents how US-ASOS-lattice inputs interact with the `precision = 1 if is_us else 0` branch.
+- **PyPI:** `test_international.py` synthetic non-lattice temperatures replaced with realistic integer-°F-lattice values (`[10.0, 11.1, 12.2, 9.4]` from `[50, 52, 54, 49]°F`); a separate dedicated HALF_UP-mechanics test preserves the rounding-semantics coverage.
+- **Docs:** `docs/live-streaming.md` alert example casts `temp_f` via `int()` (Python) / `Math.round()` (TS) so the rendered example never surfaces back-conversion artifacts. New "Note on `temp_f` precision (Phase 18)" section.
+
+### Notes
+- **Parity fixtures NOT re-captured** in this release. Plan 18-09 requires live network calls + operator-approval checkpoint and is deferred. The `tests/test_parity.py` HARD GATE still compares against the pre-Phase-18 baseline; users who rely on byte-equivalent parity vs `mostlyright==0.14.1` should pin to 1.0.x until 18-09 ships.
+- **TS cache schema-version field** deferred. The TS cache is a generic key/value abstraction (Memory/Fs/IndexedDB) used for many caller value shapes; adding a version field across all `CacheEntry` consumers requires a separate refactor. TS callers that hit a pre-Phase-18 IndexedDB / FsStore cache may see stale `tempF=80.06` values until they invalidate manually.
+- **Existing user Python caches auto-invalidate** on next `research()` call via the new `_cache_schema_version` mechanism — one round of slow first-read, no manual user action required.
+
+### Review
+- Two-iteration two-reviewer panel per `REVIEW-DISCIPLINE.md`. Iter-1: Python Architect PASS; codex `high` + TS Architect REVISE (both independently surfaced the same CRITICAL — IEM Tgroup-override missing the tmpf-validity gate from Python `_iem.py:184-188`). Iter-2: all three PASS after the gate was restored and 3 regression tests added.
+
 ## [1.0.1] — 2026-05-27
 
 Hotfix release. Every live IEM MOS forecast fetch (NBE / GFS / LAV / MET / ECM) via either SDK has been broken end-to-end since the fetcher shipped — the IEM `/api/1/mos.json` endpoint validates the `model` query param against an uppercase-only regex and rejects lowercase values with HTTP 422. Both Python and TypeScript SDKs sent lowercase. This release fixes both sides in lockstep.
