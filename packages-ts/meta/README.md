@@ -4,7 +4,7 @@
 
 `mostlyright` is the convenience meta-package for the TypeScript SDK. A single `import { research } from "mostlyright"` re-exports the surfaces of `@mostlyrightmd/core`, `@mostlyrightmd/weather`, and `@mostlyrightmd/markets` — weather data (METAR, ASOS, GHCNh, NWS CLI), prediction-market settlements (Kalshi NHIGH/NLOW, Polymarket), and the core `research()` join. Direct calls to public APIs. No hosted backend, no API key.
 
-Weather data + prediction-markets data are live today. SEC filings (EDGAR) and Federal Reserve economic data (FRED) are next.
+Weather + prediction-markets adapters are live today. SEC filings (EDGAR), equities structured data, Federal Reserve series (FRED), court filings, and FDA approvals are next — and the architecture is built to ship an adapter for any public data source.
 
 If you only need one slice of the SDK, depend on the scoped packages directly. If you want everything in one import, this is the package.
 

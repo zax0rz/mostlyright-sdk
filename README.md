@@ -10,7 +10,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-mostlyright.md-blue.svg)](https://mostlyright.md/docs/sdk/)
 
-`mostlyright` is a Python + TypeScript SDK for quants, ML engineers, and AI agents — direct, schema-versioned access to **weather data** (live METAR/ASOS, forecasts, GHCNh climate history, NWS CLI text products) and **prediction-market settlements** (Kalshi NHIGH/NLOW, Polymarket discovery + settlement, Kalshi + Polymarket trades). SEC filings (EDGAR) and Federal Reserve series (FRED) land next. Local-first: no hosted backend, no API key for the public-data layer, byte-equivalent reproducibility from research to backtest, and leakage-free training pairs for ML pipelines.
+`mostlyright` is a Python + TypeScript SDK for quants, ML engineers, and AI agents — one direct, schema-versioned interface to every public data source that matters. Today's adapters ship weather data (live METAR/ASOS, forecasts, GHCNh climate history, NWS CLI text products) and prediction-market settlements (Kalshi NHIGH/NLOW, Polymarket discovery + settlement, Kalshi + Polymarket trades). Next: SEC filings (EDGAR), equities structured data, Federal Reserve series (FRED), court filings, FDA approvals — anywhere the data is public, we ship the adapter. Local-first: no hosted backend, no API key for the public-data layer, byte-equivalent reproducibility from research to backtest, and leakage-free training pairs for ML pipelines.
 
 ---
 
@@ -62,7 +62,10 @@ Full quickstart with concepts at <https://mostlyright.md/docs/sdk/>.
 | [`mostlyrightmd-weather`](https://pypi.org/project/mostlyrightmd-weather/) | Weather data fetchers — live METAR (AWC), ASOS archive (IEM), historical observations (GHCNh), and NWS climate text products (CLI). Direct public-API access. | [![monthly downloads](https://badgen.net/pypi/dm/mostlyrightmd-weather?label=monthly)](https://pypistats.org/packages/mostlyrightmd-weather) | stable |
 | [`mostlyrightmd-markets`](https://pypi.org/project/mostlyrightmd-markets/) | Prediction-market data — Kalshi NHIGH/NLOW weather-contract resolvers, Polymarket discovery + settlement, and Kalshi + Polymarket trade history. | [![monthly downloads](https://badgen.net/pypi/dm/mostlyrightmd-markets?label=monthly)](https://pypistats.org/packages/mostlyrightmd-markets) | stable |
 | `mostlyrightmd-edgar` | SEC filings (10-K, 10-Q, 8-K) — direct EDGAR full-text + facts access. | n/a | planned |
+| `mostlyrightmd-equities` | Equities structured data — fundamentals, corporate actions, normalized XBRL pulls. | n/a | planned |
 | `mostlyrightmd-fred` | Federal Reserve economic data (FRED series, observations, releases). | n/a | planned |
+| `mostlyrightmd-courts` | Court filings — federal (PACER) and state dockets, opinions, party data. | n/a | planned |
+| `mostlyrightmd-fda` | FDA approvals — drug + medical-device clearance records, post-market events. | n/a | planned |
 
 ### TypeScript (npm)
 
@@ -72,8 +75,11 @@ Full quickstart with concepts at <https://mostlyright.md/docs/sdk/>.
 | [`@mostlyrightmd/core`](https://www.npmjs.com/package/@mostlyrightmd/core) | Core types, schemas, validators, temporal-safety primitives, and the `research()` join. | [![monthly downloads](https://img.shields.io/npm/dm/%40mostlyrightmd%2Fcore?label=monthly)](https://www.npmjs.com/package/@mostlyrightmd/core) | stable |
 | [`@mostlyrightmd/weather`](https://www.npmjs.com/package/@mostlyrightmd/weather) | Weather data fetchers — live METAR (AWC), ASOS archive (IEM), historical observations (GHCNh), and NWS climate text products (CLI). | [![monthly downloads](https://img.shields.io/npm/dm/%40mostlyrightmd%2Fweather?label=monthly)](https://www.npmjs.com/package/@mostlyrightmd/weather) | stable |
 | [`@mostlyrightmd/markets`](https://www.npmjs.com/package/@mostlyrightmd/markets) | Prediction-market data — Kalshi NHIGH/NLOW weather-contract resolvers, Polymarket discovery + settlement, and Kalshi + Polymarket trade history. | [![monthly downloads](https://img.shields.io/npm/dm/%40mostlyrightmd%2Fmarkets?label=monthly)](https://www.npmjs.com/package/@mostlyrightmd/markets) | stable |
-| `@mostlyrightmd/edgar` | SEC filings (10-K, 10-Q, 8-K). | n/a | planned |
-| `@mostlyrightmd/fred` | Federal Reserve economic data. | n/a | planned |
+| `@mostlyrightmd/edgar` | SEC filings (10-K, 10-Q, 8-K) — direct EDGAR full-text + facts access. | n/a | planned |
+| `@mostlyrightmd/equities` | Equities structured data — fundamentals, corporate actions, normalized XBRL pulls. | n/a | planned |
+| `@mostlyrightmd/fred` | Federal Reserve economic data (FRED series, observations, releases). | n/a | planned |
+| `@mostlyrightmd/courts` | Court filings — federal (PACER) and state dockets, opinions, party data. | n/a | planned |
+| `@mostlyrightmd/fda` | FDA approvals — drug + medical-device clearance records, post-market events. | n/a | planned |
 
 ## What you can build
 
