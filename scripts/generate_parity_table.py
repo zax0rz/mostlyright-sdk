@@ -119,8 +119,7 @@ def _extract_curated_table(cross_sdk_text: str) -> str | None:
     # to be present so a stray comment block between markers doesn't ship as a table.
     if not re.search(r"^\|\s*Surface\s*\|", body, re.MULTILINE):
         raise ValueError(
-            "parity-registry body between markers does not contain a "
-            "'| Surface |...' header row"
+            "parity-registry body between markers does not contain a '| Surface |...' header row"
         )
     return body
 

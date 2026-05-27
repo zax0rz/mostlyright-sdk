@@ -12,6 +12,7 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 import httpx
+import pandas as pd
 import pytest
 from mostlyright.markets._polymarket_client import (
     GAMMA_API_BASE,
@@ -246,7 +247,9 @@ class TestPolymarketDiscover:
             # resolution_source_type to None instead of erroring out.
             assert len(df) == 2
             paris_row = df[df["slug"] == "oversize-paris-2026-05-23"].iloc[0]
-            assert paris_row["resolution_source_type"] is None
+            # pandas 3 coerces None → NaN in object columns on .iloc extraction;
+            # pd.isna accepts both sentinels.
+            assert pd.isna(paris_row["resolution_source_type"])
         finally:
             client.close()
 
