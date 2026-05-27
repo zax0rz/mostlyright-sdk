@@ -241,6 +241,25 @@ async def alert_when_hot(station: str, threshold_f: float) -> None:
 asyncio.run(alert_when_hot("KNYC", 95.0))
 ```
 
+```ts
+// TypeScript equivalent — same Phase 18 PREC-01 + PREC-06 semantics.
+import { stream } from "@mostlyrightmd/weather";
+
+async function alertWhenHot(station: string, thresholdF: number): Promise<void> {
+  for await (const row of stream(station)) {
+    if (row.temp_f !== null && row.temp_f >= thresholdF) {
+      // Phase 18 PREC-01: temp_f is integer-valued for U.S. ASOS rows
+      // (recovered from Tgroup); cast via Math.round() for clean
+      // presentation and to defensively coerce any non-Tgroup float
+      // (international stations via celsiusToFahrenheit).
+      await page(`${station} hit ${Math.round(row.temp_f)}F at ${row.observed_at}`);
+    }
+  }
+}
+
+await alertWhenHot("KNYC", 95.0);
+```
+
 ### Note on `temp_f` precision (Phase 18)
 
 For U.S. ASOS sources (AWC + IEM live + IEM archive), `temp_f` is
