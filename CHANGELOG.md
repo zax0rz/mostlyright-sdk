@@ -4,6 +4,8 @@ All notable changes to `mostlyright`. The format follows [Keep a Changelog](http
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-05-28 — Phase 20: Open-Meteo Forecast Source Integration
+
 ### Added — Phase 20: Open-Meteo Forecast Source Integration (leakage-safe, 36-model)
 - **Open-Meteo as third forecast source** (Phase 20). 36 models across NCEP / ECMWF / DWD / Météo-France / JMA-KMA-CMA-BoM / UKMO-MetNo / GEM Canada providers. New `mostlyright.weather.fetch_open_meteo()` Python API and `@mostlyrightmd/weather` `openMeteoForecasts()` TS API ship in lockstep.
 - **`schema.forecast.station.v1`** unified per-station forecast schema covering IEM MOS shared core + Open-Meteo extras (`apparent_temp_c`, `shortwave_radiation_wm2`, `cape_jkg`, `cloud_cover_pct`, `surface_pressure_hpa`, `freezing_level_m`, etc.). `schema.forecast.iem_mos.v1` retained as back-compat alias.
