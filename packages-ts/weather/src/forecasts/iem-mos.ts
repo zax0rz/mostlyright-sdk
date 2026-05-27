@@ -4,33 +4,18 @@
 // Endpoint: https://mesonet.agron.iastate.edu/api/1/mos.json
 // CORS: OPEN per IEM ASOS posture (see `.planning/research/FORECAST-CORS-MATRIX.md`).
 
-import type {
-  IemMosModel,
-  IemMosOptions,
-  IemMosRow,
-  IemMosSource,
-} from "./types.js";
+import type { IemMosModel, IemMosOptions, IemMosRow, IemMosSource } from "./types.js";
 
 const IEM_MOS_URL = "https://mesonet.agron.iastate.edu/api/1/mos.json";
 
-const SUPPORTED_MODELS: ReadonlySet<IemMosModel> = new Set([
-  "nbe",
-  "gfs",
-  "lav",
-  "met",
-  "ecm",
-]);
+const SUPPORTED_MODELS: ReadonlySet<IemMosModel> = new Set(["nbe", "gfs", "lav", "met", "ecm"]);
 
 const KT_TO_MS = 0.5144444;
 
 const NBE_CYCLE_CUTOVER = Date.UTC(2026, 5 - 1, 5, 0, 0, 0); // 2026-05-05T00:00:00Z
 
 /** Pick the right NBE runtime-hour set based on the requested range. */
-function runtimeHoursFor(
-  model: IemMosModel,
-  fromDt: Date,
-  toDt: Date,
-): readonly number[] {
+function runtimeHoursFor(model: IemMosModel, fromDt: Date, toDt: Date): readonly number[] {
   if (model !== "nbe") return [0, 6, 12, 18];
   const fromMs = fromDt.getTime();
   const toMs = toDt.getTime();
@@ -93,9 +78,7 @@ function parseRow(
   const issuedDt = parseDate(raw.runtime ?? raw.model_runtime);
   const validDt = parseDate(raw.ftime ?? raw.valid_time);
   if (issuedDt === null || validDt === null) return null;
-  const forecastHour = Math.round(
-    (validDt.getTime() - issuedDt.getTime()) / 3_600_000,
-  );
+  const forecastHour = Math.round((validDt.getTime() - issuedDt.getTime()) / 3_600_000);
   return {
     station,
     model: model.toUpperCase(),
@@ -120,9 +103,7 @@ function parseRow(
 function parseIsoDate(iso: string, endOfDay: boolean): Date {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
   if (match === null) {
-    throw new Error(
-      `iemMosForecasts: from/to dates must be ISO YYYY-MM-DD; got ${iso}`,
-    );
+    throw new Error(`iemMosForecasts: from/to dates must be ISO YYYY-MM-DD; got ${iso}`);
   }
   const [, y, m, d] = match;
   if (endOfDay) {
@@ -169,17 +150,19 @@ export async function iemMosForecasts(
       const rt = new Date(day);
       rt.setUTCHours(h, 0, 0, 0);
       if (rt < fromDt || rt > toDt) continue;
+      // IEM /api/1/mos.json regex ^(AVN|GFS|...|NBE|...)$ is uppercase-only;
+      // sending lowercase returns HTTP 422 (issue #17). Mirrors the upper()
+      // applied to `model` on returned rows above and the Python fix at
+      // _iem_mos.py:239.
       const url = `${IEM_MOS_URL}?station=${encodeURIComponent(
         station,
-      )}&model=${encodeURIComponent(model)}&runtime=${encodeURIComponent(
+      )}&model=${encodeURIComponent(model.toUpperCase())}&runtime=${encodeURIComponent(
         rt.toISOString(),
       )}`;
       const resp = await fetchFn(url);
       if (resp.status === 404) continue;
       if (!resp.ok) {
-        throw new Error(
-          `iemMosForecasts: HTTP ${resp.status} on ${url}`,
-        );
+        throw new Error(`iemMosForecasts: HTTP ${resp.status} on ${url}`);
       }
       const payload = (await resp.json()) as { data?: RawMosRow[] };
       for (const raw of payload.data ?? []) {
