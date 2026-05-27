@@ -1,6 +1,6 @@
 [project]
 name = "mostlyrightmd"
-version = "1.1.1"
+version = "1.1.2"
 description = "Local-first Python SDK for prediction-market weather research. Calls AWC, IEM, GHCNh, and NWS CLI directly; no hosted backend. Exposes research(station, from_date, to_date) for joined observation + climate rows. Imports as `mostlyright`."
 readme = "README.md"
 license = "MIT"

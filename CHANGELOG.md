@@ -6,9 +6,11 @@ All notable changes to `mostlyright`. The format follows [Keep a Changelog](http
 
 (next changes land here)
 
-## [1.1.1] — 2026-05-27
+## [1.1.2] — 2026-05-27
 
 Patch release. Closes plan 18-09 (parity fixture re-capture) and plan 18-11c Task 2 (TS parity fixture re-export) — the two operator-deferred items from the Phase 18 v1.1.0 release.
+
+(The v1.1.1 number was burned by a concurrent registry-metadata refresh published from a separate branch. This v1.1.2 release ships the parity work originally targeted for v1.1.1.)
 
 ### Notes
 - **Parity fixture re-capture (plan 18-09):** All 5 cases re-captured against post-Phase-18 `research()` via live network. Outcome: all 5 parquet bytes IDENTICAL to the pre-Phase-18 v0.14.1 baseline. The chosen cases (Jan 2025 → Nov 2025) fall outside AWC's 168h archive window, so they source from IEM/GHCNh — whose `temp_f` paths Phase 18 does NOT change. Future parity cases that exercise the AWC live window WILL surface the integer-°F shift; this release confirms the existing 5 cases remain valid baselines.
