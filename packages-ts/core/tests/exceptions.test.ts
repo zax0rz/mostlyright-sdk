@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   AuthenticationError,
+  DATA_AVAILABILITY_REASONS,
+  DataAvailabilityError,
   DeferredMarketError,
   ForbiddenError,
   LeakageError,
@@ -151,6 +153,85 @@ describe("SourceUnavailableError", () => {
       underlying: "TimeoutError",
       url: "https://mesonet.agron.iastate.edu",
     });
+  });
+});
+
+describe("DataAvailabilityError (Phase 21 21-09)", () => {
+  it("default error code is DATA_AVAILABILITY", () => {
+    const err = new DataAvailabilityError({
+      reason: "out_of_window",
+      hint: "AWC only serves last 168h",
+      source: "awc",
+    });
+    expect(err.errorCode).toBe("DATA_AVAILABILITY");
+    expect(err.reason).toBe("out_of_window");
+    expect(err.hint).toBe("AWC only serves last 168h");
+    expect(err.source).toBe("awc");
+  });
+
+  it("source defaults to null when not provided", () => {
+    const err = new DataAvailabilityError({
+      reason: "cache_miss",
+      hint: "no cached value for this window",
+    });
+    expect(err.source).toBeNull();
+  });
+
+  it("is a subclass of TradewindsError (catchable as TradewindsError)", () => {
+    const err = new DataAvailabilityError({
+      reason: "rate_limited",
+      hint: "back off",
+    });
+    expect(err).toBeInstanceOf(TradewindsError);
+    expect(err).toBeInstanceOf(Error);
+    expect(err).toBeInstanceOf(DataAvailabilityError);
+  });
+
+  it("rejects unknown reason at construction (RangeError)", () => {
+    expect(
+      () =>
+        new DataAvailabilityError({
+          reason: "totally_made_up" as never,
+          hint: "x",
+        }),
+    ).toThrow(RangeError);
+  });
+
+  it("requires non-empty hint (TypeError on empty)", () => {
+    expect(
+      () =>
+        new DataAvailabilityError({
+          reason: "out_of_window",
+          hint: "",
+        }),
+    ).toThrow(TypeError);
+  });
+
+  it("surfaces reason + hint in toDict()", () => {
+    const err = new DataAvailabilityError({
+      reason: "model_unavailable",
+      hint: "hosted ingest API ships in v0.2.x",
+      source: "nwp-stub",
+    });
+    expect(err.toDict()).toEqual({
+      error_code: "DATA_AVAILABILITY",
+      message: "[model_unavailable] hosted ingest API ships in v0.2.x",
+      source: "nwp-stub",
+      request_id: null,
+      reason: "model_unavailable",
+      hint: "hosted ingest API ships in v0.2.x",
+    });
+  });
+
+  it("DATA_AVAILABILITY_REASONS enum matches Python lockstep", () => {
+    expect([...DATA_AVAILABILITY_REASONS]).toEqual([
+      "model_unavailable",
+      "out_of_window",
+      "cache_miss",
+      "source_404",
+      "source_5xx",
+      "rate_limited",
+    ]);
   });
 });
 
