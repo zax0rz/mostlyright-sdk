@@ -25,7 +25,7 @@ def floor_to_cycle(
     value: datetime,
     cycle_hours: tuple[int, ...],
 ) -> datetime:
-    """Snap ``value`` down to the most recent cycle-hour ≤ value.
+    """Snap ``value`` down to the most recent cycle-hour <= value.
 
     Args:
         value: tz-aware UTC datetime.
@@ -34,7 +34,7 @@ def floor_to_cycle(
 
     Returns:
         A datetime aligned to one of ``cycle_hours`` on the same calendar
-        day as ``value`` if any cycle ≤ ``value.hour`` exists; otherwise
+        day as ``value`` if any cycle <= ``value.hour`` exists; otherwise
         the latest cycle of the prior UTC day.
 
     Raises:
