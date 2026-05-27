@@ -6,6 +6,16 @@ All notable changes to `mostlyright`. The format follows [Keep a Changelog](http
 
 (next changes land here)
 
+## [1.1.1] — 2026-05-27
+
+Registry-copy refresh. No runtime API or source-code behavior changes.
+
+### Changed
+- **README:** add PyPI/npm monthly download badges, keep the public-data positioning beyond weather-only, and surface package-level download badges for stable Python and TypeScript packages.
+- **PyPI metadata:** add Homepage, Documentation, Repository, Issues, and Changelog URLs to all three Python distributions; broaden the core `mostlyrightmd` package description beyond weather-only.
+- **npm metadata:** add homepage, repository, and issue-tracker fields to all four published TypeScript packages; broaden the `@mostlyrightmd/core` description beyond weather-only.
+- **Docs:** refresh the Sphinx landing description to position the SDK as public-data prediction-market research, not only weather settlement research.
+
 ## [1.1.0] — 2026-05-27
 
 Phase 18 release. Recovers native integer-°F precision for U.S. ASOS stations and fixes the `temp_f` false-precision bug surfaced in issue [#16](https://github.com/mostlyrightmd/mostlyright-sdk/issues/16). ASOS sensors observe in integer °F; the Tgroup in METAR remarks (`T########`) is a downstream encoding of the whole-°F internal value, not an independent precision tier. Pre-Phase-18 code back-converted Tgroup tenths-°C → °F via `celsius_to_fahrenheit()`, producing artifacts like `80.06°F` where the native reading was `80°F`. After this release, `temp_f` is integer-valued for ASOS rows recovered from Tgroup; non-Tgroup (international) stations keep the legacy float path.

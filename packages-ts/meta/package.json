@@ -1,8 +1,17 @@
 {
   "name": "mostlyright",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Convenience meta-package for the mostlyright TypeScript SDK. Re-exports @mostlyrightmd/core + @mostlyrightmd/weather + @mostlyrightmd/markets so a single `import { research } from 'mostlyright'` works.",
   "license": "MIT",
+  "homepage": "https://mostlyright.md/docs/sdk/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mostlyrightmd/mostlyright-sdk.git",
+    "directory": "packages-ts/meta"
+  },
+  "bugs": {
+    "url": "https://github.com/mostlyrightmd/mostlyright-sdk/issues"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",

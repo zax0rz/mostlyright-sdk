@@ -1,7 +1,7 @@
 [project]
 name = "mostlyrightmd"
-version = "1.1.0"
-description = "Local-first Python SDK for prediction-market weather research. Calls AWC, IEM, GHCNh, and NWS CLI directly; no hosted backend. Exposes research(station, from_date, to_date) for joined observation + climate rows. Imports as `mostlyright`."
+version = "1.1.1"
+description = "Local-first Python SDK for prediction-market research over public data: weather settlements, forecasts, market metadata, and temporal-safety primitives. Imports as `mostlyright`."
 readme = "README.md"
 license = "MIT"
 authors = [{ name = "Robert Tarabcak", email = "tarabcakr@gmail.com" }]
@@ -15,6 +15,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
+
 dependencies = [
     # Pinned to v0.14.1 mostlyright deps for inherited test coverage (per TODOS.md item 1)
     "httpx>=0.27",
@@ -26,6 +27,13 @@ dependencies = [
     # Users who want `mostlyright.research()` install `mostlyrightmd[research]`
     # (or `mostlyrightmd-weather` directly, which depends on core transitively).
 ]
+
+[project.urls]
+Homepage = "https://mostlyright.md"
+Documentation = "https://mostlyright.md/docs/sdk/"
+Repository = "https://github.com/mostlyrightmd/mostlyright-sdk"
+Issues = "https://github.com/mostlyrightmd/mostlyright-sdk/issues"
+Changelog = "https://github.com/mostlyrightmd/mostlyright-sdk/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 # DataFrame return + parquet cache. Matches v0.14.1's [parquet] extra.

@@ -1,8 +1,17 @@
 {
   "name": "@mostlyrightmd/core",
-  "version": "1.1.0",
-  "description": "Local-first TypeScript SDK core for prediction-market weather research: types, schemas, validators, temporal-safety primitives, and the research() join.",
+  "version": "1.1.1",
+  "description": "Local-first TypeScript SDK core for prediction-market research over public data: types, schemas, validators, temporal-safety primitives, and the research() join.",
   "license": "MIT",
+  "homepage": "https://mostlyright.md/docs/sdk/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mostlyrightmd/mostlyright-sdk.git",
+    "directory": "packages-ts/core"
+  },
+  "bugs": {
+    "url": "https://github.com/mostlyrightmd/mostlyright-sdk/issues"
+  },
   "type": "module",
   "sideEffects": false,
   "main": "./dist/index.cjs",
