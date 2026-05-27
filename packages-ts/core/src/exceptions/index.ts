@@ -595,7 +595,7 @@ export class NoLiveDataError extends LiveStreamError {
 
   readonly station: string;
 
-  constructor(message, options: NoLiveDataErrorOptions) {
+  constructor(message: string, options: NoLiveDataErrorOptions) {
     super(message, { ...options, source: options.source });
     this.station = options.station;
   }

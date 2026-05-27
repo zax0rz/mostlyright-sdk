@@ -1,3 +1,4 @@
+// Phase 21 21-01 additions: composable kwargs ported from Python.
 // `research()` orchestrator — TS-W2 multi-source Mode 1 join.
 //
 // Wires all four observation sources (AWC live, IEM ASOS archive, GHCNh
@@ -14,6 +15,7 @@
 // are sequential — fine for the parity gate; performance work is later.
 
 import {
+  DataAvailabilityError,
   NotFoundError,
   STATION_BY_CODE,
   STATION_BY_ICAO,
@@ -50,6 +52,7 @@ import {
   parseGhcnhPsv,
   parseIemCsv,
 } from "@mostlyrightmd/weather";
+import { type ResearchKwargsExtension, validateResearchKwargs } from "./research.types.js";
 
 // Re-export PairsRow so callers can `import { research, type PairsRow } from "mostlyright"`.
 export type { PairsRow } from "@mostlyrightmd/core/internal/pairs";
@@ -60,7 +63,7 @@ const AWC_MAX_HOURS = 168;
 // Public types
 // ---------------------------------------------------------------------------
 
-export interface ResearchOptions {
+export interface ResearchOptions extends ResearchKwargsExtension {
   /** Forward to all underlying fetchers; aborts the whole pipeline. */
   signal?: AbortSignal;
   /** AWC lookback window in hours. Default 168 (AWC max). Clamped by the fetcher. */
@@ -795,6 +798,32 @@ export async function research(
   toDate: string,
   opts: ResearchOptions = {},
 ): Promise<ReadonlyArray<PairsRow>> {
+  // ── Phase 21 21-01 kwarg validation (lockstep with Python) ───────────
+  //
+  // Surfaces unknown-key typos, mutually-exclusive misuse (sources/source,
+  // forecast_model/forecast_models), and silent-no-op cases
+  // (forecast_model without include_forecast) up-front. Mirrors the Python
+  // `_validate_research_kwargs` guard.
+  validateResearchKwargs(opts as Readonly<Record<string, unknown>>);
+
+  // Phase 21 21-01 D-03: `backend="polars"` is accepted-for-surface but
+  // rejected at runtime since TS has no Polars equivalent (bundle-size
+  // killer in browser; not viable in Node either without the optional
+  // native binding). DataAvailabilityError(reason="model_unavailable")
+  // matches the cross-SDK typed-exception contract from 21-09.
+  if (opts.backend === "polars") {
+    throw new DataAvailabilityError({
+      reason: "model_unavailable",
+      hint:
+        "polars backend not available in TypeScript SDK; use Python " +
+        '(mostlyrightmd) for backend="polars". TS returns plain object arrays.',
+      source: "research.backend",
+    });
+  }
+  // `return_type="wrapper"` is also a D-03 no-op — TS arrays don't have the
+  // pandas `.attrs` divergence problem a Python wrapper compensates for, so
+  // we accept the kwarg for surface-equivalence and return the plain shape.
+
   // ── Phase 10 selector + cross-arg validation ─────────────────────────
   //
   // The TS signature pre-dates Phase 10's composable kwargs, so the
