@@ -47,60 +47,74 @@ from collections.abc import Iterator
 #   - `!/?`:   HTML comments / closing tags / processing instructions
 _TAG_OPEN_RE = re.compile(r"<(?=[A-Za-z0-9!/?])")
 _JSX_EXPR_RE = re.compile(r"\{(?=[A-Za-z_])")
-_FENCE_RE = re.compile(r"^\s*```")
 
+# Fenced-code-block opener. Captures the leading whitespace (indent), the
+# fence run (3+ backticks OR 3+ tildes), and the trailing info-string.
+# Markdown spec (CommonMark §4.5): a fence closes only on a line whose
+# fence run is ≥ the opener's length AND uses the same character. Inner
+# fences shorter than the opener stay inside the block.
+_FENCE_RE = re.compile(r"^(?P<indent>\s{0,3})(?P<fence>`{3,}|~{3,})(?P<info>.*)$")
 
-def _split_by_backticks(line: str) -> Iterator[tuple[str, bool]]:
-    """Yield ``(chunk, in_code)`` for each segment of a line.
-
-    Inline backtick code spans are delimited by ``` ` ``` (single, double,
-    or triple — markdown counts them, but for CHANGELOG entries single
-    backticks dominate). Treat any backtick as a toggle. Mismatched
-    backticks fall back to "the rest of the line is outside-code" so we
-    still escape the tail (defensive default).
-    """
-    # Markdown's actual backtick rules are subtle (run-length must match).
-    # For the changelog use-case, single-backtick spans are universal —
-    # the simple toggle handles them. Multi-backtick spans wrapping a
-    # literal backtick are vanishingly rare in CHANGELOG prose.
-    cur: list[str] = []
-    in_code = False
-    for ch in line:
-        if ch == "`":
-            if cur:
-                yield ("".join(cur), in_code)
-                cur = []
-            in_code = not in_code
-            cur.append(ch)
-        else:
-            cur.append(ch)
-    if cur:
-        yield ("".join(cur), in_code)
+# Paired inline-code span: backtick + non-backtick body + backtick.
+# Treats `text` as code, leaving stray unmatched backticks alone.
+# CommonMark allows multi-backtick spans (``code with ` in it``); for
+# CHANGELOG prose, single-backtick spans dominate. The pattern below is
+# greedy on the inner body but bounded by the next backtick — matches
+# both ``code`` and `code`. Unmatched backticks are left as literals in
+# the surrounding "outside" portion so the JSX-hostile escapes still
+# fire on the rest of the line (PR #34 iter-2 codex HIGH fix).
+_INLINE_CODE_RE = re.compile(r"(`+)(?:(?!\1).)+?\1")
 
 
 def _escape_outside_code(line: str) -> str:
     parts: list[str] = []
-    for chunk, in_code in _split_by_backticks(line):
-        if in_code:
-            parts.append(chunk)
-        else:
-            chunk = _TAG_OPEN_RE.sub("&lt;", chunk)
-            chunk = _JSX_EXPR_RE.sub("&#123;", chunk)
-            parts.append(chunk)
+    last_end = 0
+    for m in _INLINE_CODE_RE.finditer(line):
+        # Escape the prose stretch between the previous span and this one.
+        outside = line[last_end : m.start()]
+        outside = _TAG_OPEN_RE.sub("&lt;", outside)
+        outside = _JSX_EXPR_RE.sub("&#123;", outside)
+        parts.append(outside)
+        # Keep the inline-code span verbatim.
+        parts.append(m.group(0))
+        last_end = m.end()
+    # Escape the tail (after the last span, or the whole line if no spans).
+    tail = line[last_end:]
+    tail = _TAG_OPEN_RE.sub("&lt;", tail)
+    tail = _JSX_EXPR_RE.sub("&#123;", tail)
+    parts.append(tail)
     return "".join(parts)
 
 
 def escape(stream: Iterator[str]) -> Iterator[str]:
-    """Yield escaped lines (including trailing newline)."""
-    in_fence = False
+    """Yield escaped lines (including trailing newline).
+
+    Tracks fenced-code-block state with proper close-fence semantics
+    (matching character + ≥ opening length). Inner shorter fences inside
+    a longer outer fence are passed through verbatim, not treated as
+    closes (PR #34 iter-2 codex HIGH fix — nested fence handling).
+    """
+    in_fence_char: str = ""  # "" = not in fence, else "`" or "~"
+    in_fence_len: int = 0
     for raw in stream:
-        # Preserve original line ending; operate on the content.
         line = raw.rstrip("\n")
-        if _FENCE_RE.match(line):
-            in_fence = not in_fence
+        m = _FENCE_RE.match(line)
+        if m:
+            run = m.group("fence")
+            ch = run[0]
+            run_len = len(run)
+            if in_fence_char == "":
+                # Opening fence.
+                in_fence_char = ch
+                in_fence_len = run_len
+            elif ch == in_fence_char and run_len >= in_fence_len:
+                # Matching-char close fence of sufficient length.
+                in_fence_char = ""
+                in_fence_len = 0
+            # Else: inner shorter fence — stay in-fence.
             yield raw
             continue
-        if in_fence:
+        if in_fence_char != "":
             yield raw
             continue
         escaped = _escape_outside_code(line)
