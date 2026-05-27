@@ -4,7 +4,7 @@
 # Runs the Sphinx Markdown builder against `docs/sphinx/`, materializing
 # MDX-friendly Markdown under `docs/sphinx/_build/markdown/`. The
 # `_build/markdown/api/` subtree is consumed by `.github/workflows/docs-publish.yml`
-# (Phase 15 W3) — copied into the `mostly-right-landing` repo on every `v*`
+# (Phase 15 W3) — copied into the `mostlyright-landing` repo on every `v*`
 # non-rc tag.
 #
 # Usage (local):
