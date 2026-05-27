@@ -31,6 +31,10 @@ export default defineConfig({
         replacement: resolve(__dirname, "../core/src/discovery/index.ts"),
       },
       {
+        find: "@mostlyrightmd/core/temporal",
+        replacement: resolve(__dirname, "../core/src/temporal/index.ts"),
+      },
+      {
         find: "@mostlyrightmd/core",
         replacement: resolve(__dirname, "../core/src/index.ts"),
       },
