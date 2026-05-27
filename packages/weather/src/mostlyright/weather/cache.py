@@ -493,6 +493,135 @@ def _has_cached_year(
     return any(year_dir.glob("*.parquet"))
 
 
+# ---------------------------------------------------------------------------
+# Phase 20 OM-06: forecast cache tier
+# ---------------------------------------------------------------------------
+def forecast_cache_path(
+    station: str,
+    source: str,
+    model: str,
+    year: int,
+    month: int,
+) -> Path:
+    """Return the parquet cache path for the (station, source, model, year,
+    month) tuple per Phase 20 D-09.
+
+    Layout::
+
+        ~/.mostlyright/cache/v1/forecasts/{source}/{model}/{station}/{YYYY}/{MM}.parquet
+
+    Partition by ``issued_at`` cycle month (immutable once published).
+    """
+    validate_icao_for_path(station, field="station")
+    root = _cache_root()
+    raw = (
+        root
+        / CACHE_VERSION
+        / "forecasts"
+        / source
+        / model
+        / station
+        / f"{year:04d}"
+        / f"{month:02d}.parquet"
+    )
+    assert_path_under(raw, root, field="forecast_cache_path")
+    return raw
+
+
+def _is_seamless_source(source: str | None) -> bool:
+    """True if ``source`` is the banned Open-Meteo seamless endpoint."""
+    return source == "open_meteo.seamless"
+
+
+def read_forecast_cache(
+    station: str,
+    source: str,
+    model: str,
+    year: int,
+    month: int,
+) -> list[dict] | None:
+    """Return cached forecast rows for the partition key or ``None`` on miss.
+
+    Returns ``None`` when:
+        - the partition file does not exist
+        - ``source`` is live or seamless (never cached)
+        - (year, month) is the current UTC month (cycles may still publish)
+    """
+    if _is_live_source(source) or _is_seamless_source(source):
+        return None
+    now = datetime.now(UTC)
+    if year == now.year and month == now.month:
+        return None
+    path = forecast_cache_path(station, source, model, year, month)
+    if not path.exists():
+        return None
+    try:
+        table = pq.read_table(path)
+    except (FileNotFoundError, OSError):
+        return None
+    return table.to_pylist()
+
+
+def write_forecast_cache(
+    station: str,
+    source: str,
+    model: str,
+    year: int,
+    month: int,
+    rows: list[dict],
+) -> None:
+    """Atomically write ``rows`` to the forecast cache partition.
+
+    No-op (does NOT raise) when:
+        - ``source`` is live or seamless (never cached)
+        - (year, month) is the current UTC month (cycles may still publish)
+        - ``rows`` is empty
+    """
+    if _is_live_source(source) or _is_seamless_source(source):
+        logger.debug(
+            "forecast cache write: skipping ineligible source %r for %s/%s %04d-%02d",
+            source,
+            station,
+            model,
+            year,
+            month,
+        )
+        return
+    now = datetime.now(UTC)
+    if year == now.year and month == now.month:
+        logger.debug(
+            "forecast cache write: skipping current UTC month for %s/%s %04d-%02d",
+            station,
+            model,
+            year,
+            month,
+        )
+        return
+    if not rows:
+        return
+    table = pa.Table.from_pylist(rows)
+    _atomic_write(forecast_cache_path(station, source, model, year, month), table)
+
+
+def invalidate_forecast(
+    station: str,
+    source: str,
+    model: str,
+    year: int,
+    month: int,
+) -> bool:
+    """Remove a forecast cache partition if it exists; return whether removed."""
+    path = forecast_cache_path(station, source, model, year, month)
+    if path.exists():
+        with FileLock(str(path) + ".lock", timeout=LOCK_TIMEOUT_SECONDS):
+            try:
+                path.unlink()
+                return True
+            except FileNotFoundError:
+                return False
+    return False
+
+
 __all__ = [
     "CACHE_VERSION",
     "DEFAULT_ROOT",
@@ -501,10 +630,14 @@ __all__ = [
     "_has_cached_year",
     "cache_path",
     "climate_cache_path",
+    "forecast_cache_path",
     "invalidate",
     "invalidate_climate",
+    "invalidate_forecast",
     "read_cache",
     "read_climate_cache",
+    "read_forecast_cache",
     "write_cache",
     "write_climate_cache",
+    "write_forecast_cache",
 ]

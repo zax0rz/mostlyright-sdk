@@ -2,13 +2,43 @@
   "$id": "https://mostlyright.dev/schemas/schema.forecast.iem_mos.v1.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "imperialRenames": {
+    "apparent_temp_c": "apparent_temp_F",
     "dew_point_c": "dew_point_F",
     "temp_c": "temp_F",
+    "wind_gusts_ms": "wind_gusts_kt",
     "wind_speed_ms": "wind_speed_kt"
   },
   "properties": {
+    "apparent_temp_c": {
+      "description": "units: celsius",
+      "type": [
+        "null",
+        "number"
+      ]
+    },
+    "cape_jkg": {
+      "description": "units: J/kg",
+      "type": [
+        "null",
+        "number"
+      ]
+    },
+    "cloud_cover_pct": {
+      "description": "units: percent",
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
     "dew_point_c": {
       "description": "units: celsius",
+      "type": [
+        "null",
+        "number"
+      ]
+    },
+    "direct_radiation_wm2": {
+      "description": "units: W/m^2",
       "type": [
         "null",
         "number"
@@ -18,17 +48,53 @@
       "description": "units: hours \u2014 (valid_at - issued_at).total_seconds() / 3600",
       "type": "integer"
     },
+    "freezing_level_m": {
+      "description": "units: meters",
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
     "issued_at": {
-      "description": "model run time (from source `runtime` field)",
+      "description": "model run time (knowledge_time). Nullable to accommodate Phase 20 open_meteo.seamless rows whose cycle is unrecoverable from the response. LeakageDetector + assert_issued_at_populated() are the runtime gates that reject null issued_at in training-data paths.",
       "format": "date-time",
-      "type": "string"
+      "type": [
+        "null",
+        "string"
+      ]
     },
     "model": {
-      "description": "e.g. NBE, GFS, LAV, MET",
+      "description": "e.g. NBE, GFS, LAV, MET, gfs_global, ecmwf_ifs025",
       "type": "string"
     },
     "precip_probability": {
       "description": "units: probability \u2014 bounded [0, 1]",
+      "type": [
+        "null",
+        "number"
+      ]
+    },
+    "precipitation_mm": {
+      "description": "units: mm",
+      "type": [
+        "null",
+        "number"
+      ]
+    },
+    "pressure_msl_hpa": {
+      "description": "units: hPa",
+      "type": [
+        "null",
+        "number"
+      ]
+    },
+    "retrieved_at": {
+      "description": "wall-clock time the row was fetched from upstream",
+      "format": "date-time",
+      "type": "string"
+    },
+    "shortwave_radiation_wm2": {
+      "description": "units: W/m^2",
       "type": [
         "null",
         "number"
@@ -41,8 +107,26 @@
         "null"
       ]
     },
+    "snow_depth_m": {
+      "description": "units: meters",
+      "type": [
+        "null",
+        "number"
+      ]
+    },
+    "source": {
+      "description": "iem.archive | open_meteo.previous_runs | open_meteo.single_run | open_meteo.live",
+      "type": "string"
+    },
     "station": {
       "type": "string"
+    },
+    "surface_pressure_hpa": {
+      "description": "units: hPa",
+      "type": [
+        "null",
+        "number"
+      ]
     },
     "temp_c": {
       "description": "units: celsius",
@@ -52,15 +136,36 @@
       ]
     },
     "valid_at": {
-      "description": "forecast target time (from source `ftime`)",
+      "description": "forecast target time (event_time)",
       "format": "date-time",
       "type": "string"
+    },
+    "visibility_m": {
+      "description": "units: meters",
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "weather_code": {
+      "description": "units: WMO 4677 \u2014 WMO weather code (clear, fog, rain, snow, etc.)",
+      "type": [
+        "integer",
+        "null"
+      ]
     },
     "wind_dir_deg": {
       "description": "units: degrees",
       "type": [
         "integer",
         "null"
+      ]
+    },
+    "wind_gusts_ms": {
+      "description": "units: m/s",
+      "type": [
+        "null",
+        "number"
       ]
     },
     "wind_speed_ms": {
@@ -73,8 +178,9 @@
   },
   "required": [
     "forecast_hour",
-    "issued_at",
     "model",
+    "retrieved_at",
+    "source",
     "station",
     "valid_at"
   ],

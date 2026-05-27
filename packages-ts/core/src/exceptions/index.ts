@@ -473,6 +473,96 @@ export class LeakageError extends TradewindsError {
 }
 
 // ---------------------------------------------------------------------------
+// IssuedAtMissingError (Phase 20 OM-04)
+// ---------------------------------------------------------------------------
+
+export interface IssuedAtMissingErrorOptions extends TradewindsErrorOptions {
+  violatingCount?: number;
+  sampleViolations?: Array<Record<string, unknown>>;
+}
+
+/**
+ * A forecast row would land with `issuedAt = null`.
+ *
+ * Phase 20 OM-04. Origin: Tarabcak/mostlyright#70 — the legacy
+ * seamless-feed bug where `/forecast_series` proxied Open-Meteo's
+ * seamless endpoint without preserving `issued_at`, silently using
+ * post-snapshot model runs in training data.
+ */
+export class IssuedAtMissingError extends SchemaValidationError {
+  static override defaultErrorCode = "ISSUED_AT_MISSING";
+
+  readonly violatingCountRows: number;
+
+  constructor(message: string, options: IssuedAtMissingErrorOptions = {}) {
+    super(message, {
+      ...options,
+      schemaId: "schema.forecast.station.v1",
+      violations: [{ column: "issued_at", rule: "non_null" }],
+    });
+    this.violatingCountRows = options.violatingCount ?? 0;
+  }
+
+  protected override payload(): Record<string, unknown> {
+    return {
+      ...super.payload(),
+      name: "IssuedAtMissingError",
+      violating_count: this.violatingCountRows,
+      origin_issue: "Tarabcak/mostlyright#70",
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// OpenMeteoSeamlessLeakageError (Phase 20 OM-04)
+// ---------------------------------------------------------------------------
+
+export interface OpenMeteoSeamlessLeakageErrorOptions extends TradewindsErrorOptions {
+  model: string;
+  endpointUrl: string;
+  asOf?: string | null;
+}
+
+/**
+ * The Open-Meteo Historical Forecast (seamless) endpoint was used
+ * without `allowLeakage: true`.
+ *
+ * Phase 20 D-01 (locked decision): the seamless endpoint silently
+ * stitches forecasts from multiple model cycles into a continuous
+ * timeseries; the cycle that produced each value is unrecoverable from
+ * the response. `LeakageDetector` rejects rows tagged
+ * `source="open_meteo.seamless"` whenever `as_of` is asserted.
+ *
+ * Origin: Tarabcak/mostlyright#70.
+ */
+export class OpenMeteoSeamlessLeakageError extends LeakageError {
+  static override defaultErrorCode = "OPEN_METEO_SEAMLESS_LEAKAGE";
+
+  readonly model: string;
+  readonly endpointUrl: string;
+
+  constructor(message: string, options: OpenMeteoSeamlessLeakageErrorOptions) {
+    super(message, {
+      ...options,
+      asOf: options.asOf ?? "(seamless-endpoint-refused-before-fetch)",
+      violatingCount: 0,
+    });
+    this.model = options.model;
+    this.endpointUrl = options.endpointUrl;
+  }
+
+  protected override payload(): Record<string, unknown> {
+    return {
+      ...super.payload(),
+      name: "OpenMeteoSeamlessLeakageError",
+      model: this.model,
+      endpoint_url: this.endpointUrl,
+      origin_issue: "Tarabcak/mostlyright#70",
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // TemporalDriftError
 // ---------------------------------------------------------------------------
 

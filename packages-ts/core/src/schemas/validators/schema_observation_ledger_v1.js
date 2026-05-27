@@ -3,14 +3,14 @@
 // Last manifest SHA recorded in schemas/EXPORT_MANIFEST.json
 
 "use strict";
-export const schema_observation_ledger_v1 = validate23;
-const schema34 = {"$id":"https://mostlyright.dev/schemas/schema.observation_ledger.v1.json","$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"as_of_time":{"format":"date-time","type":["null","string"]},"dewpoint_c":{"description":"units: celsius","type":["null","number"]},"ingestion_id":{"type":["null","string"]},"observation_kind":{"enum":["METAR","SPECI",null],"type":["null","string"]},"observation_quality":{"description":"Lineage row-quality flag per LINEAGE-01; distinct from qc_status enum slot AND distinct from the obs_qc_status bitmask column per QC-05.","enum":["clean","flagged","suspect",null],"type":["null","string"]},"observation_type":{"enum":["METAR","SPECI"],"type":"string"},"observed_at":{"format":"date-time","type":"string"},"parser_name":{"enum":["ghcnh","iem","mostlyright_v1","ncei",null],"type":["null","string"]},"parser_version":{"type":["null","string"]},"provenance":{"enum":["legacy","reingested",null],"type":["null","string"]},"qc_status":{"enum":["clean","flagged","suspect",null],"type":["null","string"]},"source":{"description":"ncei reserved per D-2.1-09; never written in v0.1.0.","enum":["awc","ghcnh","iem","ncei"],"type":"string"},"source_received_at":{"type":["null","string"]},"station_code":{"type":"string"},"temp_c":{"description":"units: celsius","type":["null","number"]}},"required":["observation_type","observed_at","source","station_code"],"title":"schema.observation_ledger.v1","type":"object","version":"v1"};
+export const schema_observation_ledger_v1 = validate24;
+const schema35 = {"$id":"https://mostlyright.dev/schemas/schema.observation_ledger.v1.json","$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"as_of_time":{"format":"date-time","type":["null","string"]},"dewpoint_c":{"description":"units: celsius","type":["null","number"]},"ingestion_id":{"type":["null","string"]},"observation_kind":{"enum":["METAR","SPECI",null],"type":["null","string"]},"observation_quality":{"description":"Lineage row-quality flag per LINEAGE-01; distinct from qc_status enum slot AND distinct from the obs_qc_status bitmask column per QC-05.","enum":["clean","flagged","suspect",null],"type":["null","string"]},"observation_type":{"enum":["METAR","SPECI"],"type":"string"},"observed_at":{"format":"date-time","type":"string"},"parser_name":{"enum":["ghcnh","iem","mostlyright_v1","ncei",null],"type":["null","string"]},"parser_version":{"type":["null","string"]},"provenance":{"enum":["legacy","reingested",null],"type":["null","string"]},"qc_status":{"enum":["clean","flagged","suspect",null],"type":["null","string"]},"source":{"description":"ncei reserved per D-2.1-09; never written in v0.1.0.","enum":["awc","ghcnh","iem","ncei"],"type":"string"},"source_received_at":{"type":["null","string"]},"station_code":{"type":"string"},"temp_c":{"description":"units: celsius","type":["null","number"]}},"required":["observation_type","observed_at","source","station_code"],"title":"schema.observation_ledger.v1","type":"object","version":"v1"};
 
-function validate23(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
+function validate24(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
 /*# sourceURL="https://mostlyright.dev/schemas/schema.observation_ledger.v1.json" */;
 let vErrors = null;
 let errors = 0;
-const evaluated0 = validate23.evaluated;
+const evaluated0 = validate24.evaluated;
 if(evaluated0.dynamicProps){
 evaluated0.props = undefined;
 }
@@ -61,7 +61,7 @@ errors++;
 if(data.as_of_time !== undefined){
 let data0 = data.as_of_time;
 if((data0 !== null) && (typeof data0 !== "string")){
-const err4 = {instancePath:instancePath+"/as_of_time",schemaPath:"#/properties/as_of_time/type",keyword:"type",params:{type: schema34.properties.as_of_time.type},message:"must be null,string"};
+const err4 = {instancePath:instancePath+"/as_of_time",schemaPath:"#/properties/as_of_time/type",keyword:"type",params:{type: schema35.properties.as_of_time.type},message:"must be null,string"};
 if(vErrors === null){
 vErrors = [err4];
 }
@@ -74,7 +74,7 @@ errors++;
 if(data.dewpoint_c !== undefined){
 let data1 = data.dewpoint_c;
 if((data1 !== null) && (!(typeof data1 == "number"))){
-const err5 = {instancePath:instancePath+"/dewpoint_c",schemaPath:"#/properties/dewpoint_c/type",keyword:"type",params:{type: schema34.properties.dewpoint_c.type},message:"must be null,number"};
+const err5 = {instancePath:instancePath+"/dewpoint_c",schemaPath:"#/properties/dewpoint_c/type",keyword:"type",params:{type: schema35.properties.dewpoint_c.type},message:"must be null,number"};
 if(vErrors === null){
 vErrors = [err5];
 }
@@ -87,7 +87,7 @@ errors++;
 if(data.ingestion_id !== undefined){
 let data2 = data.ingestion_id;
 if((data2 !== null) && (typeof data2 !== "string")){
-const err6 = {instancePath:instancePath+"/ingestion_id",schemaPath:"#/properties/ingestion_id/type",keyword:"type",params:{type: schema34.properties.ingestion_id.type},message:"must be null,string"};
+const err6 = {instancePath:instancePath+"/ingestion_id",schemaPath:"#/properties/ingestion_id/type",keyword:"type",params:{type: schema35.properties.ingestion_id.type},message:"must be null,string"};
 if(vErrors === null){
 vErrors = [err6];
 }
@@ -100,7 +100,7 @@ errors++;
 if(data.observation_kind !== undefined){
 let data3 = data.observation_kind;
 if((data3 !== null) && (typeof data3 !== "string")){
-const err7 = {instancePath:instancePath+"/observation_kind",schemaPath:"#/properties/observation_kind/type",keyword:"type",params:{type: schema34.properties.observation_kind.type},message:"must be null,string"};
+const err7 = {instancePath:instancePath+"/observation_kind",schemaPath:"#/properties/observation_kind/type",keyword:"type",params:{type: schema35.properties.observation_kind.type},message:"must be null,string"};
 if(vErrors === null){
 vErrors = [err7];
 }
@@ -110,7 +110,7 @@ vErrors.push(err7);
 errors++;
 }
 if(!(((data3 === "METAR") || (data3 === "SPECI")) || (data3 === null))){
-const err8 = {instancePath:instancePath+"/observation_kind",schemaPath:"#/properties/observation_kind/enum",keyword:"enum",params:{allowedValues: schema34.properties.observation_kind.enum},message:"must be equal to one of the allowed values"};
+const err8 = {instancePath:instancePath+"/observation_kind",schemaPath:"#/properties/observation_kind/enum",keyword:"enum",params:{allowedValues: schema35.properties.observation_kind.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err8];
 }
@@ -123,7 +123,7 @@ errors++;
 if(data.observation_quality !== undefined){
 let data4 = data.observation_quality;
 if((data4 !== null) && (typeof data4 !== "string")){
-const err9 = {instancePath:instancePath+"/observation_quality",schemaPath:"#/properties/observation_quality/type",keyword:"type",params:{type: schema34.properties.observation_quality.type},message:"must be null,string"};
+const err9 = {instancePath:instancePath+"/observation_quality",schemaPath:"#/properties/observation_quality/type",keyword:"type",params:{type: schema35.properties.observation_quality.type},message:"must be null,string"};
 if(vErrors === null){
 vErrors = [err9];
 }
@@ -133,7 +133,7 @@ vErrors.push(err9);
 errors++;
 }
 if(!((((data4 === "clean") || (data4 === "flagged")) || (data4 === "suspect")) || (data4 === null))){
-const err10 = {instancePath:instancePath+"/observation_quality",schemaPath:"#/properties/observation_quality/enum",keyword:"enum",params:{allowedValues: schema34.properties.observation_quality.enum},message:"must be equal to one of the allowed values"};
+const err10 = {instancePath:instancePath+"/observation_quality",schemaPath:"#/properties/observation_quality/enum",keyword:"enum",params:{allowedValues: schema35.properties.observation_quality.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err10];
 }
@@ -156,7 +156,7 @@ vErrors.push(err11);
 errors++;
 }
 if(!((data5 === "METAR") || (data5 === "SPECI"))){
-const err12 = {instancePath:instancePath+"/observation_type",schemaPath:"#/properties/observation_type/enum",keyword:"enum",params:{allowedValues: schema34.properties.observation_type.enum},message:"must be equal to one of the allowed values"};
+const err12 = {instancePath:instancePath+"/observation_type",schemaPath:"#/properties/observation_type/enum",keyword:"enum",params:{allowedValues: schema35.properties.observation_type.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err12];
 }
@@ -181,7 +181,7 @@ errors++;
 if(data.parser_name !== undefined){
 let data7 = data.parser_name;
 if((data7 !== null) && (typeof data7 !== "string")){
-const err14 = {instancePath:instancePath+"/parser_name",schemaPath:"#/properties/parser_name/type",keyword:"type",params:{type: schema34.properties.parser_name.type},message:"must be null,string"};
+const err14 = {instancePath:instancePath+"/parser_name",schemaPath:"#/properties/parser_name/type",keyword:"type",params:{type: schema35.properties.parser_name.type},message:"must be null,string"};
 if(vErrors === null){
 vErrors = [err14];
 }
@@ -191,7 +191,7 @@ vErrors.push(err14);
 errors++;
 }
 if(!(((((data7 === "ghcnh") || (data7 === "iem")) || (data7 === "mostlyright_v1")) || (data7 === "ncei")) || (data7 === null))){
-const err15 = {instancePath:instancePath+"/parser_name",schemaPath:"#/properties/parser_name/enum",keyword:"enum",params:{allowedValues: schema34.properties.parser_name.enum},message:"must be equal to one of the allowed values"};
+const err15 = {instancePath:instancePath+"/parser_name",schemaPath:"#/properties/parser_name/enum",keyword:"enum",params:{allowedValues: schema35.properties.parser_name.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err15];
 }
@@ -204,7 +204,7 @@ errors++;
 if(data.parser_version !== undefined){
 let data8 = data.parser_version;
 if((data8 !== null) && (typeof data8 !== "string")){
-const err16 = {instancePath:instancePath+"/parser_version",schemaPath:"#/properties/parser_version/type",keyword:"type",params:{type: schema34.properties.parser_version.type},message:"must be null,string"};
+const err16 = {instancePath:instancePath+"/parser_version",schemaPath:"#/properties/parser_version/type",keyword:"type",params:{type: schema35.properties.parser_version.type},message:"must be null,string"};
 if(vErrors === null){
 vErrors = [err16];
 }
@@ -217,7 +217,7 @@ errors++;
 if(data.provenance !== undefined){
 let data9 = data.provenance;
 if((data9 !== null) && (typeof data9 !== "string")){
-const err17 = {instancePath:instancePath+"/provenance",schemaPath:"#/properties/provenance/type",keyword:"type",params:{type: schema34.properties.provenance.type},message:"must be null,string"};
+const err17 = {instancePath:instancePath+"/provenance",schemaPath:"#/properties/provenance/type",keyword:"type",params:{type: schema35.properties.provenance.type},message:"must be null,string"};
 if(vErrors === null){
 vErrors = [err17];
 }
@@ -227,7 +227,7 @@ vErrors.push(err17);
 errors++;
 }
 if(!(((data9 === "legacy") || (data9 === "reingested")) || (data9 === null))){
-const err18 = {instancePath:instancePath+"/provenance",schemaPath:"#/properties/provenance/enum",keyword:"enum",params:{allowedValues: schema34.properties.provenance.enum},message:"must be equal to one of the allowed values"};
+const err18 = {instancePath:instancePath+"/provenance",schemaPath:"#/properties/provenance/enum",keyword:"enum",params:{allowedValues: schema35.properties.provenance.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err18];
 }
@@ -240,7 +240,7 @@ errors++;
 if(data.qc_status !== undefined){
 let data10 = data.qc_status;
 if((data10 !== null) && (typeof data10 !== "string")){
-const err19 = {instancePath:instancePath+"/qc_status",schemaPath:"#/properties/qc_status/type",keyword:"type",params:{type: schema34.properties.qc_status.type},message:"must be null,string"};
+const err19 = {instancePath:instancePath+"/qc_status",schemaPath:"#/properties/qc_status/type",keyword:"type",params:{type: schema35.properties.qc_status.type},message:"must be null,string"};
 if(vErrors === null){
 vErrors = [err19];
 }
@@ -250,7 +250,7 @@ vErrors.push(err19);
 errors++;
 }
 if(!((((data10 === "clean") || (data10 === "flagged")) || (data10 === "suspect")) || (data10 === null))){
-const err20 = {instancePath:instancePath+"/qc_status",schemaPath:"#/properties/qc_status/enum",keyword:"enum",params:{allowedValues: schema34.properties.qc_status.enum},message:"must be equal to one of the allowed values"};
+const err20 = {instancePath:instancePath+"/qc_status",schemaPath:"#/properties/qc_status/enum",keyword:"enum",params:{allowedValues: schema35.properties.qc_status.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err20];
 }
@@ -273,7 +273,7 @@ vErrors.push(err21);
 errors++;
 }
 if(!((((data11 === "awc") || (data11 === "ghcnh")) || (data11 === "iem")) || (data11 === "ncei"))){
-const err22 = {instancePath:instancePath+"/source",schemaPath:"#/properties/source/enum",keyword:"enum",params:{allowedValues: schema34.properties.source.enum},message:"must be equal to one of the allowed values"};
+const err22 = {instancePath:instancePath+"/source",schemaPath:"#/properties/source/enum",keyword:"enum",params:{allowedValues: schema35.properties.source.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err22];
 }
@@ -286,7 +286,7 @@ errors++;
 if(data.source_received_at !== undefined){
 let data12 = data.source_received_at;
 if((data12 !== null) && (typeof data12 !== "string")){
-const err23 = {instancePath:instancePath+"/source_received_at",schemaPath:"#/properties/source_received_at/type",keyword:"type",params:{type: schema34.properties.source_received_at.type},message:"must be null,string"};
+const err23 = {instancePath:instancePath+"/source_received_at",schemaPath:"#/properties/source_received_at/type",keyword:"type",params:{type: schema35.properties.source_received_at.type},message:"must be null,string"};
 if(vErrors === null){
 vErrors = [err23];
 }
@@ -311,7 +311,7 @@ errors++;
 if(data.temp_c !== undefined){
 let data14 = data.temp_c;
 if((data14 !== null) && (!(typeof data14 == "number"))){
-const err25 = {instancePath:instancePath+"/temp_c",schemaPath:"#/properties/temp_c/type",keyword:"type",params:{type: schema34.properties.temp_c.type},message:"must be null,number"};
+const err25 = {instancePath:instancePath+"/temp_c",schemaPath:"#/properties/temp_c/type",keyword:"type",params:{type: schema35.properties.temp_c.type},message:"must be null,number"};
 if(vErrors === null){
 vErrors = [err25];
 }
@@ -332,7 +332,7 @@ vErrors.push(err26);
 }
 errors++;
 }
-validate23.errors = vErrors;
+validate24.errors = vErrors;
 return errors === 0;
 }
-validate23.evaluated = {"props":{"as_of_time":true,"dewpoint_c":true,"ingestion_id":true,"observation_kind":true,"observation_quality":true,"observation_type":true,"observed_at":true,"parser_name":true,"parser_version":true,"provenance":true,"qc_status":true,"source":true,"source_received_at":true,"station_code":true,"temp_c":true},"dynamicProps":false,"dynamicItems":false};
+validate24.evaluated = {"props":{"as_of_time":true,"dewpoint_c":true,"ingestion_id":true,"observation_kind":true,"observation_quality":true,"observation_type":true,"observed_at":true,"parser_name":true,"parser_version":true,"provenance":true,"qc_status":true,"source":true,"source_received_at":true,"station_code":true,"temp_c":true},"dynamicProps":false,"dynamicItems":false};

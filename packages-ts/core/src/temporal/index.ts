@@ -4,4 +4,4 @@
 
 export { TimePoint } from "./timepoint.js";
 export { KnowledgeView } from "./knowledge-view.js";
-export { LeakageDetector, assertNoLeakage } from "./leakage.js";
+export { LeakageDetector, assertIssuedAtPopulated, assertNoLeakage } from "./leakage.js";

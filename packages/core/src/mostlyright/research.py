@@ -1379,6 +1379,109 @@ def _validate_research_kwargs(
         )
 
 
+_FORECAST_SOURCES_ALLOWED: frozenset[str] = frozenset({"iem_mos", "open_meteo"})
+
+
+def _fetch_open_meteo_range(
+    info: StationInfo,
+    from_date: str,
+    to_date: str,
+    *,
+    model: str,
+) -> dict[str, list[dict[str, Any]]]:
+    """Phase 20 OM-05 — fetch Open-Meteo forecasts grouped by settlement date.
+
+    Wraps ``mostlyright.weather._fetchers._open_meteo.fetch_open_meteo`` in
+    training mode (Previous Runs API) and pivots its tabular DataFrame
+    into the ``{date_iso: [forecast_row, ...]}`` shape that
+    ``build_pairs(forecasts_by_date=...)`` expects. Each row carries
+    ``model`` / ``issued_at`` / ``valid_at`` / ``temperature_f`` /
+    ``pop_6hr_pct`` / ``qpf_6hr_in`` keys for build_pairs_row compatibility.
+    """
+    import pandas as pd
+
+    from mostlyright.weather._fetchers._open_meteo import fetch_open_meteo
+
+    df = fetch_open_meteo(info.icao, from_date, to_date, model=model, mode="training")
+    groups: dict[str, list[dict[str, Any]]] = {}
+    if df is None or df.empty:
+        return groups
+    for _, row in df.iterrows():
+        ftime = row.get("valid_at")
+        if ftime is None or (isinstance(ftime, float) and ftime != ftime):
+            continue
+        try:
+            ftime_dt = pd.to_datetime(ftime, utc=True)
+        except Exception:
+            continue
+        try:
+            date_iso = settlement_date_for(ftime_dt.strftime("%Y-%m-%dT%H:%M:%SZ"), info.code)
+        except Exception:
+            date_iso = ftime_dt.strftime("%Y-%m-%d")
+        issued_at = row.get("issued_at")
+        try:
+            issued_iso = (
+                pd.to_datetime(issued_at, utc=True).strftime("%Y-%m-%dT%H:%M:%SZ")
+                if issued_at is not None
+                and not (isinstance(issued_at, float) and issued_at != issued_at)
+                else None
+            )
+        except Exception:
+            issued_iso = None
+        valid_iso = ftime_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+        temp_c = row.get("temp_c")
+        temperature_f: float | None = None
+        if temp_c is not None and not (isinstance(temp_c, float) and temp_c != temp_c):
+            try:
+                temperature_f = float(temp_c) * 9.0 / 5.0 + 32.0
+            except (TypeError, ValueError):
+                temperature_f = None
+        pop_prob = row.get("precip_probability")
+        pop_6hr_pct: float | None = None
+        if pop_prob is not None and not (isinstance(pop_prob, float) and pop_prob != pop_prob):
+            try:
+                pop_6hr_pct = float(pop_prob) * 100.0
+            except (TypeError, ValueError):
+                pop_6hr_pct = None
+        precip_mm = row.get("precipitation_mm")
+        qpf_6hr_in: float | None = None
+        if precip_mm is not None and not (isinstance(precip_mm, float) and precip_mm != precip_mm):
+            try:
+                qpf_6hr_in = float(precip_mm) / 25.4
+            except (TypeError, ValueError):
+                qpf_6hr_in = None
+        fcst_row: dict[str, Any] = {
+            "model": row.get("model"),
+            "issued_at": issued_iso,
+            "valid_at": valid_iso,
+            "temperature_f": temperature_f,
+            "pop_6hr_pct": pop_6hr_pct,
+            "qpf_6hr_in": qpf_6hr_in,
+            "source": row.get("source"),
+        }
+        groups.setdefault(date_iso, []).append(fcst_row)
+    return groups
+
+
+def _normalize_forecast_source(
+    forecast_source: str | list[str] | tuple[str, ...] | None,
+) -> tuple[str, ...]:
+    """Normalize the forecast_source kwarg to a sorted tuple of allowed values."""
+    if forecast_source is None:
+        return ("iem_mos",)
+    if isinstance(forecast_source, str):
+        items: tuple[str, ...] = (forecast_source,)
+    else:
+        items = tuple(forecast_source)
+    bad = [s for s in items if s not in _FORECAST_SOURCES_ALLOWED]
+    if bad:
+        raise ValueError(
+            f"forecast_source: unknown value(s) {bad}; "
+            f"allowed = {sorted(_FORECAST_SOURCES_ALLOWED)}"
+        )
+    return items
+
+
 def research(
     station: str | None = None,
     from_date: str | None = None,
@@ -1394,6 +1497,7 @@ def research(
     include_forecast: bool = False,
     forecast_model: str | None = None,
     forecast_models: list[str] | None = None,
+    forecast_source: str | list[str] | tuple[str, ...] = "iem_mos",
     as_dataframe: bool = True,
     tz_override: str | None = None,
     qc: bool = False,
@@ -1584,15 +1688,48 @@ def research(
     iem_mos_by_date: dict[str, list[dict[str, Any]]] = {}
     nwp_by_model_date: dict[str, dict[str, list[dict[str, Any]]]] = {}
     if include_forecast:
+        fcst_sources = _normalize_forecast_source(forecast_source)
         # Phase 17 Wave 4 iter-3 review HIGH: thread forecast_model through to
         # the fetcher so callers asking for ``forecast_model="gfs"`` get a
         # GFS pull, not a default-NBE pull whose rows then get filtered out
-        # by build_pairs_row's model-name match. ``forecast_model`` is the
-        # user-facing case (lowercase IEM MOS model id); _fetch_iem_mos_range
-        # passes it directly to fetch_iem_mos which validates against
-        # SUPPORTED_MOS_MODELS.
-        iem_model = (forecast_model or "nbe").lower()
-        iem_mos_by_date = _fetch_iem_mos_range(info, from_date, to_date, model=iem_model)
+        # by build_pairs_row's model-name match.
+        if "iem_mos" in fcst_sources:
+            iem_model = (forecast_model or "nbe").lower()
+            iem_mos_by_date = _fetch_iem_mos_range(info, from_date, to_date, model=iem_model)
+        if "open_meteo" in fcst_sources:
+            # Phase 20 OM-05: Open-Meteo forecast source. Default model
+            # gfs_global matches the IEM MOS "nbe" parity-default ethos:
+            # the most-traded prediction-market model for US stations.
+            om_model = forecast_model or "gfs_global"
+            from mostlyright.weather._fetchers._open_meteo_models import (
+                OPEN_METEO_MODELS,
+            )
+
+            if om_model not in OPEN_METEO_MODELS:
+                # Phase 20 PLAN-11 review (codex HIGH #3): a typo or legacy
+                # IEM MOS model id like "nbe" would otherwise silently drop
+                # Open-Meteo forecasts and leave fcst_* columns null — the
+                # caller would not learn the source failed. Hard-fail with
+                # a hint so the typo surfaces immediately.
+                raise ValueError(
+                    f"forecast_source=\"open_meteo\" requires forecast_model "
+                    f"in OPEN_METEO_MODELS (36 keys); got {om_model!r}. "
+                    f"Pick one of the 36 registered Open-Meteo keys (e.g. "
+                    f"'gfs_global', 'ecmwf_ifs_hres', 'dwd_icon_global') "
+                    f"or drop forecast_source=\"open_meteo\" to use the "
+                    f"default IEM MOS path."
+                )
+
+            om_by_date = _fetch_open_meteo_range(
+                info, from_date, to_date, model=om_model
+            )
+            # Concatenate: never silently merge — every row carries its
+            # source identity. build_pairs accepts a single dict so we
+            # merge OM rows into iem_mos_by_date when both sources are
+            # selected (build_pairs_row already discriminates via
+            # row.get("source")).
+            for date_iso, rows in om_by_date.items():
+                iem_mos_by_date.setdefault(date_iso, []).extend(rows)
         if forecast_models:
             nwp_by_model_date = _fetch_nwp_models_range(
                 info, from_date, to_date, list(forecast_models)

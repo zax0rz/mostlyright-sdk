@@ -15,6 +15,12 @@ export type SchemaFormatMap = Readonly<Record<string, FormatKind>>;
 const FORMAT_MAPS: Readonly<Record<string, SchemaFormatMap>> = Object.freeze({
   "schema.forecast.iem_mos.v1": Object.freeze({
     "issued_at": "date-time",
+    "retrieved_at": "date-time",
+    "valid_at": "date-time",
+  }),
+  "schema.forecast.station.v1": Object.freeze({
+    "issued_at": "date-time",
+    "retrieved_at": "date-time",
     "valid_at": "date-time",
   }),
   "schema.observation_ledger.v1": Object.freeze({

@@ -4,7 +4,7 @@
 
 "use strict";
 export const schema_forecast_iem_mos_v1 = validate21;
-const schema32 = {"$id":"https://mostlyright.dev/schemas/schema.forecast.iem_mos.v1.json","$schema":"https://json-schema.org/draft/2020-12/schema","imperialRenames":{"dew_point_c":"dew_point_F","temp_c":"temp_F","wind_speed_ms":"wind_speed_kt"},"properties":{"dew_point_c":{"description":"units: celsius","type":["null","number"]},"forecast_hour":{"description":"units: hours — (valid_at - issued_at).total_seconds() / 3600","type":"integer"},"issued_at":{"description":"model run time (from source `runtime` field)","format":"date-time","type":"string"},"model":{"description":"e.g. NBE, GFS, LAV, MET","type":"string"},"precip_probability":{"description":"units: probability — bounded [0, 1]","type":["null","number"]},"sky_cover_pct":{"description":"units: percent — bounded [0, 100]","type":["integer","null"]},"station":{"type":"string"},"temp_c":{"description":"units: celsius","type":["null","number"]},"valid_at":{"description":"forecast target time (from source `ftime`)","format":"date-time","type":"string"},"wind_dir_deg":{"description":"units: degrees","type":["integer","null"]},"wind_speed_ms":{"description":"units: m/s","type":["null","number"]}},"required":["forecast_hour","issued_at","model","station","valid_at"],"title":"schema.forecast.iem_mos.v1","type":"object","version":"v1"};
+const schema32 = {"$id":"https://mostlyright.dev/schemas/schema.forecast.iem_mos.v1.json","$schema":"https://json-schema.org/draft/2020-12/schema","imperialRenames":{"apparent_temp_c":"apparent_temp_F","dew_point_c":"dew_point_F","temp_c":"temp_F","wind_gusts_ms":"wind_gusts_kt","wind_speed_ms":"wind_speed_kt"},"properties":{"apparent_temp_c":{"description":"units: celsius","type":["null","number"]},"cape_jkg":{"description":"units: J/kg","type":["null","number"]},"cloud_cover_pct":{"description":"units: percent","type":["integer","null"]},"dew_point_c":{"description":"units: celsius","type":["null","number"]},"direct_radiation_wm2":{"description":"units: W/m^2","type":["null","number"]},"forecast_hour":{"description":"units: hours — (valid_at - issued_at).total_seconds() / 3600","type":"integer"},"freezing_level_m":{"description":"units: meters","type":["integer","null"]},"issued_at":{"description":"model run time (knowledge_time). Nullable to accommodate Phase 20 open_meteo.seamless rows whose cycle is unrecoverable from the response. LeakageDetector + assert_issued_at_populated() are the runtime gates that reject null issued_at in training-data paths.","format":"date-time","type":["null","string"]},"model":{"description":"e.g. NBE, GFS, LAV, MET, gfs_global, ecmwf_ifs025","type":"string"},"precip_probability":{"description":"units: probability — bounded [0, 1]","type":["null","number"]},"precipitation_mm":{"description":"units: mm","type":["null","number"]},"pressure_msl_hpa":{"description":"units: hPa","type":["null","number"]},"retrieved_at":{"description":"wall-clock time the row was fetched from upstream","format":"date-time","type":"string"},"shortwave_radiation_wm2":{"description":"units: W/m^2","type":["null","number"]},"sky_cover_pct":{"description":"units: percent — bounded [0, 100]","type":["integer","null"]},"snow_depth_m":{"description":"units: meters","type":["null","number"]},"source":{"description":"iem.archive | open_meteo.previous_runs | open_meteo.single_run | open_meteo.live","type":"string"},"station":{"type":"string"},"surface_pressure_hpa":{"description":"units: hPa","type":["null","number"]},"temp_c":{"description":"units: celsius","type":["null","number"]},"valid_at":{"description":"forecast target time (event_time)","format":"date-time","type":"string"},"visibility_m":{"description":"units: meters","type":["integer","null"]},"weather_code":{"description":"units: WMO 4677 — WMO weather code (clear, fog, rain, snow, etc.)","type":["integer","null"]},"wind_dir_deg":{"description":"units: degrees","type":["integer","null"]},"wind_gusts_ms":{"description":"units: m/s","type":["null","number"]},"wind_speed_ms":{"description":"units: m/s","type":["null","number"]}},"required":["forecast_hour","model","retrieved_at","source","station","valid_at"],"title":"schema.forecast.iem_mos.v1","type":"object","version":"v1"};
 
 function validate21(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
 /*# sourceURL="https://mostlyright.dev/schemas/schema.forecast.iem_mos.v1.json" */;
@@ -28,8 +28,8 @@ vErrors.push(err0);
 }
 errors++;
 }
-if(data.issued_at === undefined){
-const err1 = {instancePath,schemaPath:"#/required",keyword:"required",params:{missingProperty: "issued_at"},message:"must have required property '"+"issued_at"+"'"};
+if(data.model === undefined){
+const err1 = {instancePath,schemaPath:"#/required",keyword:"required",params:{missingProperty: "model"},message:"must have required property '"+"model"+"'"};
 if(vErrors === null){
 vErrors = [err1];
 }
@@ -38,8 +38,8 @@ vErrors.push(err1);
 }
 errors++;
 }
-if(data.model === undefined){
-const err2 = {instancePath,schemaPath:"#/required",keyword:"required",params:{missingProperty: "model"},message:"must have required property '"+"model"+"'"};
+if(data.retrieved_at === undefined){
+const err2 = {instancePath,schemaPath:"#/required",keyword:"required",params:{missingProperty: "retrieved_at"},message:"must have required property '"+"retrieved_at"+"'"};
 if(vErrors === null){
 vErrors = [err2];
 }
@@ -48,8 +48,8 @@ vErrors.push(err2);
 }
 errors++;
 }
-if(data.station === undefined){
-const err3 = {instancePath,schemaPath:"#/required",keyword:"required",params:{missingProperty: "station"},message:"must have required property '"+"station"+"'"};
+if(data.source === undefined){
+const err3 = {instancePath,schemaPath:"#/required",keyword:"required",params:{missingProperty: "source"},message:"must have required property '"+"source"+"'"};
 if(vErrors === null){
 vErrors = [err3];
 }
@@ -58,8 +58,8 @@ vErrors.push(err3);
 }
 errors++;
 }
-if(data.valid_at === undefined){
-const err4 = {instancePath,schemaPath:"#/required",keyword:"required",params:{missingProperty: "valid_at"},message:"must have required property '"+"valid_at"+"'"};
+if(data.station === undefined){
+const err4 = {instancePath,schemaPath:"#/required",keyword:"required",params:{missingProperty: "station"},message:"must have required property '"+"station"+"'"};
 if(vErrors === null){
 vErrors = [err4];
 }
@@ -68,10 +68,8 @@ vErrors.push(err4);
 }
 errors++;
 }
-if(data.dew_point_c !== undefined){
-let data0 = data.dew_point_c;
-if((data0 !== null) && (!(typeof data0 == "number"))){
-const err5 = {instancePath:instancePath+"/dew_point_c",schemaPath:"#/properties/dew_point_c/type",keyword:"type",params:{type: schema32.properties.dew_point_c.type},message:"must be null,number"};
+if(data.valid_at === undefined){
+const err5 = {instancePath,schemaPath:"#/required",keyword:"required",params:{missingProperty: "valid_at"},message:"must have required property '"+"valid_at"+"'"};
 if(vErrors === null){
 vErrors = [err5];
 }
@@ -80,11 +78,10 @@ vErrors.push(err5);
 }
 errors++;
 }
-}
-if(data.forecast_hour !== undefined){
-let data1 = data.forecast_hour;
-if(!((typeof data1 == "number") && (!(data1 % 1) && !isNaN(data1)))){
-const err6 = {instancePath:instancePath+"/forecast_hour",schemaPath:"#/properties/forecast_hour/type",keyword:"type",params:{type: "integer"},message:"must be integer"};
+if(data.apparent_temp_c !== undefined){
+let data0 = data.apparent_temp_c;
+if((data0 !== null) && (!(typeof data0 == "number"))){
+const err6 = {instancePath:instancePath+"/apparent_temp_c",schemaPath:"#/properties/apparent_temp_c/type",keyword:"type",params:{type: schema32.properties.apparent_temp_c.type},message:"must be null,number"};
 if(vErrors === null){
 vErrors = [err6];
 }
@@ -94,9 +91,10 @@ vErrors.push(err6);
 errors++;
 }
 }
-if(data.issued_at !== undefined){
-if(!(typeof data.issued_at === "string")){
-const err7 = {instancePath:instancePath+"/issued_at",schemaPath:"#/properties/issued_at/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(data.cape_jkg !== undefined){
+let data1 = data.cape_jkg;
+if((data1 !== null) && (!(typeof data1 == "number"))){
+const err7 = {instancePath:instancePath+"/cape_jkg",schemaPath:"#/properties/cape_jkg/type",keyword:"type",params:{type: schema32.properties.cape_jkg.type},message:"must be null,number"};
 if(vErrors === null){
 vErrors = [err7];
 }
@@ -106,9 +104,10 @@ vErrors.push(err7);
 errors++;
 }
 }
-if(data.model !== undefined){
-if(typeof data.model !== "string"){
-const err8 = {instancePath:instancePath+"/model",schemaPath:"#/properties/model/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(data.cloud_cover_pct !== undefined){
+let data2 = data.cloud_cover_pct;
+if((!((typeof data2 == "number") && (!(data2 % 1) && !isNaN(data2)))) && (data2 !== null)){
+const err8 = {instancePath:instancePath+"/cloud_cover_pct",schemaPath:"#/properties/cloud_cover_pct/type",keyword:"type",params:{type: schema32.properties.cloud_cover_pct.type},message:"must be integer,null"};
 if(vErrors === null){
 vErrors = [err8];
 }
@@ -118,10 +117,10 @@ vErrors.push(err8);
 errors++;
 }
 }
-if(data.precip_probability !== undefined){
-let data4 = data.precip_probability;
-if((data4 !== null) && (!(typeof data4 == "number"))){
-const err9 = {instancePath:instancePath+"/precip_probability",schemaPath:"#/properties/precip_probability/type",keyword:"type",params:{type: schema32.properties.precip_probability.type},message:"must be null,number"};
+if(data.dew_point_c !== undefined){
+let data3 = data.dew_point_c;
+if((data3 !== null) && (!(typeof data3 == "number"))){
+const err9 = {instancePath:instancePath+"/dew_point_c",schemaPath:"#/properties/dew_point_c/type",keyword:"type",params:{type: schema32.properties.dew_point_c.type},message:"must be null,number"};
 if(vErrors === null){
 vErrors = [err9];
 }
@@ -131,10 +130,10 @@ vErrors.push(err9);
 errors++;
 }
 }
-if(data.sky_cover_pct !== undefined){
-let data5 = data.sky_cover_pct;
-if((!((typeof data5 == "number") && (!(data5 % 1) && !isNaN(data5)))) && (data5 !== null)){
-const err10 = {instancePath:instancePath+"/sky_cover_pct",schemaPath:"#/properties/sky_cover_pct/type",keyword:"type",params:{type: schema32.properties.sky_cover_pct.type},message:"must be integer,null"};
+if(data.direct_radiation_wm2 !== undefined){
+let data4 = data.direct_radiation_wm2;
+if((data4 !== null) && (!(typeof data4 == "number"))){
+const err10 = {instancePath:instancePath+"/direct_radiation_wm2",schemaPath:"#/properties/direct_radiation_wm2/type",keyword:"type",params:{type: schema32.properties.direct_radiation_wm2.type},message:"must be null,number"};
 if(vErrors === null){
 vErrors = [err10];
 }
@@ -144,9 +143,10 @@ vErrors.push(err10);
 errors++;
 }
 }
-if(data.station !== undefined){
-if(typeof data.station !== "string"){
-const err11 = {instancePath:instancePath+"/station",schemaPath:"#/properties/station/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(data.forecast_hour !== undefined){
+let data5 = data.forecast_hour;
+if(!((typeof data5 == "number") && (!(data5 % 1) && !isNaN(data5)))){
+const err11 = {instancePath:instancePath+"/forecast_hour",schemaPath:"#/properties/forecast_hour/type",keyword:"type",params:{type: "integer"},message:"must be integer"};
 if(vErrors === null){
 vErrors = [err11];
 }
@@ -156,10 +156,10 @@ vErrors.push(err11);
 errors++;
 }
 }
-if(data.temp_c !== undefined){
-let data7 = data.temp_c;
-if((data7 !== null) && (!(typeof data7 == "number"))){
-const err12 = {instancePath:instancePath+"/temp_c",schemaPath:"#/properties/temp_c/type",keyword:"type",params:{type: schema32.properties.temp_c.type},message:"must be null,number"};
+if(data.freezing_level_m !== undefined){
+let data6 = data.freezing_level_m;
+if((!((typeof data6 == "number") && (!(data6 % 1) && !isNaN(data6)))) && (data6 !== null)){
+const err12 = {instancePath:instancePath+"/freezing_level_m",schemaPath:"#/properties/freezing_level_m/type",keyword:"type",params:{type: schema32.properties.freezing_level_m.type},message:"must be integer,null"};
 if(vErrors === null){
 vErrors = [err12];
 }
@@ -169,9 +169,10 @@ vErrors.push(err12);
 errors++;
 }
 }
-if(data.valid_at !== undefined){
-if(!(typeof data.valid_at === "string")){
-const err13 = {instancePath:instancePath+"/valid_at",schemaPath:"#/properties/valid_at/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(data.issued_at !== undefined){
+let data7 = data.issued_at;
+if((data7 !== null) && (typeof data7 !== "string")){
+const err13 = {instancePath:instancePath+"/issued_at",schemaPath:"#/properties/issued_at/type",keyword:"type",params:{type: schema32.properties.issued_at.type},message:"must be null,string"};
 if(vErrors === null){
 vErrors = [err13];
 }
@@ -181,10 +182,9 @@ vErrors.push(err13);
 errors++;
 }
 }
-if(data.wind_dir_deg !== undefined){
-let data9 = data.wind_dir_deg;
-if((!((typeof data9 == "number") && (!(data9 % 1) && !isNaN(data9)))) && (data9 !== null)){
-const err14 = {instancePath:instancePath+"/wind_dir_deg",schemaPath:"#/properties/wind_dir_deg/type",keyword:"type",params:{type: schema32.properties.wind_dir_deg.type},message:"must be integer,null"};
+if(data.model !== undefined){
+if(typeof data.model !== "string"){
+const err14 = {instancePath:instancePath+"/model",schemaPath:"#/properties/model/type",keyword:"type",params:{type: "string"},message:"must be string"};
 if(vErrors === null){
 vErrors = [err14];
 }
@@ -194,10 +194,10 @@ vErrors.push(err14);
 errors++;
 }
 }
-if(data.wind_speed_ms !== undefined){
-let data10 = data.wind_speed_ms;
-if((data10 !== null) && (!(typeof data10 == "number"))){
-const err15 = {instancePath:instancePath+"/wind_speed_ms",schemaPath:"#/properties/wind_speed_ms/type",keyword:"type",params:{type: schema32.properties.wind_speed_ms.type},message:"must be null,number"};
+if(data.precip_probability !== undefined){
+let data9 = data.precip_probability;
+if((data9 !== null) && (!(typeof data9 == "number"))){
+const err15 = {instancePath:instancePath+"/precip_probability",schemaPath:"#/properties/precip_probability/type",keyword:"type",params:{type: schema32.properties.precip_probability.type},message:"must be null,number"};
 if(vErrors === null){
 vErrors = [err15];
 }
@@ -207,9 +207,10 @@ vErrors.push(err15);
 errors++;
 }
 }
-}
-else {
-const err16 = {instancePath,schemaPath:"#/type",keyword:"type",params:{type: "object"},message:"must be object"};
+if(data.precipitation_mm !== undefined){
+let data10 = data.precipitation_mm;
+if((data10 !== null) && (!(typeof data10 == "number"))){
+const err16 = {instancePath:instancePath+"/precipitation_mm",schemaPath:"#/properties/precipitation_mm/type",keyword:"type",params:{type: schema32.properties.precipitation_mm.type},message:"must be null,number"};
 if(vErrors === null){
 vErrors = [err16];
 }
@@ -218,7 +219,210 @@ vErrors.push(err16);
 }
 errors++;
 }
+}
+if(data.pressure_msl_hpa !== undefined){
+let data11 = data.pressure_msl_hpa;
+if((data11 !== null) && (!(typeof data11 == "number"))){
+const err17 = {instancePath:instancePath+"/pressure_msl_hpa",schemaPath:"#/properties/pressure_msl_hpa/type",keyword:"type",params:{type: schema32.properties.pressure_msl_hpa.type},message:"must be null,number"};
+if(vErrors === null){
+vErrors = [err17];
+}
+else {
+vErrors.push(err17);
+}
+errors++;
+}
+}
+if(data.retrieved_at !== undefined){
+if(!(typeof data.retrieved_at === "string")){
+const err18 = {instancePath:instancePath+"/retrieved_at",schemaPath:"#/properties/retrieved_at/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(vErrors === null){
+vErrors = [err18];
+}
+else {
+vErrors.push(err18);
+}
+errors++;
+}
+}
+if(data.shortwave_radiation_wm2 !== undefined){
+let data13 = data.shortwave_radiation_wm2;
+if((data13 !== null) && (!(typeof data13 == "number"))){
+const err19 = {instancePath:instancePath+"/shortwave_radiation_wm2",schemaPath:"#/properties/shortwave_radiation_wm2/type",keyword:"type",params:{type: schema32.properties.shortwave_radiation_wm2.type},message:"must be null,number"};
+if(vErrors === null){
+vErrors = [err19];
+}
+else {
+vErrors.push(err19);
+}
+errors++;
+}
+}
+if(data.sky_cover_pct !== undefined){
+let data14 = data.sky_cover_pct;
+if((!((typeof data14 == "number") && (!(data14 % 1) && !isNaN(data14)))) && (data14 !== null)){
+const err20 = {instancePath:instancePath+"/sky_cover_pct",schemaPath:"#/properties/sky_cover_pct/type",keyword:"type",params:{type: schema32.properties.sky_cover_pct.type},message:"must be integer,null"};
+if(vErrors === null){
+vErrors = [err20];
+}
+else {
+vErrors.push(err20);
+}
+errors++;
+}
+}
+if(data.snow_depth_m !== undefined){
+let data15 = data.snow_depth_m;
+if((data15 !== null) && (!(typeof data15 == "number"))){
+const err21 = {instancePath:instancePath+"/snow_depth_m",schemaPath:"#/properties/snow_depth_m/type",keyword:"type",params:{type: schema32.properties.snow_depth_m.type},message:"must be null,number"};
+if(vErrors === null){
+vErrors = [err21];
+}
+else {
+vErrors.push(err21);
+}
+errors++;
+}
+}
+if(data.source !== undefined){
+if(typeof data.source !== "string"){
+const err22 = {instancePath:instancePath+"/source",schemaPath:"#/properties/source/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(vErrors === null){
+vErrors = [err22];
+}
+else {
+vErrors.push(err22);
+}
+errors++;
+}
+}
+if(data.station !== undefined){
+if(typeof data.station !== "string"){
+const err23 = {instancePath:instancePath+"/station",schemaPath:"#/properties/station/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(vErrors === null){
+vErrors = [err23];
+}
+else {
+vErrors.push(err23);
+}
+errors++;
+}
+}
+if(data.surface_pressure_hpa !== undefined){
+let data18 = data.surface_pressure_hpa;
+if((data18 !== null) && (!(typeof data18 == "number"))){
+const err24 = {instancePath:instancePath+"/surface_pressure_hpa",schemaPath:"#/properties/surface_pressure_hpa/type",keyword:"type",params:{type: schema32.properties.surface_pressure_hpa.type},message:"must be null,number"};
+if(vErrors === null){
+vErrors = [err24];
+}
+else {
+vErrors.push(err24);
+}
+errors++;
+}
+}
+if(data.temp_c !== undefined){
+let data19 = data.temp_c;
+if((data19 !== null) && (!(typeof data19 == "number"))){
+const err25 = {instancePath:instancePath+"/temp_c",schemaPath:"#/properties/temp_c/type",keyword:"type",params:{type: schema32.properties.temp_c.type},message:"must be null,number"};
+if(vErrors === null){
+vErrors = [err25];
+}
+else {
+vErrors.push(err25);
+}
+errors++;
+}
+}
+if(data.valid_at !== undefined){
+if(!(typeof data.valid_at === "string")){
+const err26 = {instancePath:instancePath+"/valid_at",schemaPath:"#/properties/valid_at/type",keyword:"type",params:{type: "string"},message:"must be string"};
+if(vErrors === null){
+vErrors = [err26];
+}
+else {
+vErrors.push(err26);
+}
+errors++;
+}
+}
+if(data.visibility_m !== undefined){
+let data21 = data.visibility_m;
+if((!((typeof data21 == "number") && (!(data21 % 1) && !isNaN(data21)))) && (data21 !== null)){
+const err27 = {instancePath:instancePath+"/visibility_m",schemaPath:"#/properties/visibility_m/type",keyword:"type",params:{type: schema32.properties.visibility_m.type},message:"must be integer,null"};
+if(vErrors === null){
+vErrors = [err27];
+}
+else {
+vErrors.push(err27);
+}
+errors++;
+}
+}
+if(data.weather_code !== undefined){
+let data22 = data.weather_code;
+if((!((typeof data22 == "number") && (!(data22 % 1) && !isNaN(data22)))) && (data22 !== null)){
+const err28 = {instancePath:instancePath+"/weather_code",schemaPath:"#/properties/weather_code/type",keyword:"type",params:{type: schema32.properties.weather_code.type},message:"must be integer,null"};
+if(vErrors === null){
+vErrors = [err28];
+}
+else {
+vErrors.push(err28);
+}
+errors++;
+}
+}
+if(data.wind_dir_deg !== undefined){
+let data23 = data.wind_dir_deg;
+if((!((typeof data23 == "number") && (!(data23 % 1) && !isNaN(data23)))) && (data23 !== null)){
+const err29 = {instancePath:instancePath+"/wind_dir_deg",schemaPath:"#/properties/wind_dir_deg/type",keyword:"type",params:{type: schema32.properties.wind_dir_deg.type},message:"must be integer,null"};
+if(vErrors === null){
+vErrors = [err29];
+}
+else {
+vErrors.push(err29);
+}
+errors++;
+}
+}
+if(data.wind_gusts_ms !== undefined){
+let data24 = data.wind_gusts_ms;
+if((data24 !== null) && (!(typeof data24 == "number"))){
+const err30 = {instancePath:instancePath+"/wind_gusts_ms",schemaPath:"#/properties/wind_gusts_ms/type",keyword:"type",params:{type: schema32.properties.wind_gusts_ms.type},message:"must be null,number"};
+if(vErrors === null){
+vErrors = [err30];
+}
+else {
+vErrors.push(err30);
+}
+errors++;
+}
+}
+if(data.wind_speed_ms !== undefined){
+let data25 = data.wind_speed_ms;
+if((data25 !== null) && (!(typeof data25 == "number"))){
+const err31 = {instancePath:instancePath+"/wind_speed_ms",schemaPath:"#/properties/wind_speed_ms/type",keyword:"type",params:{type: schema32.properties.wind_speed_ms.type},message:"must be null,number"};
+if(vErrors === null){
+vErrors = [err31];
+}
+else {
+vErrors.push(err31);
+}
+errors++;
+}
+}
+}
+else {
+const err32 = {instancePath,schemaPath:"#/type",keyword:"type",params:{type: "object"},message:"must be object"};
+if(vErrors === null){
+vErrors = [err32];
+}
+else {
+vErrors.push(err32);
+}
+errors++;
+}
 validate21.errors = vErrors;
 return errors === 0;
 }
-validate21.evaluated = {"props":{"dew_point_c":true,"forecast_hour":true,"issued_at":true,"model":true,"precip_probability":true,"sky_cover_pct":true,"station":true,"temp_c":true,"valid_at":true,"wind_dir_deg":true,"wind_speed_ms":true},"dynamicProps":false,"dynamicItems":false};
+validate21.evaluated = {"props":{"apparent_temp_c":true,"cape_jkg":true,"cloud_cover_pct":true,"dew_point_c":true,"direct_radiation_wm2":true,"forecast_hour":true,"freezing_level_m":true,"issued_at":true,"model":true,"precip_probability":true,"precipitation_mm":true,"pressure_msl_hpa":true,"retrieved_at":true,"shortwave_radiation_wm2":true,"sky_cover_pct":true,"snow_depth_m":true,"source":true,"station":true,"surface_pressure_hpa":true,"temp_c":true,"valid_at":true,"visibility_m":true,"weather_code":true,"wind_dir_deg":true,"wind_gusts_ms":true,"wind_speed_ms":true},"dynamicProps":false,"dynamicItems":false};

@@ -3,14 +3,14 @@
 // Last manifest SHA recorded in schemas/EXPORT_MANIFEST.json
 
 "use strict";
-export const schema_observation_qc_v1 = validate24;
-const schema35 = {"$id":"https://mostlyright.dev/schemas/schema.observation_qc.v1.json","$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"as_of_time":{"format":"date-time","type":["null","string"]},"detector_metadata":{"description":"JSON-serialized detector payload; shape per qc_system.","type":["null","string"]},"field":{"description":"Observation column the rule evaluated (e.g. temp_c).","type":"string"},"flag":{"enum":["clean","flagged","suspect"],"type":"string"},"ingestion_id":{"type":["null","string"]},"observation_kind":{"enum":["METAR","SPECI",null],"type":["null","string"]},"observed_at":{"format":"date-time","type":"string"},"parser_name":{"type":["null","string"]},"qc_system":{"type":"string"},"qc_version":{"type":"string"},"rule_id":{"type":"string"},"source":{"enum":["awc","ghcnh","iem","ncei"],"type":"string"},"station_code":{"type":"string"}},"required":["field","flag","observed_at","qc_system","qc_version","rule_id","source","station_code"],"title":"schema.observation_qc.v1","type":"object","version":"v1"};
+export const schema_observation_qc_v1 = validate25;
+const schema36 = {"$id":"https://mostlyright.dev/schemas/schema.observation_qc.v1.json","$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"as_of_time":{"format":"date-time","type":["null","string"]},"detector_metadata":{"description":"JSON-serialized detector payload; shape per qc_system.","type":["null","string"]},"field":{"description":"Observation column the rule evaluated (e.g. temp_c).","type":"string"},"flag":{"enum":["clean","flagged","suspect"],"type":"string"},"ingestion_id":{"type":["null","string"]},"observation_kind":{"enum":["METAR","SPECI",null],"type":["null","string"]},"observed_at":{"format":"date-time","type":"string"},"parser_name":{"type":["null","string"]},"qc_system":{"type":"string"},"qc_version":{"type":"string"},"rule_id":{"type":"string"},"source":{"enum":["awc","ghcnh","iem","ncei"],"type":"string"},"station_code":{"type":"string"}},"required":["field","flag","observed_at","qc_system","qc_version","rule_id","source","station_code"],"title":"schema.observation_qc.v1","type":"object","version":"v1"};
 
-function validate24(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
+function validate25(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
 /*# sourceURL="https://mostlyright.dev/schemas/schema.observation_qc.v1.json" */;
 let vErrors = null;
 let errors = 0;
-const evaluated0 = validate24.evaluated;
+const evaluated0 = validate25.evaluated;
 if(evaluated0.dynamicProps){
 evaluated0.props = undefined;
 }
@@ -101,7 +101,7 @@ errors++;
 if(data.as_of_time !== undefined){
 let data0 = data.as_of_time;
 if((data0 !== null) && (typeof data0 !== "string")){
-const err8 = {instancePath:instancePath+"/as_of_time",schemaPath:"#/properties/as_of_time/type",keyword:"type",params:{type: schema35.properties.as_of_time.type},message:"must be null,string"};
+const err8 = {instancePath:instancePath+"/as_of_time",schemaPath:"#/properties/as_of_time/type",keyword:"type",params:{type: schema36.properties.as_of_time.type},message:"must be null,string"};
 if(vErrors === null){
 vErrors = [err8];
 }
@@ -114,7 +114,7 @@ errors++;
 if(data.detector_metadata !== undefined){
 let data1 = data.detector_metadata;
 if((data1 !== null) && (typeof data1 !== "string")){
-const err9 = {instancePath:instancePath+"/detector_metadata",schemaPath:"#/properties/detector_metadata/type",keyword:"type",params:{type: schema35.properties.detector_metadata.type},message:"must be null,string"};
+const err9 = {instancePath:instancePath+"/detector_metadata",schemaPath:"#/properties/detector_metadata/type",keyword:"type",params:{type: schema36.properties.detector_metadata.type},message:"must be null,string"};
 if(vErrors === null){
 vErrors = [err9];
 }
@@ -149,7 +149,7 @@ vErrors.push(err11);
 errors++;
 }
 if(!(((data3 === "clean") || (data3 === "flagged")) || (data3 === "suspect"))){
-const err12 = {instancePath:instancePath+"/flag",schemaPath:"#/properties/flag/enum",keyword:"enum",params:{allowedValues: schema35.properties.flag.enum},message:"must be equal to one of the allowed values"};
+const err12 = {instancePath:instancePath+"/flag",schemaPath:"#/properties/flag/enum",keyword:"enum",params:{allowedValues: schema36.properties.flag.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err12];
 }
@@ -162,7 +162,7 @@ errors++;
 if(data.ingestion_id !== undefined){
 let data4 = data.ingestion_id;
 if((data4 !== null) && (typeof data4 !== "string")){
-const err13 = {instancePath:instancePath+"/ingestion_id",schemaPath:"#/properties/ingestion_id/type",keyword:"type",params:{type: schema35.properties.ingestion_id.type},message:"must be null,string"};
+const err13 = {instancePath:instancePath+"/ingestion_id",schemaPath:"#/properties/ingestion_id/type",keyword:"type",params:{type: schema36.properties.ingestion_id.type},message:"must be null,string"};
 if(vErrors === null){
 vErrors = [err13];
 }
@@ -175,7 +175,7 @@ errors++;
 if(data.observation_kind !== undefined){
 let data5 = data.observation_kind;
 if((data5 !== null) && (typeof data5 !== "string")){
-const err14 = {instancePath:instancePath+"/observation_kind",schemaPath:"#/properties/observation_kind/type",keyword:"type",params:{type: schema35.properties.observation_kind.type},message:"must be null,string"};
+const err14 = {instancePath:instancePath+"/observation_kind",schemaPath:"#/properties/observation_kind/type",keyword:"type",params:{type: schema36.properties.observation_kind.type},message:"must be null,string"};
 if(vErrors === null){
 vErrors = [err14];
 }
@@ -185,7 +185,7 @@ vErrors.push(err14);
 errors++;
 }
 if(!(((data5 === "METAR") || (data5 === "SPECI")) || (data5 === null))){
-const err15 = {instancePath:instancePath+"/observation_kind",schemaPath:"#/properties/observation_kind/enum",keyword:"enum",params:{allowedValues: schema35.properties.observation_kind.enum},message:"must be equal to one of the allowed values"};
+const err15 = {instancePath:instancePath+"/observation_kind",schemaPath:"#/properties/observation_kind/enum",keyword:"enum",params:{allowedValues: schema36.properties.observation_kind.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err15];
 }
@@ -210,7 +210,7 @@ errors++;
 if(data.parser_name !== undefined){
 let data7 = data.parser_name;
 if((data7 !== null) && (typeof data7 !== "string")){
-const err17 = {instancePath:instancePath+"/parser_name",schemaPath:"#/properties/parser_name/type",keyword:"type",params:{type: schema35.properties.parser_name.type},message:"must be null,string"};
+const err17 = {instancePath:instancePath+"/parser_name",schemaPath:"#/properties/parser_name/type",keyword:"type",params:{type: schema36.properties.parser_name.type},message:"must be null,string"};
 if(vErrors === null){
 vErrors = [err17];
 }
@@ -269,7 +269,7 @@ vErrors.push(err21);
 errors++;
 }
 if(!((((data11 === "awc") || (data11 === "ghcnh")) || (data11 === "iem")) || (data11 === "ncei"))){
-const err22 = {instancePath:instancePath+"/source",schemaPath:"#/properties/source/enum",keyword:"enum",params:{allowedValues: schema35.properties.source.enum},message:"must be equal to one of the allowed values"};
+const err22 = {instancePath:instancePath+"/source",schemaPath:"#/properties/source/enum",keyword:"enum",params:{allowedValues: schema36.properties.source.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err22];
 }
@@ -302,7 +302,7 @@ vErrors.push(err24);
 }
 errors++;
 }
-validate24.errors = vErrors;
+validate25.errors = vErrors;
 return errors === 0;
 }
-validate24.evaluated = {"props":{"as_of_time":true,"detector_metadata":true,"field":true,"flag":true,"ingestion_id":true,"observation_kind":true,"observed_at":true,"parser_name":true,"qc_system":true,"qc_version":true,"rule_id":true,"source":true,"station_code":true},"dynamicProps":false,"dynamicItems":false};
+validate25.evaluated = {"props":{"as_of_time":true,"detector_metadata":true,"field":true,"flag":true,"ingestion_id":true,"observation_kind":true,"observed_at":true,"parser_name":true,"qc_system":true,"qc_version":true,"rule_id":true,"source":true,"station_code":true},"dynamicProps":false,"dynamicItems":false};

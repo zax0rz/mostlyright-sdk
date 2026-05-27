@@ -20,7 +20,11 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 
-from mostlyright.core.exceptions import LeakageError, SchemaValidationError
+from mostlyright.core.exceptions import (
+    IssuedAtMissingError,
+    LeakageError,
+    SchemaValidationError,
+)
 from mostlyright.core.result import TradewindsResult
 from mostlyright.core.temporal.timepoint import TimePoint
 
@@ -28,10 +32,19 @@ if TYPE_CHECKING:
     pass
 
 
-__all__ = ["LeakageDetector", "assert_no_leakage"]
+__all__ = [
+    "LeakageDetector",
+    "assert_issued_at_populated",
+    "assert_no_leakage",
+]
 
 
 _SAMPLE_CAP = 10
+#: Smaller cap for the issued_at assertion — leakage payloads should fit on
+#: one screen when surfaced through MCP, and a forecast frame missing
+#: ``issued_at`` is a structural bug rather than a per-row data issue. Phase
+#: 20 OM-04.
+_ISSUED_AT_SAMPLE_CAP = 5
 
 
 def assert_no_leakage(df: pd.DataFrame | TradewindsResult, as_of: TimePoint) -> None:
@@ -124,6 +137,52 @@ def assert_no_leakage(df: pd.DataFrame | TradewindsResult, as_of: TimePoint) -> 
     )
 
 
+def assert_issued_at_populated(df: pd.DataFrame | TradewindsResult) -> None:
+    """Raise :class:`IssuedAtMissingError` if any row has null ``issued_at``.
+
+    Forecast rows MUST carry their model-run time to be leakage-safe; a
+    missing ``issued_at`` means we cannot verify the cycle predated the
+    ``as_of`` cutoff in :func:`research`. For Open-Meteo this should be
+    impossible by construction (the fetcher derives ``issued_at`` per row),
+    so this check is a defensive net.
+
+    Mirrors structural conventions of :func:`assert_no_leakage`:
+    :class:`TradewindsResult` (and any duck-typed ``.df`` carrier)
+    unwrap, column-existence guard, sample-cap.
+
+    Phase 20 OM-04.
+    """
+    if isinstance(df, TradewindsResult):
+        df = df.frame_as_pandas()
+    elif hasattr(df, "df") and not hasattr(df, "columns"):
+        # Duck-type for non-TradewindsResult wrappers (e.g. test doubles).
+        df = df.df
+
+    if "issued_at" not in df.columns:
+        raise SchemaValidationError(
+            "assert_issued_at_populated requires 'issued_at' column",
+            schema_id="schema.forecast.station.v1",
+            violations=[{"column": "issued_at", "rule": "required"}],
+        )
+
+    if len(df) == 0:
+        return  # empty frame vacuously satisfies
+
+    nulls_mask = df["issued_at"].isna()
+    violating_count = int(nulls_mask.sum())
+    if violating_count == 0:
+        return
+
+    null_indices = df.index[nulls_mask].tolist()
+    samples = [{"row_idx": int(idx)} for idx in null_indices[:_ISSUED_AT_SAMPLE_CAP]]
+
+    raise IssuedAtMissingError(
+        f"{violating_count} row(s) have null issued_at; cannot verify leakage-safety",
+        violating_count=violating_count,
+        sample_violations=samples,
+    )
+
+
 class LeakageDetector:
     """Convenience wrapper for repeated detection against a fixed ``as_of``."""
 
@@ -145,3 +204,12 @@ class LeakageDetector:
         wrapper (unwrapped inside :func:`assert_no_leakage`).
         """
         assert_no_leakage(df, self._as_of)
+
+    def check_issued_at(self, df: pd.DataFrame | TradewindsResult) -> None:
+        """Raise :class:`IssuedAtMissingError` if any row has null ``issued_at``.
+
+        Phase 20 OM-04 extension. Independent of ``as_of`` — the bound
+        cutoff is irrelevant when the row carries no model-run time at
+        all.
+        """
+        assert_issued_at_populated(df)

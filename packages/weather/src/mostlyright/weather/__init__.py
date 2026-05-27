@@ -30,7 +30,8 @@ workflow: ``raw_metar`` is preserved on observation rows so MetPy re-parse
 keeps working without preprocessing in v0.1.0.
 """
 
+from mostlyright.weather._fetchers._open_meteo import fetch_open_meteo
 from mostlyright.weather.obs import obs as obs  # re-export Phase 7 public surface
 
 __version__ = "0.1.0rc1"
-__all__ = ["__version__", "obs"]
+__all__ = ["__version__", "fetch_open_meteo", "obs"]

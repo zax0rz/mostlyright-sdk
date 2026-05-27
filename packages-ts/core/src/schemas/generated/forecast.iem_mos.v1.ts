@@ -6,17 +6,37 @@ export interface ForecastIemMosV1 {
   /**
    * units: celsius
    */
+  apparent_temp_c?: null | number;
+  /**
+   * units: J/kg
+   */
+  cape_jkg?: null | number;
+  /**
+   * units: percent
+   */
+  cloud_cover_pct?: number | null;
+  /**
+   * units: celsius
+   */
   dew_point_c?: null | number;
+  /**
+   * units: W/m^2
+   */
+  direct_radiation_wm2?: null | number;
   /**
    * units: hours — (valid_at - issued_at).total_seconds() / 3600
    */
   forecast_hour: number;
   /**
-   * model run time (from source `runtime` field)
+   * units: meters
    */
-  issued_at: string;
+  freezing_level_m?: number | null;
   /**
-   * e.g. NBE, GFS, LAV, MET
+   * model run time (knowledge_time). Nullable to accommodate Phase 20 open_meteo.seamless rows whose cycle is unrecoverable from the response. LeakageDetector + assert_issued_at_populated() are the runtime gates that reject null issued_at in training-data paths.
+   */
+  issued_at?: null | string;
+  /**
+   * e.g. NBE, GFS, LAV, MET, gfs_global, ecmwf_ifs025
    */
   model: string;
   /**
@@ -24,22 +44,62 @@ export interface ForecastIemMosV1 {
    */
   precip_probability?: null | number;
   /**
+   * units: mm
+   */
+  precipitation_mm?: null | number;
+  /**
+   * units: hPa
+   */
+  pressure_msl_hpa?: null | number;
+  /**
+   * wall-clock time the row was fetched from upstream
+   */
+  retrieved_at: string;
+  /**
+   * units: W/m^2
+   */
+  shortwave_radiation_wm2?: null | number;
+  /**
    * units: percent — bounded [0, 100]
    */
   sky_cover_pct?: number | null;
+  /**
+   * units: meters
+   */
+  snow_depth_m?: null | number;
+  /**
+   * iem.archive | open_meteo.previous_runs | open_meteo.single_run | open_meteo.live
+   */
+  source: string;
   station: string;
+  /**
+   * units: hPa
+   */
+  surface_pressure_hpa?: null | number;
   /**
    * units: celsius
    */
   temp_c?: null | number;
   /**
-   * forecast target time (from source `ftime`)
+   * forecast target time (event_time)
    */
   valid_at: string;
+  /**
+   * units: meters
+   */
+  visibility_m?: number | null;
+  /**
+   * units: WMO 4677 — WMO weather code (clear, fog, rain, snow, etc.)
+   */
+  weather_code?: number | null;
   /**
    * units: degrees
    */
   wind_dir_deg?: number | null;
+  /**
+   * units: m/s
+   */
+  wind_gusts_ms?: null | number;
   /**
    * units: m/s
    */

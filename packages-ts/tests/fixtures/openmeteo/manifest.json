@@ -1,0 +1,13 @@
+{
+  "cases": [
+    {
+      "id": "case_1",
+      "station": "KNYC",
+      "date": "2024-06-01",
+      "as_of": "2024-06-01T17:00:00Z",
+      "fixture": "case_1_KNYC_2024-06-01_h13.json",
+      "expected_h23_issued_at": "2024-05-31T18:00:00.000Z",
+      "comment": "Tarabcak/mostlyright#70 reproduction"
+    }
+  ]
+}
