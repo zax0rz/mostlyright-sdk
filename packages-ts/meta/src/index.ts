@@ -80,6 +80,16 @@ export {
 } from "@mostlyrightmd/weather";
 export { LiveStreamError, NoLiveDataError } from "@mostlyrightmd/core";
 
+// Phase 21 21-05 — dailyExtremes wrapper surfaced via meta so callers
+// can `import { dailyExtremes } from "mostlyright"` matching Python
+// `mostlyright.international.daily_extremes`.
+export {
+  dailyExtremes,
+  type DailyExtremeRow,
+  type DailyExtremesMergeMode,
+  type DailyExtremesOptions,
+} from "@mostlyrightmd/weather";
+
 // Phase 21 21-10 — `preprocessing` lowercase namespace, matching Python
 // `mostlyright.preprocessing`. Surfaces `clipOutliers`, `PHYSICS_BOUNDS`,
 // `iemCrosscheck` under a single namespace so cross-language code reads

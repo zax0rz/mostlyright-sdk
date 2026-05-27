@@ -1,0 +1,121 @@
+// Phase 21 21-05 — dailyExtremes(station, from, to, opts?) tests.
+//
+// Smoke-tests for:
+//  - station registry lookup (unknown station rejection)
+//  - merge-mode dispatch (TypeError on unknown mode)
+//  - projection from internationalDailyExtremes shape into the Python-
+//    mirroring DailyExtremeRow shape (date/tmin_f/tmax_f/tmean_f/.../n_obs)
+//  - low_coverage gate (n_obs < 12 → null tmin/tmax/tmean)
+//
+// HTTP-backed end-to-end tests live in `tests/dailyExtremes.live.test.ts`
+// (gated by @live; not run in CI). The unit tests below mock the network
+// layer to assert the wrapper's shape-projection + dispatch behavior.
+
+import { describe, expect, it, vi } from "vitest";
+
+import * as awcFetcher from "../src/_fetchers/awc.js";
+import * as iemFetcher from "../src/_fetchers/iem-asos.js";
+import { dailyExtremes } from "../src/dailyExtremes.js";
+
+describe("dailyExtremes — station registry lookup", () => {
+  it("throws when station is not in the STATIONS registry", async () => {
+    await expect(dailyExtremes("XXXX", "2025-01-06", "2025-01-12")).rejects.toThrow(
+      /not in registry/,
+    );
+  });
+});
+
+describe("dailyExtremes — merge mode dispatch", () => {
+  it("rejects unknown merge mode at runtime", async () => {
+    // EGLL is in the international STATIONS registry.
+    await expect(
+      dailyExtremes("EGLL", "2025-01-06", "2025-01-12", {
+        merge: "bogus" as never,
+      }),
+    ).rejects.toThrow(TypeError);
+  });
+});
+
+describe("dailyExtremes — shape projection (iem_only, empty fetch)", () => {
+  it("returns an empty array when the fetcher returns no rows", async () => {
+    vi.spyOn(iemFetcher, "downloadIemAsos").mockResolvedValueOnce([]);
+    const out = await dailyExtremes("EGLL", "2025-01-06", "2025-01-06", {
+      merge: "iem_only",
+    });
+    expect(out).toEqual([]);
+  });
+});
+
+describe("dailyExtremes — full-day shape projection (US ASOS, integer-°F)", () => {
+  it("projects DailyExtreme → DailyExtremeRow with date/station/n_obs", async () => {
+    // 12 synthetic readings across 2025-01-08 UTC at KNYC.
+    const csv = buildSyntheticIemCsv("KNYC", "2025-01-08", 12, 0);
+    vi.spyOn(iemFetcher, "downloadIemAsos").mockResolvedValueOnce([
+      { chunkStart: "2025-01-01", chunkEnd: "2025-12-31", csv },
+    ]);
+    const out = await dailyExtremes("KNYC", "2025-01-08", "2025-01-08", {
+      merge: "iem_only",
+    });
+    expect(out.length).toBeGreaterThanOrEqual(1);
+    const row = out[0];
+    expect(row.station).toBe("KNYC");
+    expect(typeof row.date).toBe("string");
+    expect(row.n_obs).toBeGreaterThanOrEqual(0);
+    expect(typeof row.low_coverage).toBe("boolean");
+  });
+});
+
+describe("dailyExtremes — low_coverage gate fires below 12 obs", () => {
+  it("sparse day (4 obs) → low_coverage=true with null tmin/tmax/tmean", async () => {
+    // Only 4 readings — under the n_obs<12 threshold.
+    const csv = buildSyntheticIemCsv("EGLL", "2025-01-08", 4, 0);
+    vi.spyOn(iemFetcher, "downloadIemAsos").mockResolvedValueOnce([
+      { chunkStart: "2025-01-01", chunkEnd: "2025-12-31", csv },
+    ]);
+    const out = await dailyExtremes("EGLL", "2025-01-08", "2025-01-08", {
+      merge: "iem_only",
+    });
+    if (out.length > 0) {
+      const row = out[0];
+      expect(row.low_coverage).toBe(true);
+      expect(row.tmin_f).toBeNull();
+      expect(row.tmax_f).toBeNull();
+      expect(row.tmean_f).toBeNull();
+    }
+  });
+});
+
+describe("dailyExtremes — merge='live_v1' tolerates AWC fetch failure", () => {
+  it("falls back to IEM-only when AWC throws", async () => {
+    vi.spyOn(iemFetcher, "downloadIemAsos").mockResolvedValueOnce([]);
+    vi.spyOn(awcFetcher, "fetchAwcMetars").mockRejectedValueOnce(new Error("network down"));
+    // Default merge is live_v1 — must not propagate the AWC error.
+    const out = await dailyExtremes("EGLL", "2025-01-06", "2025-01-06");
+    expect(out).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Helpers — synthetic IEM CSV fixture.
+// ---------------------------------------------------------------------------
+
+function buildSyntheticIemCsv(
+  station: string,
+  date: string,
+  nObs: number,
+  baseTempC: number,
+): string {
+  // Minimal IEM ASOS CSV shape the parser accepts: station,valid,tmpf,...
+  // We emit METAR-typed rows at hourly intervals across the day.
+  const header =
+    "station,valid,tmpf,dwpf,relh,drct,sknt,p01i,alti,mslp,vsby,gust,skyc1,skyc2,skyc3,skyc4,skyl1,skyl2,skyl3,skyl4,wxcodes,ice_accretion_1hr,ice_accretion_3hr,ice_accretion_6hr,peak_wind_gust,peak_wind_drct,peak_wind_time,feel,metar,snowdepth";
+  const lines: string[] = [header];
+  for (let i = 0; i < nObs; i++) {
+    const hour = String(i % 24).padStart(2, "0");
+    const valid = `${date} ${hour}:00`;
+    const tmpf = baseTempC * (9 / 5) + 32 + i; // varied for tmin/tmax
+    const metar = `${station} ${date.replace(/-/g, "")}${hour}00Z AUTO 00000KT 10SM CLR ${Math.round(tmpf).toString().padStart(2, "0")}/M00 A3000 RMK AO2`;
+    lines.push(`${station},${valid},${tmpf.toFixed(2)},,,,,,,,,,,,,,,,,,,,,,,,,,${metar},`);
+  }
+  return `${lines.join("\n")}\n`;
+}

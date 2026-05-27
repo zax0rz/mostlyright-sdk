@@ -131,3 +131,14 @@ export {
   type IemMosSource,
   type NwpModel,
 } from "./forecasts/index.js";
+
+// Phase 21 21-05 — dailyExtremes(station, from, to, opts?) wrapper matching
+// Python `mostlyright.international.daily_extremes`. Composes existing
+// fetchers + internationalDailyExtremes for the rollup; surfaces under
+// the weather barrel and `mostlyright` meta package.
+export { dailyExtremes } from "./dailyExtremes.js";
+export type {
+  DailyExtremeRow,
+  DailyExtremesMergeMode,
+  DailyExtremesOptions,
+} from "./dailyExtremes.types.js";
