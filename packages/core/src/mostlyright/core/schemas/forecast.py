@@ -47,8 +47,14 @@ class StationForecastSchema(Schema):
             name="issued_at",
             dtype="timestamp_utc",
             units=None,
-            nullable=False,
-            notes="model run time (knowledge_time)",
+            nullable=True,
+            notes=(
+                "model run time (knowledge_time). Nullable to accommodate "
+                "Phase 20 open_meteo.seamless rows whose cycle is "
+                "unrecoverable from the response. LeakageDetector + "
+                "assert_issued_at_populated() are the runtime gates that "
+                "reject null issued_at in training-data paths."
+            ),
         ),
         ColumnSpec(
             name="valid_at",

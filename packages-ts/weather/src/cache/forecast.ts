@@ -11,7 +11,7 @@
 //   - current UTC month                → SKIP (cycles may still publish)
 //   - else                              → cacheable
 
-import type { CacheStore } from "@mostlyrightmd/core";
+import type { CacheStore } from "@mostlyrightmd/core/internal/cache";
 
 import type { OpenMeteoRow, OpenMeteoSource } from "../forecasts/types.js";
 

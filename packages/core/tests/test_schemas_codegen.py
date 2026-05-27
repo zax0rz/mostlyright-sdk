@@ -59,9 +59,11 @@ def test_station_v1_property_count() -> None:
 
 def test_station_v1_required_columns() -> None:
     data = json.loads(STATION_JSON.read_text())
+    # issued_at is nullable in the unified schema (Phase 20 review fix):
+    # open_meteo.seamless rows carry null issued_at by design;
+    # LeakageDetector enforces the non-null invariant at runtime.
     assert set(data["required"]) == {
         "station",
-        "issued_at",
         "valid_at",
         "forecast_hour",
         "model",

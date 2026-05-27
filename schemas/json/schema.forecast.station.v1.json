@@ -56,9 +56,12 @@
       ]
     },
     "issued_at": {
-      "description": "model run time (knowledge_time)",
+      "description": "model run time (knowledge_time). Nullable to accommodate Phase 20 open_meteo.seamless rows whose cycle is unrecoverable from the response. LeakageDetector + assert_issued_at_populated() are the runtime gates that reject null issued_at in training-data paths.",
       "format": "date-time",
-      "type": "string"
+      "type": [
+        "null",
+        "string"
+      ]
     },
     "model": {
       "description": "e.g. NBE, GFS, LAV, MET, gfs_global, ecmwf_ifs025",
@@ -175,7 +178,6 @@
   },
   "required": [
     "forecast_hour",
-    "issued_at",
     "model",
     "retrieved_at",
     "source",

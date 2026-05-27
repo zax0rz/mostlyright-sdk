@@ -25,9 +25,12 @@ def test_station_forecast_schema_column_count() -> None:
 
 def test_station_forecast_schema_required_columns() -> None:
     required = {c.name for c in StationForecastSchema.COLUMNS if not c.nullable}
+    # issued_at is nullable per Phase 20 PLAN-11 review (Python Architect
+    # HIGH #1): open_meteo.seamless rows carry null issued_at by design;
+    # LeakageDetector + assert_issued_at_populated() are the runtime
+    # gates.
     assert required == {
         "station",
-        "issued_at",
         "valid_at",
         "forecast_hour",
         "model",
@@ -38,7 +41,7 @@ def test_station_forecast_schema_required_columns() -> None:
 
 def test_station_forecast_schema_nullable_columns() -> None:
     nullable = {c.name for c in StationForecastSchema.COLUMNS if c.nullable}
-    assert len(nullable) == 19
+    assert len(nullable) == 20
     # IEM MOS core (now nullable in unified schema):
     assert "temp_c" in nullable
     assert "dew_point_c" in nullable

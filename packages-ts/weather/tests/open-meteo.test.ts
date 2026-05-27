@@ -88,7 +88,7 @@ describe("Phase 20 OM-07 — openMeteoForecasts dispatch", () => {
       mode: "training",
       fetchFn,
     });
-    const url = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    const url = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
     expect(url.startsWith(OPEN_METEO_PREVIOUS_RUNS_URL)).toBe(true);
   });
 
@@ -100,7 +100,7 @@ describe("Phase 20 OM-07 — openMeteoForecasts dispatch", () => {
       issuedAt: "2024-06-01T12:00",
       fetchFn,
     });
-    const url = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    const url = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
     expect(url.startsWith(OPEN_METEO_SINGLE_RUNS_URL)).toBe(true);
   });
 
@@ -111,7 +111,7 @@ describe("Phase 20 OM-07 — openMeteoForecasts dispatch", () => {
       mode: "live",
       fetchFn,
     });
-    const url = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    const url = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
     expect(url.startsWith(OPEN_METEO_LIVE_URL)).toBe(true);
   });
 
@@ -132,7 +132,7 @@ describe("Phase 20 OM-07 — openMeteoForecasts dispatch", () => {
       allowLeakage: true,
       fetchFn,
     });
-    const url = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    const url = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
     expect(url.startsWith(OPEN_METEO_SEAMLESS_URL)).toBe(true);
     for (const r of rows) {
       expect(r.source).toBe("open_meteo.seamless");

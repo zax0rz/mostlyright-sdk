@@ -20,7 +20,11 @@ from mostlyright.core.schemas import ForecastSchema, StationForecastSchema
 # fixtures depend on these column-level invariants.
 _IEM_MOS_COLUMNS: list[tuple[str, str, str | None, bool, tuple[str, ...] | None]] = [
     ("station", "string", None, False, None),
-    ("issued_at", "timestamp_utc", None, False, None),
+    # issued_at is nullable in the unified schema (Phase 20 review fix).
+    # open_meteo.seamless rows carry null issued_at by design; the
+    # LeakageDetector + assert_issued_at_populated() are the runtime
+    # gates that reject null values in training-data paths.
+    ("issued_at", "timestamp_utc", None, True, None),
     ("valid_at", "timestamp_utc", None, False, None),
     ("forecast_hour", "int64", "hours", False, None),
     ("model", "string", None, False, None),
@@ -67,10 +71,11 @@ class TestForecastSchemaContract:
     def test_required_columns_are_non_nullable(self) -> None:
         # Temporal + identity columns are required. Phase 20 OM-02 adds
         # ``source`` and ``retrieved_at`` as required for source identity
-        # and provenance.
+        # and provenance. issued_at is nullable per Phase 20 PLAN-11
+        # review (open_meteo.seamless rows have null issued_at; runtime
+        # leakage gates reject them).
         for name in (
             "station",
-            "issued_at",
             "valid_at",
             "forecast_hour",
             "model",

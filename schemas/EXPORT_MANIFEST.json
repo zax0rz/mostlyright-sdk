@@ -3,14 +3,14 @@
     {
       "gated": false,
       "path": "json/schema.forecast.iem_mos.v1.json",
-      "sha256": "df27dac20a76e0ede448d96443e71be03c7a13e869ebb6244bfea3dea4e29653",
-      "size_bytes": 3965
+      "sha256": "e70001829c763179eda9342fdec88a135e3f384c827801537bde000d8ee38148",
+      "size_bytes": 4209
     },
     {
       "gated": false,
       "path": "json/schema.forecast.station.v1.json",
-      "sha256": "a01e7c3c0ece2be29ba8ff4d9231a213c33de2b65da95e3b890d3a41738ad743",
-      "size_bytes": 3965
+      "sha256": "037595be94b7a04535bedacac98fd894eed93ac4939ba36efad2beb40a94149d",
+      "size_bytes": 4209
     },
     {
       "gated": false,
