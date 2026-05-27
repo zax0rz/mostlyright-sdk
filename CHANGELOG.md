@@ -4,7 +4,8 @@ All notable changes to `mostlyright`. The format follows [Keep a Changelog](http
 
 ## [Unreleased]
 
-(next changes land here)
+### Fixed
+- **README:** switch PyPI download badges from Pepy/Shields to Badgen with PyPIStats detail links because Pepy has not indexed the `mostlyrightmd*` projects and Shields can surface upstream rate limits for fresh packages.
 
 ## [1.1.3] — 2026-05-27
 
