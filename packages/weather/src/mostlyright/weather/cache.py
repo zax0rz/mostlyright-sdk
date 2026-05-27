@@ -59,6 +59,16 @@ logger = logging.getLogger(__name__)
 CACHE_VERSION = "v1"
 DEFAULT_ROOT = Path.home() / ".mostlyright" / "cache"
 
+# Phase 18 PREC-04: parquet-file-metadata schema version for the observation
+# cache. This is distinct from CACHE_VERSION (above) which is the cache PATH
+# version. _CACHE_SCHEMA_VERSION tracks the DATA-SHAPE version: it changes
+# when the observation row semantics change (e.g. temp_c / temp_f precision
+# rules). Mismatched versions on read trigger auto-invalidate + warning;
+# existing pre-Phase-18 caches with no version metadata are silently
+# re-fetched on next call.
+_CACHE_SCHEMA_VERSION = "v2-phase18-integer-f"
+_CACHE_SCHEMA_VERSION_KEY = b"_cache_schema_version"
+
 # FileLock timeout in seconds. 30s is long enough to swallow a slow parquet
 # write under concurrent load but short enough to surface a deadlock rather
 # than hang forever.
@@ -246,6 +256,15 @@ def _atomic_write(path: Path, table: pa.Table) -> None:
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
+    # Phase 18 PREC-04: merge existing schema metadata with the version key
+    # so every write is auto-invalidate-aware on subsequent reads. Done at
+    # the _atomic_write layer (single chokepoint) so both observation and
+    # climate writers carry the version. Climate cache is not affected by
+    # the Phase 18 temp semantics change, but a consistent contract across
+    # cache types is cheaper than a branch.
+    existing_md = dict(table.schema.metadata or {})
+    existing_md[_CACHE_SCHEMA_VERSION_KEY] = _CACHE_SCHEMA_VERSION.encode("utf-8")
+    table = table.replace_schema_metadata(existing_md)
     # Lock sidecar is co-located with the destination — `filelock` creates it
     # if missing. Use a per-path lock so writes to different stations/months
     # parallelize. The 30s timeout is generous enough for a multi-MB parquet
@@ -292,6 +311,27 @@ def read_cache(station: str, year: int, month: int) -> list[dict] | None:
     try:
         table = pq.read_table(path)
     except (FileNotFoundError, OSError):
+        return None
+    # Phase 18 PREC-04: check schema version before serving rows. Pre-Phase-18
+    # caches contained back-converted temp_f values (e.g. 80.06°F instead of
+    # the native 80°F); after re-fetch, values carry integer-°F recovery per
+    # Phase 18 PREC-01. Missing-version (legacy) AND mismatched-version both
+    # treated as cache-miss + warning + silent re-fetch.
+    metadata = table.schema.metadata or {}
+    cached_version = metadata.get(_CACHE_SCHEMA_VERSION_KEY, b"").decode("utf-8")
+    if cached_version != _CACHE_SCHEMA_VERSION:
+        logger.warning(
+            "stale cache schema version for %s %04d-%02d "
+            "(found=%r, expected=%r); treating as cache-miss + re-fetch. "
+            "Pre-Phase-18 caches contained back-converted temp_f values "
+            "(e.g. 80.06°F instead of 80°F); after re-fetch, values will "
+            "carry integer-°F recovery per Phase 18 PREC-01.",
+            station,
+            year,
+            month,
+            cached_version,
+            _CACHE_SCHEMA_VERSION,
+        )
         return None
     return table.to_pylist()
 
@@ -456,6 +496,8 @@ def _has_cached_year(
 __all__ = [
     "CACHE_VERSION",
     "DEFAULT_ROOT",
+    "_CACHE_SCHEMA_VERSION",  # Phase 18 PREC-04
+    "_CACHE_SCHEMA_VERSION_KEY",  # Phase 18 PREC-04
     "_has_cached_year",
     "cache_path",
     "climate_cache_path",
