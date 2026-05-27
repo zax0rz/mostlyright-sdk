@@ -1,7 +1,8 @@
 Mostlyright Python SDK
 ======================
 
-Local-first SDK for prediction-market weather settlement research.
+Local-first SDK for prediction-market research over public data: weather
+settlements, forecasts, market metadata, and trade-history helpers.
 
 The canonical public surface is :func:`mostlyright.research`, which joins
 NWS CLI climate observations with METAR observation aggregates (AWC, IEM,

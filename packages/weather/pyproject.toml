@@ -14,6 +14,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
+
 dependencies = [
     # mostlyright (core) provides _internal._bounds, _internal._convert,
     # _internal._http, _internal.models, _internal.exceptions — used by the
@@ -33,6 +34,13 @@ dependencies = [
     # pyarrow ABI break from silently invalidating the parity-critical cache.
     "pyarrow>=17.0,<24.0",
 ]
+
+[project.urls]
+Homepage = "https://mostlyright.md"
+Documentation = "https://mostlyright.md/docs/sdk/"
+Repository = "https://github.com/mostlyrightmd/mostlyright-sdk"
+Issues = "https://github.com/mostlyrightmd/mostlyright-sdk/issues"
+Changelog = "https://github.com/mostlyrightmd/mostlyright-sdk/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 # DataFrame return values (cache.py uses pyarrow directly; pandas only needed
