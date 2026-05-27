@@ -1,6 +1,6 @@
 [project]
 name = "mostlyrightmd"
-version = "1.1.1"
+version = "1.1.2"
 description = "Local-first Python SDK for prediction-market research over public data: weather settlements, forecasts, market metadata, and temporal-safety primitives. Imports as `mostlyright`."
 readme = "README.md"
 license = "MIT"
