@@ -138,8 +138,9 @@ class TestNoTgroupInternationalFallback:
         )
         obs = iem_to_observation(row)
         assert obs is not None
-        # fahrenheit_to_celsius(64.4) = (64.4 - 32) * 5/9 = 18.0 exactly.
-        assert obs["temp_c"] == 18.0
+        # fahrenheit_to_celsius(64.4) = (64.4 - 32) * 5/9 ≈ 18.0 (IEEE-754 may
+        # produce 18.000000000000004; approx handles the float epsilon).
+        assert obs["temp_c"] == pytest.approx(18.0, abs=1e-6)
         assert obs["temp_f"] == 64.4
 
     def test_no_rmk_section_uses_legacy_derivation(self) -> None:
