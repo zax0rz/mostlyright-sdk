@@ -10,7 +10,8 @@ import { NotFoundError, fetchWithRetry } from "@mostlyrightmd/core";
 const GAMMA_BASE = "https://gamma-api.polymarket.com";
 const PAGE_SIZE = 100;
 const MAX_EVENTS = 10_000;
-const DEFAULT_USER_AGENT = "mostlyright-ts/0.1.0 (+https://github.com/Tarabcak/mostlyright)";
+const DEFAULT_USER_AGENT =
+  "mostlyright-ts/0.1.0 (+https://github.com/mostlyrightmd/mostlyright-sdk)";
 const DEFAULT_SLEEP_BETWEEN_MS = 200; // 0.2 s
 const RETRY_STATUSES: ReadonlySet<number> = new Set([429, 500, 502, 503, 504]);
 

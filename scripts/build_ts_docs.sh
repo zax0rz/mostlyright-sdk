@@ -5,7 +5,7 @@
 # then invokes TypeDoc against `packages-ts/typedoc.json`. Output lands in
 # `docs-ts-build/markdown/` at the repo root. The `docs-ts-build/markdown/`
 # tree is consumed by `.github/workflows/docs-publish.yml` (Phase 15 W3) —
-# copied into the `mostly-right-landing` repo on every `vts-*` non-rc tag.
+# copied into the `mostlyright-landing` repo on every `vts-*` non-rc tag.
 #
 # Usage (local):
 #   bash scripts/build_ts_docs.sh

@@ -61,7 +61,7 @@ _EVENTS_MAX: int = 10_000
 
 
 #: Required user-agent header. Cloudfront returns 403 on a blank UA.
-_USER_AGENT: str = "mostlyright-sdk/0.1 (+https://github.com/Tarabcak/mostlyright)"
+_USER_AGENT: str = "mostlyright-sdk/0.1 (+https://github.com/mostlyrightmd/mostlyright-sdk)"
 
 
 def get_json(
