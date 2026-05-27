@@ -25,10 +25,11 @@
 //    `TimePoint.toPythonIso()` — iter-1 H1 fix. MCP clients comparing
 //    these strings across Python and TS see byte-equivalent values.
 
-import { LeakageError, SchemaValidationError } from "../exceptions/index.js";
+import { IssuedAtMissingError, LeakageError, SchemaValidationError } from "../exceptions/index.js";
 import { TimePoint } from "./timepoint.js";
 
 const SAMPLE_CAP = 10;
+const ISSUED_AT_SAMPLE_CAP = 5;
 const RUNTIME_SCHEMA_ID = "<runtime>";
 
 /**
@@ -157,4 +158,47 @@ export class LeakageDetector {
   check<Row extends { knowledge_time: string }>(rows: ReadonlyArray<Row>): void {
     assertNoLeakage(rows, this.#asOf);
   }
+
+  /**
+   * Phase 20 OM-04: defensive non-null check for `issuedAt`.
+   *
+   * Independent of `asOf` — the bound cutoff is irrelevant when the row
+   * carries no model-run time at all. Throws {@link IssuedAtMissingError}
+   * if any row's `issuedAt` is null/undefined/empty.
+   */
+  checkIssuedAt<Row extends { issuedAt?: unknown }>(rows: ReadonlyArray<Row>): void {
+    assertIssuedAtPopulated(rows);
+  }
+}
+
+/**
+ * Phase 20 OM-04: throw {@link IssuedAtMissingError} if any row's
+ * `issuedAt` is null/undefined/empty.
+ *
+ * Mirrors Python `assert_issued_at_populated()`. Forecast rows MUST
+ * carry their model-run time to be leakage-safe; a missing `issuedAt`
+ * means we cannot verify the cycle predated the `asOf` cutoff. For
+ * Open-Meteo this should be impossible by construction (the fetcher
+ * derives `issuedAt` per row), so this check is a defensive net.
+ */
+export function assertIssuedAtPopulated<Row extends { issuedAt?: unknown }>(
+  rows: ReadonlyArray<Row>,
+): void {
+  if (rows.length === 0) return;
+  const violations: Array<{ row_idx: number }> = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const v = r == null ? null : (r as { issuedAt?: unknown }).issuedAt;
+    if (v == null || v === "") {
+      violations.push({ row_idx: i });
+    }
+  }
+  if (violations.length === 0) return;
+  throw new IssuedAtMissingError(
+    `${violations.length} row(s) have null issuedAt; cannot verify leakage-safety`,
+    {
+      violatingCount: violations.length,
+      sampleViolations: violations.slice(0, ISSUED_AT_SAMPLE_CAP),
+    },
+  );
 }

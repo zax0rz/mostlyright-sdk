@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import httpx
 import pandas as pd
-
 from mostlyright.weather._fetchers._open_meteo import (
     OPEN_METEO_LIVE_URL,
     OPEN_METEO_PREVIOUS_RUNS_URL,
@@ -41,13 +40,15 @@ def _live_response_payload(times: list[str], temps: list[float]) -> dict:
 
 
 def test_live_mode_returns_dataframe() -> None:
-    payload = _live_response_payload(
-        ["2026-05-28T00:00", "2026-05-28T01:00"], [18.5, 19.0]
-    )
+    payload = _live_response_payload(["2026-05-28T00:00", "2026-05-28T01:00"], [18.5, 19.0])
     client = _make_mock_client(payload)
     df = fetch_open_meteo(
-        "KNYC", "2026-05-28", "2026-05-28",
-        model="gfs_global", mode="live", client=client,
+        "KNYC",
+        "2026-05-28",
+        "2026-05-28",
+        model="gfs_global",
+        mode="live",
+        client=client,
     )
     assert isinstance(df, pd.DataFrame)
     assert len(df) == 2
@@ -57,8 +58,12 @@ def test_live_mode_hits_live_endpoint() -> None:
     payload = _live_response_payload(["2026-05-28T00:00"], [18.5])
     client = _make_mock_client(payload)
     fetch_open_meteo(
-        "KNYC", "2026-05-28", "2026-05-28",
-        model="gfs_global", mode="live", client=client,
+        "KNYC",
+        "2026-05-28",
+        "2026-05-28",
+        model="gfs_global",
+        mode="live",
+        client=client,
     )
     url = client.get.call_args[0][0]
     assert url == OPEN_METEO_LIVE_URL
@@ -70,8 +75,12 @@ def test_live_mode_source_tag() -> None:
     payload = _live_response_payload(["2026-05-28T00:00"], [18.5])
     client = _make_mock_client(payload)
     df = fetch_open_meteo(
-        "KNYC", "2026-05-28", "2026-05-28",
-        model="gfs_global", mode="live", client=client,
+        "KNYC",
+        "2026-05-28",
+        "2026-05-28",
+        model="gfs_global",
+        mode="live",
+        client=client,
     )
     assert df["source"].iloc[0] == "open_meteo.live"
 
@@ -80,8 +89,12 @@ def test_live_mode_issued_at_populated() -> None:
     payload = _live_response_payload(["2026-05-28T00:00", "2026-05-28T06:00"], [18.5, 22.0])
     client = _make_mock_client(payload)
     df = fetch_open_meteo(
-        "KNYC", "2026-05-28", "2026-05-28",
-        model="gfs_global", mode="live", client=client,
+        "KNYC",
+        "2026-05-28",
+        "2026-05-28",
+        model="gfs_global",
+        mode="live",
+        client=client,
     )
     assert df["issued_at"].notna().all()
 
@@ -93,8 +106,12 @@ def test_live_mode_issued_at_follows_cycle_math_formula_gfs() -> None:
     client = _make_mock_client(payload)
     before = datetime.now(UTC)
     df = fetch_open_meteo(
-        "KNYC", "2026-05-28", "2026-05-28",
-        model="gfs_global", mode="live", client=client,
+        "KNYC",
+        "2026-05-28",
+        "2026-05-28",
+        model="gfs_global",
+        mode="live",
+        client=client,
     )
     after = datetime.now(UTC)
     issued = df["issued_at"].iloc[0]
@@ -112,8 +129,12 @@ def test_live_mode_hourly_model_uses_2h_lag_hrrr() -> None:
     client = _make_mock_client(payload)
     before = datetime.now(UTC)
     df = fetch_open_meteo(
-        "KNYC", "2026-05-28", "2026-05-28",
-        model="ncep_hrrr_conus", mode="live", client=client,
+        "KNYC",
+        "2026-05-28",
+        "2026-05-28",
+        model="ncep_hrrr_conus",
+        mode="live",
+        client=client,
     )
     issued = pd.Timestamp(df["issued_at"].iloc[0]).to_pydatetime()
     # HRRR has publish_lag=2h
@@ -138,8 +159,12 @@ def test_live_mode_response_without_previous_day_suffixes_parses() -> None:
     }
     client = _make_mock_client(payload)
     df = fetch_open_meteo(
-        "KNYC", "2026-05-28", "2026-05-28",
-        model="gfs_global", mode="live", client=client,
+        "KNYC",
+        "2026-05-28",
+        "2026-05-28",
+        model="gfs_global",
+        mode="live",
+        client=client,
     )
     assert df["temp_c"].iloc[0] == 18.5
 
@@ -149,7 +174,12 @@ def test_live_mode_allow_leakage_ignored() -> None:
     payload = _live_response_payload(["2026-05-28T00:00"], [18.5])
     client = _make_mock_client(payload)
     df = fetch_open_meteo(
-        "KNYC", "2026-05-28", "2026-05-28",
-        model="gfs_global", mode="live", allow_leakage=True, client=client,
+        "KNYC",
+        "2026-05-28",
+        "2026-05-28",
+        model="gfs_global",
+        mode="live",
+        allow_leakage=True,
+        client=client,
     )
     assert df["source"].iloc[0] == "open_meteo.live"

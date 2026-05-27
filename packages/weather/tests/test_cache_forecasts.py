@@ -6,7 +6,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-
 from mostlyright.weather.cache import (
     forecast_cache_path,
     invalidate_forecast,
@@ -17,9 +16,7 @@ from mostlyright.weather.cache import (
 
 def test_forecast_cache_path_layout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MOSTLYRIGHTMD_CACHE_DIR", str(tmp_path))
-    path = forecast_cache_path(
-        "KNYC", "open_meteo.previous_runs", "gfs_global", 2024, 6
-    )
+    path = forecast_cache_path("KNYC", "open_meteo.previous_runs", "gfs_global", 2024, 6)
     parts = path.parts
     assert "forecasts" in parts
     assert "open_meteo.previous_runs" in parts
@@ -29,9 +26,7 @@ def test_forecast_cache_path_layout(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     assert path.name == "06.parquet"
 
 
-def test_write_then_read_forecast_cache(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_write_then_read_forecast_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MOSTLYRIGHTMD_CACHE_DIR", str(tmp_path))
     rows = [
         {
@@ -43,20 +38,14 @@ def test_write_then_read_forecast_cache(
             "temp_c": 22.5,
         }
     ]
-    write_forecast_cache(
-        "KNYC", "open_meteo.previous_runs", "gfs_global", 2024, 6, rows
-    )
-    got = read_forecast_cache(
-        "KNYC", "open_meteo.previous_runs", "gfs_global", 2024, 6
-    )
+    write_forecast_cache("KNYC", "open_meteo.previous_runs", "gfs_global", 2024, 6, rows)
+    got = read_forecast_cache("KNYC", "open_meteo.previous_runs", "gfs_global", 2024, 6)
     assert got is not None
     assert len(got) == 1
     assert got[0]["station"] == "KNYC"
 
 
-def test_live_source_never_cached(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_live_source_never_cached(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MOSTLYRIGHTMD_CACHE_DIR", str(tmp_path))
     rows = [
         {
@@ -68,18 +57,12 @@ def test_live_source_never_cached(
             "temp_c": 22.5,
         }
     ]
-    write_forecast_cache(
-        "KNYC", "open_meteo.live", "gfs_global", 2024, 6, rows
-    )
-    path = forecast_cache_path(
-        "KNYC", "open_meteo.live", "gfs_global", 2024, 6
-    )
+    write_forecast_cache("KNYC", "open_meteo.live", "gfs_global", 2024, 6, rows)
+    path = forecast_cache_path("KNYC", "open_meteo.live", "gfs_global", 2024, 6)
     assert not path.exists()
 
 
-def test_seamless_source_never_cached(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_seamless_source_never_cached(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MOSTLYRIGHTMD_CACHE_DIR", str(tmp_path))
     rows = [
         {
@@ -91,18 +74,12 @@ def test_seamless_source_never_cached(
             "temp_c": 22.5,
         }
     ]
-    write_forecast_cache(
-        "KNYC", "open_meteo.seamless", "gfs_global", 2024, 6, rows
-    )
-    path = forecast_cache_path(
-        "KNYC", "open_meteo.seamless", "gfs_global", 2024, 6
-    )
+    write_forecast_cache("KNYC", "open_meteo.seamless", "gfs_global", 2024, 6, rows)
+    path = forecast_cache_path("KNYC", "open_meteo.seamless", "gfs_global", 2024, 6)
     assert not path.exists()
 
 
-def test_current_utc_month_skipped(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_current_utc_month_skipped(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MOSTLYRIGHTMD_CACHE_DIR", str(tmp_path))
     now = datetime.now(UTC)
     rows = [
@@ -133,9 +110,7 @@ def test_current_utc_month_skipped(
     assert not path.exists()
 
 
-def test_invalidate_forecast_removes_file(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_invalidate_forecast_removes_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MOSTLYRIGHTMD_CACHE_DIR", str(tmp_path))
     rows = [
         {
@@ -147,22 +122,14 @@ def test_invalidate_forecast_removes_file(
             "temp_c": 22.5,
         }
     ]
-    write_forecast_cache(
-        "KNYC", "open_meteo.previous_runs", "gfs_global", 2024, 6, rows
-    )
-    assert invalidate_forecast(
-        "KNYC", "open_meteo.previous_runs", "gfs_global", 2024, 6
-    )
-    assert not invalidate_forecast(
-        "KNYC", "open_meteo.previous_runs", "gfs_global", 2024, 6
-    )
+    write_forecast_cache("KNYC", "open_meteo.previous_runs", "gfs_global", 2024, 6, rows)
+    assert invalidate_forecast("KNYC", "open_meteo.previous_runs", "gfs_global", 2024, 6)
+    assert not invalidate_forecast("KNYC", "open_meteo.previous_runs", "gfs_global", 2024, 6)
 
 
 def test_read_forecast_cache_miss_returns_none(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("MOSTLYRIGHTMD_CACHE_DIR", str(tmp_path))
-    got = read_forecast_cache(
-        "KNYC", "open_meteo.previous_runs", "gfs_global", 2020, 1
-    )
+    got = read_forecast_cache("KNYC", "open_meteo.previous_runs", "gfs_global", 2020, 1)
     assert got is None

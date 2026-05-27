@@ -301,10 +301,7 @@ def _parse_om_row(
         else:
             series = hourly_payload.get(om_var)
 
-        if series is None or idx >= len(series):
-            value = None
-        else:
-            value = _parse_value(series[idx])
+        value = None if series is None or idx >= len(series) else _parse_value(series[idx])
 
         # precipitation_probability comes in 0..100 percent; convert to
         # the 0..1 fraction the unified schema expects.
@@ -428,9 +425,11 @@ def _project_payload_to_dataframe(
                 PUBLISH_LAG,
                 issued_at_from_live_cycle_math,
             )
+
             publish_lag = PUBLISH_LAG.get(model)
             if publish_lag is None:
                 from datetime import timedelta as _td
+
                 publish_lag = _td(hours=6)
             issued_at_dt = issued_at_from_live_cycle_math(
                 now_utc=retrieved_at,

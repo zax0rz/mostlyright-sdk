@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import pytest
-
 from mostlyright.research import _FORECAST_SOURCES_ALLOWED, _normalize_forecast_source
 
 
 def test_forecast_sources_allowed_set() -> None:
-    assert _FORECAST_SOURCES_ALLOWED == frozenset({"iem_mos", "open_meteo"})
+    assert frozenset({"iem_mos", "open_meteo"}) == _FORECAST_SOURCES_ALLOWED
 
 
 def test_normalize_default_iem_mos() -> None:

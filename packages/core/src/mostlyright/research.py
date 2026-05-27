@@ -1379,9 +1379,7 @@ def _validate_research_kwargs(
         )
 
 
-_FORECAST_SOURCES_ALLOWED: frozenset[str] = frozenset(
-    {"iem_mos", "open_meteo"}
-)
+_FORECAST_SOURCES_ALLOWED: frozenset[str] = frozenset({"iem_mos", "open_meteo"})
 
 
 def _fetch_open_meteo_range(
@@ -1404,9 +1402,7 @@ def _fetch_open_meteo_range(
 
     from mostlyright.weather._fetchers._open_meteo import fetch_open_meteo
 
-    df = fetch_open_meteo(
-        info.icao, from_date, to_date, model=model, mode="training"
-    )
+    df = fetch_open_meteo(info.icao, from_date, to_date, model=model, mode="training")
     groups: dict[str, list[dict[str, Any]]] = {}
     if df is None or df.empty:
         return groups
@@ -1419,20 +1415,15 @@ def _fetch_open_meteo_range(
         except Exception:
             continue
         try:
-            date_iso = settlement_date_for(
-                ftime_dt.strftime("%Y-%m-%dT%H:%M:%SZ"), info.code
-            )
+            date_iso = settlement_date_for(ftime_dt.strftime("%Y-%m-%dT%H:%M:%SZ"), info.code)
         except Exception:
             date_iso = ftime_dt.strftime("%Y-%m-%d")
         issued_at = row.get("issued_at")
         try:
             issued_iso = (
-                pd.to_datetime(issued_at, utc=True).strftime(
-                    "%Y-%m-%dT%H:%M:%SZ"
-                )
-                if issued_at is not None and not (
-                    isinstance(issued_at, float) and issued_at != issued_at
-                )
+                pd.to_datetime(issued_at, utc=True).strftime("%Y-%m-%dT%H:%M:%SZ")
+                if issued_at is not None
+                and not (isinstance(issued_at, float) and issued_at != issued_at)
                 else None
             )
         except Exception:
@@ -1440,27 +1431,21 @@ def _fetch_open_meteo_range(
         valid_iso = ftime_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
         temp_c = row.get("temp_c")
         temperature_f: float | None = None
-        if temp_c is not None and not (
-            isinstance(temp_c, float) and temp_c != temp_c
-        ):
+        if temp_c is not None and not (isinstance(temp_c, float) and temp_c != temp_c):
             try:
                 temperature_f = float(temp_c) * 9.0 / 5.0 + 32.0
             except (TypeError, ValueError):
                 temperature_f = None
         pop_prob = row.get("precip_probability")
         pop_6hr_pct: float | None = None
-        if pop_prob is not None and not (
-            isinstance(pop_prob, float) and pop_prob != pop_prob
-        ):
+        if pop_prob is not None and not (isinstance(pop_prob, float) and pop_prob != pop_prob):
             try:
                 pop_6hr_pct = float(pop_prob) * 100.0
             except (TypeError, ValueError):
                 pop_6hr_pct = None
         precip_mm = row.get("precipitation_mm")
         qpf_6hr_in: float | None = None
-        if precip_mm is not None and not (
-            isinstance(precip_mm, float) and precip_mm != precip_mm
-        ):
+        if precip_mm is not None and not (isinstance(precip_mm, float) and precip_mm != precip_mm):
             try:
                 qpf_6hr_in = float(precip_mm) / 25.4
             except (TypeError, ValueError):
@@ -1710,9 +1695,7 @@ def research(
         # by build_pairs_row's model-name match.
         if "iem_mos" in fcst_sources:
             iem_model = (forecast_model or "nbe").lower()
-            iem_mos_by_date = _fetch_iem_mos_range(
-                info, from_date, to_date, model=iem_model
-            )
+            iem_mos_by_date = _fetch_iem_mos_range(info, from_date, to_date, model=iem_model)
         if "open_meteo" in fcst_sources:
             # Phase 20 OM-05: Open-Meteo forecast source. Default model
             # gfs_global matches the IEM MOS "nbe" parity-default ethos:
@@ -1721,10 +1704,9 @@ def research(
             from mostlyright.weather._fetchers._open_meteo_models import (
                 OPEN_METEO_MODELS,
             )
+
             if om_model in OPEN_METEO_MODELS:
-                om_by_date = _fetch_open_meteo_range(
-                    info, from_date, to_date, model=om_model
-                )
+                om_by_date = _fetch_open_meteo_range(info, from_date, to_date, model=om_model)
                 # Concatenate: never silently merge — every row carries its
                 # source identity. build_pairs accepts a single dict so we
                 # merge OM rows into iem_mos_by_date when both sources are

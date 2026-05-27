@@ -600,9 +600,7 @@ def write_forecast_cache(
     if not rows:
         return
     table = pa.Table.from_pylist(rows)
-    _atomic_write(
-        forecast_cache_path(station, source, model, year, month), table
-    )
+    _atomic_write(forecast_cache_path(station, source, model, year, month), table)
 
 
 def invalidate_forecast(
