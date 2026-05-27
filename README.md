@@ -159,4 +159,5 @@ MIT. See [`LICENSE`](LICENSE).
 - **Iowa State University Iowa Environmental Mesonet** (IEM) — ASOS archive + CLI text products
 - **NOAA National Centers for Environmental Information** (NCEI) — GHCNh historical observations
 - **National Weather Service** (NWS) — climate data products (CLI) and forecast model outputs
+- **Open-Meteo** — multi-provider forecast aggregation (added Phase 20). 36 models across NCEP / ECMWF / DWD / Météo-France / Asia / Oceania / Europe / GEM Canada. Leakage-safe via per-cycle endpoint + conservative `issued_at` lower bound. See [docs/forecast-sources.md](docs/forecast-sources.md).
 - **Kalshi** + **Polymarket** — public prediction-market metadata + settlement feeds

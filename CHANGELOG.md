@@ -4,7 +4,21 @@ All notable changes to `mostlyright`. The format follows [Keep a Changelog](http
 
 ## [Unreleased]
 
-### Added
+### Added — Phase 20: Open-Meteo Forecast Source Integration (leakage-safe, 36-model)
+- **Open-Meteo as third forecast source** (Phase 20). 36 models across NCEP / ECMWF / DWD / Météo-France / JMA-KMA-CMA-BoM / UKMO-MetNo / GEM Canada providers. New `mostlyright.weather.fetch_open_meteo()` Python API and `@mostlyrightmd/weather` `openMeteoForecasts()` TS API ship in lockstep.
+- **`schema.forecast.station.v1`** unified per-station forecast schema covering IEM MOS shared core + Open-Meteo extras (`apparent_temp_c`, `shortwave_radiation_wm2`, `cape_jkg`, `cloud_cover_pct`, `surface_pressure_hpa`, `freezing_level_m`, etc.). `schema.forecast.iem_mos.v1` retained as back-compat alias.
+- **`research(forecast_source="open_meteo")`** + list form `forecast_source=["iem_mos", "open_meteo"]` — cross-source training data without silent merge; every row carries explicit source identity (`open_meteo.previous_runs`, `open_meteo.single_run`, `open_meteo.live`).
+- **`IssuedAtMissingError` + `OpenMeteoSeamlessLeakageError` typed exceptions** in both Python (`mostlyright.core.exceptions`) and TypeScript (`@mostlyrightmd/core/exceptions`). Payload keys snake_case for cross-SDK MCP parity; both carry `origin_issue="Tarabcak/mostlyright#70"`.
+- **`~/.mostlyright/cache/v1/forecasts/{source}/{model}/{station}/{YYYY}/{MM}.parquet`** cache tier with `filelock` + per-source partitioning. Live + seamless sources never cached.
+- **5-fixture OM-08 leakage regression suite** (Python + TS) reproducing the exact Tarabcak/mostlyright#70 case. Headline assertion: NYC 2024-06-01 23:00Z `_previous_day1` → `issued_at = 2024-05-31T18:00Z` (provably ≤ the 17:00Z snapshot).
+- **`docs/forecast-sources.md`** comparing IEM MOS / NWP gridded / Open-Meteo across models, latency, units, leakage-safety. Includes Python + TS quickstart examples for the new `forecast_source="open_meteo"` surface.
+
+### Notes — Phase 20 origin + design floor
+- The Open-Meteo Historical Forecast (seamless) endpoint is **BANNED for training data**. `fetch_open_meteo(mode="seamless")` raises `OpenMeteoSeamlessLeakageError` unless `allow_leakage=True` is passed. Even then, `LeakageDetector` rejects the rows when `as_of` is asserted. Origin: [Tarabcak/mostlyright#70](https://github.com/Tarabcak/mostlyright/issues/70) — legacy `/forecast_series` proxied the seamless feed without preserving `issued_at`, silently using post-snapshot 18Z runs in h13 EDT training data. Apparent +6pp lift on the MCAGE-OM benchmark was partly attributable to this leakage and not reproducible live.
+- Live mode (`mode="live"`) derives `issued_at` via conservative cycle-math fallback `floor_to_cycle(now − publish_lag(model), cycles)` per Phase 20 D-06. Open-Meteo's Metadata API integration (for authoritative `last_run_initialisation_time`) is a follow-up — the public HTTPS URL was not documented as of 2026-05-28.
+- Distribution: lockstep PyPI (`mostlyrightmd`, `mostlyrightmd-weather`) + npm (`@mostlyrightmd/weather`, `@mostlyrightmd/core`).
+
+### Added — earlier Phase 21 follow-ups
 - **`NwpNotAvailableError` typed subclass** in `@mostlyrightmd/core`. Raised by `forecastNwp()` instead of the generic `DataAvailabilityError`. Carries typed `.station` and `.model` properties so consumers get `instanceof`-based dispatch + IDE autocomplete instead of parsing the hint string. Back-compat preserved — `NwpNotAvailableError` extends `DataAvailabilityError` with `reason="model_unavailable"`, so existing `catch (e instanceof DataAvailabilityError)` paths continue to work unchanged. 6 new tests cover the subclass + back-compat catch paths.
 - **`docs/nwp-forecasts.md`** — dedicated TypeScript-focused page documenting the v1.x `forecastNwp()` deferral. Explains why GRIB2 decode is browser-impractical today (eccodes / cfgrib are native-only; WASM port has prohibitive bundle size), lists the recommended catch pattern, points at `iemMosForecasts()` for the 7 MOS-covered stations and the Python SDK for everything else, lists all 24 signature-supported NwpModel literals, and tracks the v2.0+ roadmap.
 - **TS package READMEs** now visibly call out the stub surfaces (`forecastNwp`, `climateGaps`) instead of burying them in the docs site. `@mostlyrightmd/weather` README includes a "What's NOT in the TypeScript SDK (yet)" section; `mostlyright` meta-package README ships a decision-matrix table showing which functions are wired today vs deferred to v2.0+.
