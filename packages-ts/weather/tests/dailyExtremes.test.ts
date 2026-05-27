@@ -50,8 +50,18 @@ describe("dailyExtremes — full-day shape projection (US ASOS, integer-°F)", (
   it("projects DailyExtreme → DailyExtremeRow with concrete date/station/n_obs", async () => {
     // 12 synthetic readings across 2025-01-08 UTC at KNYC. KNYC is in
     // America/New_York (UTC-5 standard) so half of the hourly readings
-    // bucket into 2025-01-07 local and half into 2025-01-08 local —
-    // expect EXACTLY 2 station-local days.
+    // bucket into 2025-01-07 local and half into 2025-01-08 local — the
+    // caller asks for [2025-01-08, 2025-01-08] (station-local) so only
+    // the 2025-01-08 bucket is returned (post-rollup clip to the
+    // station-local window matches Python `daily_extremes()` semantics
+    // at international.py:319 — drop rows where `local_d < from_date or
+    // local_d > to_date`).
+    //
+    // Phase 21 21-05 fix-iter-2 (codex CRITICAL): pre-fix the wrapper
+    // returned BOTH local days because the pre-rollup filter was UTC
+    // date-prefix vs station-local date-prefix (asymmetric). The fix
+    // widens pre-rollup by ±1 UTC day THEN clips post-rollup by
+    // station-local `localDate` — symmetric with Python.
     const csv = buildSyntheticIemCsv("KNYC", "2025-01-08", 12, 0);
     vi.spyOn(iemFetcher, "downloadIemAsos").mockResolvedValueOnce([
       { chunkStart: "2025-01-01", chunkEnd: "2025-12-31", csv },
@@ -59,21 +69,37 @@ describe("dailyExtremes — full-day shape projection (US ASOS, integer-°F)", (
     const out = await dailyExtremes("KNYC", "2025-01-08", "2025-01-08", {
       merge: "iem_only",
     });
-    // Strict — exactly 2 station-local days from a 12-hour UTC fixture
-    // due to the timezone shift. A regression returning [] would fail
-    // this assertion (no `if (out.length > 0)` escape hatch).
+    // Exactly 1 station-local day — the one the caller asked for. The
+    // tz-shifted UTC neighbor 2025-01-07 bucket is dropped by the
+    // post-rollup clip (Python parity).
+    expect(out).toHaveLength(1);
+    const row = out[0];
+    if (row === undefined) throw new Error("expected exactly one row");
+    expect(row.station).toBe("KNYC");
+    expect(row.date).toBe("2025-01-08");
+    expect(typeof row.low_coverage).toBe("boolean");
+    expect(Number.isInteger(row.n_obs)).toBe(true);
+    expect(row.n_obs).toBeGreaterThan(0);
+  });
+
+  it("includes tz-edge observations from the previous UTC day in the requested local day (Python parity)", async () => {
+    // Request a 2-day window so the rollup can demonstrate per-bucket
+    // accounting AND the widened-by-±1 fetch keeping tz-edge observations.
+    // 12 UTC hours on 2025-01-08 → half into 2025-01-07 local + half into
+    // 2025-01-08 local; both fall inside the [2025-01-07, 2025-01-08]
+    // request and must be returned.
+    const csv = buildSyntheticIemCsv("KNYC", "2025-01-08", 12, 0);
+    vi.spyOn(iemFetcher, "downloadIemAsos").mockResolvedValueOnce([
+      { chunkStart: "2025-01-01", chunkEnd: "2025-12-31", csv },
+    ]);
+    const out = await dailyExtremes("KNYC", "2025-01-07", "2025-01-08", {
+      merge: "iem_only",
+    });
     expect(out).toHaveLength(2);
-    // Every row mirrors the requested station; both station-local dates
-    // sit inside the 2025-01-07..-08 window.
     for (const row of out) {
       expect(row.station).toBe("KNYC");
       expect(row.date).toMatch(/^2025-01-0[78]$/);
-      expect(typeof row.low_coverage).toBe("boolean");
-      expect(Number.isInteger(row.n_obs)).toBe(true);
-      expect(row.n_obs).toBeGreaterThan(0);
     }
-    // Total observations across all returned days equals the fixture
-    // (12) — locks the projection's n_obs accounting.
     const totalNObs = out.reduce((s, r) => s + r.n_obs, 0);
     expect(totalNObs).toBe(12);
   });

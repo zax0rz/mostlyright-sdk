@@ -26,7 +26,8 @@
 
 import { IndexedDBStore } from "./indexeddb.js";
 import { MemoryStore } from "./memory.js";
-import type { CacheStore } from "./types.js";
+import { CACHE_SCHEMA_VERSION, type CacheStore } from "./types.js";
+import { versionedCacheStore } from "./versionedCacheStore.js";
 
 export type { CacheStore, CacheSetOptions, CacheEntry } from "./types.js";
 export { lockKeyFor } from "./types.js";
@@ -42,6 +43,15 @@ export {
   isWritableYear,
 } from "./skip-rules.js";
 export { cacheKeyForObservations, cacheKeyForClimate } from "./keys.js";
+// Phase 21 21-03 fix-iter-2 (ts-architect CRITICAL): browser entry must
+// also re-export the version adapter + canonical version constant so
+// downstream code that imports them via this path resolves to the same
+// symbols as the Node entry.
+export {
+  versionedCacheStore,
+  CACHE_SCHEMA_VERSION as VERSIONED_CACHE_SCHEMA_VERSION,
+} from "./versionedCacheStore.js";
+export { CACHE_SCHEMA_VERSION } from "./types.js";
 
 /**
  * Browser/MV3 variant of {@link defaultCacheStore}. Auto-detects the best
@@ -49,6 +59,12 @@ export { cacheKeyForObservations, cacheKeyForClimate } from "./keys.js";
  *
  *   1. IndexedDB present → {@link IndexedDBStore}
  *   2. else → {@link MemoryStore}
+ *
+ * Phase 21 21-03 fix-iter-2 (ts-architect CRITICAL): the concrete store
+ * is wrapped in `versionedCacheStore(CACHE_SCHEMA_VERSION)` so pre-
+ * Phase-18 entries silently miss. The Node entry already does this; the
+ * browser entry was missed in iter-1 — browser/MV3 consumers were still
+ * served stale cache rows. Fix is symmetric.
  *
  * Returns a NEW instance per call.
  *
@@ -58,6 +74,6 @@ export { cacheKeyForObservations, cacheKeyForClimate } from "./keys.js";
  * conditional exports flip them between entries.
  */
 export async function defaultCacheStore(): Promise<CacheStore> {
-  if (typeof indexedDB !== "undefined") return new IndexedDBStore();
-  return new MemoryStore();
+  const inner = typeof indexedDB !== "undefined" ? new IndexedDBStore() : new MemoryStore();
+  return versionedCacheStore(inner, CACHE_SCHEMA_VERSION);
 }

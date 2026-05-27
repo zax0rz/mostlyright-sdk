@@ -37,6 +37,33 @@ import type {
 
 const LOW_COVERAGE_THRESHOLD = 12;
 
+/**
+ * Phase 21 21-05 fix-iter-2 (codex CRITICAL): `fromDate`/`toDate` are
+ * station-LOCAL dates, but `row.observed_at` is UTC. Filtering UTC date
+ * prefix against local date prefix drops tz-edge observations that fall
+ * on adjacent UTC days but the local target day (e.g. for a UTC+9
+ * station, `2025-01-06 23:30 local` is `2025-01-06 14:30Z` which has UTC
+ * prefix `2025-01-06` — OK — but `2025-01-06 02:00 local` is
+ * `2025-01-05 17:00Z` which has UTC prefix `2025-01-05` and would be
+ * dropped pre-fix).
+ *
+ * Mitigation: widen the pre-rollup window by ±1 UTC day so every
+ * station-local observation in [fromDate, toDate] is captured regardless
+ * of tz offset. The `internationalDailyExtremes()` rollup downstream
+ * re-projects observations into station-local days; we then clip the
+ * resulting rows back to the caller's [fromDate, toDate] using the
+ * station-local `localDate` field on each rollup row.
+ */
+function addUtcDays(iso: string, days: number): string {
+  const [yStr, mStr, dStr] = iso.split("-");
+  const dt = new Date(Date.UTC(Number(yStr), Number(mStr) - 1, Number(dStr)));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  const yyyy = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getUTCDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 interface StationLookup {
   tz: string;
   isUs: boolean;
@@ -83,15 +110,13 @@ async function fetchIemAsosObservations(
         // Filter to the requested window. The canonical Observation field
         // is `precip_1hr_inches` (inches); InternationalRow expects mm —
         // convert at the boundary so the per-day precip rollup is in mm.
-        // Phase 21 21-09 fix-iter-1 (ts-architect HIGH): use the date-prefix
-        // on BOTH bounds so the lexicographic comparison is symmetric. The
-        // previous form (`row.observed_at >= fromDate`) compared a full ISO
-        // timestamp against a date-only string on the lower bound while
-        // using a date-prefix on the upper, dropping/keeping rows at the
-        // LST day-boundary based on UTC clock instead of station-local day.
-        // The per-day rollup downstream re-projects observations into the
-        // station-local IANA day; pre-filtering at the date-prefix level is
-        // the correct boundary semantics.
+        // Phase 21 21-05 fix-iter-2 (codex CRITICAL): pre-rollup filter uses
+        // the UTC date prefix against the widened-by-±1-day UTC window.
+        // The caller's [fromDate, toDate] is station-LOCAL; observations
+        // that fall on the adjacent UTC day but the local target day must
+        // be kept so internationalDailyExtremes() can bin them into the
+        // correct station-local bucket. Output is clipped back to the
+        // caller's [fromDate, toDate] post-rollup using `localDate`.
         const obsDate = row.observed_at.slice(0, 10);
         if (obsDate >= fromDate && obsDate <= toDate) {
           const precipInches = row.precip_1hr_inches ?? null;
@@ -215,14 +240,25 @@ export async function dailyExtremes(
   const { tz, isUs } = lookupStation(station);
   const merge = opts.merge ?? "live_v1";
 
-  const rows = await fetchForMode(station, fromDate, toDate, merge);
+  // Phase 21 21-05 fix-iter-2 (codex CRITICAL): widen the pre-rollup UTC
+  // window by ±1 day so station-local-day observations at tz edges are
+  // not silently dropped (e.g. UTC+14 stations have local 23:00 falling
+  // on the previous UTC day). The rollup re-projects into the
+  // station-local IANA day; we then clip the rollup output back to the
+  // caller's [fromDate, toDate] via the station-local `localDate` field
+  // so the public surface still returns exactly the requested days.
+  const fetchFrom = addUtcDays(fromDate, -1);
+  const fetchTo = addUtcDays(toDate, 1);
+  const rows = await fetchForMode(station, fetchFrom, fetchTo, merge);
 
   const extremes = internationalDailyExtremes(rows, {
     stationTz: tz,
     precision: isUs ? 1 : 0,
   });
 
-  return extremes.map((d) => projectRow(station.toUpperCase(), d, isUs));
+  return extremes
+    .filter((d) => d.localDate >= fromDate && d.localDate <= toDate)
+    .map((d) => projectRow(station.toUpperCase(), d, isUs));
 }
 
 export type {
