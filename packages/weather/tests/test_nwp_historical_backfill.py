@@ -79,6 +79,7 @@ def test_msc_model_always_raises_historical_depth() -> None:
     assert exc_info.value.archive_depth is None
 
 
+@pytest.mark.live
 def test_cycle_range_iteration_placeholder_closed() -> None:
     """PLAN-09 Task 2 wires the multi-cycle iteration body. The PLAN-07
     placeholder ``NotImplementedError(match="PLAN-09")`` is now closed —
@@ -88,6 +89,11 @@ def test_cycle_range_iteration_placeholder_closed() -> None:
     downstream error (HistoricalDepthError for archive-floor pre-dates,
     or NoLiveForNwpError when mirrors are exhausted). We assert the
     PLAN-09 placeholder is GONE — anything else is acceptable.
+
+    Marked ``live`` because the iteration body issues a real httpx
+    byte-range fetch against the NWP archive mirror that can hang under
+    network-restricted CI conditions (pre-push hook regression caught
+    2026-05-27).
     """
     from mostlyright.weather.forecast_nwp import forecast_nwp
 
@@ -125,6 +131,7 @@ def test_cycle_range_end_alone_rejected() -> None:
         )
 
 
+@pytest.mark.live
 def test_public_forecasts_wrapper_forwards_cycle_range_kwargs() -> None:
     """The public ``mostlyright.forecasts.forecast_nwp`` wrapper must
     forward cycle_range_start/end (codex iter-1 HIGH #1: without
@@ -134,6 +141,11 @@ def test_public_forecasts_wrapper_forwards_cycle_range_kwargs() -> None:
     PLAN-09 Task 2 closes the placeholder, so the end-to-end check is
     now "the wrapper forwards the kwargs and we don't see TypeError or
     the PLAN-09 placeholder" rather than "we hit the placeholder".
+
+    Marked ``live`` because the (now-implemented) iteration body issues
+    a real httpx byte-range fetch against the NWP archive mirror that
+    can hang under network-restricted CI conditions (pre-push hook
+    regression caught 2026-05-27).
     """
     import inspect
 
