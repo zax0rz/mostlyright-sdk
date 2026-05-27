@@ -8,8 +8,11 @@ Three modes covered:
 - ``mode="seamless"`` → Historical Forecast API; requires
   ``allow_leakage=True`` opt-in (raises
   :class:`OpenMeteoSeamlessLeakageError` otherwise).
-- ``mode="live"`` → DEFERRED to PLAN-05 (Live Forecast API + cycle-math
-  fallback). Raises :class:`NotImplementedError` until then.
+- ``mode="live"`` → Live Forecast API
+  (``https://api.open-meteo.com/v1/forecast``). Per D-06: ``issued_at``
+  derived via cycle-math fallback only (Metadata API integration is a
+  follow-up). Tagged ``source="open_meteo.live"``; NOT cached (rolling
+  cycle).
 
 All returned rows match ``schema.forecast.station.v1`` with non-null
 ``issued_at`` (seamless mode rows have NULL ``issued_at`` BY DESIGN — the
@@ -54,6 +57,7 @@ log = logging.getLogger(__name__)
 OPEN_METEO_PREVIOUS_RUNS_URL = "https://previous-runs-api.open-meteo.com/v1/forecast"
 OPEN_METEO_SINGLE_RUNS_URL = "https://single-runs-api.open-meteo.com/v1/forecast"
 OPEN_METEO_SEAMLESS_URL = "https://historical-forecast-api.open-meteo.com/v1/forecast"
+OPEN_METEO_LIVE_URL = "https://api.open-meteo.com/v1/forecast"
 
 #: Polite floor — 5 req/s single-worker (tighter than the documented 600/min).
 _OM_POLITE_DELAY_S: float = 0.2
@@ -213,9 +217,7 @@ def _dispatch_endpoint(
             )
         return OPEN_METEO_SEAMLESS_URL
     if mode == "live":
-        raise NotImplementedError(
-            "mode='live' lands in Phase 20 PLAN-05 (Wave 3). Use mode='training' for backfill."
-        )
+        return OPEN_METEO_LIVE_URL
     raise ValueError(f"mode must be one of {sorted(_VALID_MODES)}; got {mode!r}")
 
 
@@ -228,6 +230,7 @@ def _build_hourly_param(endpoint: str) -> str:
     """
     if endpoint == OPEN_METEO_PREVIOUS_RUNS_URL:
         return ",".join(f"{v}_previous_day1" for v in _OM_VARIABLES_TO_FETCH)
+    # Single Runs / Seamless / Live: bare variable names (no suffix).
     return ",".join(_OM_VARIABLES_TO_FETCH)
 
 
@@ -395,6 +398,8 @@ def _project_payload_to_dataframe(
         source = "open_meteo.single_run"
     elif endpoint == OPEN_METEO_SEAMLESS_URL:
         source = "open_meteo.seamless"
+    elif endpoint == OPEN_METEO_LIVE_URL:
+        source = "open_meteo.live"
     else:
         raise RuntimeError(f"unexpected endpoint: {endpoint}")
 
@@ -409,15 +414,31 @@ def _project_payload_to_dataframe(
             issued_at_dt = issued_at_from_previous_day(valid_at, N=1, cycle_hours=cycle_hours)
         elif source == "open_meteo.single_run":
             assert issued_at_str is not None, "single_run requires issued_at"
-            # Accept both "YYYY-MM-DDTHH:MM" and "YYYY-MM-DDTHH:MM:SS" forms.
             ts_str = issued_at_str
             if len(ts_str) == 16:  # "YYYY-MM-DDTHH:MM"
                 ts_str = ts_str + ":00"
             issued_at_dt = datetime.fromisoformat(ts_str)
             if issued_at_dt.tzinfo is None:
                 issued_at_dt = issued_at_dt.replace(tzinfo=UTC)
+        elif source == "open_meteo.live":
+            # Phase 20 D-06: cycle-math fallback. Metadata API integration
+            # is a follow-up. Conservative lower bound = now - publish_lag,
+            # floored to the model's cycle hours.
+            from ._open_meteo_models import (
+                PUBLISH_LAG,
+                issued_at_from_live_cycle_math,
+            )
+            publish_lag = PUBLISH_LAG.get(model)
+            if publish_lag is None:
+                from datetime import timedelta as _td
+                publish_lag = _td(hours=6)
+            issued_at_dt = issued_at_from_live_cycle_math(
+                now_utc=retrieved_at,
+                publish_lag=publish_lag,
+                cycle_hours=cycle_hours,
+            )
         else:
-            # seamless — null by design
+            # seamless - null by design (cycle unrecoverable)
             issued_at_dt = None
 
         rows.append(
