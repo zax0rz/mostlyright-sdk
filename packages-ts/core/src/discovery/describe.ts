@@ -334,24 +334,58 @@ export function featureCatalog(): ReadonlyArray<string> {
 }
 
 // ---------------------------------------------------------------------------
-// climateGaps — stub that mirrors Python's signature but isn't implemented.
+// climateGaps — stub that mirrors Python's signature; v1.x deferral.
 // ---------------------------------------------------------------------------
+//
+// Phase 21 21-11 upgrade: raises DataAvailabilityError (typed exception
+// from Phase 21 21-09) with an architectural-reason hint. The legacy
+// ClimateGapsNotImplementedError class is kept as a back-compat alias
+// (subclass of DataAvailabilityError) so existing `catch` sites keep
+// working. New code should catch DataAvailabilityError and dispatch on
+// the `reason` field instead.
+
+import { DataAvailabilityError } from "../exceptions/index.js";
+
+const CLIMATE_GAPS_HINT =
+  "climateGaps() is server-only in v1.x. Architectural reason: " +
+  "GHCNh CSVs are 10+ MB per station-year; browser fetch doesn't " +
+  "slice (no HTTP Range) and IndexedDB quotas don't fit the working " +
+  "set. Use the Python SDK (mostlyright.discover.climate_gaps) for " +
+  "v1.x, or wait for the hosted climate-gap-precompute API " +
+  "(target: post-v1.x). See https://mostlyright.md/docs/sdk/typescript/climate-gaps " +
+  "for details.";
 
 /**
- * Climate-gap scanning is Python-only in v0.1.0 (TS has no climate-year
- * parquet cache yet). Throws to match the documented contract.
+ * Climate-gap scanning — TS v1.x deferral.
+ *
+ * Phase 21 21-11 messaging upgrade: raises DataAvailabilityError with a
+ * multi-paragraph hint explaining the architectural constraint (GHCNh
+ * CSVs are 10+ MB per station-year; browser cache layer doesn't scale).
+ *
+ * @throws DataAvailabilityError with reason="model_unavailable" and a
+ *   hint pointing at the Python SDK as the supported v1.x workaround.
  */
 export function climateGaps(_station: string, _fromDate: string, _toDate: string): never {
-  throw new ClimateGapsNotImplementedError(
-    "climateGaps is Python-only in v0.1.0; the TS climate cache lands in v0.2",
-  );
+  throw new ClimateGapsNotImplementedError();
 }
 
-/** Thrown by `climateGaps` until the TS climate cache lands. */
-export class ClimateGapsNotImplementedError extends TradewindsError {
-  constructor(message: string) {
-    super(message);
+/**
+ * Back-compat subclass of DataAvailabilityError raised by `climateGaps`
+ * in v1.x. Existing `catch (e instanceof ClimateGapsNotImplementedError)`
+ * sites keep working; new code should catch the parent class
+ * `DataAvailabilityError` and dispatch on `reason === "model_unavailable"`.
+ *
+ * @deprecated Prefer catching `DataAvailabilityError` directly.
+ */
+export class ClimateGapsNotImplementedError extends DataAvailabilityError {
+  static override readonly defaultErrorCode = "DATA_AVAILABILITY";
+
+  constructor() {
+    super({
+      reason: "model_unavailable",
+      source: "climate-cache-browser",
+      hint: CLIMATE_GAPS_HINT,
+    });
     this.name = "ClimateGapsNotImplementedError";
   }
-  static readonly defaultErrorCode = "NOT_IMPLEMENTED";
 }

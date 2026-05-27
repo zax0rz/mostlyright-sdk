@@ -240,9 +240,9 @@ from `weather.qc.rules_nwp.QC_RULES_NWP[model]`:
 Worst-case semantics: suspect > flagged > clean per row. Filter
 clean-only rows with `df[df["qc_status"] == "clean"]`.
 
-## TypeScript Lane (v1.0)
+## TypeScript Lane (v1.x)
 
-`@mostlyrightmd/weather` v1.0 ships IEM MOS only:
+`@mostlyrightmd/weather` v1.x ships IEM MOS only:
 
 ```typescript
 import { iemMosForecasts } from '@mostlyrightmd/weather/forecasts';
@@ -251,17 +251,37 @@ const rows = await iemMosForecasts('KNYC', '2026-05-01', '2026-05-07', { model: 
 console.log(rows[0].tempC, rows[0].source);  // 20.0, "iem.archive"
 ```
 
-`@mostlyrightmd/weather/forecasts.forecastNwp()` is shipped as a v1.0
-STUB:
+> **TypeScript lane — v1.x deferral** <a id="typescript-lane"></a>
+>
+> `forecastNwp()` in `@mostlyrightmd/weather` is a stub in v1.x that raises
+> `DataAvailabilityError(reason="model_unavailable")` (Phase 21 21-07).
+> The architectural reason: no production-ready browser GRIB2 decoder
+> exists in May 2026. GRIB2 decode requires eccodes (C library) or cfgrib
+> (Python wrapper); both have prohibitive browser bundle-size + WASM
+> compile-time costs for v1.x.
+>
+> **Workaround for the 7 major US stations with IEM MOS coverage** (KNYC,
+> KLAX, KORD, KMIA, KDEN, KSEA, KATL): use `iemMosForecasts(station, ...)`.
+> The error hint includes this pointer automatically for MOS-covered
+> stations. For non-MOS stations, the Python SDK is the recommended path
+> until the TS GRIB2 ecosystem matures (target: v1.1+).
+>
+> ```typescript
+> import { forecastNwp } from '@mostlyrightmd/weather/forecasts';
+> import { DataAvailabilityError } from '@mostlyrightmd/core';
+>
+> try {
+>   await forecastNwp('KNYC', 'gfs');
+> } catch (e) {
+>   if (e instanceof DataAvailabilityError && e.reason === 'model_unavailable') {
+>     // e.hint contains the workaround pointer + docs URL.
+>     console.warn('[forecastNwp]', e.hint);
+>   }
+> }
+> ```
 
-```typescript
-import { forecastNwp } from '@mostlyrightmd/weather/forecasts';
-// Throws Error('TS NWP deferred to v1.1') at runtime.
-// Signature stable; runtime arrives in v1.1.
-```
-
-**Why?** No production-ready browser GRIB2 decoder exists as of May
-2026. v1.1 re-evaluates browser WASM GRIB2 decoders.
+**See also:** [climate-gaps.md](./climate-gaps.md) for the parallel
+deferral on `climateGaps()`.
 
 For TS NWP today, use the Python SDK (`mostlyright>=v1.0`) which wires
 the NCEP family end-to-end (see the Wiring-status tables above).
