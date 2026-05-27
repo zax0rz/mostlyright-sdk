@@ -52,6 +52,7 @@ import {
 } from "@mostlyrightmd/core/internal/bounds";
 import { fahrenheitToCelsius } from "@mostlyrightmd/core/internal/convert";
 
+import { parseTgroup } from "../_internal/tgroup.js";
 import { type Observation, icaoToStationCode, mapCloudCover } from "./awc.js";
 
 const [WIND_DIR_LO, WIND_DIR_HI] = WIND_DIR_BOUNDS;
@@ -217,12 +218,23 @@ export function iemToObservation(
     override !== undefined ? override : detectObsType(metarText);
 
   // --- Temperature (IEM gives °F; derive °C; bounds-check on °C) ---------
+  // Phase 18 PREC-02: when raw METAR contains Tgroup, override temp_c /
+  // dewpoint_c with the Tgroup tenths-°C value (matches AWC's emitted
+  // temp_c for the same raw METAR — closes the cross-source drift bug).
+  // CRITICAL: keep tempF = rawTempF; do NOT derive from temp_c. tempC
+  // (tenths-°C) and tempF (integer-°F) are different coded views of the
+  // same integer-°F sensor reading; deriving one from the other introduces
+  // a spurious tempC × 9/5 + 32 == tempF invariant that the source data
+  // does not actually carry.
   const rawTempF = safeFloat(row.tmpf ?? "");
   const rawDewpF = safeFloat(row.dwpf ?? "");
-  const tempC = boundedFloat(fahrenheitToCelsius(rawTempF), TEMP_MIN_C, TEMP_MAX_C, {
+  const [tgTemp, tgDewp] = parseTgroup(metarText);
+  const tempCRaw = tgTemp !== null ? tgTemp : fahrenheitToCelsius(rawTempF);
+  const dewpCRaw = tgDewp !== null ? tgDewp : fahrenheitToCelsius(rawDewpF);
+  const tempC = boundedFloat(tempCRaw, TEMP_MIN_C, TEMP_MAX_C, {
     field: "temp_c",
   });
-  const dewpC = boundedFloat(fahrenheitToCelsius(rawDewpF), TEMP_MIN_C, TEMP_MAX_C, {
+  const dewpC = boundedFloat(dewpCRaw, TEMP_MIN_C, TEMP_MAX_C, {
     field: "dewpoint_c",
   });
   // Consistency rule (Python L170-171): if derived °C is out of bounds,

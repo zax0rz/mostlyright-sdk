@@ -218,6 +218,17 @@ export function parseGhcnhRow(row: Readonly<Record<string, string>>): Observatio
         field: "dewpoint_c",
       })
     : null;
+  // Phase 18: GHCNh tempF conversion path deferred from Phase 18 fix.
+  // NCEI publishes hourly observations with `temperature` in °C as the
+  // primary field; whether the underlying ASOS source data is integer-°F
+  // native (with NCEI doing the °F→°C conversion server-side) is NOT
+  // documented in the NCEI data dictionary. Until NCEI native-units
+  // documentation is obtained, the existing celsiusToFahrenheit path is
+  // preserved here as the safe default. AWC + IEM Tgroup-recovery fixes
+  // (Phase 18 PREC-01 + PREC-02) cover the two sources whose raw METAR
+  // carries an unambiguous Tgroup. See
+  // .planning/phases/18-precision-fix-asos-integer-fahrenheit/18-CONTEXT.md
+  // for the deferral rationale.
   const tempF = celsiusToFahrenheit(tempC);
   const dewpF = celsiusToFahrenheit(dewpC);
 

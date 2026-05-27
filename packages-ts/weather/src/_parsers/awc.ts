@@ -34,6 +34,7 @@ import {
 import { celsiusToFahrenheit, hpaToInhg } from "@mostlyrightmd/core/internal/convert";
 
 import type { AwcMetarRaw } from "../_fetchers/awc.js";
+import { parseTgroup } from "../_internal/tgroup.js";
 
 const [WIND_DIR_LO, WIND_DIR_HI] = WIND_DIR_BOUNDS;
 
@@ -209,9 +210,8 @@ export function parseAwcVisibility(vis: string | number | null | undefined): num
 // `PK WND dddss/hhmm` (direction may be 2-3 digits; AWC payloads use 3+2)
 const PK_WND_RE = /PK WND (\d{3})(\d{2,3})\/(\d{4})/;
 
-// T-group in METAR remarks: T{s}{SSS}{s}{DDD}
-// s=0 positive, s=1 negative. SSS/DDD = tenths of °C.
-const TGROUP_RE = /\bT([01])(\d{3})([01])(\d{3})\b/;
+// Phase 18 PREC-02: Tgroup regex + parser lifted to the shared
+// _internal/tgroup.ts module so AWC + IEM use one source of truth.
 
 function parsePeakWind(rawMetar: string | null): {
   dir: number | null;
@@ -228,21 +228,6 @@ function parsePeakWind(rawMetar: string | null): {
     return { dir: null, speed: null, time: null };
   }
   return { dir, speed: spd, time };
-}
-
-function parseTGroup(rawMetar: string | null): { tempC: number | null; dewpC: number | null } {
-  if (!rawMetar) return { tempC: null, dewpC: null };
-  // T-group is a remarks-only element — search only after RMK to avoid
-  // false positives on body group patterns.
-  const rmkIdx = rawMetar.indexOf("RMK");
-  if (rmkIdx < 0) return { tempC: null, dewpC: null };
-  const m = TGROUP_RE.exec(rawMetar.slice(rmkIdx));
-  if (!m) return { tempC: null, dewpC: null };
-  const tSign = m[1] === "1" ? -1 : 1;
-  const tVal = (Number.parseInt(m[2] as string, 10) / 10.0) * tSign;
-  const dSign = m[3] === "1" ? -1 : 1;
-  const dVal = (Number.parseInt(m[4] as string, 10) / 10.0) * dSign;
-  return { tempC: tVal, dewpC: dVal };
 }
 
 // ---------------------------------------------------------------------------
@@ -373,15 +358,26 @@ export function awcToObservation(m: AwcMetarRaw): Observation | null {
   }
 
   // --- Temperature + dewpoint (T-group overrides body group) -------------
+  // Phase 18 PREC-01: when Tgroup is present in raw METAR, the underlying
+  // ASOS reading is integer °F (the canonical sensor precision). Recover
+  // it directly via Math.round(c * 9/5 + 32) instead of running the float
+  // celsiusToFahrenheit() path, which produces back-conversion artifacts
+  // like 80.06°F where the native reading was 80°F. When Tgroup is absent
+  // (international stations like EGLL / LFPG), fall back to the legacy
+  // float celsiusToFahrenheit() path — they have no integer-°F source.
   let tempC = safeFloat(m.temp);
   let dewpC = safeFloat(m.dewp);
-  const { tempC: tgTemp, dewpC: tgDewp } = parseTGroup(rawMetar);
-  if (tgTemp !== null) tempC = tgTemp;
-  if (tgDewp !== null) dewpC = tgDewp;
+  const [tgTemp, tgDewp] = parseTgroup(rawMetar);
+  const hasTgroupTemp = tgTemp !== null;
+  const hasTgroupDewp = tgDewp !== null;
+  if (hasTgroupTemp) tempC = tgTemp;
+  if (hasTgroupDewp) dewpC = tgDewp;
   tempC = boundedFloat(tempC, TEMP_MIN_C, TEMP_MAX_C);
   dewpC = boundedFloat(dewpC, TEMP_MIN_C, TEMP_MAX_C);
-  const tempF = celsiusToFahrenheit(tempC);
-  const dewpointF = celsiusToFahrenheit(dewpC);
+  const tempF =
+    hasTgroupTemp && tempC !== null ? Math.round((tempC * 9) / 5 + 32) : celsiusToFahrenheit(tempC);
+  const dewpointF =
+    hasTgroupDewp && dewpC !== null ? Math.round((dewpC * 9) / 5 + 32) : celsiusToFahrenheit(dewpC);
 
   // --- Peak wind ---------------------------------------------------------
   const pk = parsePeakWind(rawMetar);
