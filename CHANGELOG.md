@@ -8,13 +8,23 @@ All notable changes to `mostlyright`. The format follows [Keep a Changelog](http
 
 ## [1.1.1] — 2026-05-27
 
-Registry-copy refresh. No runtime API or source-code behavior changes.
+Patch release. Closes plan 18-09 (parity fixture re-capture), plan 18-11c Task 2 (TS parity fixture re-export), and refreshes registry-visible metadata. Runtime SDK APIs and source behavior are unchanged.
 
 ### Changed
 - **README:** add PyPI/npm monthly download badges, keep the public-data positioning beyond weather-only, and surface package-level download badges for stable Python and TypeScript packages.
 - **PyPI metadata:** add Homepage, Documentation, Repository, Issues, and Changelog URLs to all three Python distributions; broaden the core `mostlyrightmd` package description beyond weather-only.
 - **npm metadata:** add homepage, repository, and issue-tracker fields to all four published TypeScript packages; broaden the `@mostlyrightmd/core` description beyond weather-only.
 - **Docs:** refresh the Sphinx landing description to position the SDK as public-data prediction-market research, not only weather settlement research.
+
+### Notes
+- **Parity fixture re-capture (plan 18-09):** All 5 cases re-captured against post-Phase-18 `research()` via live network. Outcome: all 5 parquet bytes IDENTICAL to the pre-Phase-18 v0.14.1 baseline. The chosen cases (Jan 2025 → Nov 2025) fall outside AWC's 168h archive window, so they source from IEM/GHCNh — whose `temp_f` paths Phase 18 does NOT change. Future parity cases that exercise the AWC live window WILL surface the integer-°F shift; this release confirms the existing 5 cases remain valid baselines.
+- **TS parity fixture re-export (plan 18-11c Task 2):** Re-ran `tests/fixtures/parity/export_for_ts.py` against the new parquets; produced byte-identical TS JSONs since the source parquets didn't shift.
+- **Only artifact change:** `tests/fixtures/parity/expected_dtypes.json` column ordering — schema-ordered now (`date, station, cli_*, obs_*, fcst_*, market_close_utc`) instead of alphabetical. Test reads as dict — equality assertion preserved.
+- **Parity HARD GATE remains GREEN.** `uv run pytest tests/test_parity.py -m live -v` → 5 PASSED in ~58s.
+- **No behavior change.** Drop-in patch for any 1.1.0 caller.
+
+### Audit trail
+- See `.planning/phases/18-precision-fix-asos-integer-fahrenheit/18-09-PARITY-DELTA.md` for per-case shasums + why-no-shift explanation.
 
 ## [1.1.0] — 2026-05-27
 
