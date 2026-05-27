@@ -357,13 +357,20 @@ jobs:
             printf '\n'
             printf '%s\n' 'The canonical source: [`CHANGELOG.md` in `mostlyrightmd/mostlyright-sdk`](https://github.com/mostlyrightmd/mostlyright-sdk/blob/main/CHANGELOG.md).'
             printf '\n'
+            # awk drops the H1 + "All notable changes…" intro line, then
+            # the Python escape helper converts MDX-hostile patterns
+            # outside code spans (e.g. `<NwpModel>`, `{strategy}`, `<1ms`)
+            # to HTML entities so future CHANGELOG entries can't silently
+            # break `astro build` on the landing repo. Inline backtick
+            # spans and fenced code blocks pass through unchanged. PR #34
+            # CR fix-up.
             awk '
               /^# Changelog/ { skipping=1; next }
               skipping && /^All notable changes to/ { skipping=0; in_intro=1; next }
               in_intro && /^$/ { in_intro=0; next }
               in_intro { next }
               { print }
-            ' CHANGELOG.md
+            ' CHANGELOG.md | python3 scripts/escape_changelog_for_mdx.py
           } > "$DEST"
           echo "--- $DEST head ---"
           head -20 "$DEST"
