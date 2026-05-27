@@ -439,26 +439,38 @@ class TestUnitConversions:
         assert obs["temp_c"] == 10.0
 
     def test_temp_no_rounding(self):
-        """49°F → (49-32)*5/9 = 9.4444... not rounded."""
+        """49°F -> (49-32)*5/9 = 9.4444... not rounded (no-Tgroup fallback path).
+
+        Phase 18 PREC-02: when Tgroup is present, IEM overrides temp_c with the
+        Tgroup tenths-°C value. To test the legacy fahrenheit_to_celsius path,
+        pass ``metar="M"`` so parse_tgroup returns (None, None).
+        """
         from mostlyright.weather._iem import iem_to_observation
 
-        obs = iem_to_observation(_make_row(tmpf="49.00"))
+        obs = iem_to_observation(_make_row(tmpf="49.00", metar="M"))
         assert obs is not None
         assert abs(obs["temp_c"] - 9.444444444444445) < 1e-10
 
     def test_tgroup_precision(self):
-        """46.4°F (T-group) → 8.0°C exactly."""
+        """46.4°F -> 8.0°C exactly (no-Tgroup fallback; tmpf-derived path).
+
+        Phase 18 PREC-02: this historically tested IEM's tmpf-based tenths
+        precision. With the Tgroup-override fix, tenths precision comes from
+        the Tgroup remark, not from a tenths-precision tmpf field. To keep
+        the legacy back-derivation under test, pass ``metar="M"``.
+        """
         from mostlyright.weather._iem import iem_to_observation
 
-        obs = iem_to_observation(_make_row(tmpf="46.40"))
+        obs = iem_to_observation(_make_row(tmpf="46.40", metar="M"))
         assert obs is not None
         assert obs["temp_f"] == 46.4
         assert obs["temp_c"] == 8.0
 
     def test_dewpoint_conversion(self):
+        """No-Tgroup fallback dewpoint back-derivation (43°F -> 6.111...°C)."""
         from mostlyright.weather._iem import iem_to_observation
 
-        obs = iem_to_observation(_make_row(dwpf="43.00"))
+        obs = iem_to_observation(_make_row(dwpf="43.00", metar="M"))
         assert obs is not None
         assert obs["dewpoint_f"] == 43.0
         assert obs["dewpoint_c"] is not None
@@ -912,10 +924,14 @@ class TestTempBounds:
         assert obs["temp_c"] is not None
 
     def test_cold_but_within_bounds(self):
-        """-40°F = -40°C, within [-90, 60]."""
+        """-40°F = -40°C, within [-90, 60] (no-Tgroup fallback path).
+
+        Phase 18 PREC-02: pass ``metar="M"`` so parse_tgroup returns (None, None)
+        and the tmpf-based back-derivation is exercised.
+        """
         from mostlyright.weather._iem import iem_to_observation
 
-        obs = iem_to_observation(_make_row(tmpf="-40.00"))
+        obs = iem_to_observation(_make_row(tmpf="-40.00", metar="M"))
         assert obs is not None
         assert obs["temp_c"] == pytest.approx(-40.0)
 
