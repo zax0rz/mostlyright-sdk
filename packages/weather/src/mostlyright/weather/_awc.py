@@ -262,14 +262,30 @@ def awc_to_observation(m: dict[str, Any]) -> dict[str, Any] | None:
     temp_c = _safe_float(m.get("temp"))
     dewp_c = _safe_float(m.get("dewp"))
     tgroup_temp, tgroup_dewp = _parse_tgroup(raw_metar)
-    if tgroup_temp is not None:
+    # Phase 18 PREC-01: Tgroup-parse-success is the source-aware branching
+    # signal. When Tgroup is present, the row originated from an integer-°F
+    # ASOS sensor — recover temp_f as the native integer (float-valued).
+    # When absent (international, KNYC Central Park), keep the legacy
+    # celsius_to_fahrenheit float path.
+    has_tgroup_temp = tgroup_temp is not None
+    has_tgroup_dewp = tgroup_dewp is not None
+    if has_tgroup_temp:
         temp_c = tgroup_temp
-    if tgroup_dewp is not None:
+    if has_tgroup_dewp:
         dewp_c = tgroup_dewp
     temp_c = bounded_float(temp_c, TEMP_MIN_C, TEMP_MAX_C, field="temp_c")
     dewp_c = bounded_float(dewp_c, TEMP_MIN_C, TEMP_MAX_C, field="dewpoint_c")
-    temp_f = celsius_to_fahrenheit(temp_c)
-    dewpoint_f = celsius_to_fahrenheit(dewp_c)
+    # Phase 18 PREC-01: integer-°F recovery for ASOS Tgroup rows.
+    # bounded_float may null out the °C (out-of-range Tgroup), in which case
+    # the °F must also be null — the `and temp_c is not None` guard handles that.
+    if has_tgroup_temp and temp_c is not None:
+        temp_f = float(round(temp_c * 9 / 5 + 32))
+    else:
+        temp_f = celsius_to_fahrenheit(temp_c)
+    if has_tgroup_dewp and dewp_c is not None:
+        dewpoint_f = float(round(dewp_c * 9 / 5 + 32))
+    else:
+        dewpoint_f = celsius_to_fahrenheit(dewp_c)
 
     # Peak wind from METAR remarks (PK WND dddss/hhmm), bounded
     pk_dir, pk_spd, pk_time = _parse_peak_wind(raw_metar)
