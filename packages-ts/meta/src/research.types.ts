@@ -121,6 +121,15 @@ export const KNOWN_RESEARCH_OPTION_KEYS: ReadonlySet<string> = new Set([
  * to match Python's `SourceUnavailableError` shape lockstep.
  */
 export function validateResearchKwargs(opts: Readonly<Record<string, unknown>>): void {
+  // Phase 21 21-09 fix-iter-1 (codex+ts-architect HIGH): "provided" must
+  // mean the same thing on both sides of the JSON wire. Python `is not
+  // None` treats both `null` (from JSON) and absent keys as ABSENT; TS
+  // historically used `!== undefined`, which treats explicit `null` as
+  // PRESENT — round-tripping a Python `None` through JSON as `null` would
+  // falsely trigger a mutually-exclusive TypeError in TS only. Match
+  // Python by treating both `null` and `undefined` as absent (`!= null`).
+  const present = (v: unknown): boolean => v !== undefined && v !== null;
+
   // (1) Unknown-key defense. Catches typos like `inclide_forecast` that
   // would otherwise silently no-op.
   for (const key of Object.keys(opts)) {
@@ -133,7 +142,7 @@ export function validateResearchKwargs(opts: Readonly<Record<string, unknown>>):
   }
 
   // (2) sources / source mutually exclusive.
-  if (opts.sources !== undefined && opts.source !== undefined) {
+  if (present(opts.sources) && present(opts.source)) {
     throw new TypeError(
       "research(): sources= and source= are mutually exclusive — " +
         "use `sources=` for the LIVE_V1 multi-source selector or " +
@@ -142,7 +151,7 @@ export function validateResearchKwargs(opts: Readonly<Record<string, unknown>>):
   }
 
   // (3) forecast_model / forecast_models mutually exclusive.
-  if (opts.forecast_model !== undefined && opts.forecast_models !== undefined) {
+  if (present(opts.forecast_model) && present(opts.forecast_models)) {
     throw new TypeError(
       "research(): forecast_model= and forecast_models= are mutually exclusive — " +
         "use `forecast_models=` for multi-model fan-out or `forecast_model=` for " +
@@ -151,7 +160,7 @@ export function validateResearchKwargs(opts: Readonly<Record<string, unknown>>):
   }
 
   // (4) forecast_model / forecast_models require include_forecast=true.
-  const wantsForecast = opts.forecast_model !== undefined || opts.forecast_models !== undefined;
+  const wantsForecast = present(opts.forecast_model) || present(opts.forecast_models);
   if (wantsForecast && opts.include_forecast !== true) {
     throw new TypeError(
       "research(): forecast_model=/forecast_models= require include_forecast=true; " +

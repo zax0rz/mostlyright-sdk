@@ -54,7 +54,7 @@ describe("trades shape parity — Polymarket Gamma pagination (21-06 Task 2)", (
 });
 
 describe("trades shape parity — equal-timestamp trade-ID tiebreaker (21-06 Task 3)", () => {
-  it("kalshiFills public surface exposes tradeId + ts (callers can sort deterministically)", async () => {
+  it("kalshiFills public surface exposes tradeId + ts (callers can sort deterministically)", () => {
     // Inspect the actual production source — the KalshiFillRow shape must
     // expose both `tradeId` and `ts` so callers can apply the canonical
     // (ts ASC, trade_id ASC) tiebreaker when joining across sources.
@@ -68,18 +68,25 @@ describe("trades shape parity — equal-timestamp trade-ID tiebreaker (21-06 Tas
     expect(typesSrc).toMatch(/interface\s+KalshiFillRow[\s\S]*ts:\s*string\s*\|\s*null/);
   });
 
-  it("canonical sort produces the expected ordering on a tie input", () => {
-    // The contract callers MUST use: sort by ts ASC, then trade_id ASC.
-    const rows = [
-      { tradeId: "b", ts: "2025-01-06T14:00:00.000Z" },
-      { tradeId: "a", ts: "2025-01-06T14:00:00.000Z" },
-      { tradeId: "c", ts: "2025-01-06T14:00:01.000Z" },
+  // Phase 21 21-09 fix-iter-1 (codex+ts-architect HIGH): the previous
+  // version of this test sorted a local synthetic array — it could pass
+  // even if production never sorted at all. Replace with the honest
+  // contract: BOTH Python `kalshi_trades.fills()` and TS `kalshiFills()`
+  // currently preserve UPSTREAM HTTP order (no in-SDK sort). The shared
+  // contract is "rows arrive in HTTP order; callers apply the canonical
+  // (ts, trade_id) sort if they need determinism." Tests now lock the
+  // no-sort contract on the TS side via a fetch mock so a regression
+  // (silently re-ordering rows mid-pipeline) is caught.
+  it("kalshiFills preserves upstream row order (no in-SDK sort)", async () => {
+    const { kalshiFills } = await import("../../src/trades/kalshi.js");
+    const reversed = [
+      { trade_id: "z", created_time: "2025-01-06T14:00:00.000Z" },
+      { trade_id: "a", created_time: "2025-01-06T14:00:00.000Z" },
+      { trade_id: "m", created_time: "2025-01-06T14:00:01.000Z" },
     ];
-    const sorted = [...rows].sort((x, y) => {
-      if (x.ts < y.ts) return -1;
-      if (x.ts > y.ts) return 1;
-      return x.tradeId.localeCompare(y.tradeId);
-    });
-    expect(sorted.map((r) => r.tradeId)).toEqual(["a", "b", "c"]);
+    const mockFetch: typeof fetch = async () =>
+      new Response(JSON.stringify({ trades: reversed, cursor: "" }), { status: 200 });
+    const result = await kalshiFills("KXABC", {}, { fetchFn: mockFetch });
+    expect(result.rows.map((r) => r.tradeId)).toEqual(["z", "a", "m"]);
   });
 });

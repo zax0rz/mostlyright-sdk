@@ -101,4 +101,29 @@ describe("Phase 21 21-01: research() composable kwargs surface", () => {
       } as never),
     ).rejects.toBeInstanceOf(TypeError);
   });
+
+  // Phase 21 21-09 fix-iter-1 (codex+ts-architect HIGH): JSON `null` round-
+  // tripped from Python `None` MUST be treated as "absent" — not as
+  // "provided". Otherwise a cross-SDK options dict that's valid in Python
+  // would falsely trigger the mutually-exclusive TypeError in TS.
+  it("treats JSON null as absent (Python `None` cross-wire parity)", () => {
+    // Both sources and source set to `null` — Python treats both as absent
+    // (`is not None` is false), so the guard does NOT fire. Pre-fix TS used
+    // `!== undefined`, which treated `null` as provided and falsely raised.
+    expect(() =>
+      validateResearchKwargs({
+        sources: null,
+        source: null,
+      } as Readonly<Record<string, unknown>>),
+    ).not.toThrow();
+
+    // forecast_model: null (== absent) + forecast_models: null (== absent)
+    // also passes.
+    expect(() =>
+      validateResearchKwargs({
+        forecast_model: null,
+        forecast_models: null,
+      } as Readonly<Record<string, unknown>>),
+    ).not.toThrow();
+  });
 });

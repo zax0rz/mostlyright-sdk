@@ -72,6 +72,24 @@ describe("obs — source filter", () => {
     expect(awcSpy).toHaveBeenCalled();
     expect(iemSpy).toHaveBeenCalled();
   });
+
+  // Phase 21 21-09 fix-iter-1 (codex+ts-architect CRITICAL): pre-fix, the
+  // type allowed `source="ghcnh"` but `fetchByStrategy` had no GHCNh branch,
+  // so the call silently returned `[]`. Post-fix, the call raises
+  // DataAvailabilityError so consumers see the missing wiring.
+  it("source='ghcnh' raises DataAvailabilityError (not silent empty rows)", async () => {
+    const awcSpy = vi.spyOn(awcFetcher, "fetchAwcMetars");
+    const iemSpy = vi.spyOn(iemFetcher, "downloadIemAsos");
+    await expect(
+      obs("KNYC", "2025-01-06", "2025-01-12", {
+        source: "ghcnh",
+        strategy: "exact_window",
+      }),
+    ).rejects.toBeInstanceOf(DataAvailabilityError);
+    // Neither fetcher should fire — we rejected at the API boundary.
+    expect(awcSpy).not.toHaveBeenCalled();
+    expect(iemSpy).not.toHaveBeenCalled();
+  });
 });
 
 describe("obs — strategy=exact_window over an empty fetch", () => {

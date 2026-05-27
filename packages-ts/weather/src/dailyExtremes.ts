@@ -83,7 +83,17 @@ async function fetchIemAsosObservations(
         // Filter to the requested window. The canonical Observation field
         // is `precip_1hr_inches` (inches); InternationalRow expects mm —
         // convert at the boundary so the per-day precip rollup is in mm.
-        if (row.observed_at >= fromDate && row.observed_at.slice(0, 10) <= toDate) {
+        // Phase 21 21-09 fix-iter-1 (ts-architect HIGH): use the date-prefix
+        // on BOTH bounds so the lexicographic comparison is symmetric. The
+        // previous form (`row.observed_at >= fromDate`) compared a full ISO
+        // timestamp against a date-only string on the lower bound while
+        // using a date-prefix on the upper, dropping/keeping rows at the
+        // LST day-boundary based on UTC clock instead of station-local day.
+        // The per-day rollup downstream re-projects observations into the
+        // station-local IANA day; pre-filtering at the date-prefix level is
+        // the correct boundary semantics.
+        const obsDate = row.observed_at.slice(0, 10);
+        if (obsDate >= fromDate && obsDate <= toDate) {
           const precipInches = row.precip_1hr_inches ?? null;
           out.push({
             observed_at: row.observed_at,
@@ -111,7 +121,10 @@ async function fetchAwcObservations(
   for (const r of raw) {
     const obs = awcToObservation(r);
     if (obs === null) continue;
-    if (obs.observed_at >= fromDate && obs.observed_at.slice(0, 10) <= toDate) {
+    // Phase 21 21-09 fix-iter-1 (ts-architect HIGH): symmetric date-prefix
+    // comparison on both bounds (see fetchIemObservations comment above).
+    const obsDate = obs.observed_at.slice(0, 10);
+    if (obsDate >= fromDate && obsDate <= toDate) {
       const precipInches = obs.precip_1hr_inches ?? null;
       out.push({
         observed_at: obs.observed_at,

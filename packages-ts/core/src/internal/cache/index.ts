@@ -28,3 +28,10 @@ export {
   isWritableYear,
 } from "./skip-rules.js";
 export { cacheKeyForObservations, cacheKeyForClimate } from "./keys.js";
+// Phase 21 21-03: schema-version invalidation adapter. Wired into
+// `defaultCacheStore()` so existing callers transparently get versioning.
+export {
+  versionedCacheStore,
+  CACHE_SCHEMA_VERSION as VERSIONED_CACHE_SCHEMA_VERSION,
+} from "./versionedCacheStore.js";
+export { CACHE_SCHEMA_VERSION } from "./types.js";

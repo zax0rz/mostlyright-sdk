@@ -16,8 +16,18 @@
 /** Strategy enum — matches Python verbatim. */
 export type ObsStrategy = "auto" | "exact_window" | "warm_cache" | "hosted";
 
-/** Source filter — matches Python's `Literal["awc"|"iem"|"ghcnh"|"cli"]|None`. */
-export type ObsSourceFilter = "awc" | "iem" | "ghcnh" | "cli" | null;
+/**
+ * Source filter — matches Python `tw.weather.obs(source=...)` `_VALID_SOURCES`
+ * frozenset `{"awc", "iem", "ghcnh"}`. `null` (default) means all sources
+ * merged.
+ *
+ * Phase 21 21-09 fix-iter-1: `ghcnh` validates as accepted but is not yet
+ * wired in TS (no GHCNh fetcher path in `fetchByStrategy`); selecting it
+ * raises `DataAvailabilityError(reason="model_unavailable")` rather than
+ * silently returning `[]`. Tracking issue: TS-W4 GHCNh fetcher port. The
+ * `cli` value was removed — it is not a valid Python source filter either.
+ */
+export type ObsSourceFilter = "awc" | "iem" | "ghcnh" | null;
 
 export interface ObsOptions {
   /** Optional source filter. `null` (default) means all sources merged. */

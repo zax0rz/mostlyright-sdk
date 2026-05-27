@@ -174,6 +174,24 @@ export async function obs(
   const strategy = opts.strategy ?? "auto";
   const source = opts.source ?? null;
 
+  // Phase 21 21-09 fix-iter-1: reject source values that have no TS fetcher
+  // wiring loudly rather than silently returning [] (codex+ts-architect
+  // CRITICAL). `ghcnh` is a documented Python filter but the GHCNh fetcher
+  // is not wired through `fetchByStrategy` in TS yet — surface the gap as
+  // DataAvailabilityError(reason="model_unavailable") so consumers see the
+  // missing wiring instead of empty rows.
+  if (source === "ghcnh") {
+    throw new DataAvailabilityError({
+      reason: "model_unavailable",
+      source: "obs.ghcnh",
+      hint:
+        "source='ghcnh' is a valid Python `obs()` filter but the GHCNh " +
+        "fetcher path is not yet wired in the TypeScript SDK. Use " +
+        "source='iem' or source='awc' (or omit `source` for merged) until " +
+        "the TS GHCNh fetcher ships.",
+    });
+  }
+
   if (strategy === "hosted") {
     throw new DataAvailabilityError({
       reason: "model_unavailable",

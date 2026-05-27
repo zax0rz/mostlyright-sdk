@@ -61,6 +61,18 @@ class VersionedCacheStore implements CacheStore, ListKeysCapable {
     this.#version = version;
   }
 
+  /**
+   * Test/diagnostics seam: return the underlying store so tests can assert
+   * which concrete backend `defaultCacheStore()` selected. NOT a production
+   * API — production code MUST use the wrapped store so version
+   * invalidation fires on stale reads.
+   *
+   * @internal
+   */
+  __peekInner(): CacheStore {
+    return this.#inner;
+  }
+
   async get<T = unknown>(key: string): Promise<T | null> {
     const raw = await this.#inner.get<unknown>(key);
     if (raw === null) return null;
