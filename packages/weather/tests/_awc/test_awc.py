@@ -673,16 +673,25 @@ class TestAwcTgroupIntegration:
         assert result["dewpoint_c"] == 6.1
 
     def test_tgroup_temp_f_derived_from_tgroup(self) -> None:
-        """temp_f is derived from T-group °C, not from body group."""
+        """temp_f is the integer-°F recovery of the ASOS Tgroup sensor reading.
+
+        Phase 18 PREC-01: when a Tgroup remark is present, the row originated
+        from an integer-°F ASOS sensor. temp_f is recovered as
+        ``float(round(temp_c * 9/5 + 32))`` rather than the back-converted
+        25.6 * 9/5 + 32 = 78.08 false-precision value. The body group whole-°C
+        is still overridden by the Tgroup tenths-°C — only the temp_f
+        emission semantics changed.
+        """
         from mostlyright.weather._awc import awc_to_observation
 
         raw = "METAR KJFK 151200Z 27010KT RMK AO2 T02560167"
         result = awc_to_observation(_make_metar(temp=26.0, dewp=17.0, rawOb=raw))
         assert result is not None
         assert result["temp_c"] == 25.6
-        # temp_f should match 25.6 * 9/5 + 32
-        expected_f = 25.6 * 9 / 5 + 32
-        assert result["temp_f"] == expected_f
+        # Phase 18 PREC-01: integer-°F recovery from Tgroup (was 78.08 pre-fix).
+        # round(25.6 * 9/5 + 32) = round(78.08) = 78 => float 78.0
+        assert result["temp_f"] == 78.0
+        assert result["temp_f"] == int(result["temp_f"])
 
     def test_tgroup_missing_rawob_uses_body(self) -> None:
         """If rawOb is None, body group temps pass through."""
