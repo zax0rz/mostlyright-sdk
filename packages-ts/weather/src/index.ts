@@ -124,12 +124,23 @@ export { LiveStreamError, NoLiveDataError } from "@mostlyrightmd/core";
 export {
   forecastNwp,
   iemMosForecasts,
+  openMeteoForecasts,
+  OPEN_METEO_MODELS,
+  OPEN_METEO_PREVIOUS_RUNS_URL,
+  OPEN_METEO_SINGLE_RUNS_URL,
+  OPEN_METEO_LIVE_URL,
+  OPEN_METEO_SEAMLESS_URL,
   type ForecastNwpOptions,
   type IemMosModel,
   type IemMosOptions,
   type IemMosRow,
   type IemMosSource,
   type NwpModel,
+  type OpenMeteoMode,
+  type OpenMeteoModel,
+  type OpenMeteoOptions,
+  type OpenMeteoRow,
+  type OpenMeteoSource,
 } from "./forecasts/index.js";
 
 // Phase 21 21-05 — dailyExtremes(station, from, to, opts?) wrapper matching
