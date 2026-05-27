@@ -6,6 +6,14 @@ All notable changes to `mostlyright`. The format follows [Keep a Changelog](http
 
 (next changes land here)
 
+## [1.1.3] — 2026-05-27
+
+Metadata-only republish. No runtime API or source-code behavior changes.
+
+### Changed
+- **PyPI + npm:** republish the already-merged registry metadata so latest package artifacts include website, docs, repository, issue-tracker, and changelog links.
+- **PyPI + npm:** keep the broadened core descriptions that position the SDK as prediction-market research over public data, not only weather research.
+
 ## [1.1.2] — 2026-05-27
 
 Patch release. Closes plan 18-09 (parity fixture re-capture), plan 18-11c Task 2 (TS parity fixture re-export), and refreshes registry-visible metadata. Runtime SDK APIs and source behavior are unchanged.
