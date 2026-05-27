@@ -25,6 +25,9 @@ from typing import Any
 from ._json_safe import to_json_safe
 
 __all__ = [
+    "DATA_AVAILABILITY_REASONS",
+    "DataAvailabilityError",
+    "DataAvailabilityReason",
     "DeprecatedModelWarning",
     "GribIntegrityError",
     "HistoricalDepthError",
@@ -46,6 +49,26 @@ __all__ = [
     # available via module ``__getattr__`` for one release cycle with a
     # DeprecationWarning; removal target v0.3.
 ]
+
+
+#: Shared reason enum — MUST match TS lockstep (Phase 21 D-04). The TS
+#: exception in ``packages-ts/core/src/exceptions/index.ts`` defines an
+#: identical array under ``DATA_AVAILABILITY_REASONS``. Drift here invalidates
+#: every cross-SDK ``except DataAvailabilityError as e: if e.reason == ...``
+#: branch a consumer writes.
+DATA_AVAILABILITY_REASONS: tuple[str, ...] = (
+    "model_unavailable",
+    "out_of_window",
+    "cache_miss",
+    "source_404",
+    "source_5xx",
+    "rate_limited",
+)
+
+#: Type alias kept loose (``str``) rather than ``typing.Literal`` so callers
+#: passing a string variable don't need to ``cast()``. Construction-time
+#: validation in ``DataAvailabilityError.__init__`` enforces the enum.
+DataAvailabilityReason = str
 
 
 class TradewindsError(Exception):
@@ -137,6 +160,72 @@ class SourceUnavailableError(TradewindsError):
             retry_after_s=self.retry_after_s,
             underlying=self.underlying,
             url=self.url,
+        )
+        return payload
+
+
+class DataAvailabilityError(TradewindsError):
+    """Typed exception for "I tried to fetch and got nothing usable".
+
+    Phase 21 21-09 (Issue #26): replaces overloaded ``SourceUnavailableError``
+    raise sites across at least 3 paths (forecast model unavailable, AWC
+    outside 168h, IEM cache miss, fetcher 404/5xx, rate-limit). Consumers
+    branch on ``reason`` instead of string-matching ``message``:
+
+        try:
+            df = tw.research(...)
+        except DataAvailabilityError as e:
+            if e.reason == "out_of_window":
+                ...  # widen the window
+            elif e.reason == "rate_limited":
+                ...  # back off
+            else:
+                raise
+
+    The reason enum is shared lockstep with the TypeScript SDK — see
+    ``DATA_AVAILABILITY_REASONS`` and the matching const array in
+    ``packages-ts/core/src/exceptions/index.ts``. Drift between SDKs is the
+    load-bearing risk.
+
+    ``SourceUnavailableError`` remains in place for back-compat; new code
+    prefers ``DataAvailabilityError``.
+    """
+
+    default_error_code = "DATA_AVAILABILITY"
+
+    def __init__(
+        self,
+        message: str = "",
+        *,
+        reason: str,
+        hint: str,
+        source: str | None = None,
+        request_id: str | None = None,
+        error_code: str | None = None,
+    ) -> None:
+        if reason not in DATA_AVAILABILITY_REASONS:
+            valid = ", ".join(DATA_AVAILABILITY_REASONS)
+            raise ValueError(
+                f"DataAvailabilityError: unknown reason {reason!r}. Valid: {valid}",
+            )
+        if not isinstance(hint, str) or not hint:
+            raise TypeError(
+                "DataAvailabilityError: hint is required and must be a non-empty string",
+            )
+        super().__init__(
+            message or f"[{reason}] {hint}",
+            error_code=error_code,
+            source=source,
+            request_id=request_id,
+        )
+        self.reason: str = reason
+        self.hint: str = hint
+
+    def _payload(self) -> dict[str, Any]:
+        payload = super()._payload()
+        payload.update(
+            reason=self.reason,
+            hint=self.hint,
         )
         return payload
 
