@@ -288,9 +288,17 @@ def _coerce_canonical_dtypes(df: pd.DataFrame) -> pd.DataFrame:
     df["station"] = df["station"].astype("string")
     df["model"] = df["model"].astype("string")
     df["source"] = df["source"].astype("string")
-    df["issued_at"] = pd.to_datetime(df["issued_at"], utc=True, errors="coerce")
-    df["valid_at"] = pd.to_datetime(df["valid_at"], utc=True, errors="coerce")
-    df["retrieved_at"] = pd.to_datetime(df["retrieved_at"], utc=True, errors="coerce")
+    # pandas 3 infers `datetime64[s, UTC]` for empty `to_datetime(... utc=True)`;
+    # explicit astype locks the canonical `[ns, UTC]` resolution across majors.
+    df["issued_at"] = pd.to_datetime(df["issued_at"], utc=True, errors="coerce").astype(
+        "datetime64[ns, UTC]"
+    )
+    df["valid_at"] = pd.to_datetime(df["valid_at"], utc=True, errors="coerce").astype(
+        "datetime64[ns, UTC]"
+    )
+    df["retrieved_at"] = pd.to_datetime(df["retrieved_at"], utc=True, errors="coerce").astype(
+        "datetime64[ns, UTC]"
+    )
     df["forecast_hour"] = pd.to_numeric(df["forecast_hour"], errors="coerce").astype("Int64")
     df["wind_dir_deg"] = pd.to_numeric(df["wind_dir_deg"], errors="coerce").astype("Int64")
     df["sky_cover_pct"] = pd.to_numeric(df["sky_cover_pct"], errors="coerce").astype("Int64")

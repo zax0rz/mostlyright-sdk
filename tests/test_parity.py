@@ -138,6 +138,28 @@ def _canon(df: pd.DataFrame) -> pd.DataFrame:
     return out.sort_values(["date", "station"]).reset_index(drop=True)
 
 
+# pandas 3 ships the new builtin `str` dtype as the default for object-string
+# columns read from parquet. The v0.14.1 parity fixtures + expected_dtypes.json
+# were captured under pandas 2 (which serializes those columns as `object`).
+# Per `tests/fixtures/parity/coerce_pd3.py`, the documented pd2 → pd3 shift on
+# string columns is metadata-only (values are byte-identical), so this helper
+# rewrites the expected map to the pd3 storage layer when running under pd3.
+_PD3 = pd.__version__.split(".", 1)[0] == "3"
+
+
+def _pd3_translate_expected(expected: dict[str, str], df: pd.DataFrame) -> dict[str, str]:
+    if not _PD3:
+        return expected
+    out = dict(expected)
+    for col, dtype_str in expected.items():
+        if dtype_str != "object" or col not in df.columns:
+            continue
+        non_null = df[col].dropna().head(5)
+        if not non_null.empty and all(isinstance(v, str) for v in non_null):
+            out[col] = "str"
+    return out
+
+
 @pytest.mark.live
 @pytest.mark.parametrize(
     "case_num,station,frm,to",
@@ -154,10 +176,9 @@ def test_parity_case(case_num: int, station: str, frm: str, to: str) -> None:
 
     # PARITY-03: dtype ground truth.
     actual_dtypes = {col: str(dtype) for col, dtype in actual_c.dtypes.items()}
-    assert actual_dtypes == EXPECTED_DTYPES[f"case_{case_num}"], (
-        f"dtype mismatch case {case_num}\n"
-        f"actual:   {actual_dtypes}\n"
-        f"expected: {EXPECTED_DTYPES[f'case_{case_num}']}"
+    expected_dtypes = _pd3_translate_expected(EXPECTED_DTYPES[f"case_{case_num}"], actual_c)
+    assert actual_dtypes == expected_dtypes, (
+        f"dtype mismatch case {case_num}\nactual:   {actual_dtypes}\nexpected: {expected_dtypes}"
     )
 
     # PARITY-02: value + dtype equivalence (Rung 3 - see module docstring).
@@ -184,7 +205,8 @@ def test_dtypes_match_ground_truth() -> None:
         df = pd.read_parquet(FIXTURES / f"case_{case_num}_{station}_{frm}_{to}.parquet")
         df = df.reset_index() if df.index.name else df
         actual = {col: str(dtype) for col, dtype in df.dtypes.items()}
-        assert actual == EXPECTED_DTYPES[f"case_{case_num}"], (
+        expected = _pd3_translate_expected(EXPECTED_DTYPES[f"case_{case_num}"], df)
+        assert actual == expected, (
             f"expected_dtypes.json is stale for case_{case_num}; "
             "re-run scripts/capture_expected_dtypes.py"
         )
