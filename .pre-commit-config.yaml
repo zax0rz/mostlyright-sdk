@@ -2,7 +2,10 @@
 # Install: `uv run pre-commit install` (once per checkout)
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.5.0
+    # Pinned to match the local `uv run ruff` + CI workflow ruff version.
+    # Drift between hook ruff and CI ruff causes the hook to silently
+    # reformat to an old style, then CI rejects the same files — every push.
+    rev: v0.15.14
     hooks:
       - id: ruff
         args: [--fix]
