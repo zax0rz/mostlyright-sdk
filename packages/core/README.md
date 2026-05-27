@@ -1,10 +1,10 @@
 # mostlyrightmd
 
-**The public data SDK for quants and AI agents.**
+**The public-data SDK for quants, ML pipelines, and AI agents.**
 
-`mostlyrightmd` is the Python entry point: core types, schemas, validators, temporal-safety primitives, and the `research()` join that ties observations × climate into one row per settlement date. Direct calls to public APIs (NOAA, NWS, IEM, GHCNh, Kalshi, Polymarket). No hosted backend, no API key.
+`mostlyrightmd` is the Python entry point: core types, schemas, validators, temporal-safety primitives, and the `research()` join that ties weather observations × climate into one row per settlement date — ready for prediction-market backtests (Kalshi NHIGH/NLOW, Polymarket), ML training pipelines, and AI-agent tool calls. Direct calls to public APIs (NOAA, NWS, IEM, GHCNh, Kalshi, Polymarket). No hosted backend, no API key.
 
-Weather + prediction-markets data are live today. SEC filings (EDGAR) and Federal Reserve economic data (FRED) are next.
+Weather + prediction-markets adapters are live today. SEC filings (EDGAR), equities structured data, Federal Reserve series (FRED), court filings, and FDA approvals are next — and the architecture is built to ship an adapter for any public data source.
 
 ## Install
 

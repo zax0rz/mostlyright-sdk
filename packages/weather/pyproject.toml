@@ -1,12 +1,31 @@
 [project]
 name = "mostlyrightmd-weather"
 version = "1.1.3"
-description = "Weather data fetchers (AWC, IEM ASOS, GHCNh, NWS CLI) for the mostlyright Python SDK. Direct public-API access, no hosted backend. Imports as `mostlyright.weather`."
+description = "Weather data for Python — live METAR (AWC), ASOS archive (IEM), historical observations (GHCNh), and NWS climate text products (CLI). For quants, ML training pipelines, and weather-bot agents. Direct public-API access, no hosted backend. Imports as `mostlyright.weather`."
 readme = "README.md"
 license = "MIT"
 authors = [{ name = "Robert Tarabcak", email = "tarabcakr@gmail.com" }]
 requires-python = ">=3.11"
-keywords = ["weather", "metar", "awc", "iem", "ghcnh", "nws-cli"]
+keywords = [
+    "weather",
+    "weather-data",
+    "weather-api",
+    "metar",
+    "asos",
+    "noaa",
+    "nws",
+    "nws-cli",
+    "awc",
+    "iem",
+    "ghcnh",
+    "forecast",
+    "observations",
+    "climate-data",
+    "weather-station",
+    "weather-bot",
+    "ml-training-data",
+    "time-series",
+]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "License :: OSI Approved :: MIT License",

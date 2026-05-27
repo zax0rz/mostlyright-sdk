@@ -1,6 +1,6 @@
 # mostlyrightmd-weather
 
-Weather data fetchers (AWC, IEM ASOS, GHCNh, NWS CLI) for the `mostlyright` Python SDK. Direct public-API access; no hosted backend, no API key. Local parquet cache at `$HOME/.mostlyright/cache/`.
+Weather data fetchers for the `mostlyright` Python SDK — live METAR (AWC), ASOS archive (IEM), historical observations (GHCNh), and NWS climate text products (CLI) — for quants, ML training pipelines, and weather-bot agents. Direct public-API access; no hosted backend, no API key. Local parquet cache at `$HOME/.mostlyright/cache/`.
 
 ## Install
 

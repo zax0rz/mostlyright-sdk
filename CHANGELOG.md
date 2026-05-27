@@ -4,6 +4,11 @@ All notable changes to `mostlyright`. The format follows [Keep a Changelog](http
 
 ## [Unreleased]
 
+### Changed
+- **README + package metadata:** SEO copy sweep across top-level README, every per-package README, every `pyproject.toml`/`package.json` `description`, and (newly) `keywords` arrays on the npm packages. **Repositions the SDK as a universal public-data interface** — weather + prediction-markets are today's adapters; SEC filings, Federal Reserve series, court filings, FDA approvals, and equities structured data are named in the roadmap. Surfaces three audiences naturally in headlines + descriptions: prediction-market quants (Kalshi NHIGH/NLOW, Polymarket, backtesting), ML pipelines (leakage-free training pairs, schema-versioned outputs), and AI-agent / weather-bot builders (METAR, ASOS, GHCNh, NWS CLI). The `@mostlyrightmd/markets` description is also broadened from "resolvers (Kalshi NHIGH/NLOW, Polymarket)" to cover the trade-history surface the package actually exports. No public API or runtime behavior changes.
+- **README package tables:** added `equities`, `courts`, and `fda` to the planned-adapters list on both the Python and TypeScript sides so the roadmap is legible at a glance.
+- **GitHub repo:** description repositioned as a public-data SDK with weather + prediction-markets as launch adapters and a named adapter roadmap (EDGAR, FRED, court filings, FDA, equities). Discovery topics expanded to include `public-data`, `financial-data`, `sec-edgar`, and `fred`.
+
 ### Fixed
 - **README:** switch PyPI download badges from Pepy/Shields to Badgen with PyPIStats detail links because Pepy has not indexed the `mostlyrightmd*` projects and Shields can surface upstream rate limits for fresh packages.
 
