@@ -1,6 +1,6 @@
 # Phase 15 W3 — Regenerate SDK reference docs and open a cross-repo PR
-# against Tarabcak/mostly-right-landing on every v* / vts-* non-rc tag.
-# Reviewer (Tarabcak) approves; merge triggers Cloudflare Pages deploy.
+# against mostlyrightmd/mostlyright-landing on every v* / vts-* non-rc tag.
+# Reviewer (Vu) approves; merge triggers Cloudflare Pages deploy.
 #
 # Triggers:
 #   - push tag v*   (Python SDK release) → builds Sphinx markdown
@@ -29,7 +29,7 @@ on:
         required: true
 
 # Default-deny. Cross-repo write happens via the mostlyright-docs-sync
-# GitHub App (installed on Tarabcak/mostly-right-landing only), NOT via
+# GitHub App (installed on mostlyrightmd/mostlyright-landing only), NOT via
 # GITHUB_TOKEN. The App's runtime token is minted per-run by
 # actions/create-github-app-token; it expires in 1 hour and is scoped
 # exclusively to the landing repo. Same App that legacy openapi-sync uses;
@@ -239,19 +239,19 @@ jobs:
         # actions/create-github-app-token v3.1.1 (matches legacy openapi-sync).
         # Mints a 1-hour-scoped installation token for the
         # mostlyright-docs-sync App, restricted by the App's installation
-        # to Tarabcak/mostly-right-landing only.
+        # to mostlyrightmd/mostlyright-landing only.
         uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3
         with:
           app-id: ${{ secrets.LANDING_REPO_APP_ID }}
           private-key: ${{ secrets.LANDING_REPO_APP_PRIVATE_KEY }}
-          owner: Tarabcak
-          repositories: mostly-right-landing
+          owner: mostlyrightmd
+          repositories: mostlyright-landing
 
       - name: Checkout landing repo
         # actions/checkout v4.2.2
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          repository: Tarabcak/mostly-right-landing
+          repository: mostlyrightmd/mostlyright-landing
           token: ${{ steps.mint_token.outputs.token }}
           path: landing-repo
           ref: main
@@ -283,7 +283,7 @@ jobs:
             BRANCH_TO_RESET="auto/docs-regen-${SAFE_TAG}"
           fi
           gh api -X DELETE \
-            "repos/Tarabcak/mostly-right-landing/git/refs/heads/${BRANCH_TO_RESET}" \
+            "repos/mostlyrightmd/mostlyright-landing/git/refs/heads/${BRANCH_TO_RESET}" \
             2>&1 \
             || echo "branch ${BRANCH_TO_RESET} did not exist or was already deleted (ok)"
 
@@ -415,15 +415,15 @@ jobs:
             contributors who don't have the planning repo cloned.
           labels: |
             ${{ steps.prmeta.outputs.label }}
-          # Explicitly request Tarabcak (landing repo owner). Mirrors
-          # legacy openapi-sync rationale: mostly-right-landing has no
+          # Explicitly request helloiamvu (Vu — docs reviewer). Mirrors
+          # legacy openapi-sync rationale: mostlyright-landing has no
           # CODEOWNERS today, so an unassigned PR would sit unnoticed
           # and docs would silently go stale until someone manually
           # spotted it. Hardcoding the owner is the right call for a
           # bot that opens cross-repo PRs against exactly one repo,
           # owned by exactly one person.
           reviewers: |
-            Tarabcak
+            helloiamvu
 
       - name: Summary
         if: always()
@@ -441,5 +441,5 @@ jobs:
             echo ""
             echo "If peter-evans/create-pull-request detected no diff,"
             echo "no PR was opened. Otherwise the landing repo now has an"
-            echo "open or updated PR awaiting Tarabcak's review."
+            echo "open or updated PR awaiting Vu's review."
           } >> "$GITHUB_STEP_SUMMARY"
