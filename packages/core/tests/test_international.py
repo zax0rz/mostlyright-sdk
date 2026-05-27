@@ -224,20 +224,40 @@ def test_daily_extremes_at_threshold_publishes_temps(monkeypatch):
 # US (NYC, 0.1°C precision).
 # ---------------------------------------------------------------------------
 def test_daily_extremes_us_keeps_tenth_precision(monkeypatch):
-    """US stations preserve 0.1°C precision."""
+    """US stations preserve 0.1°C precision derived from the integer-°F lattice.
+
+    Phase 18 PREC-03: U.S. ASOS observations are integer-°F native. After
+    Tgroup recovery (Phase 18 PREC-01 + PREC-02), temp_c values land on
+    the integer-°F lattice: 10.0 (=50°F), 11.1 (=52°F), 12.2 (=54°F), 9.4
+    (=49°F). tmin/tmax = min/max of lattice values are themselves on the
+    lattice — 0.1°C HALF_UP rounding is a no-op for those fields. tmean_c
+    IS a non-lattice average and exercises the 0.1°C HALF_UP rounding
+    meaningfully. Previously this test used synthetic temps
+    [10.05, 11.34, 12.55, 9.07] that could never arise from any integer °F
+    via Tgroup — replaced with realistic ASOS-lattice values.
+    """
     # 12 obs all on Jan 1 UTC 12:00-23:00 → NYC EST 07:00-18:00 Jan 1.
+    # Temps on the integer-°F lattice: derived from °F [50, 52, 54, 49]
+    # via Tgroup recovery (Phase 18). One copy of 10.0, five of 11.1, five
+    # of 12.2, one of 9.4 — 12 total observations.
     rows = _build_hourly_rows(
         datetime(2025, 1, 1, 12, 0, tzinfo=UTC),
         12,
-        temps=[10.05] + [11.34] * 5 + [12.55] * 5 + [9.07],
+        temps=[10.0] + [11.1] * 5 + [12.2] * 5 + [9.4],
         station_code="NYC",
     )
     _patch_cache_with_rows(monkeypatch, rows)
     out = intl.daily_extremes("KNYC", date(2025, 1, 1), date(2025, 1, 1))
     assert len(out) == 1
-    # 0.1°C precision (HALF_UP): max 12.55 → 12.6; min 9.07 → 9.1.
-    assert out[0]["tmax_c"] == 12.6
-    assert out[0]["tmin_c"] == 9.1
+    # tmin/tmax on the integer-°F lattice — 0.1°C rounding is a no-op:
+    assert out[0]["tmax_c"] == 12.2
+    assert out[0]["tmin_c"] == 9.4
+    # tmean_c is the off-lattice average:
+    # (10.0 + 5*11.1 + 5*12.2 + 9.4) / 12 = 135.9 / 12 = 11.325
+    # _round_half_up uses Decimal ROUND_HALF_UP → 11.325 → 11.3
+    # (the 2 in the tenths position with 5 in the hundredths rounds up to 3
+    # under HALF_UP applied via quantize at 0.1 precision).
+    assert out[0]["tmean_c"] == 11.3
     assert out[0]["country"] == "US"
 
 

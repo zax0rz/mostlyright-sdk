@@ -232,10 +232,53 @@ import mostlyright
 async def alert_when_hot(station: str, threshold_f: float) -> None:
     async for row in mostlyright.live.stream(station):
         if row["temp_f"] and row["temp_f"] >= threshold_f:
-            await page(f"{station} hit {row['temp_f']}F at {row['observed_at']}")
+            # Phase 18 PREC-01: temp_f is integer-valued for U.S. ASOS
+            # rows (recovered from Tgroup); cast via int() for clean
+            # presentation and to defensively coerce any non-Tgroup
+            # float (international stations via celsius_to_fahrenheit).
+            await page(f"{station} hit {int(row['temp_f'])}F at {row['observed_at']}")
 
 asyncio.run(alert_when_hot("KNYC", 95.0))
 ```
+
+```ts
+// TypeScript equivalent — same Phase 18 PREC-01 + PREC-06 semantics.
+import { stream } from "@mostlyrightmd/weather";
+
+async function alertWhenHot(station: string, thresholdF: number): Promise<void> {
+  for await (const row of stream(station)) {
+    if (row.temp_f !== null && row.temp_f >= thresholdF) {
+      // Phase 18 PREC-01: temp_f is integer-valued for U.S. ASOS rows
+      // (recovered from Tgroup); cast via Math.round() for clean
+      // presentation and to defensively coerce any non-Tgroup float
+      // (international stations via celsiusToFahrenheit).
+      await page(`${station} hit ${Math.round(row.temp_f)}F at ${row.observed_at}`);
+    }
+  }
+}
+
+await alertWhenHot("KNYC", 95.0);
+```
+
+### Note on `temp_f` precision (Phase 18)
+
+For U.S. ASOS sources (AWC + IEM live + IEM archive), `temp_f` is
+**integer-valued** — recovered from the Tgroup remark in raw METAR (the
+canonical encoding of the ASOS native integer-°F reading). For example,
+a station reporting `T02670111` in remarks yields `temp_c=26.7`,
+`temp_f=80.0` (float-typed for dtype stability across rows;
+integer-valued).
+
+For international stations (no Tgroup, e.g. EGLL, LFPG, RJTT), `temp_f`
+is a derived float via `celsius_to_fahrenheit(temp_c)` and may have
+non-integer values (e.g. `64.4`). To present `temp_f` cleanly in
+user-facing alerts or UIs, cast via `int()` (drops decimals) or
+`round()` (banker's rounding). The example above uses `int()`
+defensively — for ASOS rows it's a no-op, for international rows it
+cleans up the display.
+
+See `.planning/phases/18-precision-fix-asos-integer-fahrenheit/18-CONTEXT.md`
+for the precision rationale and the integer-°F recovery semantics.
 
 ### Single-shot poll (cron-style)
 

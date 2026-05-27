@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mostlyright.xyz/schemas/synoptic_extremes.json",
   "title": "Synoptic Temperature Extremes",
-  "description": "6-hour and 24-hour temperature extremes from METAR remarks (1xxxx, 2xxxx, 4xxxx groups). Separate from hourly observations because they have different frequency: 6hr extremes at synoptic hours (00/06/12/18Z), 24hr extremes once daily (~06Z). Also includes precipitation accumulators and pressure tendency. These are PROCESSED values from the ASOS running record of 5-minute averages, converted to 0.1°C (same precision as T-group, maps to whole °F).",
+  "description": "6-hour and 24-hour temperature extremes from METAR remarks (1xxxx, 2xxxx, 4xxxx groups). Separate from hourly observations because they have different frequency: 6hr extremes at synoptic hours (00/06/12/18Z), 24hr extremes once daily (~06Z). Also includes precipitation accumulators and pressure tendency. The 6hr/24hr extreme groups encode whole-°F native ASOS readings as tenths-°C (same Tgroup-as-display-precision rule as observation.v1's temp_c) — the 0.1°C precision is a coded representation, not independent source resolution; values map 1:1 to whole °F.",
   "type": "object",
   "required": ["station_code", "observed_at", "source"],
   "additionalProperties": false,
@@ -22,11 +22,11 @@
     },
 
     "max_temp_6hr_c": {
-      "description": "6-hour maximum temperature in Celsius (0.1°C from 1xxxx remark). Maps to whole °F.",
+      "description": "6-hour maximum temperature in Celsius. The 1xxxx METAR remark group encodes a whole-°F native ASOS reading as tenths-°C; 0.1°C is display precision, not source resolution. Maps 1:1 to whole °F.",
       "oneOf": [{ "type": "number" }, { "type": "null" }]
     },
     "min_temp_6hr_c": {
-      "description": "6-hour minimum temperature in Celsius (0.1°C from 2xxxx remark).",
+      "description": "6-hour minimum temperature in Celsius. Same Tgroup-as-display-precision rule as max_temp_6hr_c — the 2xxxx remark group encodes a whole-°F native ASOS reading.",
       "oneOf": [{ "type": "number" }, { "type": "null" }]
     },
     "max_temp_6hr_f": {
@@ -39,11 +39,11 @@
     },
 
     "max_temp_24hr_c": {
-      "description": "24-hour max temperature in Celsius (0.1°C from 4xxxx remark). Once daily. SETTLEMENT CROSS-VALIDATION: should correlate with CLI high_temp_f.",
+      "description": "24-hour max temperature in Celsius. The 4xxxx remark group encodes a whole-°F native ASOS reading as tenths-°C (display precision, not source resolution). Once daily. SETTLEMENT CROSS-VALIDATION: should correlate with CLI high_temp_f at integer-°F granularity.",
       "oneOf": [{ "type": "number" }, { "type": "null" }]
     },
     "min_temp_24hr_c": {
-      "description": "24-hour min temperature in Celsius. Correlates with CLI low_temp_f.",
+      "description": "24-hour min temperature in Celsius. Same Tgroup-as-display-precision rule as max_temp_24hr_c. Correlates with CLI low_temp_f at integer-°F granularity.",
       "oneOf": [{ "type": "number" }, { "type": "null" }]
     },
     "max_temp_24hr_f": {

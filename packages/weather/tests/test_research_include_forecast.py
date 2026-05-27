@@ -400,7 +400,8 @@ def test_research_invalid_forecast_model_raises_value_error(
         patch(
             "mostlyright.weather._fetchers._iem_mos.fetch_iem_mos",
             return_value=_fake_iem_mos_df(),
-        ),pytest.raises(ValueError, match="NWP model must be")
+        ),
+        pytest.raises(ValueError, match="NWP model must be"),
     ):
         _ = mostlyright.research(
             "KNYC",
@@ -438,7 +439,8 @@ def test_research_reserved_forecast_model_raises_not_available(
         patch(
             "mostlyright.weather._fetchers._iem_mos.fetch_iem_mos",
             return_value=_fake_iem_mos_df(),
-        ),pytest.raises(NwpModelNotAvailableError)
+        ),
+        pytest.raises(NwpModelNotAvailableError),
     ):
         _ = mostlyright.research(
             "KNYC",

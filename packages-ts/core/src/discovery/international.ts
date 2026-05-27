@@ -150,6 +150,19 @@ export function internationalDailyExtremes(
   if (typeof tz !== "string" || tz.length === 0) {
     throw new RangeError("internationalDailyExtremes: stationTz is required (non-empty string)");
   }
+  // Phase 18: integer-°F lattice rationale.
+  // For US stations (ASOS), constituent observations carry temp_c values
+  // recovered from Tgroup tenths-°C (e.g. 10.0, 11.1, 12.2 from integer °F
+  // 50, 52, 54 — Phase 18 PREC-01/PREC-02). tmin/tmax = min/max of those
+  // values are themselves on the integer-°F lattice, and 0.1°C HALF_UP
+  // rounding is a no-op. tmean IS a non-lattice average and benefits from
+  // 0.1°C rounding. For international stations (no Tgroup), constituent
+  // values are derived floats and rounding to whole °C (`precision = 0`) is
+  // the convention.
+  //
+  // Callers pass `precision: 1` for US ASOS data and `precision: 0` (the
+  // default) for international. See
+  // .planning/phases/18-precision-fix-asos-integer-fahrenheit/18-CONTEXT.md.
   const precision = opts.precision ?? 0;
   const minObs = opts.minObs ?? LOW_COVERAGE_THRESHOLD;
 

@@ -109,9 +109,7 @@ def test_wheel_versions_lockstep(built_wheels: dict[str, Path]) -> None:
     # test extracts the version string from each wheel filename and asserts
     # they all match — agnostic to which specific version we're at.
     # `pkg_name-VERSION-py3-none-any.whl` → split on `-` and take index 1.
-    versions = {
-        pkg: built_wheels[pkg].name.split("-")[1] for pkg in ("core", "weather", "markets")
-    }
+    versions = {pkg: built_wheels[pkg].name.split("-")[1] for pkg in ("core", "weather", "markets")}
     assert versions["core"] == versions["weather"] == versions["markets"], (
         f"wheel versions must match lockstep across all 3 packages; got {versions}"
     )

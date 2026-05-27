@@ -283,7 +283,18 @@ def daily_extremes(
 
     tz = ZoneInfo(info.tz)
     is_us = is_us_station(info.icao)
-    precision = 1 if is_us else 0  # 0.1°C for US, whole °C for intl.
+    # Phase 18 PREC-03: integer-°F lattice rationale.
+    # US data is integer-°F native; Tgroup-encoded tenths-°C is a coded
+    # representation, not independent precision. After Phase 18 PREC-01 +
+    # PREC-02 recovery, temp_c values for US stations land on the integer-°F
+    # lattice (e.g. 10.0=50°F, 11.1=52°F, 12.2=54°F). tmin/tmax = min/max of
+    # those lattice values are themselves on the lattice — rounding to 0.1°C
+    # HALF_UP is a no-op, so tmin_c/tmax_c at 0.1°C is the source-truth
+    # representation. tmean_c IS an off-lattice average; 0.1°C HALF_UP
+    # rounding is an honest expression of the constituent grain. International
+    # stations round to whole °C per ICAO body group convention.
+    # See .planning/phases/18-precision-fix-asos-integer-fahrenheit/18-CONTEXT.md.
+    precision = 1 if is_us else 0  # 0.1°C for US (lattice + tmean), whole °C for intl.
 
     # Gather hourly rows from cache, month by month. The cache is keyed by
     # UTC year/month — for non-UTC stations the local-day window straddles

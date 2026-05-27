@@ -34,6 +34,7 @@ from mostlyright._internal._bounds import (
 )
 from mostlyright._internal._convert import fahrenheit_to_celsius
 from mostlyright.weather._awc import icao_to_station_code, map_cloud_cover
+from mostlyright.weather._internal.tgroup import parse_tgroup
 
 _TS_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$")
 
@@ -166,7 +167,26 @@ def iem_to_observation(
     dewp_c = bounded_float(
         fahrenheit_to_celsius(raw_dewp_f), TEMP_MIN_C, TEMP_MAX_C, field="dewpoint_c"
     )
-    # Consistency: if derived °C is out of bounds, the raw °F is also bogus
+    # Phase 18 PREC-02: re-parse Tgroup from the raw METAR `metar` column.
+    # When Tgroup is present, the row originated from an integer-°F ASOS sensor
+    # and the displayed tenths-°C is in the METAR remarks. IEM's `tmpf`/`dwpf`
+    # are pre-rounded to whole °F, so `fahrenheit_to_celsius(80)` produces
+    # 26.666... — losing the source-truth 26.7. Override with the Tgroup value.
+    # CRITICAL: do NOT change `temp_f` / `dewp_f` below — keep them as raw
+    # tmpf/dwpf. temp_c (tenths-°C) and temp_f (integer-°F) are different coded
+    # views of the same underlying integer-°F sensor reading. Codex
+    # explicitly warned against introducing a temp_c * 9/5 + 32 == temp_f
+    # invariant — see issue #16 comment 4548783363.
+    # Tgroup override only applies when the raw tmpf was valid (in-bounds).
+    # If tmpf was out-of-bounds, the row carries bogus IEM-server data and
+    # we null both temp_c and temp_f regardless of what Tgroup says — preserves
+    # the existing invariant tested by TestTempBounds (extreme tmpf → temp_c=None).
+    tgroup_temp, tgroup_dewp = parse_tgroup(metar_text)
+    if tgroup_temp is not None and temp_c is not None:
+        temp_c = bounded_float(tgroup_temp, TEMP_MIN_C, TEMP_MAX_C, field="temp_c")
+    if tgroup_dewp is not None and dewp_c is not None:
+        dewp_c = bounded_float(tgroup_dewp, TEMP_MIN_C, TEMP_MAX_C, field="dewpoint_c")
+    # Consistency: if °C is out of bounds (raw or Tgroup-overridden), the raw °F is also bogus
     temp_f = raw_temp_f if temp_c is not None else None
     dewp_f = raw_dewp_f if dewp_c is not None else None
 
