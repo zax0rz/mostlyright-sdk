@@ -3,7 +3,7 @@
 **The public data SDK for quants and AI agents.**
 
 [![PyPI version](https://img.shields.io/pypi/v/mostlyrightmd.svg)](https://pypi.org/project/mostlyrightmd/)
-[![PyPI downloads](https://img.shields.io/pepy/dm/mostlyrightmd?label=PyPI%20downloads)](https://pepy.tech/projects/mostlyrightmd)
+[![PyPI downloads](https://badgen.net/pypi/dm/mostlyrightmd?label=PyPI%20downloads)](https://pypistats.org/packages/mostlyrightmd)
 [![npm version](https://img.shields.io/npm/v/mostlyright.svg)](https://www.npmjs.com/package/mostlyright)
 [![npm downloads](https://img.shields.io/npm/dm/mostlyright?label=npm%20downloads)](https://www.npmjs.com/package/mostlyright)
 [![Python versions](https://img.shields.io/pypi/pyversions/mostlyrightmd.svg)](https://pypi.org/project/mostlyrightmd/)
@@ -58,9 +58,9 @@ Full quickstart with concepts at <https://mostlyright.md/docs/sdk/>.
 
 | Package | Description | Downloads | Status |
 |---|---|---|---|
-| [`mostlyrightmd`](https://pypi.org/project/mostlyrightmd/) | Core types, schemas, validators, the `research()` join, and snapshot primitives. Imports as `mostlyright`. | [![monthly downloads](https://img.shields.io/pepy/dm/mostlyrightmd?label=monthly)](https://pepy.tech/projects/mostlyrightmd) | stable |
-| [`mostlyrightmd-weather`](https://pypi.org/project/mostlyrightmd-weather/) | Weather data fetchers (AWC, IEM ASOS, GHCNh, NWS CLI). Direct public-API access. | [![monthly downloads](https://img.shields.io/pepy/dm/mostlyrightmd-weather?label=monthly)](https://pepy.tech/projects/mostlyrightmd-weather) | stable |
-| [`mostlyrightmd-markets`](https://pypi.org/project/mostlyrightmd-markets/) | Prediction-market data (Kalshi NHIGH/NLOW resolvers, Polymarket discovery + settlement). | [![monthly downloads](https://img.shields.io/pepy/dm/mostlyrightmd-markets?label=monthly)](https://pepy.tech/projects/mostlyrightmd-markets) | stable |
+| [`mostlyrightmd`](https://pypi.org/project/mostlyrightmd/) | Core types, schemas, validators, the `research()` join, and snapshot primitives. Imports as `mostlyright`. | [![monthly downloads](https://badgen.net/pypi/dm/mostlyrightmd?label=monthly)](https://pypistats.org/packages/mostlyrightmd) | stable |
+| [`mostlyrightmd-weather`](https://pypi.org/project/mostlyrightmd-weather/) | Weather data fetchers (AWC, IEM ASOS, GHCNh, NWS CLI). Direct public-API access. | [![monthly downloads](https://badgen.net/pypi/dm/mostlyrightmd-weather?label=monthly)](https://pypistats.org/packages/mostlyrightmd-weather) | stable |
+| [`mostlyrightmd-markets`](https://pypi.org/project/mostlyrightmd-markets/) | Prediction-market data (Kalshi NHIGH/NLOW resolvers, Polymarket discovery + settlement). | [![monthly downloads](https://badgen.net/pypi/dm/mostlyrightmd-markets?label=monthly)](https://pypistats.org/packages/mostlyrightmd-markets) | stable |
 | `mostlyrightmd-edgar` | SEC filings (10-K, 10-Q, 8-K) — direct EDGAR full-text + facts access. | n/a | planned |
 | `mostlyrightmd-fred` | Federal Reserve economic data (FRED series, observations, releases). | n/a | planned |
 
