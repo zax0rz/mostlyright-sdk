@@ -122,6 +122,54 @@ describe("iemToObservation Phase 18 PREC-02 Tgroup-override", () => {
     expect(row?.dewpoint_f).toBe(50);
   });
 
+  // -------------------------------------------------------------------------
+  // tmpf-validity gate (review-iter regression — Python `_iem.py:185`
+  // gates the Tgroup override on `temp_c is not None`. Without this gate,
+  // missing or out-of-bounds raw tmpf with a valid Tgroup would emit a
+  // bogus temp_c. Codex + TS Architect both flagged this in iter-1 review.)
+  // -------------------------------------------------------------------------
+  it("F1. tmpf missing ('M') + valid Tgroup: temp_c stays null (gate enforced)", () => {
+    // Raw tmpf=M → fahrenheitToCelsius(null) → null → bounded null.
+    // The gate `tgTemp !== null && tempC !== null` blocks the Tgroup
+    // override; temp_c stays null. Python emits null for the same input.
+    const row = iemToObservation({
+      ...makeIemRow("LGA", 0, 0, "KLGA 010000Z RMK AO2 T02670122"),
+      tmpf: "M",
+      dwpf: "M",
+      // Provide a non-null backup measurement so the row isn't skipped
+      // (skip-row gate requires ALL 4 of tmpf/dwpf/wind_speed/slp missing).
+      sknt: "10",
+    });
+    // sknt=10 keeps the row alive
+    expect(row).not.toBeNull();
+    expect(row?.temp_c).toBeNull();
+    expect(row?.temp_f).toBeNull();
+    expect(row?.dewpoint_c).toBeNull();
+    expect(row?.dewpoint_f).toBeNull();
+  });
+
+  it("F2. tmpf out-of-bounds (2000) + valid Tgroup: temp_c null + temp_f null", () => {
+    // Raw tmpf=2000 → fahrenheitToCelsius(2000) = 1093.3°C → boundedFloat
+    // returns null (TEMP_MAX_C far below). Gate blocks Tgroup override.
+    // Without the gate, TS would emit temp_c=26.7, temp_f=2000 — bogus.
+    const row = iemToObservation(makeIemRow("LGA", 2000, 2000, "KLGA 010000Z RMK AO2 T02670122"));
+    expect(row?.temp_c).toBeNull();
+    expect(row?.temp_f).toBeNull();
+    expect(row?.dewpoint_c).toBeNull();
+    expect(row?.dewpoint_f).toBeNull();
+  });
+
+  it("F3. tmpf in-bounds + Tgroup in-bounds: override applies (happy gate path)", () => {
+    // Sanity check the happy path still works after the gate.
+    // raw tmpf=80 → tempC=26.666... → in bounds. Tgroup T02670122 → 26.7.
+    // Gate passes; tempC overridden to 26.7; tempF stays = 80 (rawTmpf).
+    const row = iemToObservation(makeIemRow("LGA", 80, 54, "KLGA 010000Z RMK AO2 T02670122"));
+    expect(row?.temp_c).toBeCloseTo(26.7, 5);
+    expect(row?.temp_f).toBe(80);
+    expect(row?.dewpoint_c).toBeCloseTo(12.2, 5);
+    expect(row?.dewpoint_f).toBe(54);
+  });
+
   it("G. Tgroup with whole-°F-lattice values: 12-station cross-source consistency", () => {
     // For 12 US ASOS stations, encode known integer-°F values to Tgroup,
     // pass same raw METAR through both parsers, assert temp_c matches and

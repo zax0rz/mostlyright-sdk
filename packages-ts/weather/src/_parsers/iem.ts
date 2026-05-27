@@ -221,24 +221,38 @@ export function iemToObservation(
   // Phase 18 PREC-02: when raw METAR contains Tgroup, override temp_c /
   // dewpoint_c with the Tgroup tenths-°C value (matches AWC's emitted
   // temp_c for the same raw METAR — closes the cross-source drift bug).
-  // CRITICAL: keep tempF = rawTempF; do NOT derive from temp_c. tempC
-  // (tenths-°C) and tempF (integer-°F) are different coded views of the
-  // same integer-°F sensor reading; deriving one from the other introduces
-  // a spurious tempC × 9/5 + 32 == tempF invariant that the source data
-  // does not actually carry.
+  //
+  // CRITICAL gates (mirror Python `_iem.py:164-188` verbatim):
+  // 1. Compute fahrenheit_to_celsius(rawTempF) FIRST and bound. This nulls
+  //    temp_c when raw tmpf was missing or out of bounds (e.g. tmpf=2000).
+  // 2. Apply Tgroup override ONLY when both `tgTemp !== null` AND the
+  //    raw-derived `tempC !== null`. Without this gate, a row with
+  //    tmpf="M" (missing) but a valid Tgroup in `metar` would silently
+  //    emit temp_c=26.7 while Python emits null — cross-SDK parity drift.
+  // 3. Re-bound the Tgroup-overridden value (Python applies bounded_float
+  //    on the Tgroup itself too).
+  //
+  // tempF = rawTempF (NOT derived from temp_c). tempC (tenths-°C) and
+  // tempF (integer-°F) are different coded views of the same integer-°F
+  // sensor reading; deriving one from the other introduces a spurious
+  // tempC × 9/5 + 32 == tempF invariant the source data does not carry.
   const rawTempF = safeFloat(row.tmpf ?? "");
   const rawDewpF = safeFloat(row.dwpf ?? "");
-  const [tgTemp, tgDewp] = parseTgroup(metarText);
-  const tempCRaw = tgTemp !== null ? tgTemp : fahrenheitToCelsius(rawTempF);
-  const dewpCRaw = tgDewp !== null ? tgDewp : fahrenheitToCelsius(rawDewpF);
-  const tempC = boundedFloat(tempCRaw, TEMP_MIN_C, TEMP_MAX_C, {
+  let tempC = boundedFloat(fahrenheitToCelsius(rawTempF), TEMP_MIN_C, TEMP_MAX_C, {
     field: "temp_c",
   });
-  const dewpC = boundedFloat(dewpCRaw, TEMP_MIN_C, TEMP_MAX_C, {
+  let dewpC = boundedFloat(fahrenheitToCelsius(rawDewpF), TEMP_MIN_C, TEMP_MAX_C, {
     field: "dewpoint_c",
   });
-  // Consistency rule (Python L170-171): if derived °C is out of bounds,
-  // the raw °F is also bogus — null both sides.
+  const [tgTemp, tgDewp] = parseTgroup(metarText);
+  if (tgTemp !== null && tempC !== null) {
+    tempC = boundedFloat(tgTemp, TEMP_MIN_C, TEMP_MAX_C, { field: "temp_c" });
+  }
+  if (tgDewp !== null && dewpC !== null) {
+    dewpC = boundedFloat(tgDewp, TEMP_MIN_C, TEMP_MAX_C, { field: "dewpoint_c" });
+  }
+  // Consistency rule (Python L170-171): if derived °C is null (raw or
+  // Tgroup-overridden), the raw °F is also bogus — null both sides.
   const tempF: number | null = tempC !== null ? rawTempF : null;
   const dewpF: number | null = dewpC !== null ? rawDewpF : null;
 
