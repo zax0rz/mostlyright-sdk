@@ -1,0 +1,203 @@
+name: Docs Required (advisory)
+
+# Advisory gate: when a PR touches public-API source paths
+# (`packages/*/src/`, `packages-ts/*/src/`) without a corresponding docs
+# change in the same PR, post a sticky reminder comment pointing at the
+# docs surfaces the author should consider updating.
+#
+# This is NOT a hard block. The workflow always exits 0 — it surfaces the
+# reminder but never blocks the merge. Authors can:
+#   - Update the docs in the same PR (preferred)
+#   - Justify via the `docs-not-required` label OR a `docs-not-required:
+#     <one-sentence reason>` line in the PR body (same opt-out shape as
+#     the parity-ticket gate)
+#   - Land the PR as-is and follow up with a docs PR
+#
+# Modeled after `.github/workflows/parity-ticket-check.yml` (the hard gate
+# for cross-SDK parity tickets) — same sticky-comment pattern, same
+# label-based opt-out shape — but advisory in posture.
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - edited
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  docs-required:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Diagnose PR diff and post advisory comment
+        id: docs-check
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          # ----------------------------------------------------------------
+          # 1. Detect API-surface changes
+          # ----------------------------------------------------------------
+          # "API surface" = anything under packages/<pkg>/src/ (Python) or
+          # packages-ts/<pkg>/src/ (TypeScript). Tests, configs, generated
+          # files, and READMEs are intentionally excluded — only the
+          # actual source that consumers import.
+          git fetch origin "$BASE_REF" --quiet
+          CHANGED=$(git diff --name-only "origin/$BASE_REF...$HEAD_SHA")
+
+          # Filter to source surfaces only; exclude generated subtrees +
+          # internal-only paths (`_internal/`, `_vendor/`).
+          API_CHANGED=$(printf '%s\n' "$CHANGED" | grep -E '^(packages|packages-ts)/[^/]+/src/' \
+            | grep -vE '/(generated|_internal|_vendor)/' \
+            || true)
+
+          if [ -z "$API_CHANGED" ]; then
+            echo "verdict=skip" >> "$GITHUB_OUTPUT"
+            echo "no API-surface changes in this PR — docs-required check does not apply"
+            exit 0
+          fi
+
+          # ----------------------------------------------------------------
+          # 2. Detect docs changes in the same PR
+          # ----------------------------------------------------------------
+          # "Docs change" = anything under docs/, CHANGELOG.md, any *.md /
+          # *.mdx that's not a generated artifact, or a README.md.
+          DOCS_CHANGED=$(printf '%s\n' "$CHANGED" | grep -E '(^docs/|^CHANGELOG\.md$|^README\.md$|/README\.md$|\.(md|mdx)$)' \
+            | grep -vE '/(generated|_internal)/' \
+            || true)
+
+          # ----------------------------------------------------------------
+          # 3. Detect explicit opt-outs
+          # ----------------------------------------------------------------
+          # Same shape as parity-ticket-check: label OR PR-body line.
+          OPT_OUT="false"
+          OPT_OUT_REASON=""
+          if echo "$PR_LABELS" | tr ',' '\n' | grep -qx 'docs-not-required'; then
+            OPT_OUT="true"
+            OPT_OUT_REASON="label \`docs-not-required\` applied"
+          fi
+          # `docs-not-required: <reason>` in PR body
+          if printf '%s' "$PR_BODY" | grep -qiE '^docs-not-required:[[:space:]]*\S+'; then
+            OPT_OUT="true"
+            BODY_REASON=$(printf '%s' "$PR_BODY" | grep -iE '^docs-not-required:' | head -1 | sed 's/^[Dd]ocs-not-required:[[:space:]]*//')
+            OPT_OUT_REASON="PR body declares \`docs-not-required: ${BODY_REASON}\`"
+          fi
+
+          # ----------------------------------------------------------------
+          # 4. Compose the verdict
+          # ----------------------------------------------------------------
+          if [ -n "$DOCS_CHANGED" ]; then
+            VERDICT="pass"
+            SUMMARY="API-surface change includes docs updates — no reminder needed."
+          elif [ "$OPT_OUT" = "true" ]; then
+            VERDICT="opt-out"
+            SUMMARY="API-surface change without docs, but opt-out present: ${OPT_OUT_REASON}."
+          else
+            VERDICT="reminder"
+            SUMMARY="API-surface change without docs and no opt-out — surfacing reminder."
+          fi
+          echo "verdict=$VERDICT" >> "$GITHUB_OUTPUT"
+          echo "summary=$SUMMARY" >> "$GITHUB_OUTPUT"
+
+          # Surface the changed file lists for the comment body.
+          {
+            echo "api_files<<__API_EOF__"
+            echo "$API_CHANGED"
+            echo "__API_EOF__"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "docs_files<<__DOCS_EOF__"
+            if [ -n "$DOCS_CHANGED" ]; then
+              echo "$DOCS_CHANGED"
+            else
+              echo "(none)"
+            fi
+            echo "__DOCS_EOF__"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Verdict: $VERDICT"
+          echo "Summary: $SUMMARY"
+          echo "API-surface files changed:"
+          printf '  %s\n' $API_CHANGED
+          echo "Docs files changed:"
+          if [ -n "$DOCS_CHANGED" ]; then
+            printf '  %s\n' $DOCS_CHANGED
+          else
+            echo "  (none)"
+          fi
+
+      - name: Post sticky advisory comment
+        uses: actions/github-script@v7
+        if: always() && steps.docs-check.outputs.verdict != 'skip'
+        env:
+          VERDICT: ${{ steps.docs-check.outputs.verdict }}
+          SUMMARY: ${{ steps.docs-check.outputs.summary }}
+          API_FILES: ${{ steps.docs-check.outputs.api_files }}
+          DOCS_FILES: ${{ steps.docs-check.outputs.docs_files }}
+        with:
+          script: |
+            const verdict = process.env.VERDICT;
+            const summary = process.env.SUMMARY || "(no summary)";
+            const apiFiles = (process.env.API_FILES || "").trim();
+            const docsFiles = (process.env.DOCS_FILES || "").trim();
+            const marker = "<!-- docs-required-check-comment -->";
+
+            // Lookup icon by verdict
+            const icon = {
+              pass: "✅",
+              "opt-out": "🟡",
+              reminder: "📝",
+            }[verdict] || "ℹ️";
+
+            const reminderTail = `
+
+            ### Docs surfaces to consider
+
+            - **\`CHANGELOG.md\`** — every behavior change goes here. Auto-synced to the docs site on every release.
+            - **\`docs/\`** — hand-authored prose. Lifted into the landing repo as MDX on every release.
+            - **Per-package READMEs** (\`packages/*/README.md\`, \`packages-ts/*/README.md\`) — front-door copy on PyPI / npm.
+            - **Docstrings** (Python \`""" ... """\` / TypeScript JSDoc \`/** ... */\`) — propagate to the auto-generated API reference via Sphinx / TypeDoc.
+
+            ### How to silence this reminder
+
+            - Add a docs change to this PR (any \`*.md\` / \`*.mdx\` under \`docs/\`, or \`CHANGELOG.md\`, or any \`README.md\`).
+            - Apply the \`docs-not-required\` label.
+            - Add a line to the PR body: \`docs-not-required: <one-sentence reason>\`.
+
+            This check is **advisory** — it never blocks the merge.`;
+
+            const body = `${marker}\n${icon} **Docs-required check: ${verdict.toUpperCase()}**\n\n${summary}\n\n**API-surface files changed:**\n\`\`\`\n${apiFiles}\n\`\`\`\n\n**Docs files changed:**\n\`\`\`\n${docsFiles}\n\`\`\`${verdict === "reminder" ? reminderTail : ""}`;
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+
+            // Find existing sticky comment by marker
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              { owner, repo, issue_number, per_page: 100 },
+            );
+            const existing = comments.find((c) =>
+              (c.body || "").startsWith(marker),
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner, repo, comment_id: existing.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number, body,
+              });
+            }

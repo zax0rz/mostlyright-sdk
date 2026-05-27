@@ -9,9 +9,10 @@
 #     soak builds and must not auto-publish to the production landing site
 #   - workflow_dispatch with `tag` input — manual smoke / re-run
 #
-# The parity table at src/content/docs/docs/sdk/parity.mdx is regenerated
-# on EVERY run regardless of SDK target so the cross-SDK status stays fresh
-# even when only one lane cuts a release.
+# The parity table at src/content/docs/docs/sdk/parity.mdx and the
+# release-notes mirror at src/content/docs/docs/sdk/changelog.mdx are
+# regenerated on EVERY run regardless of SDK target so the cross-SDK
+# status + the changelog stay fresh even when only one lane cuts a release.
 
 name: Docs publish (auto-PR to landing repo)
 
@@ -312,6 +313,63 @@ jobs:
           mkdir -p landing-repo/src/content/docs/docs/sdk
           cp /tmp/parity.mdx landing-repo/src/content/docs/docs/sdk/parity.mdx
 
+      - name: Sync CHANGELOG.md to landing repo
+        # Mirror the SDK repo's CHANGELOG.md into the landing repo's
+        # release-notes page on every run, regardless of SDK target.
+        # The landing page's frontmatter (title, description, eyebrow,
+        # Lead component) is prepended here; the CHANGELOG body is
+        # spliced underneath. Idempotent — subsequent runs replace the
+        # destination file cleanly.
+        #
+        # Why both SDK paths sync it: a Python-only or TS-only release
+        # may still ship CHANGELOG entries (cross-SDK Phase work, docs
+        # updates, etc.). The public release notes should reflect the
+        # latest committed state on each tag push.
+        #
+        # The H1 "# Changelog" and the "All notable changes…" intro line
+        # are stripped — Starlight renders the page title from frontmatter,
+        # and the description covers the format note.
+        #
+        # Implementation note: the frontmatter is assembled via printf
+        # statements (NOT a heredoc) because the YAML `---` document
+        # separator on a heredoc line at column 1 would terminate this
+        # workflow's YAML document mid-step. The printf approach keeps the
+        # `---` strings as embedded shell literals at deeper indent so
+        # YAML never sees them at column 1.
+        run: |
+          set -euo pipefail
+          DEST="landing-repo/src/content/docs/docs/sdk/changelog.mdx"
+          if [ ! -f "CHANGELOG.md" ]; then
+            echo "::warning::CHANGELOG.md missing at repo root; skipping changelog sync"
+            exit 0
+          fi
+          mkdir -p "$(dirname "$DEST")"
+          {
+            printf '%s\n' '---'
+            printf '%s\n' 'title: Changelog'
+            printf '%s\n' 'description: Every Mostly Right release, what shipped, what broke, what got fixed. Auto-synced from the SDK repo CHANGELOG.md on every release tag.'
+            printf '%s\n' 'eyebrow: Reference'
+            printf '%s\n' '---'
+            printf '\n'
+            printf '%s\n' "import Lead from '../../../../components/docs/Lead.astro';"
+            printf '\n'
+            printf '%s\n' '<Lead>Mostly Right follows <a href="https://keepachangelog.com/en/1.1.0/">Keep a Changelog</a> and <a href="https://semver.org/spec/v2.0.0.html">Semantic Versioning</a>. This page mirrors <code>CHANGELOG.md</code> in the SDK repo on every release tag.</Lead>'
+            printf '\n'
+            printf '%s\n' 'The canonical source: [`CHANGELOG.md` in `mostlyrightmd/mostlyright-sdk`](https://github.com/mostlyrightmd/mostlyright-sdk/blob/main/CHANGELOG.md).'
+            printf '\n'
+            awk '
+              /^# Changelog/ { skipping=1; next }
+              skipping && /^All notable changes to/ { skipping=0; in_intro=1; next }
+              in_intro && /^$/ { in_intro=0; next }
+              in_intro { next }
+              { print }
+            ' CHANGELOG.md
+          } > "$DEST"
+          echo "--- $DEST head ---"
+          head -20 "$DEST"
+          echo "--- $DEST line count ---"
+          wc -l "$DEST"
+
       - name: Compute PR branch + title suffix
         # Tag-push runs land on a per-tag branch (auto/docs-regen-<safe_tag>)
         # so a re-publish of the SAME tag updates the same PR (idempotent
@@ -394,9 +452,12 @@ jobs:
             **Triggered by**: `${{ steps.prmeta.outputs.safe_actor }}` via `${{ github.event_name }}`
 
             This PR updates the SDK reference docs under
-            `src/content/docs/docs/sdk/${{ steps.prmeta.outputs.sdk }}/`
-            plus the cross-SDK parity table at
-            `src/content/docs/docs/sdk/parity.mdx`.
+            `src/content/docs/docs/sdk/${{ steps.prmeta.outputs.sdk }}/`,
+            the cross-SDK parity table at
+            `src/content/docs/docs/sdk/parity.mdx`,
+            and the release-notes mirror at
+            `src/content/docs/docs/sdk/changelog.mdx` (synced from the
+            SDK repo's `CHANGELOG.md`).
 
             **If this PR title contains `[DISPATCH SMOKE — ...]`** it was
             opened by a manual `workflow_dispatch` from a feature branch.
