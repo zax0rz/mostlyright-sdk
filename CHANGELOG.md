@@ -6,6 +6,18 @@ All notable changes to `mostlyright`. The format follows [Keep a Changelog](http
 
 (next changes land here)
 
+## [1.0.1] — 2026-05-27
+
+Hotfix release. Every live IEM MOS forecast fetch (NBE / GFS / LAV / MET / ECM) via either SDK has been broken end-to-end since the fetcher shipped — the IEM `/api/1/mos.json` endpoint validates the `model` query param against an uppercase-only regex and rejects lowercase values with HTTP 422. Both Python and TypeScript SDKs sent lowercase. This release fixes both sides in lockstep.
+
+### Fixed
+- **PyPI:** `mostlyright.weather._fetchers._iem_mos.fetch_iem_mos` now sends the `model` query param uppercased (e.g. `"NBE"`, not `"nbe"`) to match IEM's regex `^(AVN|GFS|ETA|NAM|NBS|NBE|ECM|LAV|MEX)$`. Closes [#17](https://github.com/mostlyrightmd/mostlyright-sdk/issues/17).
+- **npm:** `@mostlyrightmd/weather` `iemMosForecasts(...)` applies the same uppercase fix to the TS fetcher. Same root cause; same one-character fix on both sides.
+
+### Notes
+- No API changes. `pip install mostlyrightmd==1.0.1` and `npm install @mostlyrightmd/weather@1.0.1` are drop-in patches for any caller already on 1.0.0.
+- The regression was invisible to the unit suites because both used opaque HTTP mocks (`MagicMock` / `vi.fn`) that never inspected the actual query string. The new regression tests use `httpx.MockTransport` (Python) and a recording `fetchFn` (TS) to assert against the wire-level URL.
+
 ## [1.0.0] — 2026-05-26
 
 First stable release. Promotes the 0.1.x line to SemVer-stable: the public API is committed to backward compatibility within the 1.x major.

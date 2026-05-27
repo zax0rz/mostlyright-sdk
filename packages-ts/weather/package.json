@@ -1,6 +1,6 @@
 {
   "name": "@mostlyrightmd/weather",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Weather data fetchers (AWC, IEM ASOS, GHCNh, NWS CLI) for the mostlyright TypeScript SDK. Direct public-API access, no hosted backend.",
   "license": "MIT",
   "type": "module",
