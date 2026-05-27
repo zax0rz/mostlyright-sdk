@@ -1,6 +1,6 @@
 # @mostlyrightmd/markets
 
-Prediction-market resolvers for the [mostlyright](https://github.com/mostlyrightmd/mostlyright-sdk) TypeScript SDK: Kalshi NHIGH/NLOW contract resolvers and Polymarket discover/settle helpers. Mirrors the Python `mostlyrightmd-markets` distribution. Declares `@mostlyrightmd/core` as a peer dependency.
+Prediction-market data for the [mostlyright](https://github.com/mostlyrightmd/mostlyright-sdk) TypeScript SDK — Kalshi NHIGH/NLOW weather-contract resolvers, Polymarket discovery + settlement, and Kalshi + Polymarket trade history — for quants, backtesting, and ML training pipelines. Mirrors the Python `mostlyrightmd-markets` distribution. Declares `@mostlyrightmd/core` as a peer dependency.
 
 ## Install
 

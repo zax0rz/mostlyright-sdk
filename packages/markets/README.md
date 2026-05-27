@@ -1,6 +1,6 @@
 # mostlyrightmd-markets
 
-Prediction-market data (Kalshi NHIGH/NLOW contract specs, Polymarket discovery + settlement) for the `mostlyright` Python SDK.
+Prediction-market data for the `mostlyright` Python SDK — Kalshi NHIGH/NLOW weather-contract resolvers, Polymarket discovery + settlement, and Kalshi + Polymarket trade history — for quants, backtesting, and ML training pipelines.
 
 ## Install
 

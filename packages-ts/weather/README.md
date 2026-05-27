@@ -1,6 +1,6 @@
 # @mostlyrightmd/weather
 
-Weather data fetchers and parsers for the [mostlyright](https://github.com/mostlyrightmd/mostlyright-sdk) TypeScript SDK: AWC, IEM ASOS, IEM CLI, GHCNh, NWS CLI, plus the local-first parquet cache layer. Direct public-API access; no hosted backend, no API key. Mirrors the Python `mostlyrightmd-weather` distribution. Declares `@mostlyrightmd/core` as a peer dependency.
+Weather data fetchers and parsers for the [mostlyright](https://github.com/mostlyrightmd/mostlyright-sdk) TypeScript SDK — live METAR (AWC), ASOS archive (IEM), IEM CLI, historical observations (GHCNh), NWS climate text products (CLI), plus the local-first cache layer — for quants, ML training pipelines, and weather-bot agents. Direct public-API access; no hosted backend, no API key. Mirrors the Python `mostlyrightmd-weather` distribution. Declares `@mostlyrightmd/core` as a peer dependency.
 
 ## Install
 

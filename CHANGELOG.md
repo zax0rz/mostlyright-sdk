@@ -4,6 +4,10 @@ All notable changes to `mostlyright`. The format follows [Keep a Changelog](http
 
 ## [Unreleased]
 
+### Changed
+- **README + package metadata:** SEO copy sweep across top-level README, every per-package README, every `pyproject.toml`/`package.json` `description`, and (newly) `keywords` arrays on the npm packages. Surfaces three audiences naturally in the headlines and descriptions — prediction-market quants (Kalshi NHIGH/NLOW, Polymarket, backtesting), ML pipelines (leakage-free training pairs, schema-versioned outputs), and AI-agent / weather-bot builders (METAR, ASOS, GHCNh, NWS CLI). The `@mostlyrightmd/markets` description is also broadened from "resolvers (Kalshi NHIGH/NLOW, Polymarket)" to cover the trade-history surface the package actually exports. No public API or runtime behavior changes.
+- **GitHub repo:** description updated to mention both Python and TypeScript SDKs + the three audience phrasings, plus 20 discovery topics (`weather-data`, `prediction-markets`, `kalshi`, `polymarket`, `machine-learning`, `ml-training-data`, `ai-agents`, `weather-bot`, …).
+
 ### Fixed
 - **README:** switch PyPI download badges from Pepy/Shields to Badgen with PyPIStats detail links because Pepy has not indexed the `mostlyrightmd*` projects and Shields can surface upstream rate limits for fresh packages.
 
