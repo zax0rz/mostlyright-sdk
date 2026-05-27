@@ -31,6 +31,7 @@ __all__ = [
     "DeprecatedModelWarning",
     "GribIntegrityError",
     "HistoricalDepthError",
+    "IssuedAtMissingError",
     "LeakageError",
     "LiveStreamError",
     "NoLiveDataError",
@@ -38,6 +39,7 @@ __all__ = [
     "NwpError",
     "NwpModelNotAvailableError",
     "NwpModelRetiredError",
+    "OpenMeteoSeamlessLeakageError",
     "PayloadTooLargeError",
     "SchemaValidationError",
     "SourceMismatchError",
@@ -736,6 +738,113 @@ class LiveStreamError(TradewindsError):
     """
 
     default_error_code = "LIVE_STREAM_ERROR"
+
+
+#: Sentinel value used when raising IssuedAtMissingError / OpenMeteoSeamlessLeakageError
+#: before the offending DataFrame is known (e.g. seamless-endpoint refusal at fetch
+#: time, where no rows have been retrieved yet). LeakageError requires non-empty
+#: ``as_of`` so OpenMeteoSeamlessLeakageError supplies this sentinel rather than
+#: forging a timestamp.
+_NO_AS_OF_SENTINEL = "(seamless-endpoint-refused-before-fetch)"
+
+
+class IssuedAtMissingError(SchemaValidationError):
+    """A forecast row is missing the ``issued_at`` field.
+
+    Raised when a forecast row would land in the DataFrame with
+    ``issued_at IS NULL``. For Open-Meteo Previous Runs API this should be
+    impossible by construction (the fetcher derives ``issued_at`` per row
+    via the conservative lower-bound formula). For Live mode, this is
+    raised when cycle-math fallback cannot derive a non-null cycle.
+
+    Origin: ``Tarabcak/mostlyright#70`` — the legacy seamless-feed bug
+    where ``/forecast_series`` proxied Open-Meteo's seamless endpoint
+    without preserving ``issued_at``, causing post-snapshot model runs to
+    silently leak into training data.
+
+    Phase 20 OM-04.
+    """
+
+    default_error_code = "ISSUED_AT_MISSING"
+
+    def __init__(
+        self,
+        message: str = "",
+        *,
+        source: str | None = None,
+        violating_count: int = 0,
+        sample_violations: list[dict[str, Any]] | None = None,
+        request_id: str | None = None,
+        error_code: str | None = None,
+    ) -> None:
+        super().__init__(
+            message,
+            schema_id="schema.forecast.station.v1",
+            violations=[{"column": "issued_at", "rule": "non_null"}],
+            sample_violations=sample_violations,
+            source=source,
+            request_id=request_id,
+            error_code=error_code,
+        )
+        self.violating_count: int = violating_count
+
+    def _payload(self) -> dict[str, Any]:
+        payload = super()._payload()
+        payload["name"] = "IssuedAtMissingError"
+        payload["violating_count"] = self.violating_count
+        payload["origin_issue"] = "Tarabcak/mostlyright#70"
+        return payload
+
+
+class OpenMeteoSeamlessLeakageError(LeakageError):
+    """The Open-Meteo Historical Forecast (seamless) endpoint was used
+    without ``allow_leakage=True`` opt-in.
+
+    Per Phase 20 D-01 (locked decision): the seamless endpoint silently
+    stitches forecasts from multiple model cycles into a continuous
+    timeseries; the cycle that produced each value is unrecoverable from
+    the response. :class:`LeakageDetector` rejects rows tagged
+    ``source="open_meteo.seamless"`` whenever ``as_of`` is asserted.
+
+    Origin: ``Tarabcak/mostlyright#70``.
+
+    Phase 20 OM-04.
+    """
+
+    default_error_code = "OPEN_METEO_SEAMLESS_LEAKAGE"
+
+    def __init__(
+        self,
+        message: str = "",
+        *,
+        model: str = "",
+        endpoint_url: str = "",
+        as_of: str | None = None,
+        violating_count: int = 0,
+        sample_violations: list[dict[str, Any]] | None = None,
+        source: str | None = None,
+        request_id: str | None = None,
+        error_code: str | None = None,
+    ) -> None:
+        super().__init__(
+            message,
+            as_of=as_of or _NO_AS_OF_SENTINEL,
+            violating_count=violating_count,
+            sample_violations=sample_violations,
+            source=source,
+            request_id=request_id,
+            error_code=error_code,
+        )
+        self.model: str = model
+        self.endpoint_url: str = endpoint_url
+
+    def _payload(self) -> dict[str, Any]:
+        payload = super()._payload()
+        payload["name"] = "OpenMeteoSeamlessLeakageError"
+        payload["model"] = self.model
+        payload["endpoint_url"] = self.endpoint_url
+        payload["origin_issue"] = "Tarabcak/mostlyright#70"
+        return payload
 
 
 class NoLiveDataError(LiveStreamError):
