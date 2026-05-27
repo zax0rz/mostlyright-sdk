@@ -30,19 +30,19 @@
     },
 
     "temp_c": {
-      "description": "Temperature in Celsius. From T-group when available (0.1°C, maps 1:1 to whole °F). From METAR body otherwise (whole °C, lossy). ASOS native precision is whole °F. NEVER round at ingest — store source precision.",
+      "description": "Temperature in Celsius. For U.S. ASOS sources, Tgroup encodes the integer-°F native sensor reading as tenths-°C (e.g. T0267 = 26.7°C = 80°F); the 0.1°C precision is a coded display artifact, not independent source resolution. For non-ASOS (international whole-°C body group), reflects the source resolution directly. NEVER round at ingest — store source precision as encoded.",
       "oneOf": [{ "type": "number" }, { "type": "null" }]
     },
     "dewpoint_c": {
-      "description": "Dewpoint in Celsius. Same precision rules as temp_c. Modern ASOS sensors derive dewpoint from RH measurement.",
+      "description": "Dewpoint in Celsius. Same Tgroup-as-coded-display-precision rules as temp_c. Modern ASOS sensors derive dewpoint from RH measurement; Tgroup carries both temp and dewpoint as tenths-°C of the integer-°F internal value.",
       "oneOf": [{ "type": "number" }, { "type": "null" }]
     },
     "temp_f": {
-      "description": "Temperature in Fahrenheit. Converted from temp_c. For ASOS T-group data, this recovers the internal whole-degree Fahrenheit value exactly. NEVER round at ingest.",
+      "description": "Temperature in Fahrenheit. For U.S. ASOS Tgroup-bearing rows, this is the integer-valued recovery of the native sensor reading (e.g. 80.0, NOT 80.06). For non-Tgroup rows (international whole-°C body group), this is a float derived from temp_c via celsius_to_fahrenheit. Float-typed for dtype stability across rows; downstream consumers can cast to int when they know the source is ASOS.",
       "oneOf": [{ "type": "number" }, { "type": "null" }]
     },
     "dewpoint_f": {
-      "description": "Dewpoint in Fahrenheit. Same rules as temp_f.",
+      "description": "Dewpoint in Fahrenheit. Same integer-recovery-for-ASOS / float-for-international rules as temp_f.",
       "oneOf": [{ "type": "number" }, { "type": "null" }]
     },
 
@@ -133,12 +133,9 @@
     },
     "sky_base": {
       "description": "Cloud base height in feet AGL from ceilometer. Max detection ~12,000 ft.",
-      "oneOf": [
-        { "type": "integer", "minimum": 0, "maximum": 60000 },
-        { "type": "null" }
-      ]
+      "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 60000 }, { "type": "null" }]
     }
   },
 
-  "$comment": "ARCHITECTURE DECISIONS: (1) Store BOTH temp_c AND temp_f. Celsius is what METAR reports. Fahrenheit is what ASOS measures internally and what CLI settlement uses. No information loss either way. (2) Removed: relative_humidity, feels_like_f, max_temp_6hr/24hr_f, min_temp_6hr/24hr_f, precip_3hr/6hr/24hr, pressure_tend_hpa. These belong in SEPARATE entities (synoptic_extremes for 6hr/24hr temps, computed_features for RH/feels_like) or are SDK-computed features. (3) PRECISION RULE: Never round at ingest. Store float64 as-is. No explicit rounding in conversion functions. (4) temp_c is stored alongside temp_f because it IS the METAR-reported value and some quants may prefer to work in Celsius. (5) BUSINESS RULES: dewpoint_c <= temp_c, wind_gust_kt > wind_speed_kt when present, sea_level_pressure_mb never zero, sky_base null when CLR/SKC. (6) Source priority: AWC(3) > IEM(2) > GHCNh(1). Training data must match live inference conditions. No COALESCE. One row per observation, rawest source wins. First-reported wins for same-priority (no corrections). (7) Column parity: live SDK and historical API return exactly this 30-field schema. Field names match MVP. (8) RAW-AS-REPORTED: API returns exactly what is stored. All computed features (RH, feels_like, preprocessing) happen client-side in SDK. No server-side transforms on read."
+  "$comment": "ARCHITECTURE DECISIONS: (1) Store BOTH temp_c AND temp_f. Celsius is what METAR reports. Fahrenheit is what ASOS measures internally and what CLI settlement uses. No information loss either way. (2) Removed: relative_humidity, feels_like_f, max_temp_6hr/24hr_f, min_temp_6hr/24hr_f, precip_3hr/6hr/24hr, pressure_tend_hpa. These belong in SEPARATE entities (synoptic_extremes for 6hr/24hr temps, computed_features for RH/feels_like) or are SDK-computed features. (3) PRECISION RULE: Never round at ingest. Store float64 as-is. No explicit rounding in conversion functions. (4) temp_c is stored alongside temp_f because it IS the METAR-reported value and some quants may prefer to work in Celsius. (5) BUSINESS RULES: dewpoint_c <= temp_c, wind_gust_kt > wind_speed_kt when present, sea_level_pressure_mb never zero, sky_base null when CLR/SKC. (6) Source priority: AWC(3) > IEM(2) > GHCNh(1). Training data must match live inference conditions. No COALESCE. One row per observation, rawest source wins. First-reported wins for same-priority (no corrections). (7) Column parity: live SDK and historical API return exactly this 30-field schema. Field names match MVP. (8) RAW-AS-REPORTED: API returns exactly what is stored. All computed features (RH, feels_like, preprocessing) happen client-side in SDK. No server-side transforms on read. (9) PHASE 18 PRECISION FIX: U.S. ASOS sensors observe in integer °F; the Tgroup in METAR remarks is a downstream encoding of that whole-°F internal value as tenths-°C. The SDK recovers the integer °F exactly when Tgroup is present (e.g. T0267 -> temp_f=80.0, temp_c=26.7). For non-ASOS sources (international whole-°C native, GHCNh hourly), the °F is a derived value via celsius_to_fahrenheit and remains float-typed. Cross-source rule: AWC and IEM produce identical temp_c for the same raw METAR (both re-parse Tgroup). GHCNh temp_f conversion is deferred from Phase 18 pending NCEI native-units documentation."
 }

@@ -221,6 +221,17 @@ def parse_ghcnh_row(row: dict[str, str]) -> dict[str, Any] | None:
         if dewp_ok
         else None
     )
+    # Phase 18: GHCNh temp_f conversion path deferred from Phase 18 fix.
+    # NCEI publishes hourly observations with `temperature` in °C as the
+    # primary field; whether the underlying ASOS source data is integer-°F
+    # native (with NCEI doing the °F→°C conversion server-side) is NOT
+    # documented in the NCEI data dictionary. Until NCEI native-units documentation
+    # is obtained, the existing celsius_to_fahrenheit path is preserved here
+    # as the safe default. AWC + IEM Tgroup-recovery fixes (Phase 18 PREC-01
+    # + PREC-02) cover the two sources whose raw METAR carries an unambiguous
+    # Tgroup. See
+    # .planning/phases/18-precision-fix-asos-integer-fahrenheit/18-CONTEXT.md
+    # for the deferral rationale.
     temp_f = celsius_to_fahrenheit(temp_c)
     dewp_f = celsius_to_fahrenheit(dewp_c)
 
