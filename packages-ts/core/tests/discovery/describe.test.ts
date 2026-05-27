@@ -111,7 +111,9 @@ describe("climateGaps() — Phase 21 21-11 messaging", () => {
   it("error hint explains the 10+ MB / server-only architecture", () => {
     try {
       climateGaps("KNYC", "2025-01-01", "2025-01-31");
+      throw new Error("should have thrown ClimateGapsNotImplementedError");
     } catch (e) {
+      expect(e).toBeInstanceOf(ClimateGapsNotImplementedError);
       const err = e as ClimateGapsNotImplementedError;
       expect(err.hint).toMatch(/10\+ MB|server-only/);
     }
@@ -120,7 +122,9 @@ describe("climateGaps() — Phase 21 21-11 messaging", () => {
   it("error hint points users at the Python SDK as the v1.x workaround", () => {
     try {
       climateGaps("KNYC", "2025-01-01", "2025-01-31");
+      throw new Error("should have thrown ClimateGapsNotImplementedError");
     } catch (e) {
+      expect(e).toBeInstanceOf(ClimateGapsNotImplementedError);
       const err = e as ClimateGapsNotImplementedError;
       expect(err.hint).toMatch(/Python SDK|mostlyright\.discover\.climate_gaps/);
     }
@@ -129,7 +133,9 @@ describe("climateGaps() — Phase 21 21-11 messaging", () => {
   it("error hint links to docs/climate-gaps URL", () => {
     try {
       climateGaps("KNYC", "2025-01-01", "2025-01-31");
+      throw new Error("should have thrown ClimateGapsNotImplementedError");
     } catch (e) {
+      expect(e).toBeInstanceOf(ClimateGapsNotImplementedError);
       const err = e as ClimateGapsNotImplementedError;
       expect(err.hint).toMatch(/climate-gaps/);
     }

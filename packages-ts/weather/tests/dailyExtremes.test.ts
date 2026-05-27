@@ -47,8 +47,11 @@ describe("dailyExtremes — shape projection (iem_only, empty fetch)", () => {
 });
 
 describe("dailyExtremes — full-day shape projection (US ASOS, integer-°F)", () => {
-  it("projects DailyExtreme → DailyExtremeRow with date/station/n_obs", async () => {
-    // 12 synthetic readings across 2025-01-08 UTC at KNYC.
+  it("projects DailyExtreme → DailyExtremeRow with concrete date/station/n_obs", async () => {
+    // 12 synthetic readings across 2025-01-08 UTC at KNYC. KNYC is in
+    // America/New_York (UTC-5 standard) so half of the hourly readings
+    // bucket into 2025-01-07 local and half into 2025-01-08 local —
+    // expect EXACTLY 2 station-local days.
     const csv = buildSyntheticIemCsv("KNYC", "2025-01-08", 12, 0);
     vi.spyOn(iemFetcher, "downloadIemAsos").mockResolvedValueOnce([
       { chunkStart: "2025-01-01", chunkEnd: "2025-12-31", csv },
@@ -56,12 +59,23 @@ describe("dailyExtremes — full-day shape projection (US ASOS, integer-°F)", (
     const out = await dailyExtremes("KNYC", "2025-01-08", "2025-01-08", {
       merge: "iem_only",
     });
-    expect(out.length).toBeGreaterThanOrEqual(1);
-    const row = out[0];
-    expect(row.station).toBe("KNYC");
-    expect(typeof row.date).toBe("string");
-    expect(row.n_obs).toBeGreaterThanOrEqual(0);
-    expect(typeof row.low_coverage).toBe("boolean");
+    // Strict — exactly 2 station-local days from a 12-hour UTC fixture
+    // due to the timezone shift. A regression returning [] would fail
+    // this assertion (no `if (out.length > 0)` escape hatch).
+    expect(out).toHaveLength(2);
+    // Every row mirrors the requested station; both station-local dates
+    // sit inside the 2025-01-07..-08 window.
+    for (const row of out) {
+      expect(row.station).toBe("KNYC");
+      expect(row.date).toMatch(/^2025-01-0[78]$/);
+      expect(typeof row.low_coverage).toBe("boolean");
+      expect(Number.isInteger(row.n_obs)).toBe(true);
+      expect(row.n_obs).toBeGreaterThan(0);
+    }
+    // Total observations across all returned days equals the fixture
+    // (12) — locks the projection's n_obs accounting.
+    const totalNObs = out.reduce((s, r) => s + r.n_obs, 0);
+    expect(totalNObs).toBe(12);
   });
 });
 
@@ -75,13 +89,16 @@ describe("dailyExtremes — low_coverage gate fires below 12 obs", () => {
     const out = await dailyExtremes("EGLL", "2025-01-08", "2025-01-08", {
       merge: "iem_only",
     });
-    if (out.length > 0) {
-      const row = out[0];
-      expect(row.low_coverage).toBe(true);
-      expect(row.tmin_f).toBeNull();
-      expect(row.tmax_f).toBeNull();
-      expect(row.tmean_f).toBeNull();
-    }
+    // Strict — exactly one row expected; no `if (out.length > 0)` escape
+    // hatch (a regression returning [] would silently pass the test).
+    expect(out).toHaveLength(1);
+    const row = out[0];
+    if (row === undefined) throw new Error("expected exactly one row");
+    expect(row.low_coverage).toBe(true);
+    expect(row.tmin_f).toBeNull();
+    expect(row.tmax_f).toBeNull();
+    expect(row.tmean_f).toBeNull();
+    expect(row.n_obs).toBe(4);
   });
 });
 

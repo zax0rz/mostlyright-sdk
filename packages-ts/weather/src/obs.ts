@@ -49,45 +49,39 @@ export function resolveAutoStrategy(fromDate: string, toDate: string): ObsStrate
   return daysBetween(fromDate, toDate) <= 7 ? "exact_window" : "warm_cache";
 }
 
-function fromIemRow(row: ReturnType<typeof parseIemCsv>[number]): ObsRow {
-  const tempC = row.temp_c ?? null;
-  return {
-    station: row.station,
-    observed_at: row.observed_at,
-    source: row.source,
-    temp_c: tempC,
-    temp_f: tempC !== null ? tempC * (9 / 5) + 32 : null,
-    dewpoint_c: row.dewpoint_c ?? null,
-    dewpoint_f:
-      row.dewpoint_c !== null && row.dewpoint_c !== undefined
-        ? row.dewpoint_c * (9 / 5) + 32
-        : null,
-    wind_speed_kts: row.wind_speed_kts ?? null,
-    wind_direction_deg: row.wind_direction_deg ?? null,
-    pressure_inhg: row.pressure_inhg ?? null,
-    precip_mm_1h: row.precip_mm_1h ?? null,
-    raw_metar: row.raw_metar ?? null,
-  };
+// Field names mirror the canonical Observation interface from
+// `_parsers/awc.ts`. ObsRow uses the same snake_case shape so cross-
+// language code stays symmetric with Python. Precipitation is stored in
+// inches at the source (`precip_1hr_inches`); we surface it as
+// `precip_mm_1h` per the Python ObsRow contract, so the conversion
+// (inches × 25.4 = mm) happens at the projection boundary.
+
+function inchesToMm(inches: number | null | undefined): number | null {
+  if (inches === null || inches === undefined) return null;
+  return inches * 25.4;
 }
 
-function fromAwcObservation(obs: NonNullable<ReturnType<typeof awcToObservation>>): ObsRow {
-  const tempC = obs.temp_c ?? null;
+function mbToInhg(mb: number | null | undefined): number | null {
+  if (mb === null || mb === undefined) return null;
+  return mb * 0.029529983071445;
+}
+
+function fromObservation(o: NonNullable<ReturnType<typeof awcToObservation>>): ObsRow {
+  const tempC = o.temp_c ?? null;
+  const dewC = o.dewpoint_c ?? null;
   return {
-    station: obs.station,
-    observed_at: obs.observed_at,
-    source: obs.source,
+    station: o.station_code,
+    observed_at: o.observed_at,
+    source: o.source,
     temp_c: tempC,
     temp_f: tempC !== null ? tempC * (9 / 5) + 32 : null,
-    dewpoint_c: obs.dewpoint_c ?? null,
-    dewpoint_f:
-      obs.dewpoint_c !== null && obs.dewpoint_c !== undefined
-        ? obs.dewpoint_c * (9 / 5) + 32
-        : null,
-    wind_speed_kts: obs.wind_speed_kts ?? null,
-    wind_direction_deg: obs.wind_direction_deg ?? null,
-    pressure_inhg: obs.pressure_inhg ?? null,
-    precip_mm_1h: obs.precip_mm_1h ?? null,
-    raw_metar: obs.raw_metar ?? null,
+    dewpoint_c: dewC,
+    dewpoint_f: dewC !== null ? dewC * (9 / 5) + 32 : null,
+    wind_speed_kts: o.wind_speed_kt ?? null,
+    wind_direction_deg: o.wind_dir_degrees ?? null,
+    pressure_inhg: mbToInhg(o.sea_level_pressure_mb),
+    precip_mm_1h: inchesToMm(o.precip_1hr_inches),
+    raw_metar: o.raw_metar ?? null,
   };
 }
 
@@ -108,7 +102,7 @@ async function fetchIemForWindow(
       const rows = parseIemCsv(chunk.csv, { observationTypeOverride: "METAR" });
       for (const r of rows) {
         const d = r.observed_at.slice(0, 10);
-        if (d >= fromDate && d <= toDate) out.push(fromIemRow(r));
+        if (d >= fromDate && d <= toDate) out.push(fromObservation(r));
       }
     }
   }
@@ -126,7 +120,7 @@ async function fetchAwcForWindow(
     const obs = awcToObservation(r);
     if (obs === null) continue;
     const d = obs.observed_at.slice(0, 10);
-    if (d >= fromDate && d <= toDate) out.push(fromAwcObservation(obs));
+    if (d >= fromDate && d <= toDate) out.push(fromObservation(obs));
   }
   return out;
 }

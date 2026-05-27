@@ -80,12 +80,15 @@ async function fetchIemAsosObservations(
     for (const chunk of chunks) {
       const parsed = parseIemCsv(chunk.csv, { observationTypeOverride: "METAR" });
       for (const row of parsed) {
-        // Filter to the requested window.
+        // Filter to the requested window. The canonical Observation field
+        // is `precip_1hr_inches` (inches); InternationalRow expects mm —
+        // convert at the boundary so the per-day precip rollup is in mm.
         if (row.observed_at >= fromDate && row.observed_at.slice(0, 10) <= toDate) {
+          const precipInches = row.precip_1hr_inches ?? null;
           out.push({
             observed_at: row.observed_at,
             temp_c: row.temp_c ?? null,
-            precip_mm_1h: row.precip_mm_1h ?? null,
+            precip_mm_1h: precipInches !== null ? precipInches * 25.4 : null,
             source: row.source,
           });
         }
@@ -109,10 +112,11 @@ async function fetchAwcObservations(
     const obs = awcToObservation(r);
     if (obs === null) continue;
     if (obs.observed_at >= fromDate && obs.observed_at.slice(0, 10) <= toDate) {
+      const precipInches = obs.precip_1hr_inches ?? null;
       out.push({
         observed_at: obs.observed_at,
         temp_c: obs.temp_c ?? null,
-        precip_mm_1h: obs.precip_mm_1h ?? null,
+        precip_mm_1h: precipInches !== null ? precipInches * 25.4 : null,
         source: obs.source,
       });
     }

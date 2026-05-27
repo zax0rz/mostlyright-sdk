@@ -23,6 +23,7 @@ import { describe, expect, it } from "vitest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const KALSHI_SRC = resolve(__dirname, "../../src/trades/kalshi.ts");
+const TRADES_TYPES_SRC = resolve(__dirname, "../../src/trades/types.ts");
 const POLYMARKET_CLIENT_SRC = resolve(__dirname, "../../src/polymarket/client.ts");
 
 describe("trades shape parity — Kalshi candle bucket label (21-06 Task 1)", () => {
@@ -53,24 +54,22 @@ describe("trades shape parity — Polymarket Gamma pagination (21-06 Task 2)", (
 });
 
 describe("trades shape parity — equal-timestamp trade-ID tiebreaker (21-06 Task 3)", () => {
-  it("documents the canonical sort: (ts ASC, trade_id ASC)", () => {
-    // The Kalshi /markets/trades surface (kalshiFills) returns rows in
-    // server-emitted order. Cross-language parity requires that
-    // consumers sort by (ts, trade_id) when joining across sources.
-    // The contract test below asserts the projected row shape exposes
-    // both fields so callers can do the deterministic sort.
-    const sampleRow = {
-      tradeId: "abc-123",
-      ts: "2025-01-06T14:00:00.000Z",
-      yesPrice: 56.5,
-      noPrice: 43.5,
-      count: 100,
-      takerSide: "yes",
-      source: "kalshi.trades",
-    };
-    expect(sampleRow.tradeId).toBeDefined();
-    expect(sampleRow.ts).toBeDefined();
-    // Deterministic sort using the canonical key.
+  it("kalshiFills public surface exposes tradeId + ts (callers can sort deterministically)", async () => {
+    // Inspect the actual production source — the KalshiFillRow shape must
+    // expose both `tradeId` and `ts` so callers can apply the canonical
+    // (ts ASC, trade_id ASC) tiebreaker when joining across sources.
+    const src = readFileSync(KALSHI_SRC, "utf-8");
+    expect(src).toMatch(/tradeId:\s*t\.trade_id/);
+    expect(src).toMatch(/ts:\s*stringTsToIso\(t\.created_time\)/);
+    // Interface KalshiFillRow lives in trades/types.ts — must expose both
+    // fields as nullable strings so the canonical tiebreaker compiles.
+    const typesSrc = readFileSync(TRADES_TYPES_SRC, "utf-8");
+    expect(typesSrc).toMatch(/interface\s+KalshiFillRow[\s\S]*tradeId:\s*string\s*\|\s*null/);
+    expect(typesSrc).toMatch(/interface\s+KalshiFillRow[\s\S]*ts:\s*string\s*\|\s*null/);
+  });
+
+  it("canonical sort produces the expected ordering on a tie input", () => {
+    // The contract callers MUST use: sort by ts ASC, then trade_id ASC.
     const rows = [
       { tradeId: "b", ts: "2025-01-06T14:00:00.000Z" },
       { tradeId: "a", ts: "2025-01-06T14:00:00.000Z" },

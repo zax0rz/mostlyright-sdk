@@ -45,14 +45,18 @@ describe("forecastNwp (Phase 21 21-07 messaging)", () => {
   it("hint includes the requested model name", async () => {
     try {
       await forecastNwp("KNYC", "gfs");
+      throw new Error("should have thrown DataAvailabilityError");
     } catch (e) {
       const err = e as DataAvailabilityError;
+      expect(err).toBeInstanceOf(DataAvailabilityError);
       expect(err.hint).toMatch(/"gfs"/);
     }
     try {
       await forecastNwp("KNYC", "ecmwf_ifs_hres");
+      throw new Error("should have thrown DataAvailabilityError");
     } catch (e) {
       const err = e as DataAvailabilityError;
+      expect(err).toBeInstanceOf(DataAvailabilityError);
       expect(err.hint).toMatch(/"ecmwf_ifs_hres"/);
     }
   });
@@ -60,8 +64,10 @@ describe("forecastNwp (Phase 21 21-07 messaging)", () => {
   it("hint links to docs/forecasts.md typescript-lane section", async () => {
     try {
       await forecastNwp("KNYC", "hrrr");
+      throw new Error("should have thrown DataAvailabilityError");
     } catch (e) {
       const err = e as DataAvailabilityError;
+      expect(err).toBeInstanceOf(DataAvailabilityError);
       expect(err.hint).toMatch(/typescript-lane|forecasts/);
     }
   });

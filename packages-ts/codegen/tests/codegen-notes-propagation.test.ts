@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { compile } from "json-schema-to-typescript";
+import { type JSONSchema, compile } from "json-schema-to-typescript";
 import { describe, expect, it } from "vitest";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -31,7 +31,7 @@ describe("codegen: description → TSDoc propagation (plan 21-08)", () => {
   it("emits a description as a TSDoc comment above the field (special chars escaped)", async () => {
     // Test that *closing* comment markers in descriptions don't break the
     // emitted TSDoc (would otherwise produce a syntax error).
-    const schema = {
+    const schema: JSONSchema = {
       title: "TestSpecialCharsRow",
       type: "object",
       additionalProperties: false,
@@ -55,7 +55,7 @@ describe("codegen: description → TSDoc propagation (plan 21-08)", () => {
   });
 
   it("does not emit empty /** */ stubs when description is missing", async () => {
-    const schema = {
+    const schema: JSONSchema = {
       title: "TestNoDescRow",
       type: "object",
       additionalProperties: false,
@@ -72,7 +72,7 @@ describe("codegen: description → TSDoc propagation (plan 21-08)", () => {
   });
 
   it("preserves multi-line descriptions in TSDoc", async () => {
-    const schema = {
+    const schema: JSONSchema = {
       title: "TestMultilineRow",
       type: "object",
       additionalProperties: false,
@@ -92,7 +92,7 @@ describe("codegen: description → TSDoc propagation (plan 21-08)", () => {
   });
 
   it("is idempotent — compiling the same schema twice produces identical output", async () => {
-    const schema = {
+    const schema: JSONSchema = {
       title: "TestIdempotencyRow",
       type: "object",
       additionalProperties: false,
