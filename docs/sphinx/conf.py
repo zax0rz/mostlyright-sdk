@@ -6,7 +6,7 @@
 #   2. CI for Starlight ingestion: `make markdown` (sphinx-markdown-builder)
 #      emits MDX-compatible Markdown into `_build/markdown/`. The
 #      `.github/workflows/docs-publish.yml` workflow (Phase 15 W3) copies the
-#      `api/` subtree into `mostly-right-landing/src/content/docs/docs/sdk/python/`.
+#      `api/` subtree into `mostlyright-landing/src/content/docs/docs/sdk/python/`.
 #
 # Phase 15 W1 wiring; see `.planning/phases/15-docs-autogen-landing-site/15-PLAN.md`.
 

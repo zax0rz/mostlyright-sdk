@@ -1,6 +1,6 @@
 {
   "name": "@mostlyrightmd/markets",
-  "version": "1.1.0",
+  "version": "1.1.2",
   "description": "Prediction-market resolvers (Kalshi NHIGH/NLOW, Polymarket) for the mostlyright TypeScript SDK.",
   "license": "MIT",
   "type": "module",
