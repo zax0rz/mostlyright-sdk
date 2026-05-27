@@ -81,10 +81,16 @@ _DTYPE_TO_JSON_SCHEMA: dict[str, dict[str, Any]] = {
     "bool": {"type": "boolean"},
 }
 
-#: The five Group A canonical schemas (always emitted from TS-W0).
+#: Group A canonical schemas (always emitted from TS-W0).
+#:
+#: Phase 20 OM-02 added ``schema.forecast.station.v1`` — the unified
+#: per-station forecast schema that covers both IEM MOS rows and Open-Meteo
+#: rows. ``schema.forecast.iem_mos.v1`` remains as a back-compat alias
+#: (same column set, different ``$id``).
 _GROUP_A_SCHEMA_IDS: tuple[str, ...] = (
     "schema.observation.v1",
     "schema.forecast.iem_mos.v1",
+    "schema.forecast.station.v1",
     "schema.settlement.cli.v1",
     "schema.observation_ledger.v1",
     "schema.observation_qc.v1",
@@ -250,11 +256,13 @@ def _build_group_a_schemas() -> list[_OutputFile]:
         ObservationQCSchema,
         ObservationSchema,
         SettlementSchema,
+        StationForecastSchema,
     )
 
     by_id: dict[str, Any] = {
         ObservationSchema.schema_id: ObservationSchema,
         ForecastSchema.schema_id: ForecastSchema,
+        StationForecastSchema.schema_id: StationForecastSchema,
         SettlementSchema.schema_id: SettlementSchema,
         ObservationLedgerSchema.schema_id: ObservationLedgerSchema,
         ObservationQCSchema.schema_id: ObservationQCSchema,

@@ -1,5 +1,5 @@
 {
-  "$id": "https://mostlyright.dev/schemas/schema.forecast.iem_mos.v1.json",
+  "$id": "https://mostlyright.dev/schemas/schema.forecast.station.v1.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "imperialRenames": {
     "apparent_temp_c": "apparent_temp_F",
@@ -182,7 +182,7 @@
     "station",
     "valid_at"
   ],
-  "title": "schema.forecast.iem_mos.v1",
+  "title": "schema.forecast.station.v1",
   "type": "object",
   "version": "v1"
 }
