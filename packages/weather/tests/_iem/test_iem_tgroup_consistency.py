@@ -60,9 +60,7 @@ def _make_iem_row(**overrides: str) -> dict[str, str]:
         "peak_wind_drct": "M",
         "peak_wind_time": "M",
         "feel": "M",
-        "metar": (
-            "KLGA 251151Z 25008KT 10SM CLR 27/11 A3012 " "RMK AO2 SLP201 T02670111 10272 20217"
-        ),
+        "metar": ("KLGA 251151Z 25008KT 10SM CLR 27/11 A3012 RMK AO2 SLP201 T02670111 10272 20217"),
         "snowdepth": "M",
     }
     base.update(overrides)
@@ -227,9 +225,7 @@ class TestCrossSourceConsistency:
         from mostlyright.weather._awc import awc_to_observation
         from mostlyright.weather._iem import iem_to_observation
 
-        raw_metar = (
-            "KLGA 251151Z 25008KT 10SM CLR 27/11 A3012 " "RMK AO2 SLP201 T02670111 10272 20217"
-        )
+        raw_metar = "KLGA 251151Z 25008KT 10SM CLR 27/11 A3012 RMK AO2 SLP201 T02670111 10272 20217"
 
         awc_obs = awc_to_observation(
             {
@@ -280,9 +276,7 @@ class TestCrossSourceConsistency:
         from mostlyright.weather._awc import awc_to_observation
         from mostlyright.weather._iem import iem_to_observation
 
-        raw_metar = (
-            "KLGA 251151Z 25008KT 10SM CLR 27/11 A3012 " "RMK AO2 SLP201 T02670111 10272 20217"
-        )
+        raw_metar = "KLGA 251151Z 25008KT 10SM CLR 27/11 A3012 RMK AO2 SLP201 T02670111 10272 20217"
         awc_obs = awc_to_observation(
             {
                 "icaoId": "KLGA",
@@ -363,7 +357,7 @@ class TestTgroupOverridesBothFields:
         row = _make_iem_row(
             tmpf="80.0",
             dwpf="51.0",
-            metar=("KLGA 251151Z 25008KT 10SM CLR 27/11 A3012 " "RMK AO2 SLP201 T02670111"),
+            metar=("KLGA 251151Z 25008KT 10SM CLR 27/11 A3012 RMK AO2 SLP201 T02670111"),
         )
         obs = iem_to_observation(row)
         assert obs is not None

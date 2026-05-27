@@ -51,9 +51,9 @@ def test_tgroup_roundtrip_temp(f: int) -> None:
     assert recovered_temp_c is not None, f"parse_tgroup returned None for {tgroup}"
     # IEEE-754 epsilon: the parser may produce 26.700000000000003 from
     # (267 / 10.0); compare with explicit tolerance.
-    assert recovered_temp_c == pytest.approx(
-        temp_c, abs=1e-9
-    ), f"Tenths-degC mismatch for f={f}: expected {temp_c}, got {recovered_temp_c}"
+    assert recovered_temp_c == pytest.approx(temp_c, abs=1e-9), (
+        f"Tenths-degC mismatch for f={f}: expected {temp_c}, got {recovered_temp_c}"
+    )
     recovered_f = round(recovered_temp_c * 9 / 5 + 32)
     assert recovered_f == f, (
         f"Round-trip broken for f={f}: temp_c={temp_c}, tgroup={tgroup}, "

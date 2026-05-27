@@ -216,9 +216,9 @@ def test_twelve_station_tgroup_emits_integer_temp_f(
     obs = awc_to_observation(awc_dict)
     assert obs is not None, f"{icao}: parser returned None"
     assert obs["temp_c"] == expected_temp_c, f"{icao}: temp_c mismatch"
-    assert (
-        obs["temp_f"] == expected_temp_f
-    ), f"{icao}: expected integer-°F {expected_temp_f}, got {obs['temp_f']!r}"
+    assert obs["temp_f"] == expected_temp_f, (
+        f"{icao}: expected integer-°F {expected_temp_f}, got {obs['temp_f']!r}"
+    )
     # Integer-valued float invariants
     assert obs["temp_f"].is_integer(), f"{icao}: temp_f is not integer-valued"
     assert obs["temp_f"] == int(obs["temp_f"]), f"{icao}: float != int round-trip"

@@ -50,9 +50,7 @@ def _make_iem_row(**overrides: str) -> dict[str, str]:
         "peak_wind_drct": "M",
         "peak_wind_time": "M",
         "feel": "M",
-        "metar": (
-            "KLGA 251151Z 25008KT 10SM CLR 27/11 A3012 " "RMK AO2 SLP201 T02670111 10272 20217"
-        ),
+        "metar": ("KLGA 251151Z 25008KT 10SM CLR 27/11 A3012 RMK AO2 SLP201 T02670111 10272 20217"),
         "snowdepth": "M",
     }
     base.update(overrides)
