@@ -90,6 +90,16 @@ export {
   type DailyExtremesOptions,
 } from "@mostlyrightmd/weather";
 
+// Phase 21 21-04 — obs(station, from, to, opts?) Phase 7 ingest-planner
+// surface re-exported via meta.
+export {
+  obs,
+  type ObsOptions,
+  type ObsRow,
+  type ObsSourceFilter,
+  type ObsStrategy,
+} from "@mostlyrightmd/weather";
+
 // Phase 21 21-10 — `preprocessing` lowercase namespace, matching Python
 // `mostlyright.preprocessing`. Surfaces `clipOutliers`, `PHYSICS_BOUNDS`,
 // `iemCrosscheck` under a single namespace so cross-language code reads

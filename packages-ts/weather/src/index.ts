@@ -142,3 +142,14 @@ export type {
   DailyExtremesMergeMode,
   DailyExtremesOptions,
 } from "./dailyExtremes.types.js";
+
+// Phase 21 21-04 — obs(station, from, to, opts?) Phase 7 ingest-planner
+// surface. Smart-routes between exact_window / warm_cache / hosted
+// strategies; matches Python `tw.weather.obs` signature.
+export { obs, resolveAutoStrategy } from "./obs.js";
+export type {
+  ObsOptions,
+  ObsRow,
+  ObsSourceFilter,
+  ObsStrategy,
+} from "./obs.types.js";
