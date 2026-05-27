@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mostlyright.xyz/schemas/daily_extreme.json",
   "title": "Daily Extreme (station-local calendar day high/low)",
-  "description": "STORAGE SCHEMA for the Phase 3.1 daily_extremes() rollup. One row per (station, local_date) describing the calendar-day temperature extremes derived from cached hourly METAR observations. Used as the resolution source for Polymarket weather markets in non-US locales (and as a parity sanity check for US settlements). Calendar day is in the station's IANA timezone (NOT UTC). Whole-degree-C precision for international stations (round half-up to match issuer reporting); 0.1°C precision for US stations.",
+  "description": "STORAGE SCHEMA for the Phase 3.1 daily_extremes() rollup. One row per (station, local_date) describing the calendar-day temperature extremes derived from cached hourly METAR observations. Used as the resolution source for Polymarket weather markets in non-US locales (and as a parity sanity check for US settlements). Calendar day is in the station's IANA timezone (NOT UTC). Precision rules: whole-degree-C for international stations (round half-up to match issuer reporting); Tgroup-encoded display precision (0.1°C) for US stations — note that the underlying U.S. ASOS source precision is whole °F (≈0.56°C step on the °C grid), and tmin/tmax inherit the integer-°F lattice from the constituent observations. The 0.1°C rounding is informational; tmean_c is the one field where 0.1°C HALF_UP rounding adds value because averaging produces non-lattice values.",
   "type": "object",
   "required": ["station", "local_date", "n_obs"],
   "additionalProperties": false,
@@ -24,15 +24,15 @@
       "description": "Count of non-null hourly temperature observations contributing to this row. Daily aggregates with ``n_obs < 12`` are flagged ``low_coverage``: tmin/tmax/tmean are set to null and a WARNING is logged (not a hard failure — the row still ships so downstream consumers see the coverage gap explicitly)."
     },
     "tmin_c": {
-      "description": "Daily minimum temperature in Celsius. Null when ``n_obs < 12`` (low coverage). Precision: whole °C for international stations, 0.1°C for US.",
+      "description": "Daily minimum temperature in Celsius. Null when ``n_obs < 12`` (low coverage). Precision: whole °C for international stations; for US stations the value inherits the integer-°F lattice (e.g. 10.0, 11.1, 12.2 from integer °F [50, 52, 54] via Tgroup recovery) — 0.1°C rounding is applied for stability but is a no-op on lattice values.",
       "oneOf": [{ "type": "number" }, { "type": "null" }]
     },
     "tmax_c": {
-      "description": "Daily maximum temperature in Celsius. Null when ``n_obs < 12``. Precision matches tmin_c.",
+      "description": "Daily maximum temperature in Celsius. Null when ``n_obs < 12``. Precision matches tmin_c: whole °C international, integer-°F lattice (0.1°C rounded for stability) for US.",
       "oneOf": [{ "type": "number" }, { "type": "null" }]
     },
     "tmean_c": {
-      "description": "Daily mean temperature in Celsius (simple arithmetic mean across all non-null hourly samples — NOT (tmin+tmax)/2). Null when ``n_obs < 12``.",
+      "description": "Daily mean temperature in Celsius (simple arithmetic mean across all non-null hourly samples — NOT (tmin+tmax)/2). Null when ``n_obs < 12``. For US stations, averaging integer-°F-lattice °C values produces non-lattice means; 0.1°C HALF_UP rounding is applied here and IS meaningful (unlike tmin/tmax). For international stations, whole-°C HALF_UP rounding applies.",
       "oneOf": [{ "type": "number" }, { "type": "null" }]
     },
     "precip_inches": {
@@ -52,5 +52,5 @@
       "oneOf": [{ "type": "string", "pattern": "^[A-Z]{2}$" }, { "type": "null" }]
     }
   },
-  "$comment": "ARCHITECTURE DECISIONS: (1) Local-calendar-day key NOT UTC — matches how Polymarket and most international issuers resolve daily weather markets. (2) source_tmin / source_tmax preserve per-extreme provenance so a downstream consumer can tell whether a record-setting hour came from a primary METAR or a backfill PSV. (3) Coverage gate at n_obs<12 was chosen to mirror WMO's ≥1/day-as-significant rule but is intentionally permissive: half a day of obs is enough to flag a hot/cold spike but not enough to claim a reliable mean. (4) precip_inches is NOT nulled on low coverage — zero rain with two obs is still a valid ‘sum’ (it just means we only saw two zeros), and Polymarket precipitation contracts care about the total, not the sample count. (5) Whole-°C international rounding is round-half-up to match the issuer-side reporting convention (most non-US authorities publish whole °C in daily summaries); US stays at 0.1°C because that's what NWS CLI publishes."
+  "$comment": "ARCHITECTURE DECISIONS: (1) Local-calendar-day key NOT UTC — matches how Polymarket and most international issuers resolve daily weather markets. (2) source_tmin / source_tmax preserve per-extreme provenance so a downstream consumer can tell whether a record-setting hour came from a primary METAR or a backfill PSV. (3) Coverage gate at n_obs<12 was chosen to mirror WMO's ≥1/day-as-significant rule but is intentionally permissive: half a day of obs is enough to flag a hot/cold spike but not enough to claim a reliable mean. (4) precip_inches is NOT nulled on low coverage — zero rain with two obs is still a valid ‘sum’ (it just means we only saw two zeros), and Polymarket precipitation contracts care about the total, not the sample count. (5) Whole-°C international rounding is round-half-up to match the issuer-side reporting convention (most non-US authorities publish whole °C in daily summaries); US stays at 0.1°C because that's what NWS CLI publishes. (6) PHASE 18: U.S. ASOS source data is integer-°F native (≈0.56°C step on the °C grid). For US stations, tmin/tmax taken as min/max of Tgroup-recovered observations are themselves on the integer-°F lattice; the 0.1°C rounding is a no-op on those values. tmean_c is the one US-station case where 0.1°C rounding adds value (averaging non-lattice values). Pre-Phase-18 code claimed '0.1°C precision' as if the source data carried independent 0.1°C resolution — corrected here."
 }
