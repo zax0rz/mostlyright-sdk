@@ -38,7 +38,21 @@ class StationForecastSchema(Schema):
     """
 
     schema_id: ClassVar[str] = "schema.forecast.station.v1"
+    # Phase 20 PLAN-11 review (codex HIGH #1): the unified station-forecast
+    # schema is a union over 5 source identifiers — `iem.archive` (IEM MOS
+    # archive rows) plus the 4 Open-Meteo endpoints. Validator branches on
+    # `_registered_sources` (set form) when present and falls back to
+    # `_registered_source` (single-value form) for legacy schemas.
     _registered_source: ClassVar[str] = "open_meteo.previous_runs"
+    _registered_sources: ClassVar[frozenset[str]] = frozenset(
+        {
+            "iem.archive",
+            "open_meteo.previous_runs",
+            "open_meteo.single_run",
+            "open_meteo.live",
+            "open_meteo.seamless",
+        }
+    )
 
     COLUMNS: ClassVar[list[ColumnSpec]] = [
         # === Identity (all required, nullable=False) ===

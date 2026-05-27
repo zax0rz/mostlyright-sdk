@@ -5,6 +5,7 @@
 
 export * from "./observation.v1.js";
 export * from "./forecast.iem_mos.v1.js";
+export * from "./forecast.station.v1.js";
 export * from "./settlement.cli.v1.js";
 export * from "./observation_ledger.v1.js";
 export * from "./observation_qc.v1.js";

@@ -3,14 +3,14 @@
 // Last manifest SHA recorded in schemas/EXPORT_MANIFEST.json
 
 "use strict";
-export const schema_settlement_cli_v1 = validate22;
-const schema33 = {"$id":"https://mostlyright.dev/schemas/schema.settlement.cli.v1.json","$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"cli_data_quality":{"description":"NWS CLI data-quality marker (Pitfall 6/16). Allows downstream code to filter or weight settlement rows by issuer quality without re-parsing the product header.","enum":["clean","flagged_instrument","flagged_late","flagged_other","missing"],"type":"string"},"event_time":{"description":"00:00 local time on observation_date converted to UTC; for sort/join only","format":"date-time","type":"string"},"observation_date":{"description":"local climate day per NWS convention (no timezone applied to the date itself)","format":"date","type":"string"},"precipitation_in":{"description":"units: inches","type":["null","number"]},"product_release_time":{"description":"parsed from CLI product header (_climate.py::_parse_product_timestamp)","format":"date-time","type":"string"},"report_type":{"description":"preliminary | final | correction; dedup priority preliminary < final < correction","enum":["correction","final","preliminary"],"type":"string"},"settlement_finality":{"description":"provisional | final | superseded. Kalshi NHIGH/NLOW settlement contractually requires 'final'; 'provisional' values are kept for early-look research only.","enum":["final","provisional","superseded"],"type":"string"},"snowfall_in":{"description":"units: inches","type":["null","number"]},"station":{"description":"ICAO/ASOS station ID","type":"string"},"station_tz":{"description":"IANA timezone for the station (e.g. America/Chicago for KORD). Required for local-climate-day semantics; see §U.","type":"string"},"temp_max_F":{"description":"units: fahrenheit — daily high (uppercase F for consistency with obs imperial mode)","type":["null","number"]},"temp_min_F":{"description":"units: fahrenheit — daily low","type":["null","number"]}},"required":["cli_data_quality","event_time","observation_date","product_release_time","report_type","settlement_finality","station","station_tz"],"title":"schema.settlement.cli.v1","type":"object","version":"v1"};
+export const schema_settlement_cli_v1 = validate23;
+const schema34 = {"$id":"https://mostlyright.dev/schemas/schema.settlement.cli.v1.json","$schema":"https://json-schema.org/draft/2020-12/schema","properties":{"cli_data_quality":{"description":"NWS CLI data-quality marker (Pitfall 6/16). Allows downstream code to filter or weight settlement rows by issuer quality without re-parsing the product header.","enum":["clean","flagged_instrument","flagged_late","flagged_other","missing"],"type":"string"},"event_time":{"description":"00:00 local time on observation_date converted to UTC; for sort/join only","format":"date-time","type":"string"},"observation_date":{"description":"local climate day per NWS convention (no timezone applied to the date itself)","format":"date","type":"string"},"precipitation_in":{"description":"units: inches","type":["null","number"]},"product_release_time":{"description":"parsed from CLI product header (_climate.py::_parse_product_timestamp)","format":"date-time","type":"string"},"report_type":{"description":"preliminary | final | correction; dedup priority preliminary < final < correction","enum":["correction","final","preliminary"],"type":"string"},"settlement_finality":{"description":"provisional | final | superseded. Kalshi NHIGH/NLOW settlement contractually requires 'final'; 'provisional' values are kept for early-look research only.","enum":["final","provisional","superseded"],"type":"string"},"snowfall_in":{"description":"units: inches","type":["null","number"]},"station":{"description":"ICAO/ASOS station ID","type":"string"},"station_tz":{"description":"IANA timezone for the station (e.g. America/Chicago for KORD). Required for local-climate-day semantics; see §U.","type":"string"},"temp_max_F":{"description":"units: fahrenheit — daily high (uppercase F for consistency with obs imperial mode)","type":["null","number"]},"temp_min_F":{"description":"units: fahrenheit — daily low","type":["null","number"]}},"required":["cli_data_quality","event_time","observation_date","product_release_time","report_type","settlement_finality","station","station_tz"],"title":"schema.settlement.cli.v1","type":"object","version":"v1"};
 
-function validate22(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
+function validate23(data, {instancePath="", parentData, parentDataProperty, rootData=data, dynamicAnchors={}}={}){
 /*# sourceURL="https://mostlyright.dev/schemas/schema.settlement.cli.v1.json" */;
 let vErrors = null;
 let errors = 0;
-const evaluated0 = validate22.evaluated;
+const evaluated0 = validate23.evaluated;
 if(evaluated0.dynamicProps){
 evaluated0.props = undefined;
 }
@@ -111,7 +111,7 @@ vErrors.push(err8);
 errors++;
 }
 if(!(((((data0 === "clean") || (data0 === "flagged_instrument")) || (data0 === "flagged_late")) || (data0 === "flagged_other")) || (data0 === "missing"))){
-const err9 = {instancePath:instancePath+"/cli_data_quality",schemaPath:"#/properties/cli_data_quality/enum",keyword:"enum",params:{allowedValues: schema33.properties.cli_data_quality.enum},message:"must be equal to one of the allowed values"};
+const err9 = {instancePath:instancePath+"/cli_data_quality",schemaPath:"#/properties/cli_data_quality/enum",keyword:"enum",params:{allowedValues: schema34.properties.cli_data_quality.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err9];
 }
@@ -148,7 +148,7 @@ errors++;
 if(data.precipitation_in !== undefined){
 let data3 = data.precipitation_in;
 if((data3 !== null) && (!(typeof data3 == "number"))){
-const err12 = {instancePath:instancePath+"/precipitation_in",schemaPath:"#/properties/precipitation_in/type",keyword:"type",params:{type: schema33.properties.precipitation_in.type},message:"must be null,number"};
+const err12 = {instancePath:instancePath+"/precipitation_in",schemaPath:"#/properties/precipitation_in/type",keyword:"type",params:{type: schema34.properties.precipitation_in.type},message:"must be null,number"};
 if(vErrors === null){
 vErrors = [err12];
 }
@@ -183,7 +183,7 @@ vErrors.push(err14);
 errors++;
 }
 if(!(((data5 === "correction") || (data5 === "final")) || (data5 === "preliminary"))){
-const err15 = {instancePath:instancePath+"/report_type",schemaPath:"#/properties/report_type/enum",keyword:"enum",params:{allowedValues: schema33.properties.report_type.enum},message:"must be equal to one of the allowed values"};
+const err15 = {instancePath:instancePath+"/report_type",schemaPath:"#/properties/report_type/enum",keyword:"enum",params:{allowedValues: schema34.properties.report_type.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err15];
 }
@@ -206,7 +206,7 @@ vErrors.push(err16);
 errors++;
 }
 if(!(((data6 === "final") || (data6 === "provisional")) || (data6 === "superseded"))){
-const err17 = {instancePath:instancePath+"/settlement_finality",schemaPath:"#/properties/settlement_finality/enum",keyword:"enum",params:{allowedValues: schema33.properties.settlement_finality.enum},message:"must be equal to one of the allowed values"};
+const err17 = {instancePath:instancePath+"/settlement_finality",schemaPath:"#/properties/settlement_finality/enum",keyword:"enum",params:{allowedValues: schema34.properties.settlement_finality.enum},message:"must be equal to one of the allowed values"};
 if(vErrors === null){
 vErrors = [err17];
 }
@@ -219,7 +219,7 @@ errors++;
 if(data.snowfall_in !== undefined){
 let data7 = data.snowfall_in;
 if((data7 !== null) && (!(typeof data7 == "number"))){
-const err18 = {instancePath:instancePath+"/snowfall_in",schemaPath:"#/properties/snowfall_in/type",keyword:"type",params:{type: schema33.properties.snowfall_in.type},message:"must be null,number"};
+const err18 = {instancePath:instancePath+"/snowfall_in",schemaPath:"#/properties/snowfall_in/type",keyword:"type",params:{type: schema34.properties.snowfall_in.type},message:"must be null,number"};
 if(vErrors === null){
 vErrors = [err18];
 }
@@ -256,7 +256,7 @@ errors++;
 if(data.temp_max_F !== undefined){
 let data10 = data.temp_max_F;
 if((data10 !== null) && (!(typeof data10 == "number"))){
-const err21 = {instancePath:instancePath+"/temp_max_F",schemaPath:"#/properties/temp_max_F/type",keyword:"type",params:{type: schema33.properties.temp_max_F.type},message:"must be null,number"};
+const err21 = {instancePath:instancePath+"/temp_max_F",schemaPath:"#/properties/temp_max_F/type",keyword:"type",params:{type: schema34.properties.temp_max_F.type},message:"must be null,number"};
 if(vErrors === null){
 vErrors = [err21];
 }
@@ -269,7 +269,7 @@ errors++;
 if(data.temp_min_F !== undefined){
 let data11 = data.temp_min_F;
 if((data11 !== null) && (!(typeof data11 == "number"))){
-const err22 = {instancePath:instancePath+"/temp_min_F",schemaPath:"#/properties/temp_min_F/type",keyword:"type",params:{type: schema33.properties.temp_min_F.type},message:"must be null,number"};
+const err22 = {instancePath:instancePath+"/temp_min_F",schemaPath:"#/properties/temp_min_F/type",keyword:"type",params:{type: schema34.properties.temp_min_F.type},message:"must be null,number"};
 if(vErrors === null){
 vErrors = [err22];
 }
@@ -290,7 +290,7 @@ vErrors.push(err23);
 }
 errors++;
 }
-validate22.errors = vErrors;
+validate23.errors = vErrors;
 return errors === 0;
 }
-validate22.evaluated = {"props":{"cli_data_quality":true,"event_time":true,"observation_date":true,"precipitation_in":true,"product_release_time":true,"report_type":true,"settlement_finality":true,"snowfall_in":true,"station":true,"station_tz":true,"temp_max_F":true,"temp_min_F":true},"dynamicProps":false,"dynamicItems":false};
+validate23.evaluated = {"props":{"cli_data_quality":true,"event_time":true,"observation_date":true,"precipitation_in":true,"product_release_time":true,"report_type":true,"settlement_finality":true,"snowfall_in":true,"station":true,"station_tz":true,"temp_max_F":true,"temp_min_F":true},"dynamicProps":false,"dynamicItems":false};

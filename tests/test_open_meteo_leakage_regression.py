@@ -16,7 +16,6 @@ from unittest.mock import MagicMock
 import httpx
 import pandas as pd
 import pytest
-
 from mostlyright.core.temporal.leakage import (
     LeakageDetector,
     assert_issued_at_populated,
@@ -28,17 +27,41 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures" / "openmeteo"
 
 
 CASES = [
-    ("KNYC", "2024-06-01", "2024-06-01T17:00:00Z",
-     "case_1_KNYC_2024-06-01_h13.json",
-     "Tarabcak/mostlyright#70 reproduction"),
-    ("KMDW", "2024-07-15", "2024-07-15T12:00:00Z",
-     "case_2_KORD_2024-07-15_h07.json", "Pre-noon snapshot"),
-    ("KDEN", "2024-08-22", "2024-08-22T22:00:00Z",
-     "case_3_KDEN_2024-08-22_h16.json", "Post-cycle-publish snapshot"),
-    ("KMIA", "2024-09-10", "2024-09-10T00:00:00Z",
-     "case_4_KMIA_2024-09-10_midnight.json", "Midnight UTC boundary"),
-    ("KSEA", "2024-10-05", "2024-10-05T20:00:00Z",
-     "case_5_KSEA_2024-10-05_h13.json", "Pacific timezone"),
+    (
+        "KNYC",
+        "2024-06-01",
+        "2024-06-01T17:00:00Z",
+        "case_1_KNYC_2024-06-01_h13.json",
+        "Tarabcak/mostlyright#70 reproduction",
+    ),
+    (
+        "KMDW",
+        "2024-07-15",
+        "2024-07-15T12:00:00Z",
+        "case_2_KORD_2024-07-15_h07.json",
+        "Pre-noon snapshot",
+    ),
+    (
+        "KDEN",
+        "2024-08-22",
+        "2024-08-22T22:00:00Z",
+        "case_3_KDEN_2024-08-22_h16.json",
+        "Post-cycle-publish snapshot",
+    ),
+    (
+        "KMIA",
+        "2024-09-10",
+        "2024-09-10T00:00:00Z",
+        "case_4_KMIA_2024-09-10_midnight.json",
+        "Midnight UTC boundary",
+    ),
+    (
+        "KSEA",
+        "2024-10-05",
+        "2024-10-05T20:00:00Z",
+        "case_5_KSEA_2024-10-05_h13.json",
+        "Pacific timezone",
+    ),
 ]
 
 
@@ -128,6 +151,5 @@ def test_case_1_exact_70_reproduction() -> None:
 
     as_of_h13 = pd.Timestamp("2024-06-01T17:00:00Z")
     assert actual_issued_at < as_of_h13, (
-        f"#70 reproduction would have leaked: "
-        f"issued_at={actual_issued_at} >= as_of={as_of_h13}"
+        f"#70 reproduction would have leaked: issued_at={actual_issued_at} >= as_of={as_of_h13}"
     )

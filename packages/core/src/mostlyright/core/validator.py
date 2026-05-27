@@ -291,8 +291,27 @@ def validate_dataframe(
         )
 
     registered_source = getattr(schema_cls, "_registered_source", None)
+    # Phase 20 PLAN-11 review (codex HIGH #1): support union schemas via
+    # _registered_sources — a frozenset of permitted source identifiers.
+    # schema.forecast.station.v1 covers IEM MOS + 4 Open-Meteo endpoints;
+    # _registered_source (singular) is the legacy single-source guard.
+    registered_sources = getattr(schema_cls, "_registered_sources", None)
     if (
-        registered_source is not None
+        registered_sources is not None
+        and data_source not in registered_sources
+        and allow_source_drift is None
+    ):
+        raise SourceMismatchError(
+            f"Source drift: data is {data_source!r}, schema permits "
+            f"{sorted(registered_sources)!r}",
+            schema_source=",".join(sorted(registered_sources)),
+            data_source=data_source,
+            role=None,
+            catalog_warning=None,
+        )
+    elif (
+        registered_sources is None
+        and registered_source is not None
         and data_source != registered_source
         and allow_source_drift is None
     ):

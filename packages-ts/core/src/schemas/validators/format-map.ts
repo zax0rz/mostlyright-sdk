@@ -18,6 +18,11 @@ const FORMAT_MAPS: Readonly<Record<string, SchemaFormatMap>> = Object.freeze({
     "retrieved_at": "date-time",
     "valid_at": "date-time",
   }),
+  "schema.forecast.station.v1": Object.freeze({
+    "issued_at": "date-time",
+    "retrieved_at": "date-time",
+    "valid_at": "date-time",
+  }),
   "schema.observation_ledger.v1": Object.freeze({
     "as_of_time": "date-time",
     "observed_at": "date-time",

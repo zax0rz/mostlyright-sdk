@@ -9,6 +9,7 @@
 // to the null-return path in `getValidator`.
 
 import { schema_forecast_iem_mos_v1 as validate_schema_forecast_iem_mos_v1 } from "./schema_forecast_iem_mos_v1.js";
+import { schema_forecast_station_v1 as validate_schema_forecast_station_v1 } from "./schema_forecast_station_v1.js";
 import { schema_observation_ledger_v1 as validate_schema_observation_ledger_v1 } from "./schema_observation_ledger_v1.js";
 import { schema_observation_qc_v1 as validate_schema_observation_qc_v1 } from "./schema_observation_qc_v1.js";
 import { schema_observation_v1 as validate_schema_observation_v1 } from "./schema_observation_v1.js";
@@ -28,6 +29,7 @@ export type AjvValidator = ((data: unknown) => boolean) & {
 
 const VALIDATORS: Record<string, AjvValidator> = {
   "schema.forecast.iem_mos.v1": validate_schema_forecast_iem_mos_v1 as unknown as AjvValidator,
+  "schema.forecast.station.v1": validate_schema_forecast_station_v1 as unknown as AjvValidator,
   "schema.observation_ledger.v1": validate_schema_observation_ledger_v1 as unknown as AjvValidator,
   "schema.observation_qc.v1": validate_schema_observation_qc_v1 as unknown as AjvValidator,
   "schema.observation.v1": validate_schema_observation_v1 as unknown as AjvValidator,

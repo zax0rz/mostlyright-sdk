@@ -1705,15 +1705,31 @@ def research(
                 OPEN_METEO_MODELS,
             )
 
-            if om_model in OPEN_METEO_MODELS:
-                om_by_date = _fetch_open_meteo_range(info, from_date, to_date, model=om_model)
-                # Concatenate: never silently merge — every row carries its
-                # source identity. build_pairs accepts a single dict so we
-                # merge OM rows into iem_mos_by_date when both sources are
-                # selected (build_pairs_row already discriminates via
-                # row.get("source")).
-                for date_iso, rows in om_by_date.items():
-                    iem_mos_by_date.setdefault(date_iso, []).extend(rows)
+            if om_model not in OPEN_METEO_MODELS:
+                # Phase 20 PLAN-11 review (codex HIGH #3): a typo or legacy
+                # IEM MOS model id like "nbe" would otherwise silently drop
+                # Open-Meteo forecasts and leave fcst_* columns null — the
+                # caller would not learn the source failed. Hard-fail with
+                # a hint so the typo surfaces immediately.
+                raise ValueError(
+                    f"forecast_source=\"open_meteo\" requires forecast_model "
+                    f"in OPEN_METEO_MODELS (36 keys); got {om_model!r}. "
+                    f"Pick one of the 36 registered Open-Meteo keys (e.g. "
+                    f"'gfs_global', 'ecmwf_ifs_hres', 'dwd_icon_global') "
+                    f"or drop forecast_source=\"open_meteo\" to use the "
+                    f"default IEM MOS path."
+                )
+
+            om_by_date = _fetch_open_meteo_range(
+                info, from_date, to_date, model=om_model
+            )
+            # Concatenate: never silently merge — every row carries its
+            # source identity. build_pairs accepts a single dict so we
+            # merge OM rows into iem_mos_by_date when both sources are
+            # selected (build_pairs_row already discriminates via
+            # row.get("source")).
+            for date_iso, rows in om_by_date.items():
+                iem_mos_by_date.setdefault(date_iso, []).extend(rows)
         if forecast_models:
             nwp_by_model_date = _fetch_nwp_models_range(
                 info, from_date, to_date, list(forecast_models)

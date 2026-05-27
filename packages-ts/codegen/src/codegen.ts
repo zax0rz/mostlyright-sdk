@@ -140,6 +140,7 @@ function schemaIdToTypeName(schemaId: string): string {
 const SCHEMA_FILES = [
   "schema.observation.v1.json",
   "schema.forecast.iem_mos.v1.json",
+  "schema.forecast.station.v1.json",
   "schema.settlement.cli.v1.json",
   "schema.observation_ledger.v1.json",
   "schema.observation_qc.v1.json",
