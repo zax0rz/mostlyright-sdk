@@ -27,3 +27,19 @@ console.log(rows[0]);
 ## Documentation
 
 Quickstart, concepts, and the full API reference live at <https://mostlyright.md/docs/sdk/>.
+
+## TypeScript SDK limitations vs Python
+
+A few surfaces ship as **typed stubs** in v1.x because their Python implementations depend on native libraries that aren't viable in browser/Node bundles today:
+
+| TS Function | Status | Use Python? | Workaround in TS |
+|---|---|---|---|
+| `research()` | ✅ Wired | optional | — |
+| `iemMosForecasts()` | ✅ Wired | optional | — |
+| `obs()` / `dailyExtremes()` | ✅ Wired | optional | — |
+| `forecastNwp()` | ⏳ v2.0+ stub | **yes** for gridded NWP | `iemMosForecasts()` for the 7 major US stations |
+| `climateGaps()` | ⏳ v2.0+ stub | **yes** for climate-gap analysis | — |
+
+Stub calls throw typed errors (`NwpNotAvailableError`, `DataAvailabilityError`) so you can `instanceof`-dispatch instead of parsing messages.
+
+For the rationale and roadmap, see [docs/nwp-forecasts.md](https://github.com/mostlyrightmd/mostlyright-sdk/blob/main/docs/nwp-forecasts.md) and [docs/climate-gaps.md](https://github.com/mostlyrightmd/mostlyright-sdk/blob/main/docs/climate-gaps.md).

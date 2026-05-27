@@ -1,16 +1,18 @@
 // Phase 17 PLAN-11 / Phase 21 21-07 — TS `forecastNwp()` stub.
 //
-// Per CONTEXT decision 7: TS NWP is deferred to v1.1+. No production-ready
+// Per CONTEXT decision 7: TS NWP is deferred to v2.0+. No production-ready
 // browser GRIB2 decoder exists in May 2026; shipping a non-functional
 // runtime-error stub now means callers can write code against the
-// future-stable signature today — v1.1+ lands the execution body.
+// future-stable signature today — v2.0+ lands the execution body.
 //
 // Phase 21 21-07 upgrade: throws `DataAvailabilityError` (typed exception
-// from Phase 21 21-09) instead of generic `Error`. The hint string routes
-// callers to the `iemMosForecasts()` workaround for stations with MOS
-// coverage, and points at docs/forecasts.md for the architectural reason.
+// from Phase 21 21-09). Post-21-07 follow-up: throws the more specific
+// `NwpNotAvailableError` subclass so consumers get `instanceof`-based
+// dispatch + `.station` / `.model` autocomplete instead of having to parse
+// the hint string. Back-compat preserved (NwpNotAvailableError extends
+// DataAvailabilityError with reason="model_unavailable").
 
-import { DataAvailabilityError } from "@mostlyrightmd/core";
+import { NwpNotAvailableError } from "@mostlyrightmd/core";
 
 /** NWP model enum — mirror of Python `SUPPORTED_NWP_MODELS` (24 entries). */
 export type NwpModel =
@@ -77,30 +79,48 @@ function buildHint(station: string, model: NwpModel): string {
   const mosLine = hasMosCoverage
     ? `Workaround for ${station}: iemMosForecasts("${station}", ...) is available (IEM MOS catalog covers this station).`
     : `Workaround: this station has no IEM MOS coverage; use the Python SDK's mostlyright.forecast_nwp() in v1.x.`;
-  return `forecastNwp(${station}, "${model}") is a v1.x stub. Browser GRIB2 decode is not production-ready in May 2026 (no eccodes / cfgrib equivalent for the browser; WASM compile time + bundle size make it impractical for v1.x). ${mosLine} See https://mostlyright.md/docs/sdk/typescript/forecasts#typescript-lane for the architectural reason + v1.1+ tracking.`;
+  return `forecastNwp(${station}, "${model}") is a v1.x stub. Browser GRIB2 decode is not production-ready in May 2026 (no eccodes / cfgrib equivalent for the browser; WASM compile time + bundle size make it impractical for v1.x). ${mosLine} See https://mostlyright.md/docs/sdk/typescript/nwp-forecasts/ for the architectural reason + v2.0+ tracking.`;
 }
 
 /**
- * Fetch a gridded NWP forecast — **v1.x stub, deferred to v1.1+**.
+ * Fetch a gridded NWP forecast — **v1.x stub, deferred to v2.0+**.
  *
- * Per Phase 17 CONTEXT decision 7, the TS NWP execution body is deferred
- * to v1.1+ because no production-ready browser GRIB2 decoder exists in
- * May 2026. This function signature is stable so callers can ship code
- * today; v1.1+ lands the fetch + decode wiring as a runtime upgrade with
- * no signature break.
+ * @remarks
+ * **⚠️ Not yet implemented in TypeScript.** This function exists so callers
+ * can write code against the future-stable signature, but it throws on
+ * every call. Use the Python SDK (`mostlyright>=1.0`) for gridded NWP
+ * today — it wires the NCEP family (HRRR, GFS, NBM, RAP, RRFS, …) end-to-end.
  *
- * @throws DataAvailabilityError with reason="model_unavailable" and a
- *   hint that conditionally routes to `iemMosForecasts()` for the 7
- *   major US stations with IEM MOS coverage (Phase 21 21-07).
+ * **Why deferred:** GRIB2 decode requires native libraries (eccodes C
+ * library or cfgrib Python wrapper). No production-ready browser-side
+ * decoder exists in May 2026; a WASM port's compile time + bundle size
+ * are impractical for v1.x. v2.0+ tracks the GRIB2 ecosystem maturity.
+ *
+ * **Workaround paths:**
+ * - **7 major US stations** (KNYC, KLAX, KORD, KMIA, KDEN, KSEA, KATL) →
+ *   {@link iemMosForecasts} ships MOS-based forecasts that solve most use
+ *   cases. The error hint includes this pointer automatically.
+ * - **Everything else** → use the Python SDK
+ *   (`pip install mostlyrightmd-weather`).
+ *
+ * @throws {@link NwpNotAvailableError} on every call (v1.x). The error
+ *   is a subclass of `DataAvailabilityError`, so existing
+ *   `catch (e instanceof DataAvailabilityError)` paths continue to catch
+ *   it. The thrown instance carries typed `.station` and `.model`
+ *   properties for log/error attribution.
+ *
+ * @see {@link https://mostlyright.md/docs/sdk/typescript/nwp-forecasts/ | docs/nwp-forecasts.md}
+ *   for the full architectural rationale, the supported-model list, and
+ *   the v2.0+ roadmap.
  */
 export async function forecastNwp(
   station: string,
   model: NwpModel,
   _opts: ForecastNwpOptions = {},
 ): Promise<never> {
-  throw new DataAvailabilityError({
-    reason: "model_unavailable",
-    source: "nwp-stub",
+  throw new NwpNotAvailableError({
+    station,
+    model,
     hint: buildHint(station, model),
   });
 }

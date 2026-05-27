@@ -1,21 +1,31 @@
 // Phase 17 PLAN-11 / Phase 21 21-07 — forecastNwp TS stub unit tests.
+// Post-21-07 follow-up: now throws NwpNotAvailableError (subclass of
+// DataAvailabilityError) — verify back-compat AND the new typed .station/
+// .model properties.
 
 import { describe, expect, it } from "vitest";
 
-import { DataAvailabilityError } from "@mostlyrightmd/core";
+import { DataAvailabilityError, NwpNotAvailableError } from "@mostlyrightmd/core";
 
 import { forecastNwp } from "../../src/forecasts/index.js";
 
 describe("forecastNwp (Phase 21 21-07 messaging)", () => {
-  it("raises DataAvailabilityError with reason='model_unavailable'", async () => {
-    await expect(forecastNwp("KNYC", "hrrr")).rejects.toThrow(DataAvailabilityError);
+  it("raises NwpNotAvailableError (subclass of DataAvailabilityError)", async () => {
+    await expect(forecastNwp("KNYC", "hrrr")).rejects.toThrow(NwpNotAvailableError);
     try {
       await forecastNwp("KNYC", "hrrr");
     } catch (e) {
-      const err = e as DataAvailabilityError;
+      const err = e as NwpNotAvailableError;
+      // New typed-subclass dispatch path.
+      expect(err).toBeInstanceOf(NwpNotAvailableError);
+      // Back-compat: still catchable as DataAvailabilityError.
       expect(err).toBeInstanceOf(DataAvailabilityError);
       expect(err.reason).toBe("model_unavailable");
-      expect(err.source).toBe("nwp-stub");
+      // Source defaults to `nwp.${model}` on NwpNotAvailableError.
+      expect(err.source).toBe("nwp.hrrr");
+      // Typed properties for IDE autocomplete + log attribution.
+      expect(err.station).toBe("KNYC");
+      expect(err.model).toBe("hrrr");
     }
   });
 
@@ -26,7 +36,7 @@ describe("forecastNwp (Phase 21 21-07 messaging)", () => {
     } catch (e) {
       const err = e as DataAvailabilityError;
       expect(err.hint).toMatch(/iemMosForecasts/);
-      expect(err.hint).toMatch(/v1\.1\+|v1\.x|deferred/);
+      expect(err.hint).toMatch(/v2\.0\+|v1\.x|deferred/);
     }
   });
 
@@ -61,14 +71,14 @@ describe("forecastNwp (Phase 21 21-07 messaging)", () => {
     }
   });
 
-  it("hint links to docs/forecasts.md typescript-lane section", async () => {
+  it("hint links to docs/nwp-forecasts.md", async () => {
     try {
       await forecastNwp("KNYC", "hrrr");
       throw new Error("should have thrown DataAvailabilityError");
     } catch (e) {
       const err = e as DataAvailabilityError;
       expect(err).toBeInstanceOf(DataAvailabilityError);
-      expect(err.hint).toMatch(/typescript-lane|forecasts/);
+      expect(err.hint).toMatch(/nwp-forecasts|forecasts/);
     }
   });
 

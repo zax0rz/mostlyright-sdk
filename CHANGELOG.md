@@ -4,6 +4,14 @@ All notable changes to `mostlyright`. The format follows [Keep a Changelog](http
 
 ## [Unreleased]
 
+### Added
+- **`NwpNotAvailableError` typed subclass** in `@mostlyrightmd/core`. Raised by `forecastNwp()` instead of the generic `DataAvailabilityError`. Carries typed `.station` and `.model` properties so consumers get `instanceof`-based dispatch + IDE autocomplete instead of parsing the hint string. Back-compat preserved — `NwpNotAvailableError` extends `DataAvailabilityError` with `reason="model_unavailable"`, so existing `catch (e instanceof DataAvailabilityError)` paths continue to work unchanged. 6 new tests cover the subclass + back-compat catch paths.
+- **`docs/nwp-forecasts.md`** — dedicated TypeScript-focused page documenting the v1.x `forecastNwp()` deferral. Explains why GRIB2 decode is browser-impractical today (eccodes / cfgrib are native-only; WASM port has prohibitive bundle size), lists the recommended catch pattern, points at `iemMosForecasts()` for the 7 MOS-covered stations and the Python SDK for everything else, lists all 24 signature-supported NwpModel literals, and tracks the v2.0+ roadmap.
+- **TS package READMEs** now visibly call out the stub surfaces (`forecastNwp`, `climateGaps`) instead of burying them in the docs site. `@mostlyrightmd/weather` README includes a "What's NOT in the TypeScript SDK (yet)" section; `mostlyright` meta-package README ships a decision-matrix table showing which functions are wired today vs deferred to v2.0+.
+
+### Changed
+- **`forecastNwp()` hint string** now points at `docs/nwp-forecasts.md` instead of the inline `docs/forecasts.md#typescript-lane` anchor. The dedicated page surfaces better in search + IDE link previews than an in-page anchor.
+
 ## [1.2.0] — 2026-05-27 — Phase 21: TypeScript SDK Parity Completion
 
 Closes the 11 audit-identified deltas between the Python and TypeScript SDKs from the 2026-05-27 cross-SDK audit. The TS SDK is now surface-equivalent to Python across `research()` kwargs, the typed-exception hierarchy, the cache versioning invariant, the `obs()` ingest-planner port, the `dailyExtremes()` wrapper, the markets trades shape, the `forecastNwp()` stub messaging, the codegen description propagation, the `preprocessing` namespace, and the `climateGaps()` structured error.

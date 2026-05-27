@@ -262,6 +262,98 @@ export class DataAvailabilityError extends TradewindsError {
 }
 
 // ---------------------------------------------------------------------------
+// NwpNotAvailableError (Post-21-07 follow-up)
+// ---------------------------------------------------------------------------
+//
+// Subclass of DataAvailabilityError raised when the TS `forecastNwp()` stub
+// is called. Phase 21 21-07 routes the generic stub error through
+// DataAvailabilityError; this dedicated subclass adds:
+//
+//   1. instanceof-based dispatch — `catch (e) { if (e instanceof
+//      NwpNotAvailableError) ... }` is cleaner than `e.reason ===
+//      "model_unavailable" && e.source === "nwp-stub"`.
+//   2. IDE autocomplete on `.model` + `.station` — narrows the payload so
+//      consumers don't have to parse `e.hint` to retrieve them.
+//   3. A typed compile-time signal: `forecastNwp()` returns
+//      `Promise<never>`, but the throw site declares `@throws
+//      NwpNotAvailableError` so JSDoc tooling surfaces the deferral up-front.
+//
+// Back-compat: NwpNotAvailableError IS-A DataAvailabilityError with
+// reason="model_unavailable", so existing `catch (e) { if (e instanceof
+// DataAvailabilityError && e.reason === "model_unavailable") ... }` paths
+// continue to work unchanged.
+
+export interface NwpNotAvailableErrorOptions extends TradewindsErrorOptions {
+  /** Station the caller asked for (echoed back for log/error attribution). */
+  station: string;
+  /** NWP model the caller asked for (e.g. `"gfs"`, `"hrrr"`). */
+  model: string;
+  /** Operator-actionable hint. Required (matches DataAvailabilityError contract). */
+  hint: string;
+}
+
+/**
+ * Raised when the TS `forecastNwp()` stub is called.
+ *
+ * **Why this exists:** no production-ready browser GRIB2 decoder ships in
+ * v1.x (eccodes / cfgrib are C/Python only; WASM compile-time + bundle
+ * size make a browser port impractical today). The function signature is
+ * stable so callers can write code today; v2.0+ lands the execution body.
+ *
+ * **Recommended catch pattern:**
+ *
+ * ```ts
+ * import { forecastNwp } from '@mostlyrightmd/weather';
+ * import { NwpNotAvailableError } from '@mostlyrightmd/core';
+ *
+ * try {
+ *   const grid = await forecastNwp('KNYC', 'gfs');
+ * } catch (e) {
+ *   if (e instanceof NwpNotAvailableError) {
+ *     console.warn(`NWP deferred to v2.0+; ${e.hint}`);
+ *     // Fall back to iemMosForecasts() when available, else Python SDK.
+ *   } else {
+ *     throw e;
+ *   }
+ * }
+ * ```
+ *
+ * See [docs/nwp-forecasts.md](https://mostlyright.md/docs/sdk/typescript/nwp-forecasts/)
+ * for the full architectural rationale and the v2.0+ roadmap.
+ */
+export class NwpNotAvailableError extends DataAvailabilityError {
+  static override defaultErrorCode = "NWP_NOT_AVAILABLE";
+
+  readonly station: string;
+  readonly model: string;
+
+  constructor(options: NwpNotAvailableErrorOptions) {
+    // exactOptionalPropertyTypes: true — only include requestId when the
+    // caller passed a non-undefined value. Passing `requestId: undefined`
+    // explicitly would type-error against the parent's narrower contract.
+    const parentOpts: DataAvailabilityErrorOptions = {
+      reason: "model_unavailable",
+      hint: options.hint,
+      source: options.source ?? `nwp.${options.model}`,
+    };
+    if (options.requestId !== undefined && options.requestId !== null) {
+      parentOpts.requestId = options.requestId;
+    }
+    super(parentOpts);
+    this.station = options.station;
+    this.model = options.model;
+  }
+
+  protected override payload(): Record<string, unknown> {
+    return {
+      ...super.payload(),
+      station: this.station,
+      model: this.model,
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // SchemaValidationError
 // ---------------------------------------------------------------------------
 

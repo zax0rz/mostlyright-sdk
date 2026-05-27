@@ -8,6 +8,7 @@ import {
   ForbiddenError,
   LeakageError,
   NotFoundError,
+  NwpNotAvailableError,
   PayloadTooLargeError,
   PolymarketEventError,
   RateLimitError,
@@ -232,6 +233,80 @@ describe("DataAvailabilityError (Phase 21 21-09)", () => {
       "source_5xx",
       "rate_limited",
     ]);
+  });
+});
+
+describe("NwpNotAvailableError (post-21-07 follow-up)", () => {
+  it("is a subclass of DataAvailabilityError (back-compat catch path)", () => {
+    const err = new NwpNotAvailableError({
+      station: "KNYC",
+      model: "gfs",
+      hint: "browser GRIB2 decode deferred to v2.0+",
+    });
+    // New typed subclass.
+    expect(err).toBeInstanceOf(NwpNotAvailableError);
+    // Back-compat: still a DataAvailabilityError → existing handlers work.
+    expect(err).toBeInstanceOf(DataAvailabilityError);
+    expect(err).toBeInstanceOf(TradewindsError);
+    expect(err).toBeInstanceOf(Error);
+  });
+
+  it("carries typed .station and .model for autocomplete / log attribution", () => {
+    const err = new NwpNotAvailableError({
+      station: "KLAX",
+      model: "hrrr",
+      hint: "stub — see docs",
+    });
+    expect(err.station).toBe("KLAX");
+    expect(err.model).toBe("hrrr");
+    // Inherits reason from DataAvailabilityError.
+    expect(err.reason).toBe("model_unavailable");
+  });
+
+  it("source defaults to `nwp.${model}` when not explicitly passed", () => {
+    const err = new NwpNotAvailableError({
+      station: "KORD",
+      model: "ecmwf_ifs_hres",
+      hint: "x",
+    });
+    expect(err.source).toBe("nwp.ecmwf_ifs_hres");
+  });
+
+  it("respects an explicit source override", () => {
+    const err = new NwpNotAvailableError({
+      station: "KORD",
+      model: "gfs",
+      hint: "x",
+      source: "nwp-stub",
+    });
+    expect(err.source).toBe("nwp-stub");
+  });
+
+  it("default error code is NWP_NOT_AVAILABLE", () => {
+    const err = new NwpNotAvailableError({
+      station: "KSEA",
+      model: "nbm",
+      hint: "x",
+    });
+    expect(err.errorCode).toBe("NWP_NOT_AVAILABLE");
+  });
+
+  it("surfaces station + model in toDict() (alongside reason + hint)", () => {
+    const err = new NwpNotAvailableError({
+      station: "KMIA",
+      model: "rap",
+      hint: "stub",
+    });
+    expect(err.toDict()).toEqual({
+      error_code: "NWP_NOT_AVAILABLE",
+      message: "[model_unavailable] stub",
+      source: "nwp.rap",
+      request_id: null,
+      reason: "model_unavailable",
+      hint: "stub",
+      station: "KMIA",
+      model: "rap",
+    });
   });
 });
 
