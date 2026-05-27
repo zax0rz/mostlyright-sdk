@@ -1336,6 +1336,49 @@ def _run_qc_and_write_sidecar(
     return summary
 
 
+def _validate_research_kwargs(
+    *,
+    sources: object,
+    source: object,
+    forecast_model: object,
+    forecast_models: object,
+    include_forecast: bool,
+) -> None:
+    """Phase 21 21-01: tighten kwarg validation on `research()`.
+
+    Raises ``TypeError`` early (before any network fetch) when:
+
+    1. Both ``sources=`` and ``source=`` are provided (mutually exclusive —
+       ``sources`` is the LIVE_V1 plural multi-source selector; ``source``
+       is the single-source filter for exact_window).
+    2. Both ``forecast_model=`` and ``forecast_models=`` are provided
+       (mutually exclusive — ``forecast_models`` is the plural multi-model
+       form; supplying both is ambiguous).
+    3. A forecast model is requested but ``include_forecast=False`` (silent
+       no-op would mislead the caller into thinking forecast attached).
+
+    These guards match the TS ``ResearchOptions`` runtime checks lockstep
+    so a cross-SDK consumer sees the same TypeError shape on either side.
+    """
+    if sources is not None and source is not None:
+        raise TypeError(
+            "research(): sources= and source= are mutually exclusive — "
+            "use `sources=` for the LIVE_V1 multi-source selector or "
+            "`source=` for a single-source exact_window query, not both",
+        )
+    if forecast_model is not None and forecast_models is not None:
+        raise TypeError(
+            "research(): forecast_model= and forecast_models= are mutually exclusive — "
+            "use `forecast_models=` for multi-model fan-out or `forecast_model=` for "
+            "a single model, not both",
+        )
+    if (forecast_model is not None or forecast_models is not None) and not include_forecast:
+        raise TypeError(
+            "research(): forecast_model=/forecast_models= require include_forecast=True; "
+            "the model filter is otherwise silently ignored",
+        )
+
+
 def research(
     station: str | None = None,
     from_date: str | None = None,
@@ -1425,6 +1468,19 @@ def research(
     >>> list(df.columns)[:4]  # doctest: +SKIP
     ['station', 'cli_high_f', 'cli_low_f', 'cli_report_type']
     """
+    # Phase 21 21-01: tighten kwarg validation BEFORE any backend dispatch.
+    # Surfaces mutually-exclusive misuses (sources/source, forecast_model/
+    # forecast_models) and silent-no-op cases (forecast_model without
+    # include_forecast=True) up-front. Matches the TS `ResearchOptions`
+    # runtime checks lockstep.
+    _validate_research_kwargs(
+        sources=sources,
+        source=source,
+        forecast_model=forecast_model,
+        forecast_models=forecast_models,
+        include_forecast=include_forecast,
+    )
+
     # Phase 6 codex iter-2 P2 fix: validate backend / return_type kwargs
     # BEFORE any network fetch or cache write. A typo in the new kwargs
     # otherwise hits live APIs + mutates the parquet cache before raising.
