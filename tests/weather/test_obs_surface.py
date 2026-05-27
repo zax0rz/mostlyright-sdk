@@ -59,11 +59,19 @@ def test_obs_invalid_strategy_raises_value_error():
         obs("KNYC", "2024-03-01", "2024-03-31", strategy="bogus")  # type: ignore[arg-type]
 
 
-def test_obs_hosted_raises_not_implemented_with_documented_message():
+def test_obs_hosted_raises_data_availability_error_with_documented_hint():
+    """Phase 21 21-09: migrated from NotImplementedError to the structural
+    DataAvailabilityError. Reason = ``model_unavailable``; hint preserves the
+    documented v0.2.x-deferral message so existing error-handling docs stay
+    accurate. Catchable via TradewindsError base class for back-compat.
+    """
+    from mostlyright.core.exceptions import DataAvailabilityError
     from mostlyright.weather.obs import obs
 
-    with pytest.raises(NotImplementedError, match=r"hosted strategy deferred to v0\.2\.x"):
+    with pytest.raises(DataAvailabilityError) as exc:
         obs("KNYC", "2024-03-01", "2024-03-31", strategy="hosted")
+    assert exc.value.reason == "model_unavailable"
+    assert "hosted strategy deferred to v0.2.x" in exc.value.hint
 
 
 def test_obs_warm_cache_with_source_raises_value_error():

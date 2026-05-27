@@ -20,7 +20,6 @@ from __future__ import annotations
 from typing import ClassVar, Protocol
 
 import pandas as pd
-from mostlyright.core.exceptions import SourceUnavailableError
 
 __all__ = [
     "WeatherAdapter",
@@ -74,12 +73,22 @@ def get_adapter(source: str) -> WeatherAdapter:
     """Return a fresh adapter instance for ``source``.
 
     Raises:
-        SourceUnavailableError: ``source`` is not registered.
+        DataAvailabilityError: ``source`` is not registered. The error carries
+            ``reason="model_unavailable"`` so cross-SDK consumers can branch
+            on ``e.reason`` rather than string-matching the message.
+            DataAvailabilityError is a subclass of TradewindsError, so code
+            catching the broader base class continues to work.
     """
     cls = _REGISTRY.get(source)
     if cls is None:
-        raise SourceUnavailableError(
-            f"Unknown source {source!r}; known sources: {sorted(_REGISTRY)}",
+        # Phase 21 21-09: migrated from SourceUnavailableError to the structural
+        # DataAvailabilityError. Reason="model_unavailable" matches the lockstep
+        # TS enum.
+        from mostlyright.core.exceptions import DataAvailabilityError
+
+        raise DataAvailabilityError(
+            reason="model_unavailable",
+            hint=f"Unknown source {source!r}; known sources: {sorted(_REGISTRY)}",
             source=source,
         )
     return cls()
