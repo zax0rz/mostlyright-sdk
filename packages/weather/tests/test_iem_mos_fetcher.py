@@ -347,9 +347,9 @@ def test_fetch_iem_mos_live_against_iem_api() -> None:
     ``uv run pytest packages/weather/tests/test_iem_mos_fetcher.py::test_fetch_iem_mos_live_against_iem_api -v``.
     """
     df = fetch_iem_mos("KNYC", "2024-01-15", "2024-01-15", model="nbe")
-    assert not df.empty, (
-        "live IEM MOS returned empty DataFrame; endpoint or fixture may have shifted"
-    )
+    assert (
+        not df.empty
+    ), "live IEM MOS returned empty DataFrame; endpoint or fixture may have shifted"
     assert df["temp_c"].notna().any(), "no populated temp_c rows in live response"
     assert df["dew_point_c"].notna().any(), "no populated dew_point_c rows in live response"
     assert df["forecast_hour"].notna().any(), "no populated forecast_hour rows in live response"
