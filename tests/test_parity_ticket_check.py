@@ -15,7 +15,7 @@ _SCRIPTS_DIR = _REPO_ROOT / "scripts"
 if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
 
-from parity_ticket_check import parse_pr_body  # noqa: E402
+from parity_ticket_check import _classify, _load_config, parse_pr_body  # noqa: E402
 
 
 def test_unchanged_template_does_not_bypass_gate() -> None:
@@ -82,3 +82,16 @@ def test_typescript_only_outside_comment_matches() -> None:
     assert ticket is None
     assert not py_only
     assert ts_only
+
+
+def test_polymarket_client_ua_changes_are_paired_surface() -> None:
+    """Python + TS Polymarket client UA edits must satisfy parity as paired."""
+    py_globs, ts_globs = _load_config()
+    files = [
+        "packages/markets/src/mostlyright/markets/_polymarket_client.py",
+        "packages-ts/markets/src/polymarket/client.ts",
+    ]
+    py_hits, ts_hits = _classify(files, py_globs, ts_globs)
+
+    assert py_hits == ["packages/markets/src/mostlyright/markets/_polymarket_client.py"]
+    assert ts_hits == ["packages-ts/markets/src/polymarket/client.ts"]

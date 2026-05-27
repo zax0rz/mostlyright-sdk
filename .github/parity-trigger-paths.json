@@ -10,6 +10,7 @@
     "packages/core/src/mostlyright/international.py",
     "packages/core/src/mostlyright/forecasts.py",
     "packages/core/src/mostlyright/preprocessing.py",
+    "packages/markets/src/mostlyright/markets/_polymarket_client.py",
     "packages/markets/src/mostlyright/markets/polymarket.py",
     "packages/markets/src/mostlyright/markets/catalog/**/*.py",
     "packages/core/src/mostlyright/core/**/*.py",
