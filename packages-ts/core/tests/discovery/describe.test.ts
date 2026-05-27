@@ -87,15 +87,57 @@ describe("featureCatalog()", () => {
   });
 });
 
-describe("climateGaps()", () => {
-  it("throws ClimateGapsNotImplementedError with the expected message", () => {
+describe("climateGaps() — Phase 21 21-11 messaging", () => {
+  it("throws ClimateGapsNotImplementedError (back-compat alias still works)", () => {
     expect(() => climateGaps("KNYC", "2025-01-01", "2025-01-31")).toThrow(
       ClimateGapsNotImplementedError,
     );
+  });
+
+  it("also catchable as DataAvailabilityError (new typed exception)", async () => {
+    // Import lazily to keep the describe-test contract surface tight.
+    const { DataAvailabilityError } = await import("../../src/exceptions/index.js");
     try {
       climateGaps("KNYC", "2025-01-01", "2025-01-31");
+      throw new Error("should have thrown");
     } catch (e) {
-      expect((e as Error).message).toContain("Python-only");
+      expect(e).toBeInstanceOf(DataAvailabilityError);
+      const err = e as InstanceType<typeof DataAvailabilityError>;
+      expect(err.reason).toBe("model_unavailable");
+      expect(err.source).toBe("climate-cache-browser");
+    }
+  });
+
+  it("error hint explains the 10+ MB / server-only architecture", () => {
+    try {
+      climateGaps("KNYC", "2025-01-01", "2025-01-31");
+      throw new Error("should have thrown ClimateGapsNotImplementedError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(ClimateGapsNotImplementedError);
+      const err = e as ClimateGapsNotImplementedError;
+      expect(err.hint).toMatch(/10\+ MB|server-only/);
+    }
+  });
+
+  it("error hint points users at the Python SDK as the v1.x workaround", () => {
+    try {
+      climateGaps("KNYC", "2025-01-01", "2025-01-31");
+      throw new Error("should have thrown ClimateGapsNotImplementedError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(ClimateGapsNotImplementedError);
+      const err = e as ClimateGapsNotImplementedError;
+      expect(err.hint).toMatch(/Python SDK|mostlyright\.discover\.climate_gaps/);
+    }
+  });
+
+  it("error hint links to docs/climate-gaps URL", () => {
+    try {
+      climateGaps("KNYC", "2025-01-01", "2025-01-31");
+      throw new Error("should have thrown ClimateGapsNotImplementedError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(ClimateGapsNotImplementedError);
+      const err = e as ClimateGapsNotImplementedError;
+      expect(err.hint).toMatch(/climate-gaps/);
     }
   });
 });

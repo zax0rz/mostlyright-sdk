@@ -131,3 +131,25 @@ export {
   type IemMosSource,
   type NwpModel,
 } from "./forecasts/index.js";
+
+// Phase 21 21-05 — dailyExtremes(station, from, to, opts?) wrapper matching
+// Python `mostlyright.international.daily_extremes`. Composes existing
+// fetchers + internationalDailyExtremes for the rollup; surfaces under
+// the weather barrel and `mostlyright` meta package.
+export { dailyExtremes } from "./dailyExtremes.js";
+export type {
+  DailyExtremeRow,
+  DailyExtremesMergeMode,
+  DailyExtremesOptions,
+} from "./dailyExtremes.types.js";
+
+// Phase 21 21-04 — obs(station, from, to, opts?) Phase 7 ingest-planner
+// surface. Smart-routes between exact_window / warm_cache / hosted
+// strategies; matches Python `tw.weather.obs` signature.
+export { obs, resolveAutoStrategy } from "./obs.js";
+export type {
+  ObsOptions,
+  ObsRow,
+  ObsSourceFilter,
+  ObsStrategy,
+} from "./obs.types.js";

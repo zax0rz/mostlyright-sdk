@@ -1,26 +1,75 @@
-// Phase 17 PLAN-11 — forecastNwp TS stub unit tests.
+// Phase 17 PLAN-11 / Phase 21 21-07 — forecastNwp TS stub unit tests.
 
 import { describe, expect, it } from "vitest";
 
+import { DataAvailabilityError } from "@mostlyrightmd/core";
+
 import { forecastNwp } from "../../src/forecasts/index.js";
 
-describe("forecastNwp (v1.0 stub)", () => {
-  it("throws NotImplementedError-style Error pointing at v1.1", async () => {
-    await expect(forecastNwp("KNYC", "hrrr")).rejects.toThrow(
-      /TS NWP deferred to v1.1/,
-    );
+describe("forecastNwp (Phase 21 21-07 messaging)", () => {
+  it("raises DataAvailabilityError with reason='model_unavailable'", async () => {
+    await expect(forecastNwp("KNYC", "hrrr")).rejects.toThrow(DataAvailabilityError);
+    try {
+      await forecastNwp("KNYC", "hrrr");
+    } catch (e) {
+      const err = e as DataAvailabilityError;
+      expect(err).toBeInstanceOf(DataAvailabilityError);
+      expect(err.reason).toBe("model_unavailable");
+      expect(err.source).toBe("nwp-stub");
+    }
   });
 
-  it("error message names CONTEXT decision 7", async () => {
-    await expect(forecastNwp("KNYC", "gfs")).rejects.toThrow(
-      /CONTEXT decision 7/,
-    );
+  it("hint mentions iemMosForecasts() for MOS-covered stations (KNYC)", async () => {
+    try {
+      await forecastNwp("KNYC", "hrrr");
+      throw new Error("should have thrown");
+    } catch (e) {
+      const err = e as DataAvailabilityError;
+      expect(err.hint).toMatch(/iemMosForecasts/);
+      expect(err.hint).toMatch(/v1\.1\+|v1\.x|deferred/);
+    }
   });
 
-  it("error message points users at the Python SDK for v1.0 NWP", async () => {
-    await expect(
-      forecastNwp("KNYC", "ecmwf_ifs_hres", { cycle: "2026-05-24T12:00:00Z" }),
-    ).rejects.toThrow(/Python SDK/);
+  it("hint omits iemMosForecasts for non-MOS-covered stations (KSFO)", async () => {
+    try {
+      await forecastNwp("KSFO", "hrrr");
+      throw new Error("should have thrown");
+    } catch (e) {
+      const err = e as DataAvailabilityError;
+      // The non-MOS branch points at the Python SDK fallback only.
+      expect(err.hint).not.toMatch(/iemMosForecasts\("KSFO"/);
+      expect(err.hint).toMatch(/Python SDK/);
+    }
+  });
+
+  it("hint includes the requested model name", async () => {
+    try {
+      await forecastNwp("KNYC", "gfs");
+      throw new Error("should have thrown DataAvailabilityError");
+    } catch (e) {
+      const err = e as DataAvailabilityError;
+      expect(err).toBeInstanceOf(DataAvailabilityError);
+      expect(err.hint).toMatch(/"gfs"/);
+    }
+    try {
+      await forecastNwp("KNYC", "ecmwf_ifs_hres");
+      throw new Error("should have thrown DataAvailabilityError");
+    } catch (e) {
+      const err = e as DataAvailabilityError;
+      expect(err).toBeInstanceOf(DataAvailabilityError);
+      expect(err.hint).toMatch(/"ecmwf_ifs_hres"/);
+    }
+  });
+
+  it("hint links to docs/forecasts.md typescript-lane section", async () => {
+    try {
+      await forecastNwp("KNYC", "hrrr");
+      throw new Error("should have thrown DataAvailabilityError");
+    } catch (e) {
+      const err = e as DataAvailabilityError;
+      expect(err).toBeInstanceOf(DataAvailabilityError);
+      expect(err.hint).toMatch(/typescript-lane|forecasts/);
+    }
   });
 
   it("signature accepts all 24 NwpModel literals", async () => {

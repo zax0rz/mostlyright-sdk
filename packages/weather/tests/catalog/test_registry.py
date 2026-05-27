@@ -6,7 +6,11 @@ from __future__ import annotations
 # 4 canonical adapters.
 import mostlyright.weather.catalog as catalog
 import pytest
-from mostlyright.core.exceptions import SourceUnavailableError
+from mostlyright.core.exceptions import (
+    DataAvailabilityError,
+    SourceUnavailableError,
+    TradewindsError,
+)
 from mostlyright.weather.catalog import (
     get_adapter,
     list_sources,
@@ -30,9 +34,22 @@ def test_get_adapter_returns_instance():
 
 
 def test_get_adapter_unknown_raises():
-    with pytest.raises(SourceUnavailableError) as exc:
+    """Phase 21 21-09: migrated to DataAvailabilityError(reason='model_unavailable').
+
+    Back-compat catch via the TradewindsError base class still works for code
+    that hasn't been updated. We assert both the new structural exception type
+    AND the historical SourceUnavailableError path (which no longer catches
+    this specific raise, but is still importable for other call sites).
+    """
+    with pytest.raises(DataAvailabilityError) as exc:
         get_adapter("bogus.source")
     assert exc.value.source == "bogus.source"
+    assert exc.value.reason == "model_unavailable"
+    # Catchable via the base class (back-compat for existing handler code).
+    with pytest.raises(TradewindsError):
+        get_adapter("bogus.source")
+    # SourceUnavailableError is still importable but no longer catches this site.
+    assert SourceUnavailableError is not DataAvailabilityError
 
 
 def test_register_adapter_conflict_raises():

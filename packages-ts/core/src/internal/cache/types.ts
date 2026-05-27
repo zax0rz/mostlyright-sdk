@@ -52,3 +52,16 @@ export interface CacheStore {
 export function lockKeyFor(key: string): string {
   return `mostlyright:cache:lock:${key}`;
 }
+
+/**
+ * Canonical cache schema version stamp (Phase 21 21-03).
+ *
+ * Must match Python `mostlyright.weather.cache._cache_schema_version`
+ * (set in Phase 18 18-08 to "v2-phase18-integer-f" after the ASOS
+ * integer-°F precision fix). Embedded by `versionedCacheStore` into
+ * every cache write so pre-bump entries silently re-fetch.
+ *
+ * Bump this string when a cache-shape change ships; existing cached
+ * values invalidate on next read with no operator action required.
+ */
+export const CACHE_SCHEMA_VERSION = "v2-phase18-integer-f";

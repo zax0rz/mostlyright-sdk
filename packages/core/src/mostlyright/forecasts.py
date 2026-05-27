@@ -32,7 +32,6 @@ from typing import TYPE_CHECKING
 from mostlyright.core.exceptions import (
     DeprecatedModelWarning,
     NwpModelNotAvailableError,
-    SourceUnavailableError,
 )
 from mostlyright.core.schemas.forecast_nwp import NWP_MODEL_VALUES
 
@@ -247,12 +246,19 @@ def forecast_nwp(
             forecast_nwp as _impl,
         )
     except ImportError as exc:
-        raise SourceUnavailableError(
-            f"mostlyright.weather.forecast_nwp is not available: {exc}. "
-            "Install mostlyrightmd-weather: pip install mostlyrightmd-weather",
+        # Phase 21 21-09: migrated from SourceUnavailableError to the structural
+        # DataAvailabilityError so consumers can dispatch on `e.reason ==
+        # "model_unavailable"` rather than parsing the install hint out of the
+        # message. The hint is still operator-actionable.
+        from mostlyright.core.exceptions import DataAvailabilityError
+
+        raise DataAvailabilityError(
+            reason="model_unavailable",
+            hint=(
+                f"mostlyright.weather.forecast_nwp is not available: {exc}. "
+                "Install mostlyrightmd-weather: pip install mostlyrightmd-weather"
+            ),
             source=f"nwp.{model}",
-            retryable=False,
-            underlying=str(exc),
         ) from None
 
     return _impl(

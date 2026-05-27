@@ -56,6 +56,10 @@ export default defineConfig({
         replacement: resolve(__dirname, "../core/src/qc/index.ts"),
       },
       {
+        find: "@mostlyrightmd/core/preprocessing",
+        replacement: resolve(__dirname, "../core/src/preprocessing/index.ts"),
+      },
+      {
         find: "@mostlyrightmd/core",
         replacement: resolve(__dirname, "../core/src/index.ts"),
       },

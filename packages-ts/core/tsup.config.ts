@@ -200,4 +200,21 @@ export default defineConfig([
       return { js: ".cjs" };
     },
   },
+  {
+    // Phase 21 21-10 — `preprocessing` namespace surface (matches Python
+    // `mostlyright.preprocessing`). Re-exports clipOutliers + PHYSICS_BOUNDS
+    // from transforms/clip and iemCrosscheck (= crosscheckIemGhcnh) from
+    // qc/crosscheck. Lives at subpath (NOT root barrel) per TS-BUNDLE-01.
+    entry: { index: "src/preprocessing/index.ts" },
+    format: ["esm", "cjs"],
+    dts: true,
+    sourcemap: true,
+    clean: false,
+    target: "es2022",
+    outDir: "dist/preprocessing",
+    outExtension({ format }) {
+      if (format === "esm") return { js: ".mjs" };
+      return { js: ".cjs" };
+    },
+  },
 ]);

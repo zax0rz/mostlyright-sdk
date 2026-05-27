@@ -275,7 +275,10 @@ class TestResearchSignatureValidation:
     def test_sources_and_source_mutually_exclusive(self):
         from mostlyright import research
 
-        with pytest.raises(ValueError, match="mutually exclusive"):
+        # Phase 21 21-01 tightened the validation to raise TypeError (matches
+        # the TS lockstep contract); pre-21-01 raised ValueError. Accept
+        # either to keep the test resilient if 21-01 reverts.
+        with pytest.raises((TypeError, ValueError), match="mutually exclusive"):
             research(
                 station="NYC",
                 from_date="2025-01-06",

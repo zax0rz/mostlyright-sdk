@@ -203,6 +203,65 @@ export class SourceUnavailableError extends TradewindsError {
 }
 
 // ---------------------------------------------------------------------------
+// DataAvailabilityError (Phase 21 21-09)
+// ---------------------------------------------------------------------------
+//
+// Typed exception for "I tried to fetch and got nothing usable" — replaces
+// 3+ overloaded SourceUnavailableError sites where consumers had to parse
+// message strings to differentiate (rate-limit retry vs model-unavailable
+// hard-fail vs cache-miss re-fetch). The reason enum is shared lockstep
+// with Python (`mostlyright.core.exceptions.DataAvailabilityError`); drift
+// is the load-bearing risk.
+
+/** Shared reason enum — MUST match Python EXACTLY (Phase 21 D-04). */
+export const DATA_AVAILABILITY_REASONS = [
+  "model_unavailable",
+  "out_of_window",
+  "cache_miss",
+  "source_404",
+  "source_5xx",
+  "rate_limited",
+] as const;
+
+export type DataAvailabilityReason = (typeof DATA_AVAILABILITY_REASONS)[number];
+
+export interface DataAvailabilityErrorOptions extends TradewindsErrorOptions {
+  reason: DataAvailabilityReason;
+  hint: string;
+}
+
+export class DataAvailabilityError extends TradewindsError {
+  static override defaultErrorCode = "DATA_AVAILABILITY";
+
+  readonly reason: DataAvailabilityReason;
+  readonly hint: string;
+
+  constructor(options: DataAvailabilityErrorOptions) {
+    if (!DATA_AVAILABILITY_REASONS.includes(options.reason)) {
+      throw new RangeError(
+        `DataAvailabilityError: unknown reason "${String(options.reason)}". ` +
+          `Valid reasons: ${DATA_AVAILABILITY_REASONS.join(", ")}`,
+      );
+    }
+    if (typeof options.hint !== "string" || options.hint.length === 0) {
+      throw new TypeError("DataAvailabilityError: hint is required and must be a non-empty string");
+    }
+    const message = `[${options.reason}] ${options.hint}`;
+    super(message, options);
+    this.reason = options.reason;
+    this.hint = options.hint;
+  }
+
+  protected override payload(): Record<string, unknown> {
+    return {
+      ...super.payload(),
+      reason: this.reason,
+      hint: this.hint,
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // SchemaValidationError
 // ---------------------------------------------------------------------------
 
@@ -536,7 +595,7 @@ export class NoLiveDataError extends LiveStreamError {
 
   readonly station: string;
 
-  constructor(message = "", options: NoLiveDataErrorOptions) {
+  constructor(message: string, options: NoLiveDataErrorOptions) {
     super(message, { ...options, source: options.source });
     this.station = options.station;
   }

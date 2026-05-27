@@ -80,6 +80,49 @@ export {
 } from "@mostlyrightmd/weather";
 export { LiveStreamError, NoLiveDataError } from "@mostlyrightmd/core";
 
+// Phase 21 21-05 — dailyExtremes wrapper surfaced via meta so callers
+// can `import { dailyExtremes } from "mostlyright"` matching Python
+// `mostlyright.international.daily_extremes`.
+export {
+  dailyExtremes,
+  type DailyExtremeRow,
+  type DailyExtremesMergeMode,
+  type DailyExtremesOptions,
+} from "@mostlyrightmd/weather";
+
+// Phase 21 21-04 — obs(station, from, to, opts?) Phase 7 ingest-planner
+// surface re-exported via meta.
+export {
+  obs,
+  type ObsOptions,
+  type ObsRow,
+  type ObsSourceFilter,
+  type ObsStrategy,
+} from "@mostlyrightmd/weather";
+
+// Phase 21 21-10 — `preprocessing` lowercase namespace, matching Python
+// `mostlyright.preprocessing`. Surfaces `clipOutliers`, `PHYSICS_BOUNDS`,
+// `iemCrosscheck` under a single namespace so cross-language code reads
+// lexically symmetric:
+//
+//   Python: from mostlyright.preprocessing import clip_outliers
+//   TS:     import { preprocessing } from "mostlyright"
+//           preprocessing.clipOutliers(...)
+//
+// The PascalCase `Preprocessing` alias below is the deprecated form
+// (TSDoc @deprecated triggers IDE strikethrough); scheduled for removal
+// in v2.0.0. Both aliases point at the same module object.
+import * as preprocessing from "@mostlyrightmd/core/preprocessing";
+
+export { preprocessing };
+
+/**
+ * @deprecated Use the lowercase `preprocessing` namespace instead — it
+ * matches the Python `mostlyright.preprocessing` namespace. The
+ * PascalCase alias is scheduled for removal in v2.0.0.
+ */
+export const Preprocessing = preprocessing;
+
 /**
  * Placeholder version string for the meta package. The authoritative
  * package version lives in `package.json#version` (currently

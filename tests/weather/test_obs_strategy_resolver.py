@@ -151,13 +151,21 @@ def test_resolver_multi_year_window_sees_cache_in_either_year(tmp_path):
 
 
 # --- Hosted dispatch: end-to-end check via obs() ----------------------------
-def test_obs_auto_with_env_set_raises_hosted_not_implemented(monkeypatch, empty_cache):
+def test_obs_auto_with_env_set_raises_hosted_data_availability_error(monkeypatch, empty_cache):
+    """Phase 21 21-09: migrated NotImplementedError → DataAvailabilityError.
+
+    The hosted v0.2.x deferral is still surfaced; consumers branch on
+    ``e.reason == "model_unavailable"`` instead of catching NotImplementedError.
+    """
+    from mostlyright.core.exceptions import DataAvailabilityError
     from mostlyright.weather.obs import obs
 
     monkeypatch.setenv("TW_HOSTED_URL", "https://api.example.com")
     monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(empty_cache))
-    with pytest.raises(NotImplementedError, match=r"hosted strategy deferred to v0\.2\.x"):
+    with pytest.raises(DataAvailabilityError) as exc:
         obs("KNYC", "2024-03-01", "2024-03-31", strategy="auto")
+    assert exc.value.reason == "model_unavailable"
+    assert "hosted strategy deferred to v0.2.x" in exc.value.hint
 
 
 # --- auto + source=... routes to exact_window even with warm cache ----------

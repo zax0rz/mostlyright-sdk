@@ -19,10 +19,26 @@ import {
   MemoryStore,
   defaultCacheStore,
 } from "../../../src/internal/cache/index.js";
+import type { CacheStore } from "../../../src/internal/cache/types.js";
+
+/**
+ * Phase 21 21-03 fix-iter-1: `defaultCacheStore()` now returns a
+ * `VersionedCacheStore` wrapper around the concrete backend so stale
+ * pre-Phase-18 cache entries silently miss. To assert which concrete
+ * backend was selected, peek through the wrapper via the
+ * `__peekInner()` test seam (versionedCacheStore.ts).
+ */
+function innerOf(store: CacheStore): CacheStore {
+  const maybe = store as CacheStore & { __peekInner?: () => CacheStore };
+  if (typeof maybe.__peekInner === "function") {
+    return maybe.__peekInner();
+  }
+  return store;
+}
 
 describe("defaultCacheStore()", () => {
   it("returns IndexedDBStore when indexedDB is present (jsdom + fake-indexeddb)", async () => {
-    expect(await defaultCacheStore()).toBeInstanceOf(IndexedDBStore);
+    expect(innerOf(await defaultCacheStore())).toBeInstanceOf(IndexedDBStore);
   });
 
   describe("FsStore fallback (no indexedDB, Node process present)", () => {
@@ -40,7 +56,7 @@ describe("defaultCacheStore()", () => {
     });
 
     it("returns FsStore when indexedDB is absent and process.versions.node is present", async () => {
-      expect(await defaultCacheStore()).toBeInstanceOf(FsStore);
+      expect(innerOf(await defaultCacheStore())).toBeInstanceOf(FsStore);
     });
   });
 
@@ -64,7 +80,7 @@ describe("defaultCacheStore()", () => {
     });
 
     it("returns MemoryStore when no runtime markers are present", async () => {
-      expect(await defaultCacheStore()).toBeInstanceOf(MemoryStore);
+      expect(innerOf(await defaultCacheStore())).toBeInstanceOf(MemoryStore);
     });
   });
 
@@ -72,5 +88,19 @@ describe("defaultCacheStore()", () => {
     const a = await defaultCacheStore();
     const b = await defaultCacheStore();
     expect(a).not.toBe(b);
+  });
+
+  // Phase 21 21-03 fix-iter-1: lock in that defaultCacheStore() returns a
+  // version-wrapped store. If a future refactor strips the wrap, this test
+  // catches it before stale-cache regressions ship.
+  it("wraps the concrete store in a versioned cache adapter", async () => {
+    const store = await defaultCacheStore();
+    // The wrapper installs __peekInner; the unwrapped store does not.
+    expect(typeof (store as { __peekInner?: unknown }).__peekInner).toBe("function");
+    // Write/read round-trip via the wrapper still works.
+    await store.set("phase21-21-03-smoke", { x: 1 });
+    const back = await store.get<{ x: number }>("phase21-21-03-smoke");
+    expect(back).toEqual({ x: 1 });
+    await store.delete("phase21-21-03-smoke");
   });
 });

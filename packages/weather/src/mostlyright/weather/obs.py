@@ -170,8 +170,16 @@ def _dispatch_strategy(
     if strategy == "warm_cache":
         return _warm_cache_fetch(info, from_date_iso, to_date_iso, source=source)
     if strategy == "hosted":
-        raise NotImplementedError(
-            "hosted strategy deferred to v0.2.x — set TW_HOSTED_URL to enable once client lands"
+        # Phase 21 21-09: migrated from NotImplementedError to the structural
+        # DataAvailabilityError so cross-SDK callers can branch on `e.reason`
+        # rather than string-matching the message. Symmetric with TS
+        # obs(strategy="hosted") per D-06.
+        from mostlyright.core.exceptions import DataAvailabilityError
+
+        raise DataAvailabilityError(
+            reason="model_unavailable",
+            hint="hosted strategy deferred to v0.2.x — set TW_HOSTED_URL to enable once client lands",
+            source="obs.hosted",
         )
     raise ValueError(f"Unknown concrete strategy: {strategy!r}")
 
