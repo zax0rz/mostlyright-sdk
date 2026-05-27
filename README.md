@@ -3,7 +3,9 @@
 **The public data SDK for quants and AI agents.**
 
 [![PyPI version](https://img.shields.io/pypi/v/mostlyrightmd.svg)](https://pypi.org/project/mostlyrightmd/)
+[![PyPI downloads](https://img.shields.io/pepy/dm/mostlyrightmd?label=PyPI%20downloads)](https://pepy.tech/projects/mostlyrightmd)
 [![npm version](https://img.shields.io/npm/v/mostlyright.svg)](https://www.npmjs.com/package/mostlyright)
+[![npm downloads](https://img.shields.io/npm/dm/mostlyright?label=npm%20downloads)](https://www.npmjs.com/package/mostlyright)
 [![Python versions](https://img.shields.io/pypi/pyversions/mostlyrightmd.svg)](https://pypi.org/project/mostlyrightmd/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-mostlyright.md-blue.svg)](https://mostlyright.md/docs/sdk/)
@@ -54,24 +56,24 @@ Full quickstart with concepts at <https://mostlyright.md/docs/sdk/>.
 
 ### Python (PyPI)
 
-| Package | Description | Status |
-|---|---|---|
-| [`mostlyrightmd`](https://pypi.org/project/mostlyrightmd/) | Core types, schemas, validators, the `research()` join, and snapshot primitives. Imports as `mostlyright`. | stable |
-| [`mostlyrightmd-weather`](https://pypi.org/project/mostlyrightmd-weather/) | Weather data fetchers (AWC, IEM ASOS, GHCNh, NWS CLI). Direct public-API access. | stable |
-| [`mostlyrightmd-markets`](https://pypi.org/project/mostlyrightmd-markets/) | Prediction-market data (Kalshi NHIGH/NLOW resolvers, Polymarket discovery + settlement). | stable |
-| `mostlyrightmd-edgar` | SEC filings (10-K, 10-Q, 8-K) — direct EDGAR full-text + facts access. | planned |
-| `mostlyrightmd-fred` | Federal Reserve economic data (FRED series, observations, releases). | planned |
+| Package | Description | Downloads | Status |
+|---|---|---|---|
+| [`mostlyrightmd`](https://pypi.org/project/mostlyrightmd/) | Core types, schemas, validators, the `research()` join, and snapshot primitives. Imports as `mostlyright`. | [![monthly downloads](https://img.shields.io/pepy/dm/mostlyrightmd?label=monthly)](https://pepy.tech/projects/mostlyrightmd) | stable |
+| [`mostlyrightmd-weather`](https://pypi.org/project/mostlyrightmd-weather/) | Weather data fetchers (AWC, IEM ASOS, GHCNh, NWS CLI). Direct public-API access. | [![monthly downloads](https://img.shields.io/pepy/dm/mostlyrightmd-weather?label=monthly)](https://pepy.tech/projects/mostlyrightmd-weather) | stable |
+| [`mostlyrightmd-markets`](https://pypi.org/project/mostlyrightmd-markets/) | Prediction-market data (Kalshi NHIGH/NLOW resolvers, Polymarket discovery + settlement). | [![monthly downloads](https://img.shields.io/pepy/dm/mostlyrightmd-markets?label=monthly)](https://pepy.tech/projects/mostlyrightmd-markets) | stable |
+| `mostlyrightmd-edgar` | SEC filings (10-K, 10-Q, 8-K) — direct EDGAR full-text + facts access. | n/a | planned |
+| `mostlyrightmd-fred` | Federal Reserve economic data (FRED series, observations, releases). | n/a | planned |
 
 ### TypeScript (npm)
 
-| Package | Description | Status |
-|---|---|---|
-| [`mostlyright`](https://www.npmjs.com/package/mostlyright) | Meta package — re-exports `core` + `weather` + `markets` for one-import workflows. | stable |
-| [`@mostlyrightmd/core`](https://www.npmjs.com/package/@mostlyrightmd/core) | Core types, schemas, validators, temporal-safety primitives, and the `research()` join. | stable |
-| [`@mostlyrightmd/weather`](https://www.npmjs.com/package/@mostlyrightmd/weather) | Weather data fetchers (AWC, IEM ASOS, GHCNh, NWS CLI). | stable |
-| [`@mostlyrightmd/markets`](https://www.npmjs.com/package/@mostlyrightmd/markets) | Prediction-market resolvers (Kalshi NHIGH/NLOW, Polymarket). | stable |
-| `@mostlyrightmd/edgar` | SEC filings (10-K, 10-Q, 8-K). | planned |
-| `@mostlyrightmd/fred` | Federal Reserve economic data. | planned |
+| Package | Description | Downloads | Status |
+|---|---|---|---|
+| [`mostlyright`](https://www.npmjs.com/package/mostlyright) | Meta package — re-exports `core` + `weather` + `markets` for one-import workflows. | [![monthly downloads](https://img.shields.io/npm/dm/mostlyright?label=monthly)](https://www.npmjs.com/package/mostlyright) | stable |
+| [`@mostlyrightmd/core`](https://www.npmjs.com/package/@mostlyrightmd/core) | Core types, schemas, validators, temporal-safety primitives, and the `research()` join. | [![monthly downloads](https://img.shields.io/npm/dm/%40mostlyrightmd%2Fcore?label=monthly)](https://www.npmjs.com/package/@mostlyrightmd/core) | stable |
+| [`@mostlyrightmd/weather`](https://www.npmjs.com/package/@mostlyrightmd/weather) | Weather data fetchers (AWC, IEM ASOS, GHCNh, NWS CLI). | [![monthly downloads](https://img.shields.io/npm/dm/%40mostlyrightmd%2Fweather?label=monthly)](https://www.npmjs.com/package/@mostlyrightmd/weather) | stable |
+| [`@mostlyrightmd/markets`](https://www.npmjs.com/package/@mostlyrightmd/markets) | Prediction-market resolvers (Kalshi NHIGH/NLOW, Polymarket). | [![monthly downloads](https://img.shields.io/npm/dm/%40mostlyrightmd%2Fmarkets?label=monthly)](https://www.npmjs.com/package/@mostlyrightmd/markets) | stable |
+| `@mostlyrightmd/edgar` | SEC filings (10-K, 10-Q, 8-K). | n/a | planned |
+| `@mostlyrightmd/fred` | Federal Reserve economic data. | n/a | planned |
 
 ## What you can build
 

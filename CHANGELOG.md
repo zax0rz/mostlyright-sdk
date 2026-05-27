@@ -8,7 +8,13 @@ All notable changes to `mostlyright`. The format follows [Keep a Changelog](http
 
 ## [1.1.2] — 2026-05-27
 
-Patch release. Closes plan 18-09 (parity fixture re-capture) and plan 18-11c Task 2 (TS parity fixture re-export) — the two operator-deferred items from the Phase 18 v1.1.0 release.
+Patch release. Closes plan 18-09 (parity fixture re-capture), plan 18-11c Task 2 (TS parity fixture re-export), and refreshes registry-visible metadata. Runtime SDK APIs and source behavior are unchanged.
+
+### Changed
+- **README:** add PyPI/npm monthly download badges, keep the public-data positioning beyond weather-only, and surface package-level download badges for stable Python and TypeScript packages.
+- **PyPI metadata:** add Homepage, Documentation, Repository, Issues, and Changelog URLs to all three Python distributions; broaden the core `mostlyrightmd` package description beyond weather-only.
+- **npm metadata:** add homepage, repository, and issue-tracker fields to all four published TypeScript packages; broaden the `@mostlyrightmd/core` description beyond weather-only.
+- **Docs:** refresh the Sphinx landing description to position the SDK as public-data prediction-market research, not only weather settlement research.
 
 (The v1.1.1 number was burned by a concurrent registry-metadata refresh published from a separate branch. This v1.1.2 release ships the parity work originally targeted for v1.1.1.)
 

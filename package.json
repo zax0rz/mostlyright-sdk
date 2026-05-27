@@ -2,7 +2,15 @@
   "name": "mostlyright-ts-workspace",
   "version": "0.0.0",
   "private": true,
-  "description": "Workspace root for @mostlyrightmd/* TypeScript SDK packages. Not published.",
+  "description": "Workspace root for the mostlyright TypeScript SDK packages. Public SDK covers weather data, forecasts, and prediction-market research. Not published.",
+  "homepage": "https://mostlyright.md/docs/sdk/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mostlyrightmd/mostlyright-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mostlyrightmd/mostlyright-sdk/issues"
+  },
   "packageManager": "pnpm@9.12.0",
   "engines": {
     "node": ">=20"
