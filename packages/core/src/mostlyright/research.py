@@ -1712,17 +1712,15 @@ def research(
                 # caller would not learn the source failed. Hard-fail with
                 # a hint so the typo surfaces immediately.
                 raise ValueError(
-                    f"forecast_source=\"open_meteo\" requires forecast_model "
+                    f'forecast_source="open_meteo" requires forecast_model '
                     f"in OPEN_METEO_MODELS (36 keys); got {om_model!r}. "
                     f"Pick one of the 36 registered Open-Meteo keys (e.g. "
                     f"'gfs_global', 'ecmwf_ifs_hres', 'dwd_icon_global') "
-                    f"or drop forecast_source=\"open_meteo\" to use the "
+                    f'or drop forecast_source="open_meteo" to use the '
                     f"default IEM MOS path."
                 )
 
-            om_by_date = _fetch_open_meteo_range(
-                info, from_date, to_date, model=om_model
-            )
+            om_by_date = _fetch_open_meteo_range(info, from_date, to_date, model=om_model)
             # Concatenate: never silently merge — every row carries its
             # source identity. build_pairs accepts a single dict so we
             # merge OM rows into iem_mos_by_date when both sources are

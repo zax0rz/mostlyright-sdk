@@ -302,8 +302,7 @@ def validate_dataframe(
         and allow_source_drift is None
     ):
         raise SourceMismatchError(
-            f"Source drift: data is {data_source!r}, schema permits "
-            f"{sorted(registered_sources)!r}",
+            f"Source drift: data is {data_source!r}, schema permits {sorted(registered_sources)!r}",
             schema_source=",".join(sorted(registered_sources)),
             data_source=data_source,
             role=None,

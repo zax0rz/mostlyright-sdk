@@ -31,6 +31,7 @@ from mostlyright._internal._bounds import (
 )
 from mostlyright._internal._convert import celsius_to_fahrenheit, hpa_to_inhg
 from mostlyright.weather._awc import icao_to_station_code, map_cloud_cover
+from mostlyright.weather._internal.tgroup import parse_tgroup as _parse_tgroup
 
 _MS_TO_KT = 1 / 0.514444
 _KM_TO_MI = 1 / 1.60934
@@ -200,7 +201,21 @@ def parse_ghcnh_row(row: dict[str, str]) -> dict[str, Any] | None:
     if not any((temp_ok, dewp_ok, wspd_ok, slp_ok)):
         return None
 
-    # Temperature (no rounding, bounded)
+    # Raw METAR: extract early so T-group detection is available for temp_f recovery.
+    rem = row.get("REM", "")
+    raw_metar: str | None = None
+    if rem:
+        idx_metar = rem.find("METAR ")
+        idx_speci = rem.find("SPECI ")
+        if idx_metar >= 0 and (idx_speci < 0 or idx_metar < idx_speci):
+            cleaned = rem[idx_metar:]
+        elif idx_speci >= 0:
+            cleaned = rem[idx_speci:]
+        else:
+            cleaned = rem  # No METAR/SPECI marker — fall back to raw REM
+        raw_metar = cleaned[:MAX_RAW_METAR_LEN]
+
+    # Temperature (°C from PSV field; no rounding, bounded)
     temp_c = (
         bounded_float(
             _safe_float(row.get("temperature", "")),
@@ -221,19 +236,21 @@ def parse_ghcnh_row(row: dict[str, str]) -> dict[str, Any] | None:
         if dewp_ok
         else None
     )
-    # Phase 18: GHCNh temp_f conversion path deferred from Phase 18 fix.
-    # NCEI publishes hourly observations with `temperature` in °C as the
-    # primary field; whether the underlying ASOS source data is integer-°F
-    # native (with NCEI doing the °F→°C conversion server-side) is NOT
-    # documented in the NCEI data dictionary. Until NCEI native-units documentation
-    # is obtained, the existing celsius_to_fahrenheit path is preserved here
-    # as the safe default. AWC + IEM Tgroup-recovery fixes (Phase 18 PREC-01
-    # + PREC-02) cover the two sources whose raw METAR carries an unambiguous
-    # Tgroup. See
-    # .planning/phases/18-precision-fix-asos-integer-fahrenheit/18-CONTEXT.md
-    # for the deferral rationale.
-    temp_f = celsius_to_fahrenheit(temp_c)
-    dewp_f = celsius_to_fahrenheit(dewp_c)
+    # Issue 16 / Phase 18 GHCNh fix: when the raw METAR in the REM column
+    # carries a T-group remark (U.S. ASOS stations), the temperature was
+    # originally measured in integer °F. Recover the native integer via
+    # round(temp_c * 9 / 5 + 32), identical to the AWC path (PREC-01).
+    # Without a T-group (international stations, synoptic rows), keep the
+    # legacy celsius_to_fahrenheit float path.
+    tgroup_temp, tgroup_dewp = _parse_tgroup(raw_metar)
+    if tgroup_temp is not None and temp_c is not None:
+        temp_f = float(round(temp_c * 9 / 5 + 32))
+    else:
+        temp_f = celsius_to_fahrenheit(temp_c)
+    if tgroup_dewp is not None and dewp_c is not None:
+        dewp_f = float(round(dewp_c * 9 / 5 + 32))
+    else:
+        dewp_f = celsius_to_fahrenheit(dewp_c)
 
     # Wind (m/s -> kt, rounded to integer, bounded by schema)
     wind_dir = bounded_int(_safe_int(row.get("wind_direction", "")), 0, 360) if wdir_ok else None
@@ -290,25 +307,6 @@ def parse_ghcnh_row(row: dict[str, str]) -> dict[str, Any] | None:
 
     # Weather codes
     weather_codes = _parse_weather_codes(row)
-
-    # Raw METAR from REM column. Codex W3A P2: GHCNh wraps the raw METAR
-    # in a "METxxxxMM/DD/YY HH:MM:SS METAR <icao> ..." prefix. Extract just
-    # the METAR/SPECI substring so raw_metar starts with "METAR" or "SPECI"
-    # per the observation schema contract.
-    rem = row.get("REM", "")
-    raw_metar: str | None = None
-    if rem:
-        # Find the first occurrence of "METAR " or "SPECI " and slice from there.
-        idx_metar = rem.find("METAR ")
-        idx_speci = rem.find("SPECI ")
-        if idx_metar >= 0 and (idx_speci < 0 or idx_metar < idx_speci):
-            cleaned = rem[idx_metar:]
-        elif idx_speci >= 0:
-            cleaned = rem[idx_speci:]
-        else:
-            cleaned = rem  # No METAR/SPECI marker — fall back to raw REM
-        # Trim trailing GHCNh annotations like " (RR)" if present at end
-        raw_metar = cleaned[:MAX_RAW_METAR_LEN]
 
     return {
         "station_code": station_code,
