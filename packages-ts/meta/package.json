@@ -1,6 +1,6 @@
 {
   "name": "mostlyright",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Public-data SDK for TypeScript — one import for quants, ML pipelines, and AI agents. Adapters ship weather (METAR, ASOS, GHCNh, NWS CLI) and prediction-market settlements (Kalshi NHIGH/NLOW, Polymarket) today; SEC filings, Federal Reserve series, court filings, FDA approvals, and equities are next. Local-first, no hosted backend.",
   "keywords": [
     "weather",

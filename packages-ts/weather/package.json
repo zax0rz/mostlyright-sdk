@@ -1,6 +1,6 @@
 {
   "name": "@mostlyrightmd/weather",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Weather data for TypeScript / Node — live METAR (AWC), ASOS archive (IEM), historical observations (GHCNh), and NWS climate text products (CLI). For quants, ML training pipelines, and weather-bot agents. Direct public-API access, no hosted backend.",
   "keywords": [
     "weather",

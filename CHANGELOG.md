@@ -4,6 +4,8 @@ All notable changes to `mostlyright`. The format follows [Keep a Changelog](http
 
 ## [Unreleased]
 
+## [1.4.0] — 2026-05-28 — Phase 22: Station-model refactor + Las Vegas (Kalshi TLV)
+
 ### Changed — Phase 22: Station-model refactor (BREAKING, pre-1.0)
 - **Unified, venue-agnostic station catalog in core.** New `mostlyright.stations` module exposes `StationCatalog` (`CATALOG`, `Station`) with `get()`, `filter_by_venue()`, and `filter_by_country()`. A station is a physical fact; prediction-market participation is a `venues` tag (`frozenset[str]`) on `StationInfo`, not a separate module or a US/international split.
 - **Registry expanded to 66 stations (25 US + 41 international).** Added the five Kalshi settlement stations the v0.14.1 set had wrong — `KIAH` (Houston Intercontinental, not `KHOU`), `KDTW`, `KCVG`, `KBNA`, `KSLC`. The four non-settlement US weather stations (`KHOU`/`KMSY`/`KOKC`/`KSAT`) remain queryable with an empty `venues` tag.
