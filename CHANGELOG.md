@@ -4,6 +4,15 @@ All notable changes to `mostlyright`. The format follows [Keep a Changelog](http
 
 ## [Unreleased]
 
+## [1.3.1] — 2026-05-28 — GHCNh integer-°F precision fix
+
+### Fixed
+- **GHCNh `temp_f` false precision for U.S. ASOS stations** ([#36](https://github.com/mostlyrightmd/mostlyright-sdk/pull/36), closes [#16](https://github.com/mostlyrightmd/mostlyright-sdk/issues/16)). GHCNh-sourced observations emitted back-converted `temp_f` (e.g. `51.08°F` for `temp_c=10.6°C`) via `celsius_to_fahrenheit`. The raw METAR preserved in the GHCNh PSV `REM` column carries the T-group remark (e.g. `T01060067`), marking the row as integer-°F native; `temp_f` (and `dewpoint_f`) is now recovered as `round(temp_c * 9/5 + 32)` — matching the AWC (PREC-01) and IEM (PREC-02) paths. Non-T-group rows (synoptic / international) keep the legacy `celsius_to_fahrenheit` path. `temp_c` is unchanged. Closes the Phase 18 GHCNh deferral.
+- **Observation cache invalidation for the GHCNh change.** Bumped `_CACHE_SCHEMA_VERSION` (`v2-phase18-integer-f` → `v3-ghcnh-integer-f`) so existing observation caches re-parse instead of serving stale GHCNh `temp_f` to upgraded users.
+
+### Notes
+- Affects `mostlyrightmd-weather` only. No TypeScript changes (the TS GHCNh adapter does not yet exist), so npm packages are not part of this release.
+
 ## [1.3.0] — 2026-05-28 — Phase 20: Open-Meteo Forecast Source Integration
 
 ### Added — Phase 20: Open-Meteo Forecast Source Integration (leakage-safe, 36-model)
