@@ -64,9 +64,15 @@ jobs:
             echo "__PARITY_EOF__"
           } >> "$GITHUB_OUTPUT"
 
+      # Skip on fork PRs: pull_request from a fork gets a read-only GITHUB_TOKEN,
+      # so issues.createComment 403s and would fail the job even when the gate
+      # itself passed. The check status already conveys the verdict; the sticky
+      # comment is a convenience for same-repo PRs. continue-on-error is a
+      # belt-and-suspenders guard so a transient API error never fails the gate.
       - name: Post sticky verdict comment
         uses: actions/github-script@v7
-        if: always()
+        if: ${{ always() && github.event.pull_request.head.repo.fork == false }}
+        continue-on-error: true
         env:
           GATE_EXIT: ${{ steps.parity-gate.outputs.exit_code }}
           GATE_BODY: ${{ steps.parity-gate.outputs.comment_body }}
