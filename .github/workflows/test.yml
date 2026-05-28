@@ -2,6 +2,18 @@ name: Test (fast suite)
 
 # Phase 4 (CI-01 + CI-02): pytest -m "not live" on every push/PR; the
 # @pytest.mark.live tests are excluded from CI (run manually pre-publish).
+#
+# `fast-suite (3.11/3.12/3.13)`, `pandas-3-suite`, `polars-suite`, and
+# `coverage-gate` are REQUIRED checks on `main`. Like test-ts, they were
+# path-filtered on pull_request, so a PR that does NOT touch Python paths
+# (e.g. a TS-only external fork PR) never produced these statuses and sat
+# permanently BLOCKED ("Expected — waiting for status"). On pull_request we
+# now run UNCONDITIONALLY and detect Python-relevant changes inside the
+# workflow (the `changes` job); when none changed, each job's heavy steps
+# skip and the job still reports success — preserving the "don't burn CI
+# minutes when only TS source moves" intent while always emitting the
+# required contexts. The push trigger stays path-filtered (off-PR pushes are
+# not gated by required checks).
 
 on:
   # codex iter-4 HIGH fix: no branch filter. Integration branches
@@ -21,40 +33,66 @@ on:
       - "uv.lock"
       - ".github/workflows/test.yml"
       - ".pre-commit-config.yaml"
-  pull_request:
-    paths:
-      - "packages/**"
-      - "tests/**"
-      - "pyproject.toml"
-      - "uv.lock"
-      - ".github/workflows/test.yml"
-      - ".pre-commit-config.yaml"
+  pull_request: {}
 
 jobs:
+  # Detect whether this PR touches Python-relevant paths. Same path set the
+  # pull_request trigger used to filter on. Downstream jobs gate their heavy
+  # steps on this output so they no-op to success (and still report their
+  # required contexts) when nothing Python-relevant changed.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      py: ${{ steps.filter.outputs.py }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            py:
+              - 'packages/**'
+              - 'tests/**'
+              - 'pyproject.toml'
+              - 'uv.lock'
+              - '.github/workflows/test.yml'
+              - '.pre-commit-config.yaml'
+
   fast-suite:
+    needs: changes
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.11", "3.12", "3.13"]
       fail-fast: false
     steps:
+      - name: No-op (no Python-relevant changes)
+        if: needs.changes.outputs.py != 'true'
+        run: echo "No Python-relevant changes in this PR; fast-suite is a no-op success."
+
       - uses: actions/checkout@v4
+        if: needs.changes.outputs.py == 'true'
 
       - name: Install uv
+        if: needs.changes.outputs.py == 'true'
         uses: astral-sh/setup-uv@v3
 
       - name: Set up Python ${{ matrix.python-version }}
+        if: needs.changes.outputs.py == 'true'
         run: uv python install ${{ matrix.python-version }}
 
       - name: Sync workspace
+        if: needs.changes.outputs.py == 'true'
         run: uv sync --all-packages
 
       - name: Run ruff
+        if: needs.changes.outputs.py == 'true'
         run: |
           uv run ruff check .
           uv run ruff format --check .
 
       - name: Run fast test suite (excludes @pytest.mark.live and @pytest.mark.polars)
+        if: needs.changes.outputs.py == 'true'
         run: uv run pytest -m "not live and not polars" -q
 
       # Phase 4 DOCS-01: doctests on 4 public-surface modules. We pass
@@ -62,6 +100,7 @@ jobs:
       # because lifted _internal/* and _v02/* modules may carry legacy
       # >>>-style comments that aren't intended as runnable doctests.
       - name: Run doctests (research / KnowledgeView / LeakageDetector / validate_dataframe)
+        if: needs.changes.outputs.py == 'true'
         run: |
           uv run pytest --doctest-modules \
             packages/core/src/mostlyright/research.py \
@@ -76,12 +115,20 @@ jobs:
   # version (3.13) initially to keep CI cost down; expand to the full
   # matrix when 3.x bytes stabilize.
   pandas-3-suite:
+    needs: changes
     runs-on: ubuntu-latest
     steps:
+      - name: No-op (no Python-relevant changes)
+        if: needs.changes.outputs.py != 'true'
+        run: echo "No Python-relevant changes in this PR; pandas-3-suite is a no-op success."
+
       - uses: actions/checkout@v4
+        if: needs.changes.outputs.py == 'true'
       - name: Install uv
+        if: needs.changes.outputs.py == 'true'
         uses: astral-sh/setup-uv@v3
       - name: Set up Python 3.13
+        if: needs.changes.outputs.py == 'true'
         run: uv python install 3.13
       - name: Re-resolve workspace WITHOUT committed lockfile (forces pandas 3.x)
         # codex iter-2 P1 fix: uv sync --resolution highest still
@@ -89,6 +136,7 @@ jobs:
         # the previous step duplicated the default suite. Drop the lock
         # AND upgrade pandas explicitly so the resolver actually pulls
         # the latest 3.x wheel matching `pandas>=2.2,<4.0`.
+        if: needs.changes.outputs.py == 'true'
         run: |
           rm -f uv.lock
           uv lock --upgrade-package pandas
@@ -96,9 +144,11 @@ jobs:
       - name: Assert pandas 3.x is resolved
         # Hard gate: if the resolver somehow still picks 2.x, fail loudly
         # rather than silently running the wrong suite.
+        if: needs.changes.outputs.py == 'true'
         run: |
           uv run python -c "import pandas, sys; v=pandas.__version__; print('pandas', v); sys.exit(0 if int(v.split('.')[0]) >= 3 else 1)"
       - name: Run fast test suite under pandas 3.x
+        if: needs.changes.outputs.py == 'true'
         run: uv run pytest -m "not live and not polars" -q
 
   # Phase 6 W5-T1: cross-backend matrix. Installs the [polars] extra on
@@ -108,36 +158,56 @@ jobs:
   # mostlyright.mode2, mostlyright.transforms, mostlyright.preprocessing,
   # mostlyright.core.result, or the catalog adapters.
   polars-suite:
+    needs: changes
     runs-on: ubuntu-latest
     steps:
+      - name: No-op (no Python-relevant changes)
+        if: needs.changes.outputs.py != 'true'
+        run: echo "No Python-relevant changes in this PR; polars-suite is a no-op success."
+
       - uses: actions/checkout@v4
+        if: needs.changes.outputs.py == 'true'
       - name: Install uv
+        if: needs.changes.outputs.py == 'true'
         uses: astral-sh/setup-uv@v3
       - name: Set up Python 3.13
+        if: needs.changes.outputs.py == 'true'
         run: uv python install 3.13
       - name: Sync workspace + per-package [polars] extras
+        if: needs.changes.outputs.py == 'true'
         run: |
           uv sync --all-packages
           uv sync --package mostlyrightmd --extra polars
           uv sync --package mostlyrightmd-weather --extra polars
           uv sync --package mostlyrightmd-markets --extra polars
       - name: Show resolved polars version
+        if: needs.changes.outputs.py == 'true'
         run: uv run python -c "import polars; print('polars', polars.__version__)"
       - name: Run full fast suite INCLUDING @pytest.mark.polars
+        if: needs.changes.outputs.py == 'true'
         run: uv run pytest -m "not live" -q
 
   coverage-gate:
+    needs: changes
     runs-on: ubuntu-latest
     steps:
+      - name: No-op (no Python-relevant changes)
+        if: needs.changes.outputs.py != 'true'
+        run: echo "No Python-relevant changes in this PR; coverage-gate is a no-op success."
+
       - uses: actions/checkout@v4
+        if: needs.changes.outputs.py == 'true'
 
       - name: Install uv
+        if: needs.changes.outputs.py == 'true'
         uses: astral-sh/setup-uv@v3
 
       - name: Set up Python
+        if: needs.changes.outputs.py == 'true'
         run: uv python install 3.12
 
       - name: Sync workspace
+        if: needs.changes.outputs.py == 'true'
         run: uv sync --all-packages
 
       # Phase 4 SC-1 coverage gate on the CORE SEMANTIC SURFACE of
@@ -158,6 +228,7 @@ jobs:
       # 80% line coverage on catalog adapter wrappers is enforced by a
       # separate follow-up step (lower priority).
       - name: Coverage gate (core semantic surface >= 85% branch, aspirational 90%)
+        if: needs.changes.outputs.py == 'true'
         run: |
           uv run pytest -m "not live" \
             --cov=packages/core/src/mostlyright/core \
