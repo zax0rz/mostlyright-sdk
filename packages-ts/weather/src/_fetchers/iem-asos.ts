@@ -169,7 +169,7 @@ export async function downloadIemAsos(
     return [];
   }
 
-  // Tradewinds-specific normalization: clamp caller's `start` to Jan 1 of
+  // mostlyright-specific normalization: clamp caller's `start` to Jan 1 of
   // its year so per-month callers share a yearly cache key (parity-faithful
   // with Python's `normalized_start = date(start.year, 1, 1)`). Mirrored in
   // TS so the URL shape (and the future TS-W3 cache key) stays byte-stable

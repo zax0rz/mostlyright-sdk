@@ -90,6 +90,10 @@
     "SLC": {
       "citation": "https://kalshi.com/markets/khighslc (Salt Lake City International)",
       "station": "KSLC"
+    },
+    "TLV": {
+      "citation": "https://kalshi.com/markets/kxhightlv (Harry Reid/McCarran; settles vs NWS CLILAS)",
+      "station": "KLAS"
     }
   }
 }

@@ -24,8 +24,17 @@ __version__ = "0.1.0rc1"
 
 from mostlyright.discover import discover
 from mostlyright.research import research
+from mostlyright.stations import CATALOG, Station, StationCatalog
 
-__all__ = ["__version__", "discover", "live", "research"]
+__all__ = [
+    "CATALOG",
+    "Station",
+    "StationCatalog",
+    "__version__",
+    "discover",
+    "live",
+    "research",
+]
 
 
 # Lazy `mostlyright.live` access (Phase 11). Both `discover` and `research`

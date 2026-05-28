@@ -25,7 +25,7 @@ from mostlyright.core.exceptions import (
     LeakageError,
     SchemaValidationError,
 )
-from mostlyright.core.result import TradewindsResult
+from mostlyright.core.result import MostlyRightResult
 from mostlyright.core.temporal.timepoint import TimePoint
 
 if TYPE_CHECKING:
@@ -47,17 +47,17 @@ _SAMPLE_CAP = 10
 _ISSUED_AT_SAMPLE_CAP = 5
 
 
-def assert_no_leakage(df: pd.DataFrame | TradewindsResult, as_of: TimePoint) -> None:
+def assert_no_leakage(df: pd.DataFrame | MostlyRightResult, as_of: TimePoint) -> None:
     """Raise :class:`LeakageError` if any row's ``knowledge_time > as_of``.
 
     Phase 6 W0-T6: accepts either a raw DataFrame or a
-    :class:`TradewindsResult`; wrapped polars frames are converted to
-    pandas via :meth:`TradewindsResult.frame_as_pandas` because the body
+    :class:`MostlyRightResult`; wrapped polars frames are converted to
+    pandas via :meth:`MostlyRightResult.frame_as_pandas` because the body
     of this function uses ``pd.Timestamp`` + ``iterrows`` semantics.
 
     Args:
         df: DataFrame with a tz-aware UTC ``knowledge_time`` column, OR
-            a :class:`TradewindsResult` wrapping such a frame.
+            a :class:`MostlyRightResult` wrapping such a frame.
         as_of: The as-of cutoff. Rows with strictly greater ``knowledge_time``
             count as leakage.
 
@@ -92,7 +92,7 @@ def assert_no_leakage(df: pd.DataFrame | TradewindsResult, as_of: TimePoint) -> 
     ...     print(err.violating_count)
     1
     """
-    if isinstance(df, TradewindsResult):
+    if isinstance(df, MostlyRightResult):
         df = df.frame_as_pandas()
     if "knowledge_time" not in df.columns:
         raise SchemaValidationError(
@@ -137,7 +137,7 @@ def assert_no_leakage(df: pd.DataFrame | TradewindsResult, as_of: TimePoint) -> 
     )
 
 
-def assert_issued_at_populated(df: pd.DataFrame | TradewindsResult) -> None:
+def assert_issued_at_populated(df: pd.DataFrame | MostlyRightResult) -> None:
     """Raise :class:`IssuedAtMissingError` if any row has null ``issued_at``.
 
     Forecast rows MUST carry their model-run time to be leakage-safe; a
@@ -147,15 +147,15 @@ def assert_issued_at_populated(df: pd.DataFrame | TradewindsResult) -> None:
     so this check is a defensive net.
 
     Mirrors structural conventions of :func:`assert_no_leakage`:
-    :class:`TradewindsResult` (and any duck-typed ``.df`` carrier)
+    :class:`MostlyRightResult` (and any duck-typed ``.df`` carrier)
     unwrap, column-existence guard, sample-cap.
 
     Phase 20 OM-04.
     """
-    if isinstance(df, TradewindsResult):
+    if isinstance(df, MostlyRightResult):
         df = df.frame_as_pandas()
     elif hasattr(df, "df") and not hasattr(df, "columns"):
-        # Duck-type for non-TradewindsResult wrappers (e.g. test doubles).
+        # Duck-type for non-MostlyRightResult wrappers (e.g. test doubles).
         df = df.df
 
     if "issued_at" not in df.columns:
@@ -197,15 +197,15 @@ class LeakageDetector:
     def as_of(self) -> TimePoint:
         return self._as_of
 
-    def check(self, df: pd.DataFrame | TradewindsResult) -> None:
+    def check(self, df: pd.DataFrame | MostlyRightResult) -> None:
         """Run :func:`assert_no_leakage` against the bound ``as_of``.
 
-        Accepts either a raw DataFrame or a :class:`TradewindsResult`
+        Accepts either a raw DataFrame or a :class:`MostlyRightResult`
         wrapper (unwrapped inside :func:`assert_no_leakage`).
         """
         assert_no_leakage(df, self._as_of)
 
-    def check_issued_at(self, df: pd.DataFrame | TradewindsResult) -> None:
+    def check_issued_at(self, df: pd.DataFrame | MostlyRightResult) -> None:
         """Raise :class:`IssuedAtMissingError` if any row has null ``issued_at``.
 
         Phase 20 OM-04 extension. Independent of ``as_of`` — the bound

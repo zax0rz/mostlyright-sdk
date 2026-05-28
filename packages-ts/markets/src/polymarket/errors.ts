@@ -1,10 +1,10 @@
-// TS-W5 — Polymarket-specific errors. All subclass TradewindsError so they
+// TS-W5 — Polymarket-specific errors. All subclass MostlyRightError so they
 // gain toDict() and the standard request-id/error-code payload shape.
 
-import { TradewindsError } from "@mostlyrightmd/core";
+import { MostlyRightError } from "@mostlyrightmd/core";
 
 /** Event payload is malformed (bad event id, oversized description, bad URL). */
-export class PolymarketEventError extends TradewindsError {
+export class PolymarketEventError extends MostlyRightError {
   constructor(message: string) {
     super(message);
     this.name = "PolymarketEventError";
@@ -13,7 +13,7 @@ export class PolymarketEventError extends TradewindsError {
 }
 
 /** Settlement engine couldn't resolve an event to a value. */
-export class PolymarketSettlementError extends TradewindsError {
+export class PolymarketSettlementError extends MostlyRightError {
   constructor(message: string) {
     super(message);
     this.name = "PolymarketSettlementError";
@@ -29,7 +29,7 @@ export class PolymarketSettlementError extends TradewindsError {
  * serializer downstream) includes the structured retry metadata. The
  * fields are otherwise only readable via the live JS error object.
  */
-export class TooEarlyToSettleError extends TradewindsError {
+export class TooEarlyToSettleError extends MostlyRightError {
   readonly waitHours: number;
   readonly resolutionSourceType: string;
   constructor(message: string, opts: { waitHours: number; resolutionSourceType: string }) {
@@ -50,11 +50,11 @@ export class TooEarlyToSettleError extends TradewindsError {
 }
 
 /**
- * Description exceeded the 16 KB cap. Direct subclass of TradewindsError
+ * Description exceeded the 16 KB cap. Direct subclass of MostlyRightError
  * (rather than PolymarketEventError) because TS prevents narrowing a
  * `static readonly` literal type in a subclass.
  */
-export class PayloadTooLargeError extends TradewindsError {
+export class PayloadTooLargeError extends MostlyRightError {
   constructor(message: string) {
     super(message);
     this.name = "PayloadTooLargeError";

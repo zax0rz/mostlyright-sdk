@@ -199,7 +199,7 @@ matching the IEM MOS polite posture. 429 responses honor `Retry-After`
   `allow_leakage=True`. Carries `model`, `endpoint_url`,
   `origin_issue="Tarabcak/mostlyright#70"`.
 
-Both subclass `TradewindsError`; payload keys are snake_case for
+Both subclass `MostlyRightError`; payload keys are snake_case for
 cross-SDK MCP parity.
 
 ## IEM MOS

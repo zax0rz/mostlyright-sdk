@@ -359,6 +359,7 @@ interface RawStation {
   latitude: number | null;
   longitude: number | null;
   country: string | null;
+  venues: string[] | null;
 }
 
 function emitStations(out: FileMap): void {
@@ -369,7 +370,8 @@ function emitStations(out: FileMap): void {
   const sorted = [...raw.stations].sort((a, b) => a.icao.localeCompare(b.icao));
 
   // Strip to StationInfo shape — preserve `country` so TS consumers can distinguish
-  // US vs intl stations (HIGH 2 from TS-W0 iter-1 review).
+  // US vs intl stations (HIGH 2 from TS-W0 iter-1 review), and `venues` (Phase 22)
+  // so consumers can filter by prediction-market venue without a US/intl proxy.
   const stripped = sorted.map((s) => ({
     code: s.code ?? null,
     ghcnh_id: s.ghcnh_id ?? null,
@@ -379,6 +381,7 @@ function emitStations(out: FileMap): void {
     latitude: s.latitude ?? null,
     longitude: s.longitude ?? null,
     country: s.country ?? null,
+    venues: s.venues ?? [],
   }));
 
   // Build STATIONS array literal.
@@ -401,7 +404,7 @@ function emitStations(out: FileMap): void {
     .map(([k, i]) => `  [${JSON.stringify(k)}, STATIONS[${i}]!],`)
     .join("\n");
 
-  const body = `${header("stations.json")}\nexport interface StationInfo {\n  code: string | null;\n  ghcnh_id: string | null;\n  icao: string;\n  name: string | null;\n  tz: string;\n  latitude: number | null;\n  longitude: number | null;\n  country: string | null;\n}\n\nexport const STATIONS: ReadonlyArray<StationInfo> = ${stationsLit} as const;\n\nexport const STATION_BY_CODE: ReadonlyMap<string, StationInfo> = new Map<string, StationInfo>([\n${codeMapEntries}\n]);\n\nexport const STATION_BY_ICAO: ReadonlyMap<string, StationInfo> = new Map<string, StationInfo>([\n${icaoMapEntries}\n]);\n`;
+  const body = `${header("stations.json")}\nexport interface StationInfo {\n  code: string | null;\n  ghcnh_id: string | null;\n  icao: string;\n  name: string | null;\n  tz: string;\n  latitude: number | null;\n  longitude: number | null;\n  country: string | null;\n  venues: ReadonlyArray<string>;\n}\n\nexport const STATIONS: ReadonlyArray<StationInfo> = ${stationsLit} as const;\n\nexport const STATION_BY_CODE: ReadonlyMap<string, StationInfo> = new Map<string, StationInfo>([\n${codeMapEntries}\n]);\n\nexport const STATION_BY_ICAO: ReadonlyMap<string, StationInfo> = new Map<string, StationInfo>([\n${icaoMapEntries}\n]);\n`;
 
   emit(out, join(PACKAGES_TS, "core", "src", "data", "generated", "stations.ts"), body);
 }

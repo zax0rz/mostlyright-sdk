@@ -8,7 +8,7 @@ import {
 } from "../../src/polymarket/index.js";
 
 describe("Polymarket error classes", () => {
-  it("expose the standard TradewindsError surface (name, message, toDict)", () => {
+  it("expose the standard MostlyRightError surface (name, message, toDict)", () => {
     const err = new PolymarketEventError("bad event");
     expect(err.name).toBe("PolymarketEventError");
     expect(err.message).toBe("bad event");

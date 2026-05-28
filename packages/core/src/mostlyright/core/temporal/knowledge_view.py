@@ -22,7 +22,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from mostlyright.core.exceptions import SchemaValidationError
-from mostlyright.core.result import TradewindsResult
+from mostlyright.core.result import MostlyRightResult
 from mostlyright.core.temporal.timepoint import TimePoint
 
 if TYPE_CHECKING:
@@ -61,13 +61,13 @@ class KnowledgeView:
 
     __slots__ = ("_as_of", "_df")
 
-    def __init__(self, df: pd.DataFrame | TradewindsResult, as_of: TimePoint) -> None:
+    def __init__(self, df: pd.DataFrame | MostlyRightResult, as_of: TimePoint) -> None:
         import pandas as pd
 
-        # Phase 6 W0-T5: accept TradewindsResult; unwrap to pandas.
+        # Phase 6 W0-T5: accept MostlyRightResult; unwrap to pandas.
         # Polars-mode callers flow through frame_as_pandas() because the
         # KnowledgeView body uses pd.api.types and df.loc[mask].copy().
-        if isinstance(df, TradewindsResult):
+        if isinstance(df, MostlyRightResult):
             df = df.frame_as_pandas()
 
         if "knowledge_time" not in df.columns:

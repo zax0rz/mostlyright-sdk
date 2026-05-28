@@ -30,7 +30,7 @@ from mostlyright.core.exceptions import (
     SchemaValidationError,
     SourceMismatchError,
 )
-from mostlyright.core.result import TradewindsResult
+from mostlyright.core.result import MostlyRightResult
 from mostlyright.core.schema import Schema, SchemaRegistration
 
 if TYPE_CHECKING:
@@ -172,7 +172,7 @@ def _has_mixed_null_sentinels(s: pd.Series) -> bool:
 # Public API
 # ---------------------------------------------------------------------------
 def validate_dataframe(
-    df: pd.DataFrame | TradewindsResult,
+    df: pd.DataFrame | MostlyRightResult,
     schema_id: str,
     *,
     allow_source_drift: str | None = None,
@@ -181,9 +181,9 @@ def validate_dataframe(
 
     Phase 6 W0-T4: accepts either a raw ``pd.DataFrame`` (legacy v0.1.0
     contract — must carry ``df.attrs["source"]`` / ``df.attrs["retrieved_at"]``)
-    or a :class:`TradewindsResult` wrapper (v0.2+ contract — provenance
+    or a :class:`MostlyRightResult` wrapper (v0.2+ contract — provenance
     travels on the wrapper). When passed a wrapper, the validator
-    unwraps to pandas via :meth:`TradewindsResult.legacy_df_with_attrs`
+    unwraps to pandas via :meth:`MostlyRightResult.legacy_df_with_attrs`
     and proceeds with the same logic so the four checks below run
     byte-identically for both shapes.
 
@@ -202,7 +202,7 @@ def validate_dataframe(
 
     Args:
         df: The DataFrame to validate. Must carry ``df.attrs["source"]``,
-            OR a :class:`TradewindsResult` wrapper whose ``source`` /
+            OR a :class:`MostlyRightResult` wrapper whose ``source`` /
             ``retrieved_at`` populate the equivalent attrs on unwrap.
         schema_id: Canonical schema ID (e.g. ``"schema.observation.v1"``).
         allow_source_drift: Reason string. If supplied, source mismatch is
@@ -236,14 +236,14 @@ def validate_dataframe(
     A full passing example requires the canonical column set; see
     ``packages/core/tests/core/test_validator.py`` for end-to-end fixtures.
     """
-    # Phase 6 W0-T4 + codex iter-1 P2 fix: unwrap TradewindsResult →
+    # Phase 6 W0-T4 + codex iter-1 P2 fix: unwrap MostlyRightResult →
     # pandas DataFrame with legacy attrs populated. For pandas-backed
     # frames the cheap legacy_df_with_attrs() path applies; for
     # polars-backed frames it would raise TypeError (the legacy shape
     # is pandas-only), so route them through frame_as_pandas() first
     # and re-stamp attrs from the wrapper's provenance fields. Either
     # way, the downstream checks see the v0.1.0 attrs-stamped shape.
-    if isinstance(df, TradewindsResult):
+    if isinstance(df, MostlyRightResult):
         import pandas as _pd
 
         if isinstance(df.frame, _pd.DataFrame):

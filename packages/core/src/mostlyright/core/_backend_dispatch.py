@@ -9,7 +9,7 @@ The 5 public DataFrame-returning entries (``research``,
   constraint holds.
 - ``return_type: Literal["dataframe","wrapper"]="dataframe"`` — chooses
   between raw DataFrame (legacy v0.1.0 shape; ``df.attrs`` carries
-  provenance) and :class:`TradewindsResult` (new v0.2 shape).
+  provenance) and :class:`MostlyRightResult` (new v0.2 shape).
 
 The validation order is strict (architect iter-3 P2 fix):
 
@@ -29,7 +29,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Literal
 
-from mostlyright.core.result import TradewindsResult
+from mostlyright.core.result import MostlyRightResult
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -59,7 +59,7 @@ def validate_backend_kwargs(
     Raises ``ValueError`` on either:
     - Unsupported value.
     - ``backend="polars" + return_type="dataframe"`` (polars frames have
-      no ``df.attrs`` so provenance MUST travel on a :class:`TradewindsResult`).
+      no ``df.attrs`` so provenance MUST travel on a :class:`MostlyRightResult`).
 
     Does NOT check that the ``[polars]`` extra is installed — callers do
     that lazily by invoking :func:`convert_to_backend` only when they
@@ -130,7 +130,7 @@ def wrap_result(
       compat): return ``df`` unchanged. ``df.attrs`` is presumed to be
       already-populated by the pandas pipeline.
     - ``backend="pandas", return_type="wrapper"``: wrap the pandas frame
-      in a :class:`TradewindsResult` with the provenance fields the
+      in a :class:`MostlyRightResult` with the provenance fields the
       caller passed.
     - ``backend="polars", return_type="wrapper"``: convert the pandas
       frame to polars via :func:`convert_to_backend`, then wrap.
@@ -150,7 +150,7 @@ def wrap_result(
 
     # return_type == "wrapper"
     frame = convert_to_backend(df, backend)
-    return TradewindsResult(
+    return MostlyRightResult(
         frame=frame,
         source=source,
         retrieved_at=retrieved_at or datetime.now(UTC),

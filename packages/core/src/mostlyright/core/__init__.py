@@ -8,7 +8,7 @@ canonical namespace in Phase 2 of the v0.1.0 plan.
 Sub-modules:
 
 - :mod:`mostlyright.core.exceptions` — structured exception hierarchy
-  (``TradewindsError`` base + 6 subclasses + JSON-safe ``to_dict``).
+  (``MostlyRightError`` base + 6 subclasses + JSON-safe ``to_dict``).
   ``MostlyRightMCPError`` remains importable as a deprecation alias.
 - :mod:`mostlyright.core.temporal` — UTC-aware ``TimePoint`` wrapper;
   ``KnowledgeView`` + ``LeakageDetector`` (Phase 2 Wave 2).
@@ -25,14 +25,14 @@ Sub-modules:
 import mostlyright.core.schemas  # noqa: F401
 from mostlyright.core.exceptions import (
     LeakageError,
+    MostlyRightError,
     PayloadTooLargeError,
     SchemaValidationError,
     SourceMismatchError,
     SourceUnavailableError,
     TemporalDriftError,
-    TradewindsError,
 )
-from mostlyright.core.result import TradewindsResult
+from mostlyright.core.result import MostlyRightResult
 from mostlyright.core.schema import ColumnSpec, Schema, SchemaRegistration
 from mostlyright.core.temporal import (
     KnowledgeView,
@@ -47,6 +47,8 @@ __all__ = [
     "KnowledgeView",
     "LeakageDetector",
     "LeakageError",
+    "MostlyRightError",
+    "MostlyRightResult",
     "PayloadTooLargeError",
     "Schema",
     "SchemaRegistration",
@@ -55,8 +57,6 @@ __all__ = [
     "SourceUnavailableError",
     "TemporalDriftError",
     "TimePoint",
-    "TradewindsError",
-    "TradewindsResult",
     "assert_no_leakage",
     "validate_dataframe",
 ]

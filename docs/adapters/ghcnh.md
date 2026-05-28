@@ -75,7 +75,7 @@ The projection from raw GHCNh parser rows applies the shared SI-unit transform
 
 - GHCNh `DATE` + `HOUR` columns encode **UTC** observation times. The parser
   parses to tz-aware `datetime64[ns, UTC]` at the boundary.
-- The 20 Kalshi-traded stations carry per-station IANA zones via
+- The US stations carry per-station IANA zones via
   `mostlyright.snapshot._STATION_TZ`. International stations added in Phase
   3.1 carry their own IANA mappings.
 - DST handling: same as IEM. UTC observation times are monotonic; LST

@@ -1,13 +1,13 @@
-"""TradewindsResult — backend-neutral provenance wrapper.
+"""MostlyRightResult — backend-neutral provenance wrapper.
 
 Phase 6 (v0.2+) deliverable. Polars frames have no ``.attrs``, so the
 v0.1.0 pattern of stamping ``df.attrs["source"]`` / ``df.attrs["retrieved_at"]``
-cannot survive the polars backend. ``TradewindsResult`` carries the
+cannot survive the polars backend. ``MostlyRightResult`` carries the
 provenance separately from the frame so both pandas and polars callers
 preserve source-identity invariants without ``.attrs`` writes.
 
 Validator, KnowledgeView, and LeakageDetector accept either a raw
-DataFrame (legacy v0.1.0 path) OR a ``TradewindsResult`` (new v0.2 path);
+DataFrame (legacy v0.1.0 path) OR a ``MostlyRightResult`` (new v0.2 path);
 the wrapper-aware dispatch unwraps via :meth:`frame_as_pandas` and the
 existing validation logic runs unchanged.
 
@@ -31,11 +31,11 @@ else:
     FrameLike = Any
 
 
-__all__ = ["TradewindsResult"]
+__all__ = ["MostlyRightResult"]
 
 
 @dataclass(frozen=True)
-class TradewindsResult:
+class MostlyRightResult:
     """Backend-neutral provenance wrapper for a DataFrame-returning call.
 
     Both pandas-backend and polars-backend adapters return the same
@@ -60,9 +60,9 @@ class TradewindsResult:
     Examples:
         >>> import pandas as pd
         >>> from datetime import datetime, timezone
-        >>> from mostlyright.core.result import TradewindsResult
+        >>> from mostlyright.core.result import MostlyRightResult
         >>> df = pd.DataFrame({"date": ["2025-01-01"], "value": [42]})
-        >>> result = TradewindsResult(
+        >>> result = MostlyRightResult(
         ...     frame=df,
         ...     source="iem.live",
         ...     retrieved_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
@@ -83,17 +83,17 @@ class TradewindsResult:
     def __post_init__(self) -> None:
         if not isinstance(self.source, str) or not self.source:
             raise ValueError(
-                f"TradewindsResult.source must be a non-empty string; "
+                f"MostlyRightResult.source must be a non-empty string; "
                 f"got {type(self.source).__name__}={self.source!r}"
             )
         if not isinstance(self.retrieved_at, datetime):
             raise TypeError(
-                f"TradewindsResult.retrieved_at must be a datetime; "
+                f"MostlyRightResult.retrieved_at must be a datetime; "
                 f"got {type(self.retrieved_at).__name__}"
             )
         if self.retrieved_at.tzinfo is None:
             raise ValueError(
-                "TradewindsResult.retrieved_at must be tz-aware; "
+                "MostlyRightResult.retrieved_at must be tz-aware; "
                 "naive datetimes are rejected to match schema.py tz discipline."
             )
 
@@ -119,7 +119,7 @@ class TradewindsResult:
             import polars as pl
         except ImportError as exc:  # pragma: no cover - defensive
             raise ImportError(
-                "TradewindsResult.frame_as_pandas() requires polars to be "
+                "MostlyRightResult.frame_as_pandas() requires polars to be "
                 "installed when wrapping a polars DataFrame. Install with: "
                 "pip install mostlyrightmd[polars]"
             ) from exc
@@ -127,7 +127,7 @@ class TradewindsResult:
         if isinstance(self.frame, pl.DataFrame):
             return self.frame.to_pandas()
         raise TypeError(
-            f"TradewindsResult.frame must be a pandas or polars DataFrame; "
+            f"MostlyRightResult.frame must be a pandas or polars DataFrame; "
             f"got {type(self.frame).__name__}"
         )
 
@@ -152,7 +152,7 @@ class TradewindsResult:
                 "legacy_df_with_attrs() requires a pandas-backed frame; "
                 "polars frames have no df.attrs. Use frame_as_pandas() to "
                 "convert first, or migrate the consumer to read the "
-                "TradewindsResult fields directly."
+                "MostlyRightResult fields directly."
             )
 
         df = self.frame.copy()

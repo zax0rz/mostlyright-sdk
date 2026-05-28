@@ -156,7 +156,7 @@ class TestBuildIemUrl:
 class TestDownloadIemAsosYearlyChunks:
     """PERF-01 — one HTTP request per calendar year (was: one per calendar month).
 
-    Tradewinds-specific normalization: caller's ``start`` is normalized to
+    mostlyright-specific normalization: caller's ``start`` is normalized to
     ``date(start.year, 1, 1)`` so per-month callers share a yearly cache key.
     """
 

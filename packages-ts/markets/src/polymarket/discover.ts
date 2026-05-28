@@ -88,7 +88,7 @@ export async function polymarketDiscover(
         // Bad description on a single event shouldn't poison the whole
         // discovery batch. Codex iter-1 P2: catch both validation paths
         // (PolymarketEventError AND PayloadTooLargeError, which is a
-        // sibling TradewindsError after the static-field flatten).
+        // sibling MostlyRightError after the static-field flatten).
         if (err instanceof PolymarketEventError || err instanceof PayloadTooLargeError) {
           opts.onSkip?.({ slug, reason: `description rejected: ${err.message}` });
           resolutionSourceType = null;

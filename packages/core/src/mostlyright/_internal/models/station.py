@@ -1,6 +1,8 @@
 """Public StationInfo model and registry for SDK consumers.
 
-Exposes metadata for the 20 Kalshi-traded stations. Distinct from
+Exposes metadata for every registry station. ``kalshi_traded`` is derived
+from the registry's venue tags (``"kalshi" in venues``) rather than assumed
+true for all entries — see ``mostlyright._internal._stations``. Distinct from
 `ingest.stations.StationInfo` which exposes ingest-internal fields (ghcnh_id).
 """
 
@@ -100,7 +102,7 @@ def _build_registry() -> dict[str, StationInfo]:
             utc_offset_standard=_utc_offset_hours(s.tz),
             latitude=s.latitude,
             longitude=s.longitude,
-            kalshi_traded=True,
+            kalshi_traded="kalshi" in s.venues,
         )
     return registry
 

@@ -16,8 +16,8 @@ import pytest
 from mostlyright.core.exceptions import (
     DeprecatedModelWarning,
     HistoricalDepthError,
+    MostlyRightError,
     NwpError,
-    TradewindsError,
 )
 
 
@@ -29,7 +29,7 @@ def test_historical_depth_error_is_nwp_error_subclass() -> None:
         archive_depth=datetime(2014, 7, 30, tzinfo=UTC),
     )
     assert isinstance(exc, NwpError)
-    assert isinstance(exc, TradewindsError)
+    assert isinstance(exc, MostlyRightError)
     assert exc.model == "hrrr"
     assert exc.requested_cycle == datetime(2010, 1, 1, tzinfo=UTC)
     assert exc.archive_depth == datetime(2014, 7, 30, tzinfo=UTC)

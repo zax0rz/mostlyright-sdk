@@ -8,17 +8,24 @@
 #     US-only; the adapter layer skips the GHCNh fetch for non-US stations.
 #   - Added :func:`is_us_station` helper for the adapter-coverage gate in
 #     ``research()``.
-"""Station registry — 60 stations (20 US + 40 international) with ICAO / lat-lon metadata.
+#   - Phase 22 (2026-05-28): added the five Kalshi settlement stations missing
+#     from the v0.14.1 set (KIAH/KDTW/KCVG/KBNA/KSLC) and replaced the
+#     country-based venue tagging with per-ICAO membership so ``venues`` is a
+#     station-accurate fact rather than a US/international proxy.
+"""Station registry — 66 stations (25 US + 41 international) with ICAO / lat-lon metadata.
 
 Lives under ``src/mostlyright/_internal`` so it ships in the wheel and is
 available to pip-installed SDK users. Phase 3.1 expanded the v0.14.1
-20-station Kalshi registry to 60 stations covering Polymarket's
-international weather markets (Europe, Asia, Oceania, Americas-non-US).
+20-station Kalshi registry to cover Polymarket's international weather
+markets (Europe, Asia, Oceania, Americas-non-US); Phase 22 added the five
+US Kalshi settlement stations the v0.14.1 set had wrong and made the
+registry venue-agnostic — a station is a physical fact, and the
+prediction-market venues that settle on it are recorded as a ``venues`` tag.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 
 @dataclass(frozen=True)
@@ -40,6 +47,18 @@ class StationInfo:
         longitude: WGS84 longitude (decimal degrees; negative = west).
         country: ISO 3166-1 alpha-2 country code. Defaults to ``"US"`` to
             preserve the v0.14.1 contract on the 20 original entries.
+        venues: Prediction-market venues that settle on this *station*. A
+            physical station is venue-agnostic; this tag records *which*
+            venues settle against it. Populated by the venue-tagging pass
+            below from the two issuers' actual settlement maps, NOT from
+            country — Kalshi and Polymarket frequently pick different
+            stations for the same city (Kalshi settles NYC against KNYC /
+            Central Park, Polymarket against KLGA; Kalshi Chicago = KMDW,
+            Polymarket = KORD). So a US station can carry ``{"kalshi"}``,
+            ``{"kalshi", "polymarket"}``, ``{"polymarket"}``, or
+            ``frozenset()`` (a registry station no venue settles on, e.g.
+            Houston Hobby KHOU — Houston trades on both venues but settles
+            against KIAH). International stations carry ``{"polymarket"}``.
     """
 
     code: str
@@ -50,11 +69,19 @@ class StationInfo:
     latitude: float
     longitude: float
     country: str = "US"
+    venues: frozenset[str] = frozenset()
 
 
 STATIONS: dict[str, StationInfo] = {
     # ------------------------------------------------------------------
-    # US — 20 Kalshi-traded stations (v0.14.1 verbatim).
+    # US — the v0.14.1 20-station set (verbatim). NOTE: four of these
+    # (KHOU/KMSY/KOKC/KSAT) are NOT Kalshi settlement stations — the
+    # v0.14.1 registry predated the Kalshi citation audit. The venue-tagging
+    # pass below assigns ``kalshi`` by ICAO membership, so those four carry
+    # no venue tag while the real Kalshi stations (KIAH etc.) are added in
+    # the Phase 22 block that follows. KLAS (Las Vegas) IS a Kalshi
+    # settlement station (series KXHIGHTLV/KXLOWTLV, issue #39) and is
+    # tagged ``kalshi`` below.
     # ------------------------------------------------------------------
     "ATL": StationInfo(
         code="ATL",
@@ -237,7 +264,62 @@ STATIONS: dict[str, StationInfo] = {
         longitude=-122.3790,
     ),
     # ------------------------------------------------------------------
-    # International — 40 ICAOs covering Polymarket's intl weather markets.
+    # US — Kalshi settlement stations NOT in the v0.14.1 20-station set
+    # (Phase 22). The v0.14.1 registry block above used the wrong station
+    # for four Kalshi cities — it carried KHOU/KMSY/KOKC/KSAT, which
+    # are NOT the stations Kalshi settles against. Kalshi cites KIAH (not
+    # KHOU) for Houston and adds Detroit/Cincinnati/Nashville/Salt-Lake.
+    # These five complete the Kalshi NHIGH/NLOW universe; the venue-tagging
+    # pass below assigns the ``kalshi`` tag by ICAO membership, not by
+    # country, so the stale four carry no ``kalshi`` tag.
+    # ------------------------------------------------------------------
+    "IAH": StationInfo(
+        code="IAH",
+        ghcnh_id="USW00012960",
+        icao="KIAH",
+        name="Houston George Bush Intercontinental",
+        tz="America/Chicago",
+        latitude=29.9844,
+        longitude=-95.3414,
+    ),
+    "DTW": StationInfo(
+        code="DTW",
+        ghcnh_id="USW00094847",
+        icao="KDTW",
+        name="Detroit Metropolitan Wayne County",
+        tz="America/New_York",
+        latitude=42.2124,
+        longitude=-83.3534,
+    ),
+    "CVG": StationInfo(
+        code="CVG",
+        ghcnh_id="USW00093814",
+        icao="KCVG",
+        name="Cincinnati/Northern Kentucky International",
+        tz="America/New_York",
+        latitude=39.0488,
+        longitude=-84.6678,
+    ),
+    "BNA": StationInfo(
+        code="BNA",
+        ghcnh_id="USW00013897",
+        icao="KBNA",
+        name="Nashville International",
+        tz="America/Chicago",
+        latitude=36.1245,
+        longitude=-86.6782,
+    ),
+    "SLC": StationInfo(
+        code="SLC",
+        ghcnh_id="USW00024127",
+        icao="KSLC",
+        name="Salt Lake City International",
+        tz="America/Denver",
+        latitude=40.7884,
+        longitude=-111.9778,
+    ),
+    # ------------------------------------------------------------------
+    # International — 41 ICAOs covering Polymarket's intl weather markets.
     # ``ghcnh_id=""`` because NCEI GHCNh is US-only; adapter layer skips
     # GHCNh for these stations (see ``research._fetch_observations_range``).
     # ICAO is used as both ``code`` and registry key.
@@ -659,6 +741,97 @@ STATIONS: dict[str, StationInfo] = {
 }
 
 
+# ----------------------------------------------------------------------
+# Venue tagging.
+#
+# A station is a physical fact; the prediction-market venue that settles on
+# it is metadata. Rather than define US cities in a ``kalshi_*`` module (the
+# pre-Phase-22 venue coupling), we tag each station with the venues that
+# settle against it. Markets then derives its settlement universe by
+# filtering this catalog instead of owning a parallel station list.
+#
+# The tag is keyed by ICAO from the two issuers' ACTUAL settlement maps —
+# NOT by country. Kalshi and Polymarket disagree on the settlement station
+# for several shared cities, and conflating "US" with "Kalshi" silently
+# settles backtests against the wrong sensor, the exact failure this SDK
+# exists to prevent:
+#   - NYC: Kalshi → KNYC (Central Park); Polymarket → KLGA (LaGuardia).
+#   - Chicago: Kalshi → KMDW (Midway); Polymarket → KORD (O'Hare).
+#   - Houston: BOTH venues settle against KIAH, so KHOU (Hobby) — present
+#     in the registry as a weather station — carries no venue tag.
+#
+# ``_KALSHI_ICAOS`` mirrors ``markets.catalog.kalshi_stations`` citations and
+# ``_POLYMARKET_ICAOS`` mirrors ``markets ... polymarket_city_stations.json``
+# (intersected with this registry — Polymarket's KLGA/KORD are not in the
+# 66-station set). Core cannot import markets (layering / would be circular),
+# so these lists are duplicated here and pinned by markets-side contract
+# tests (``test_kalshi_stations.py``, ``test_polymarket_stations.py``) that
+# fail loudly on any drift.
+# ----------------------------------------------------------------------
+
+#: The 21 Kalshi NHIGH/NLOW settlement ICAOs (== markets citation ICAOs).
+_KALSHI_ICAOS: frozenset[str] = frozenset(
+    {
+        "KATL",
+        "KAUS",
+        "KBOS",
+        "KDCA",
+        "KDEN",
+        "KDFW",
+        "KLAX",
+        "KMDW",
+        "KMIA",
+        "KMSP",
+        "KNYC",
+        "KPHL",
+        "KPHX",
+        "KSEA",
+        "KSFO",  # 15 shared
+        "KIAH",
+        "KDTW",
+        "KCVG",
+        "KBNA",
+        "KSLC",  # 5 Kalshi-only vs the v0.14.1 set
+        "KLAS",  # Las Vegas (TLV) — issue #39; in the v0.14.1 registry, now Kalshi-tagged
+    }
+)
+
+#: Polymarket settlement ICAOs that exist in this registry — the 41
+#: international stations plus the 15 US cities Polymarket settles against a
+#: station also in the catalog. Polymarket settles NYC→KLGA and Chicago→KORD,
+#: neither of which is a registry station, so KNYC/KMDW are NOT polymarket.
+_POLYMARKET_ICAOS: frozenset[str] = frozenset(
+    {s.icao for s in STATIONS.values() if s.country != "US"}
+    | {
+        "KATL",
+        "KAUS",
+        "KBOS",
+        "KDCA",
+        "KDEN",
+        "KDFW",
+        "KIAH",
+        "KLAX",
+        "KMIA",
+        "KMSP",
+        "KPHL",
+        "KPHX",
+        "KSEA",
+        "KSFO",
+        "KDTW",
+    }
+)
+
+for _key, _info in list(STATIONS.items()):
+    _venues = set()
+    if _info.icao in _KALSHI_ICAOS:
+        _venues.add("kalshi")
+    if _info.icao in _POLYMARKET_ICAOS:
+        _venues.add("polymarket")
+    STATIONS[_key] = replace(_info, venues=frozenset(_venues))
+
+del _key, _info, _venues
+
+
 def is_us_station(icao: str) -> bool:
     """Return True iff ``icao`` is a US station in STATIONS with country=="US".
 
@@ -679,7 +852,7 @@ def is_us_station(icao: str) -> bool:
         icao: 4-letter ICAO identifier.
 
     Returns:
-        ``True`` for the 20 US registry entries; ``False`` for the 40
+        ``True`` for the 25 US registry entries; ``False`` for the 41
         international entries and for unknown ICAOs.
     """
     if not icao or not icao.startswith("K"):

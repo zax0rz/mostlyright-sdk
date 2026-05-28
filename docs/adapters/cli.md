@@ -66,7 +66,7 @@ parser records:
 - **REMARKS regex.** CLI text records carry a REMARKS section that can flag
   estimated data or corrections. The current parser does basic regex
   extraction; the QC engine release's richer parse goes into `cli_data_quality`.
-- **Per-station IANA tz mapping.** The 20 Kalshi-traded stations carry a
+- **Per-station IANA tz mapping.** The US stations carry a
   hard-coded `station_tz` lookup in
   `packages/weather/src/mostlyright/weather/catalog/_cli_station_tz.py`. Stations
   outside the registry default to the `"UTC"` sentinel, which is intentionally

@@ -11,7 +11,7 @@ hint message — handled higher up in
 :mod:`mostlyright.weather.forecast_nwp`.
 
 Pattern lifted from mostlyright ``sprint2/2r-impl-bundle:ingest/sources/
-_nwp_grids/hrrr.py:get_balltree`` + ``pick_points`` family. Tradewinds
+_nwp_grids/hrrr.py:get_balltree`` + ``pick_points`` family. mostlyright
 keeps the module-level BallTree cache (one tree per grid shape) — short-
 lived Python processes don't benefit from on-disk persistence.
 

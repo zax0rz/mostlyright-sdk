@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date
 
 import pytest
+from mostlyright import CATALOG
 from mostlyright.markets.catalog import kalshi_nhigh, kalshi_nlow
 from mostlyright.markets.catalog.kalshi_stations import (
     KALSHI_SETTLEMENT_STATIONS,
@@ -13,9 +14,22 @@ from mostlyright.markets.catalog.kalshi_stations import (
 )
 
 
-def test_whitelist_has_20_entries():
-    """v0.1.0 scope — exactly 20 cities."""
-    assert len(KALSHI_SETTLEMENT_STATIONS) == 20
+def test_whitelist_has_21_entries():
+    """v0.1.0 scope — 20 original cities + Las Vegas (TLV, issue #39)."""
+    assert len(KALSHI_SETTLEMENT_STATIONS) == 21
+
+
+def test_citations_match_core_kalshi_venue_tags():
+    """Phase 22 — markets citations and core venue tags must not drift.
+
+    Core (``mostlyright.stations``) is the venue-membership authority; the
+    Kalshi citation dict here is venue-specific provenance. The settlement
+    ICAOs in the citations must equal the stations core tags ``kalshi``,
+    or a backtest could settle against a station core doesn't recognize.
+    """
+    citation_icaos = {c.station for c in KALSHI_SETTLEMENT_STATIONS.values()}
+    core_kalshi_icaos = {s.icao for s in CATALOG.filter_by_venue("kalshi")}
+    assert citation_icaos == core_kalshi_icaos
 
 
 def test_no_wrong_stations():

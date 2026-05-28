@@ -11,6 +11,7 @@ export interface StationInfo {
   latitude: number | null;
   longitude: number | null;
   country: string | null;
+  venues: ReadonlyArray<string>;
 }
 
 export const STATIONS: ReadonlyArray<StationInfo> = [
@@ -23,6 +24,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 13.5033,
     name: "Berlin Brandenburg",
     tz: "Europe/Berlin",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "EDDF",
@@ -33,6 +37,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 8.5622,
     name: "Frankfurt am Main",
     tz: "Europe/Berlin",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "EDDM",
@@ -43,6 +50,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 11.7861,
     name: "Munich Franz Josef Strauss",
     tz: "Europe/Berlin",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "EFHK",
@@ -53,6 +63,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 24.9633,
     name: "Helsinki-Vantaa",
     tz: "Europe/Helsinki",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "EGKK",
@@ -63,6 +76,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -0.1903,
     name: "London Gatwick",
     tz: "Europe/London",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "EGLL",
@@ -73,6 +89,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -0.4619,
     name: "London Heathrow",
     tz: "Europe/London",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "EHAM",
@@ -83,6 +102,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 4.7639,
     name: "Amsterdam Schiphol",
     tz: "Europe/Amsterdam",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "EKCH",
@@ -93,6 +115,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 12.6561,
     name: "Copenhagen Kastrup",
     tz: "Europe/Copenhagen",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "EPWA",
@@ -103,6 +128,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 20.9671,
     name: "Warsaw Chopin",
     tz: "Europe/Warsaw",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "ESSA",
@@ -113,6 +141,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 17.9186,
     name: "Stockholm Arlanda",
     tz: "Europe/Stockholm",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "ATL",
@@ -123,6 +154,10 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -84.4277,
     name: "Hartsfield-Jackson Atlanta International",
     tz: "America/New_York",
+    venues: [
+      "kalshi",
+      "polymarket",
+    ],
   },
   {
     code: "AUS",
@@ -133,6 +168,23 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -97.6664,
     name: "Austin-Bergstrom International",
     tz: "America/Chicago",
+    venues: [
+      "kalshi",
+      "polymarket",
+    ],
+  },
+  {
+    code: "BNA",
+    country: "US",
+    ghcnh_id: "USW00013897",
+    icao: "KBNA",
+    latitude: 36.1245,
+    longitude: -86.6782,
+    name: "Nashville International",
+    tz: "America/Chicago",
+    venues: [
+      "kalshi",
+    ],
   },
   {
     code: "BOS",
@@ -143,6 +195,23 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -71.0096,
     name: "Boston Logan International",
     tz: "America/New_York",
+    venues: [
+      "kalshi",
+      "polymarket",
+    ],
+  },
+  {
+    code: "CVG",
+    country: "US",
+    ghcnh_id: "USW00093814",
+    icao: "KCVG",
+    latitude: 39.0488,
+    longitude: -84.6678,
+    name: "Cincinnati/Northern Kentucky International",
+    tz: "America/New_York",
+    venues: [
+      "kalshi",
+    ],
   },
   {
     code: "DCA",
@@ -153,6 +222,10 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -77.0402,
     name: "Washington Reagan National",
     tz: "America/New_York",
+    venues: [
+      "kalshi",
+      "polymarket",
+    ],
   },
   {
     code: "DEN",
@@ -163,6 +236,10 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -104.6737,
     name: "Denver International",
     tz: "America/Denver",
+    venues: [
+      "kalshi",
+      "polymarket",
+    ],
   },
   {
     code: "DFW",
@@ -173,6 +250,24 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -97.0403,
     name: "Dallas-Fort Worth International",
     tz: "America/Chicago",
+    venues: [
+      "kalshi",
+      "polymarket",
+    ],
+  },
+  {
+    code: "DTW",
+    country: "US",
+    ghcnh_id: "USW00094847",
+    icao: "KDTW",
+    latitude: 42.2124,
+    longitude: -83.3534,
+    name: "Detroit Metropolitan Wayne County",
+    tz: "America/New_York",
+    venues: [
+      "kalshi",
+      "polymarket",
+    ],
   },
   {
     code: "HOU",
@@ -183,6 +278,21 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -95.2789,
     name: "Houston Hobby",
     tz: "America/Chicago",
+    venues: [],
+  },
+  {
+    code: "IAH",
+    country: "US",
+    ghcnh_id: "USW00012960",
+    icao: "KIAH",
+    latitude: 29.9844,
+    longitude: -95.3414,
+    name: "Houston George Bush Intercontinental",
+    tz: "America/Chicago",
+    venues: [
+      "kalshi",
+      "polymarket",
+    ],
   },
   {
     code: "LAS",
@@ -193,6 +303,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -115.1537,
     name: "Harry Reid (McCarran) International",
     tz: "America/Los_Angeles",
+    venues: [
+      "kalshi",
+    ],
   },
   {
     code: "LAX",
@@ -203,6 +316,10 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -118.4081,
     name: "Los Angeles International",
     tz: "America/Los_Angeles",
+    venues: [
+      "kalshi",
+      "polymarket",
+    ],
   },
   {
     code: "MDW",
@@ -213,6 +330,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -87.7522,
     name: "Chicago Midway International",
     tz: "America/Chicago",
+    venues: [
+      "kalshi",
+    ],
   },
   {
     code: "MIA",
@@ -223,6 +343,10 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -80.287,
     name: "Miami International",
     tz: "America/New_York",
+    venues: [
+      "kalshi",
+      "polymarket",
+    ],
   },
   {
     code: "MSP",
@@ -233,6 +357,10 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -93.2223,
     name: "Minneapolis-St Paul International",
     tz: "America/Chicago",
+    venues: [
+      "kalshi",
+      "polymarket",
+    ],
   },
   {
     code: "MSY",
@@ -243,6 +371,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -90.258,
     name: "New Orleans Louis Armstrong International",
     tz: "America/Chicago",
+    venues: [],
   },
   {
     code: "NYC",
@@ -253,6 +382,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -73.9692,
     name: "Central Park, New York",
     tz: "America/New_York",
+    venues: [
+      "kalshi",
+    ],
   },
   {
     code: "OKC",
@@ -263,6 +395,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -97.6007,
     name: "Oklahoma City Will Rogers World",
     tz: "America/Chicago",
+    venues: [],
   },
   {
     code: "PHL",
@@ -273,6 +406,10 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -75.2411,
     name: "Philadelphia International",
     tz: "America/New_York",
+    venues: [
+      "kalshi",
+      "polymarket",
+    ],
   },
   {
     code: "PHX",
@@ -283,6 +420,10 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -112.0078,
     name: "Phoenix Sky Harbor International",
     tz: "America/Phoenix",
+    venues: [
+      "kalshi",
+      "polymarket",
+    ],
   },
   {
     code: "SAT",
@@ -293,6 +434,7 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -98.4698,
     name: "San Antonio International",
     tz: "America/Chicago",
+    venues: [],
   },
   {
     code: "SEA",
@@ -303,6 +445,10 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -122.3088,
     name: "Seattle-Tacoma International",
     tz: "America/Los_Angeles",
+    venues: [
+      "kalshi",
+      "polymarket",
+    ],
   },
   {
     code: "SFO",
@@ -313,6 +459,23 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -122.379,
     name: "San Francisco International",
     tz: "America/Los_Angeles",
+    venues: [
+      "kalshi",
+      "polymarket",
+    ],
+  },
+  {
+    code: "SLC",
+    country: "US",
+    ghcnh_id: "USW00024127",
+    icao: "KSLC",
+    latitude: 40.7884,
+    longitude: -111.9778,
+    name: "Salt Lake City International",
+    tz: "America/Denver",
+    venues: [
+      "kalshi",
+    ],
   },
   {
     code: "LEBL",
@@ -323,6 +486,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 2.0833,
     name: "Barcelona El Prat",
     tz: "Europe/Madrid",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "LEMD",
@@ -333,6 +499,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -3.5626,
     name: "Madrid Barajas",
     tz: "Europe/Madrid",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "LFPB",
@@ -343,6 +512,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 2.4414,
     name: "Paris Le Bourget",
     tz: "Europe/Paris",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "LFPG",
@@ -353,6 +525,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 2.5479,
     name: "Paris Charles de Gaulle",
     tz: "Europe/Paris",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "LFPO",
@@ -363,6 +538,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 2.3794,
     name: "Paris Orly",
     tz: "Europe/Paris",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "LIMC",
@@ -373,6 +551,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 8.7281,
     name: "Milan Malpensa",
     tz: "Europe/Rome",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "LIRF",
@@ -383,6 +564,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 12.2389,
     name: "Rome Fiumicino",
     tz: "Europe/Rome",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "LOWW",
@@ -393,6 +577,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 16.5697,
     name: "Vienna International",
     tz: "Europe/Vienna",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "LSZH",
@@ -403,6 +590,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 8.5492,
     name: "Zurich",
     tz: "Europe/Zurich",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "NZAA",
@@ -413,6 +603,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 174.7917,
     name: "Auckland",
     tz: "Pacific/Auckland",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "NZWN",
@@ -423,6 +616,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 174.8053,
     name: "Wellington",
     tz: "Pacific/Auckland",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "OERK",
@@ -433,6 +629,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 46.6988,
     name: "Riyadh King Khalid International",
     tz: "Asia/Riyadh",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "OMDB",
@@ -443,6 +642,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 55.3657,
     name: "Dubai International",
     tz: "Asia/Dubai",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "OTHH",
@@ -453,6 +655,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 51.608,
     name: "Doha Hamad International",
     tz: "Asia/Qatar",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "RCTP",
@@ -463,6 +668,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 121.2328,
     name: "Taipei Taoyuan",
     tz: "Asia/Taipei",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "RJAA",
@@ -473,6 +681,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 140.3864,
     name: "Tokyo Narita",
     tz: "Asia/Tokyo",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "RJTT",
@@ -483,6 +694,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 139.78,
     name: "Tokyo Haneda",
     tz: "Asia/Tokyo",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "RKSI",
@@ -493,6 +707,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 126.4505,
     name: "Seoul Incheon",
     tz: "Asia/Seoul",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "SAEZ",
@@ -503,6 +720,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -58.5358,
     name: "Buenos Aires Ezeiza",
     tz: "America/Argentina/Buenos_Aires",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "SBGR",
@@ -513,6 +733,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: -46.4731,
     name: "São Paulo Guarulhos",
     tz: "America/Sao_Paulo",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "UUEE",
@@ -523,6 +746,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 37.4147,
     name: "Moscow Sheremetyevo",
     tz: "Europe/Moscow",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "VABB",
@@ -533,6 +759,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 72.8679,
     name: "Mumbai Chhatrapati Shivaji",
     tz: "Asia/Kolkata",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "VHHH",
@@ -543,6 +772,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 113.9185,
     name: "Hong Kong International",
     tz: "Asia/Hong_Kong",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "VIDP",
@@ -553,6 +785,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 77.1,
     name: "Delhi Indira Gandhi",
     tz: "Asia/Kolkata",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "VTBS",
@@ -563,6 +798,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 100.7501,
     name: "Bangkok Suvarnabhumi",
     tz: "Asia/Bangkok",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "WSSS",
@@ -573,6 +811,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 103.9915,
     name: "Singapore Changi",
     tz: "Asia/Singapore",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "YBBN",
@@ -583,6 +824,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 153.1175,
     name: "Brisbane",
     tz: "Australia/Brisbane",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "YMML",
@@ -593,6 +837,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 144.8433,
     name: "Melbourne Tullamarine",
     tz: "Australia/Melbourne",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "YSSY",
@@ -603,6 +850,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 151.1772,
     name: "Sydney Kingsford Smith",
     tz: "Australia/Sydney",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "ZBAA",
@@ -613,6 +863,9 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 116.5846,
     name: "Beijing Capital",
     tz: "Asia/Shanghai",
+    venues: [
+      "polymarket",
+    ],
   },
   {
     code: "ZSPD",
@@ -623,16 +876,22 @@ export const STATIONS: ReadonlyArray<StationInfo> = [
     longitude: 121.8083,
     name: "Shanghai Pudong",
     tz: "Asia/Shanghai",
+    venues: [
+      "polymarket",
+    ],
   },
 ] as const;
 
 export const STATION_BY_CODE: ReadonlyMap<string, StationInfo> = new Map<string, StationInfo>([
   ["ATL", STATIONS[10]!],
   ["AUS", STATIONS[11]!],
-  ["BOS", STATIONS[12]!],
-  ["DCA", STATIONS[13]!],
-  ["DEN", STATIONS[14]!],
-  ["DFW", STATIONS[15]!],
+  ["BNA", STATIONS[12]!],
+  ["BOS", STATIONS[13]!],
+  ["CVG", STATIONS[14]!],
+  ["DCA", STATIONS[15]!],
+  ["DEN", STATIONS[16]!],
+  ["DFW", STATIONS[17]!],
+  ["DTW", STATIONS[18]!],
   ["EDDB", STATIONS[0]!],
   ["EDDF", STATIONS[1]!],
   ["EDDM", STATIONS[2]!],
@@ -643,51 +902,53 @@ export const STATION_BY_CODE: ReadonlyMap<string, StationInfo> = new Map<string,
   ["EKCH", STATIONS[7]!],
   ["EPWA", STATIONS[8]!],
   ["ESSA", STATIONS[9]!],
-  ["HOU", STATIONS[16]!],
-  ["LAS", STATIONS[17]!],
-  ["LAX", STATIONS[18]!],
-  ["LEBL", STATIONS[30]!],
-  ["LEMD", STATIONS[31]!],
-  ["LFPB", STATIONS[32]!],
-  ["LFPG", STATIONS[33]!],
-  ["LFPO", STATIONS[34]!],
-  ["LIMC", STATIONS[35]!],
-  ["LIRF", STATIONS[36]!],
-  ["LOWW", STATIONS[37]!],
-  ["LSZH", STATIONS[38]!],
-  ["MDW", STATIONS[19]!],
-  ["MIA", STATIONS[20]!],
-  ["MSP", STATIONS[21]!],
-  ["MSY", STATIONS[22]!],
-  ["NYC", STATIONS[23]!],
-  ["NZAA", STATIONS[39]!],
-  ["NZWN", STATIONS[40]!],
-  ["OERK", STATIONS[41]!],
-  ["OKC", STATIONS[24]!],
-  ["OMDB", STATIONS[42]!],
-  ["OTHH", STATIONS[43]!],
-  ["PHL", STATIONS[25]!],
-  ["PHX", STATIONS[26]!],
-  ["RCTP", STATIONS[44]!],
-  ["RJAA", STATIONS[45]!],
-  ["RJTT", STATIONS[46]!],
-  ["RKSI", STATIONS[47]!],
-  ["SAEZ", STATIONS[48]!],
-  ["SAT", STATIONS[27]!],
-  ["SBGR", STATIONS[49]!],
-  ["SEA", STATIONS[28]!],
-  ["SFO", STATIONS[29]!],
-  ["UUEE", STATIONS[50]!],
-  ["VABB", STATIONS[51]!],
-  ["VHHH", STATIONS[52]!],
-  ["VIDP", STATIONS[53]!],
-  ["VTBS", STATIONS[54]!],
-  ["WSSS", STATIONS[55]!],
-  ["YBBN", STATIONS[56]!],
-  ["YMML", STATIONS[57]!],
-  ["YSSY", STATIONS[58]!],
-  ["ZBAA", STATIONS[59]!],
-  ["ZSPD", STATIONS[60]!],
+  ["HOU", STATIONS[19]!],
+  ["IAH", STATIONS[20]!],
+  ["LAS", STATIONS[21]!],
+  ["LAX", STATIONS[22]!],
+  ["LEBL", STATIONS[35]!],
+  ["LEMD", STATIONS[36]!],
+  ["LFPB", STATIONS[37]!],
+  ["LFPG", STATIONS[38]!],
+  ["LFPO", STATIONS[39]!],
+  ["LIMC", STATIONS[40]!],
+  ["LIRF", STATIONS[41]!],
+  ["LOWW", STATIONS[42]!],
+  ["LSZH", STATIONS[43]!],
+  ["MDW", STATIONS[23]!],
+  ["MIA", STATIONS[24]!],
+  ["MSP", STATIONS[25]!],
+  ["MSY", STATIONS[26]!],
+  ["NYC", STATIONS[27]!],
+  ["NZAA", STATIONS[44]!],
+  ["NZWN", STATIONS[45]!],
+  ["OERK", STATIONS[46]!],
+  ["OKC", STATIONS[28]!],
+  ["OMDB", STATIONS[47]!],
+  ["OTHH", STATIONS[48]!],
+  ["PHL", STATIONS[29]!],
+  ["PHX", STATIONS[30]!],
+  ["RCTP", STATIONS[49]!],
+  ["RJAA", STATIONS[50]!],
+  ["RJTT", STATIONS[51]!],
+  ["RKSI", STATIONS[52]!],
+  ["SAEZ", STATIONS[53]!],
+  ["SAT", STATIONS[31]!],
+  ["SBGR", STATIONS[54]!],
+  ["SEA", STATIONS[32]!],
+  ["SFO", STATIONS[33]!],
+  ["SLC", STATIONS[34]!],
+  ["UUEE", STATIONS[55]!],
+  ["VABB", STATIONS[56]!],
+  ["VHHH", STATIONS[57]!],
+  ["VIDP", STATIONS[58]!],
+  ["VTBS", STATIONS[59]!],
+  ["WSSS", STATIONS[60]!],
+  ["YBBN", STATIONS[61]!],
+  ["YMML", STATIONS[62]!],
+  ["YSSY", STATIONS[63]!],
+  ["ZBAA", STATIONS[64]!],
+  ["ZSPD", STATIONS[65]!],
 ]);
 
 export const STATION_BY_ICAO: ReadonlyMap<string, StationInfo> = new Map<string, StationInfo>([
@@ -703,53 +964,58 @@ export const STATION_BY_ICAO: ReadonlyMap<string, StationInfo> = new Map<string,
   ["ESSA", STATIONS[9]!],
   ["KATL", STATIONS[10]!],
   ["KAUS", STATIONS[11]!],
-  ["KBOS", STATIONS[12]!],
-  ["KDCA", STATIONS[13]!],
-  ["KDEN", STATIONS[14]!],
-  ["KDFW", STATIONS[15]!],
-  ["KHOU", STATIONS[16]!],
-  ["KLAS", STATIONS[17]!],
-  ["KLAX", STATIONS[18]!],
-  ["KMDW", STATIONS[19]!],
-  ["KMIA", STATIONS[20]!],
-  ["KMSP", STATIONS[21]!],
-  ["KMSY", STATIONS[22]!],
-  ["KNYC", STATIONS[23]!],
-  ["KOKC", STATIONS[24]!],
-  ["KPHL", STATIONS[25]!],
-  ["KPHX", STATIONS[26]!],
-  ["KSAT", STATIONS[27]!],
-  ["KSEA", STATIONS[28]!],
-  ["KSFO", STATIONS[29]!],
-  ["LEBL", STATIONS[30]!],
-  ["LEMD", STATIONS[31]!],
-  ["LFPB", STATIONS[32]!],
-  ["LFPG", STATIONS[33]!],
-  ["LFPO", STATIONS[34]!],
-  ["LIMC", STATIONS[35]!],
-  ["LIRF", STATIONS[36]!],
-  ["LOWW", STATIONS[37]!],
-  ["LSZH", STATIONS[38]!],
-  ["NZAA", STATIONS[39]!],
-  ["NZWN", STATIONS[40]!],
-  ["OERK", STATIONS[41]!],
-  ["OMDB", STATIONS[42]!],
-  ["OTHH", STATIONS[43]!],
-  ["RCTP", STATIONS[44]!],
-  ["RJAA", STATIONS[45]!],
-  ["RJTT", STATIONS[46]!],
-  ["RKSI", STATIONS[47]!],
-  ["SAEZ", STATIONS[48]!],
-  ["SBGR", STATIONS[49]!],
-  ["UUEE", STATIONS[50]!],
-  ["VABB", STATIONS[51]!],
-  ["VHHH", STATIONS[52]!],
-  ["VIDP", STATIONS[53]!],
-  ["VTBS", STATIONS[54]!],
-  ["WSSS", STATIONS[55]!],
-  ["YBBN", STATIONS[56]!],
-  ["YMML", STATIONS[57]!],
-  ["YSSY", STATIONS[58]!],
-  ["ZBAA", STATIONS[59]!],
-  ["ZSPD", STATIONS[60]!],
+  ["KBNA", STATIONS[12]!],
+  ["KBOS", STATIONS[13]!],
+  ["KCVG", STATIONS[14]!],
+  ["KDCA", STATIONS[15]!],
+  ["KDEN", STATIONS[16]!],
+  ["KDFW", STATIONS[17]!],
+  ["KDTW", STATIONS[18]!],
+  ["KHOU", STATIONS[19]!],
+  ["KIAH", STATIONS[20]!],
+  ["KLAS", STATIONS[21]!],
+  ["KLAX", STATIONS[22]!],
+  ["KMDW", STATIONS[23]!],
+  ["KMIA", STATIONS[24]!],
+  ["KMSP", STATIONS[25]!],
+  ["KMSY", STATIONS[26]!],
+  ["KNYC", STATIONS[27]!],
+  ["KOKC", STATIONS[28]!],
+  ["KPHL", STATIONS[29]!],
+  ["KPHX", STATIONS[30]!],
+  ["KSAT", STATIONS[31]!],
+  ["KSEA", STATIONS[32]!],
+  ["KSFO", STATIONS[33]!],
+  ["KSLC", STATIONS[34]!],
+  ["LEBL", STATIONS[35]!],
+  ["LEMD", STATIONS[36]!],
+  ["LFPB", STATIONS[37]!],
+  ["LFPG", STATIONS[38]!],
+  ["LFPO", STATIONS[39]!],
+  ["LIMC", STATIONS[40]!],
+  ["LIRF", STATIONS[41]!],
+  ["LOWW", STATIONS[42]!],
+  ["LSZH", STATIONS[43]!],
+  ["NZAA", STATIONS[44]!],
+  ["NZWN", STATIONS[45]!],
+  ["OERK", STATIONS[46]!],
+  ["OMDB", STATIONS[47]!],
+  ["OTHH", STATIONS[48]!],
+  ["RCTP", STATIONS[49]!],
+  ["RJAA", STATIONS[50]!],
+  ["RJTT", STATIONS[51]!],
+  ["RKSI", STATIONS[52]!],
+  ["SAEZ", STATIONS[53]!],
+  ["SBGR", STATIONS[54]!],
+  ["UUEE", STATIONS[55]!],
+  ["VABB", STATIONS[56]!],
+  ["VHHH", STATIONS[57]!],
+  ["VIDP", STATIONS[58]!],
+  ["VTBS", STATIONS[59]!],
+  ["WSSS", STATIONS[60]!],
+  ["YBBN", STATIONS[61]!],
+  ["YMML", STATIONS[62]!],
+  ["YSSY", STATIONS[63]!],
+  ["ZBAA", STATIONS[64]!],
+  ["ZSPD", STATIONS[65]!],
 ]);

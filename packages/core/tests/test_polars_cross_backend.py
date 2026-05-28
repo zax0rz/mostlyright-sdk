@@ -199,10 +199,10 @@ def test_toon_dumps_backend_equivalence(
 
 
 def test_knowledge_view_accepts_polars_via_wrapper() -> None:
-    """KV via TradewindsResult wrapper handles polars frames (W0 path)."""
+    """KV via MostlyRightResult wrapper handles polars frames (W0 path)."""
     from datetime import datetime
 
-    from mostlyright.core import KnowledgeView, TimePoint, TradewindsResult
+    from mostlyright.core import KnowledgeView, MostlyRightResult, TimePoint
 
     pdf = pd.DataFrame(
         {
@@ -213,7 +213,7 @@ def test_knowledge_view_accepts_polars_via_wrapper() -> None:
         }
     )
     pldf = pl.from_pandas(pdf)
-    result = TradewindsResult(
+    result = MostlyRightResult(
         frame=pldf,
         source="iem.live",
         retrieved_at=datetime(2025, 1, 4, tzinfo=UTC),

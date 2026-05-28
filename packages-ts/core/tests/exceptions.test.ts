@@ -7,6 +7,7 @@ import {
   DeferredMarketError,
   ForbiddenError,
   LeakageError,
+  MostlyRightError,
   NotFoundError,
   NwpNotAvailableError,
   PayloadTooLargeError,
@@ -18,7 +19,6 @@ import {
   SourceUnavailableError,
   TemporalDriftError,
   TherminalError,
-  TradewindsError,
   ValidationError,
   toJsonSafe,
 } from "../src/exceptions/index.js";
@@ -94,10 +94,10 @@ describe("toJsonSafe", () => {
   });
 });
 
-describe("TradewindsError base class", () => {
+describe("MostlyRightError base class", () => {
   it("uses default error code when none provided", () => {
-    const err = new TradewindsError("boom");
-    expect(err.errorCode).toBe("TRADEWINDS_ERROR");
+    const err = new MostlyRightError("boom");
+    expect(err.errorCode).toBe("MOSTLYRIGHT_ERROR");
     expect(err.source).toBeNull();
     expect(err.requestId).toBeNull();
     expect(err.message).toBe("boom");
@@ -105,7 +105,7 @@ describe("TradewindsError base class", () => {
   });
 
   it("honors error_code/source/request_id options", () => {
-    const err = new TradewindsError("x", {
+    const err = new MostlyRightError("x", {
       errorCode: "CUSTOM",
       source: "iem.archive",
       requestId: "req-1",
@@ -116,9 +116,9 @@ describe("TradewindsError base class", () => {
   });
 
   it("toDict() returns JSON-safe payload", () => {
-    const err = new TradewindsError("hello", { source: "foo" });
+    const err = new MostlyRightError("hello", { source: "foo" });
     expect(err.toDict()).toEqual({
-      error_code: "TRADEWINDS_ERROR",
+      error_code: "MOSTLYRIGHT_ERROR",
       message: "hello",
       source: "foo",
       request_id: null,
@@ -178,12 +178,12 @@ describe("DataAvailabilityError (Phase 21 21-09)", () => {
     expect(err.source).toBeNull();
   });
 
-  it("is a subclass of TradewindsError (catchable as TradewindsError)", () => {
+  it("is a subclass of MostlyRightError (catchable as MostlyRightError)", () => {
     const err = new DataAvailabilityError({
       reason: "rate_limited",
       hint: "back off",
     });
-    expect(err).toBeInstanceOf(TradewindsError);
+    expect(err).toBeInstanceOf(MostlyRightError);
     expect(err).toBeInstanceOf(Error);
     expect(err).toBeInstanceOf(DataAvailabilityError);
   });
@@ -247,7 +247,7 @@ describe("NwpNotAvailableError (post-21-07 follow-up)", () => {
     expect(err).toBeInstanceOf(NwpNotAvailableError);
     // Back-compat: still a DataAvailabilityError → existing handlers work.
     expect(err).toBeInstanceOf(DataAvailabilityError);
-    expect(err).toBeInstanceOf(TradewindsError);
+    expect(err).toBeInstanceOf(MostlyRightError);
     expect(err).toBeInstanceOf(Error);
   });
 
@@ -426,7 +426,7 @@ describe("HTTP-layer hierarchy (Therminal*)", () => {
     const err = new NotFoundError();
     expect(err.statusCode).toBe(404);
     expect(err).toBeInstanceOf(TherminalError);
-    expect(err).toBeInstanceOf(TradewindsError);
+    expect(err).toBeInstanceOf(MostlyRightError);
   });
 
   it("RateLimitError carries retry_after", () => {
@@ -446,7 +446,7 @@ describe("HTTP-layer hierarchy (Therminal*)", () => {
     expect(new ServerError("oops").statusCode).toBe(500);
   });
 
-  it("all HTTP errors are catchable as TradewindsError", () => {
+  it("all HTTP errors are catchable as MostlyRightError", () => {
     const errs = [
       new NotFoundError(),
       new RateLimitError(1),
@@ -456,7 +456,7 @@ describe("HTTP-layer hierarchy (Therminal*)", () => {
       new ServerError(),
     ];
     for (const e of errs) {
-      expect(e).toBeInstanceOf(TradewindsError);
+      expect(e).toBeInstanceOf(MostlyRightError);
     }
   });
 });

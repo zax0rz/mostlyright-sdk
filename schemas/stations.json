@@ -8,7 +8,10 @@
       "latitude": 52.3667,
       "longitude": 13.5033,
       "name": "Berlin Brandenburg",
-      "tz": "Europe/Berlin"
+      "tz": "Europe/Berlin",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "EDDF",
@@ -18,7 +21,10 @@
       "latitude": 50.0379,
       "longitude": 8.5622,
       "name": "Frankfurt am Main",
-      "tz": "Europe/Berlin"
+      "tz": "Europe/Berlin",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "EDDM",
@@ -28,7 +34,10 @@
       "latitude": 48.3538,
       "longitude": 11.7861,
       "name": "Munich Franz Josef Strauss",
-      "tz": "Europe/Berlin"
+      "tz": "Europe/Berlin",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "EFHK",
@@ -38,7 +47,10 @@
       "latitude": 60.3172,
       "longitude": 24.9633,
       "name": "Helsinki-Vantaa",
-      "tz": "Europe/Helsinki"
+      "tz": "Europe/Helsinki",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "EGKK",
@@ -48,7 +60,10 @@
       "latitude": 51.1481,
       "longitude": -0.1903,
       "name": "London Gatwick",
-      "tz": "Europe/London"
+      "tz": "Europe/London",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "EGLL",
@@ -58,7 +73,10 @@
       "latitude": 51.4706,
       "longitude": -0.4619,
       "name": "London Heathrow",
-      "tz": "Europe/London"
+      "tz": "Europe/London",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "EHAM",
@@ -68,7 +86,10 @@
       "latitude": 52.3086,
       "longitude": 4.7639,
       "name": "Amsterdam Schiphol",
-      "tz": "Europe/Amsterdam"
+      "tz": "Europe/Amsterdam",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "EKCH",
@@ -78,7 +99,10 @@
       "latitude": 55.6181,
       "longitude": 12.6561,
       "name": "Copenhagen Kastrup",
-      "tz": "Europe/Copenhagen"
+      "tz": "Europe/Copenhagen",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "EPWA",
@@ -88,7 +112,10 @@
       "latitude": 52.1657,
       "longitude": 20.9671,
       "name": "Warsaw Chopin",
-      "tz": "Europe/Warsaw"
+      "tz": "Europe/Warsaw",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "ESSA",
@@ -98,7 +125,10 @@
       "latitude": 59.6519,
       "longitude": 17.9186,
       "name": "Stockholm Arlanda",
-      "tz": "Europe/Stockholm"
+      "tz": "Europe/Stockholm",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "ATL",
@@ -108,7 +138,11 @@
       "latitude": 33.6407,
       "longitude": -84.4277,
       "name": "Hartsfield-Jackson Atlanta International",
-      "tz": "America/New_York"
+      "tz": "America/New_York",
+      "venues": [
+        "kalshi",
+        "polymarket"
+      ]
     },
     {
       "code": "AUS",
@@ -118,7 +152,24 @@
       "latitude": 30.1975,
       "longitude": -97.6664,
       "name": "Austin-Bergstrom International",
-      "tz": "America/Chicago"
+      "tz": "America/Chicago",
+      "venues": [
+        "kalshi",
+        "polymarket"
+      ]
+    },
+    {
+      "code": "BNA",
+      "country": "US",
+      "ghcnh_id": "USW00013897",
+      "icao": "KBNA",
+      "latitude": 36.1245,
+      "longitude": -86.6782,
+      "name": "Nashville International",
+      "tz": "America/Chicago",
+      "venues": [
+        "kalshi"
+      ]
     },
     {
       "code": "BOS",
@@ -128,7 +179,24 @@
       "latitude": 42.3656,
       "longitude": -71.0096,
       "name": "Boston Logan International",
-      "tz": "America/New_York"
+      "tz": "America/New_York",
+      "venues": [
+        "kalshi",
+        "polymarket"
+      ]
+    },
+    {
+      "code": "CVG",
+      "country": "US",
+      "ghcnh_id": "USW00093814",
+      "icao": "KCVG",
+      "latitude": 39.0488,
+      "longitude": -84.6678,
+      "name": "Cincinnati/Northern Kentucky International",
+      "tz": "America/New_York",
+      "venues": [
+        "kalshi"
+      ]
     },
     {
       "code": "DCA",
@@ -138,7 +206,11 @@
       "latitude": 38.8512,
       "longitude": -77.0402,
       "name": "Washington Reagan National",
-      "tz": "America/New_York"
+      "tz": "America/New_York",
+      "venues": [
+        "kalshi",
+        "polymarket"
+      ]
     },
     {
       "code": "DEN",
@@ -148,7 +220,11 @@
       "latitude": 39.8561,
       "longitude": -104.6737,
       "name": "Denver International",
-      "tz": "America/Denver"
+      "tz": "America/Denver",
+      "venues": [
+        "kalshi",
+        "polymarket"
+      ]
     },
     {
       "code": "DFW",
@@ -158,7 +234,25 @@
       "latitude": 32.8998,
       "longitude": -97.0403,
       "name": "Dallas-Fort Worth International",
-      "tz": "America/Chicago"
+      "tz": "America/Chicago",
+      "venues": [
+        "kalshi",
+        "polymarket"
+      ]
+    },
+    {
+      "code": "DTW",
+      "country": "US",
+      "ghcnh_id": "USW00094847",
+      "icao": "KDTW",
+      "latitude": 42.2124,
+      "longitude": -83.3534,
+      "name": "Detroit Metropolitan Wayne County",
+      "tz": "America/New_York",
+      "venues": [
+        "kalshi",
+        "polymarket"
+      ]
     },
     {
       "code": "HOU",
@@ -168,7 +262,22 @@
       "latitude": 29.6454,
       "longitude": -95.2789,
       "name": "Houston Hobby",
-      "tz": "America/Chicago"
+      "tz": "America/Chicago",
+      "venues": []
+    },
+    {
+      "code": "IAH",
+      "country": "US",
+      "ghcnh_id": "USW00012960",
+      "icao": "KIAH",
+      "latitude": 29.9844,
+      "longitude": -95.3414,
+      "name": "Houston George Bush Intercontinental",
+      "tz": "America/Chicago",
+      "venues": [
+        "kalshi",
+        "polymarket"
+      ]
     },
     {
       "code": "LAS",
@@ -178,7 +287,10 @@
       "latitude": 36.084,
       "longitude": -115.1537,
       "name": "Harry Reid (McCarran) International",
-      "tz": "America/Los_Angeles"
+      "tz": "America/Los_Angeles",
+      "venues": [
+        "kalshi"
+      ]
     },
     {
       "code": "LAX",
@@ -188,7 +300,11 @@
       "latitude": 33.9425,
       "longitude": -118.4081,
       "name": "Los Angeles International",
-      "tz": "America/Los_Angeles"
+      "tz": "America/Los_Angeles",
+      "venues": [
+        "kalshi",
+        "polymarket"
+      ]
     },
     {
       "code": "MDW",
@@ -198,7 +314,10 @@
       "latitude": 41.7868,
       "longitude": -87.7522,
       "name": "Chicago Midway International",
-      "tz": "America/Chicago"
+      "tz": "America/Chicago",
+      "venues": [
+        "kalshi"
+      ]
     },
     {
       "code": "MIA",
@@ -208,7 +327,11 @@
       "latitude": 25.7959,
       "longitude": -80.287,
       "name": "Miami International",
-      "tz": "America/New_York"
+      "tz": "America/New_York",
+      "venues": [
+        "kalshi",
+        "polymarket"
+      ]
     },
     {
       "code": "MSP",
@@ -218,7 +341,11 @@
       "latitude": 44.8848,
       "longitude": -93.2223,
       "name": "Minneapolis-St Paul International",
-      "tz": "America/Chicago"
+      "tz": "America/Chicago",
+      "venues": [
+        "kalshi",
+        "polymarket"
+      ]
     },
     {
       "code": "MSY",
@@ -228,7 +355,8 @@
       "latitude": 29.9934,
       "longitude": -90.258,
       "name": "New Orleans Louis Armstrong International",
-      "tz": "America/Chicago"
+      "tz": "America/Chicago",
+      "venues": []
     },
     {
       "code": "NYC",
@@ -238,7 +366,10 @@
       "latitude": 40.7789,
       "longitude": -73.9692,
       "name": "Central Park, New York",
-      "tz": "America/New_York"
+      "tz": "America/New_York",
+      "venues": [
+        "kalshi"
+      ]
     },
     {
       "code": "OKC",
@@ -248,7 +379,8 @@
       "latitude": 35.3931,
       "longitude": -97.6007,
       "name": "Oklahoma City Will Rogers World",
-      "tz": "America/Chicago"
+      "tz": "America/Chicago",
+      "venues": []
     },
     {
       "code": "PHL",
@@ -258,7 +390,11 @@
       "latitude": 39.8721,
       "longitude": -75.2411,
       "name": "Philadelphia International",
-      "tz": "America/New_York"
+      "tz": "America/New_York",
+      "venues": [
+        "kalshi",
+        "polymarket"
+      ]
     },
     {
       "code": "PHX",
@@ -268,7 +404,11 @@
       "latitude": 33.4373,
       "longitude": -112.0078,
       "name": "Phoenix Sky Harbor International",
-      "tz": "America/Phoenix"
+      "tz": "America/Phoenix",
+      "venues": [
+        "kalshi",
+        "polymarket"
+      ]
     },
     {
       "code": "SAT",
@@ -278,7 +418,8 @@
       "latitude": 29.5337,
       "longitude": -98.4698,
       "name": "San Antonio International",
-      "tz": "America/Chicago"
+      "tz": "America/Chicago",
+      "venues": []
     },
     {
       "code": "SEA",
@@ -288,7 +429,11 @@
       "latitude": 47.4502,
       "longitude": -122.3088,
       "name": "Seattle-Tacoma International",
-      "tz": "America/Los_Angeles"
+      "tz": "America/Los_Angeles",
+      "venues": [
+        "kalshi",
+        "polymarket"
+      ]
     },
     {
       "code": "SFO",
@@ -298,7 +443,24 @@
       "latitude": 37.6213,
       "longitude": -122.379,
       "name": "San Francisco International",
-      "tz": "America/Los_Angeles"
+      "tz": "America/Los_Angeles",
+      "venues": [
+        "kalshi",
+        "polymarket"
+      ]
+    },
+    {
+      "code": "SLC",
+      "country": "US",
+      "ghcnh_id": "USW00024127",
+      "icao": "KSLC",
+      "latitude": 40.7884,
+      "longitude": -111.9778,
+      "name": "Salt Lake City International",
+      "tz": "America/Denver",
+      "venues": [
+        "kalshi"
+      ]
     },
     {
       "code": "LEBL",
@@ -308,7 +470,10 @@
       "latitude": 41.2974,
       "longitude": 2.0833,
       "name": "Barcelona El Prat",
-      "tz": "Europe/Madrid"
+      "tz": "Europe/Madrid",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "LEMD",
@@ -318,7 +483,10 @@
       "latitude": 40.4719,
       "longitude": -3.5626,
       "name": "Madrid Barajas",
-      "tz": "Europe/Madrid"
+      "tz": "Europe/Madrid",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "LFPB",
@@ -328,7 +496,10 @@
       "latitude": 48.9694,
       "longitude": 2.4414,
       "name": "Paris Le Bourget",
-      "tz": "Europe/Paris"
+      "tz": "Europe/Paris",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "LFPG",
@@ -338,7 +509,10 @@
       "latitude": 49.0097,
       "longitude": 2.5479,
       "name": "Paris Charles de Gaulle",
-      "tz": "Europe/Paris"
+      "tz": "Europe/Paris",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "LFPO",
@@ -348,7 +522,10 @@
       "latitude": 48.7233,
       "longitude": 2.3794,
       "name": "Paris Orly",
-      "tz": "Europe/Paris"
+      "tz": "Europe/Paris",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "LIMC",
@@ -358,7 +535,10 @@
       "latitude": 45.6306,
       "longitude": 8.7281,
       "name": "Milan Malpensa",
-      "tz": "Europe/Rome"
+      "tz": "Europe/Rome",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "LIRF",
@@ -368,7 +548,10 @@
       "latitude": 41.8003,
       "longitude": 12.2389,
       "name": "Rome Fiumicino",
-      "tz": "Europe/Rome"
+      "tz": "Europe/Rome",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "LOWW",
@@ -378,7 +561,10 @@
       "latitude": 48.1103,
       "longitude": 16.5697,
       "name": "Vienna International",
-      "tz": "Europe/Vienna"
+      "tz": "Europe/Vienna",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "LSZH",
@@ -388,7 +574,10 @@
       "latitude": 47.4647,
       "longitude": 8.5492,
       "name": "Zurich",
-      "tz": "Europe/Zurich"
+      "tz": "Europe/Zurich",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "NZAA",
@@ -398,7 +587,10 @@
       "latitude": -37.0081,
       "longitude": 174.7917,
       "name": "Auckland",
-      "tz": "Pacific/Auckland"
+      "tz": "Pacific/Auckland",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "NZWN",
@@ -408,7 +600,10 @@
       "latitude": -41.3272,
       "longitude": 174.8053,
       "name": "Wellington",
-      "tz": "Pacific/Auckland"
+      "tz": "Pacific/Auckland",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "OERK",
@@ -418,7 +613,10 @@
       "latitude": 24.9576,
       "longitude": 46.6988,
       "name": "Riyadh King Khalid International",
-      "tz": "Asia/Riyadh"
+      "tz": "Asia/Riyadh",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "OMDB",
@@ -428,7 +626,10 @@
       "latitude": 25.2532,
       "longitude": 55.3657,
       "name": "Dubai International",
-      "tz": "Asia/Dubai"
+      "tz": "Asia/Dubai",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "OTHH",
@@ -438,7 +639,10 @@
       "latitude": 25.2731,
       "longitude": 51.608,
       "name": "Doha Hamad International",
-      "tz": "Asia/Qatar"
+      "tz": "Asia/Qatar",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "RCTP",
@@ -448,7 +652,10 @@
       "latitude": 25.0777,
       "longitude": 121.2328,
       "name": "Taipei Taoyuan",
-      "tz": "Asia/Taipei"
+      "tz": "Asia/Taipei",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "RJAA",
@@ -458,7 +665,10 @@
       "latitude": 35.7647,
       "longitude": 140.3864,
       "name": "Tokyo Narita",
-      "tz": "Asia/Tokyo"
+      "tz": "Asia/Tokyo",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "RJTT",
@@ -468,7 +678,10 @@
       "latitude": 35.5522,
       "longitude": 139.78,
       "name": "Tokyo Haneda",
-      "tz": "Asia/Tokyo"
+      "tz": "Asia/Tokyo",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "RKSI",
@@ -478,7 +691,10 @@
       "latitude": 37.4691,
       "longitude": 126.4505,
       "name": "Seoul Incheon",
-      "tz": "Asia/Seoul"
+      "tz": "Asia/Seoul",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "SAEZ",
@@ -488,7 +704,10 @@
       "latitude": -34.8222,
       "longitude": -58.5358,
       "name": "Buenos Aires Ezeiza",
-      "tz": "America/Argentina/Buenos_Aires"
+      "tz": "America/Argentina/Buenos_Aires",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "SBGR",
@@ -498,7 +717,10 @@
       "latitude": -23.4356,
       "longitude": -46.4731,
       "name": "S\u00e3o Paulo Guarulhos",
-      "tz": "America/Sao_Paulo"
+      "tz": "America/Sao_Paulo",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "UUEE",
@@ -508,7 +730,10 @@
       "latitude": 55.9728,
       "longitude": 37.4147,
       "name": "Moscow Sheremetyevo",
-      "tz": "Europe/Moscow"
+      "tz": "Europe/Moscow",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "VABB",
@@ -518,7 +743,10 @@
       "latitude": 19.0887,
       "longitude": 72.8679,
       "name": "Mumbai Chhatrapati Shivaji",
-      "tz": "Asia/Kolkata"
+      "tz": "Asia/Kolkata",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "VHHH",
@@ -528,7 +756,10 @@
       "latitude": 22.308,
       "longitude": 113.9185,
       "name": "Hong Kong International",
-      "tz": "Asia/Hong_Kong"
+      "tz": "Asia/Hong_Kong",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "VIDP",
@@ -538,7 +769,10 @@
       "latitude": 28.5562,
       "longitude": 77.1,
       "name": "Delhi Indira Gandhi",
-      "tz": "Asia/Kolkata"
+      "tz": "Asia/Kolkata",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "VTBS",
@@ -548,7 +782,10 @@
       "latitude": 13.69,
       "longitude": 100.7501,
       "name": "Bangkok Suvarnabhumi",
-      "tz": "Asia/Bangkok"
+      "tz": "Asia/Bangkok",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "WSSS",
@@ -558,7 +795,10 @@
       "latitude": 1.3644,
       "longitude": 103.9915,
       "name": "Singapore Changi",
-      "tz": "Asia/Singapore"
+      "tz": "Asia/Singapore",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "YBBN",
@@ -568,7 +808,10 @@
       "latitude": -27.3842,
       "longitude": 153.1175,
       "name": "Brisbane",
-      "tz": "Australia/Brisbane"
+      "tz": "Australia/Brisbane",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "YMML",
@@ -578,7 +821,10 @@
       "latitude": -37.6733,
       "longitude": 144.8433,
       "name": "Melbourne Tullamarine",
-      "tz": "Australia/Melbourne"
+      "tz": "Australia/Melbourne",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "YSSY",
@@ -588,7 +834,10 @@
       "latitude": -33.9461,
       "longitude": 151.1772,
       "name": "Sydney Kingsford Smith",
-      "tz": "Australia/Sydney"
+      "tz": "Australia/Sydney",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "ZBAA",
@@ -598,7 +847,10 @@
       "latitude": 40.0801,
       "longitude": 116.5846,
       "name": "Beijing Capital",
-      "tz": "Asia/Shanghai"
+      "tz": "Asia/Shanghai",
+      "venues": [
+        "polymarket"
+      ]
     },
     {
       "code": "ZSPD",
@@ -608,7 +860,10 @@
       "latitude": 31.1443,
       "longitude": 121.8083,
       "name": "Shanghai Pudong",
-      "tz": "Asia/Shanghai"
+      "tz": "Asia/Shanghai",
+      "venues": [
+        "polymarket"
+      ]
     }
   ]
 }

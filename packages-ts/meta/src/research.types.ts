@@ -59,7 +59,7 @@ export interface ResearchKwargsExtension {
   backend?: "pandas" | "polars";
 
   /**
-   * D-03: accepted but no-op in TS. Python returns a `TradewindsResult`
+   * D-03: accepted but no-op in TS. Python returns a `MostlyRightResult`
    * wrapper class when `return_type="wrapper"`; TS returns plain object
    * arrays (no `.attrs` divergence to bridge), so the wrapper would carry
    * no extra signal.

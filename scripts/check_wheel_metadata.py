@@ -40,7 +40,7 @@ from packaging.specifiers import SpecifierSet
 #: SATISFY. ``"<0.2"`` is the load-bearing upper bound — the gate exists
 #: precisely to keep a future 0.2.x core from being pulled by an
 #: under-specified weather/markets wheel.
-REQUIRED_TRADEWINDS_SPECIFIER: dict[str, SpecifierSet] = {
+REQUIRED_MOSTLYRIGHT_SPECIFIER: dict[str, SpecifierSet] = {
     "mostlyrightmd_weather": SpecifierSet(">=0.1.0a1,<0.2"),
     "mostlyrightmd_markets": SpecifierSet(">=0.1.0a1,<0.2"),
 }
@@ -75,7 +75,7 @@ def check_wheel(wheel_path: Path) -> list[str]:
     # Wheel filenames: ``<pkg>-<version>-<python>-<abi>-<platform>.whl``.
     # Splitting on "-" gives ["<pkg>", "<version>", ...].
     pkg_name = wheel_path.name.split("-")[0]
-    required = REQUIRED_TRADEWINDS_SPECIFIER.get(pkg_name)
+    required = REQUIRED_MOSTLYRIGHT_SPECIFIER.get(pkg_name)
     if required is None:
         # Not a sibling-package wheel we gate on.
         return errors
@@ -139,7 +139,7 @@ def main() -> int:
     checked = 0
     for wheel in wheels:
         wheel_errors = check_wheel(wheel)
-        if wheel.name.split("-")[0] in REQUIRED_TRADEWINDS_SPECIFIER:
+        if wheel.name.split("-")[0] in REQUIRED_MOSTLYRIGHT_SPECIFIER:
             checked += 1
         all_errors.extend(wheel_errors)
     if all_errors:

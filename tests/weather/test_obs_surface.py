@@ -63,7 +63,7 @@ def test_obs_hosted_raises_data_availability_error_with_documented_hint():
     """Phase 21 21-09: migrated from NotImplementedError to the structural
     DataAvailabilityError. Reason = ``model_unavailable``; hint preserves the
     documented v0.2.x-deferral message so existing error-handling docs stay
-    accurate. Catchable via TradewindsError base class for back-compat.
+    accurate. Catchable via MostlyRightError base class for back-compat.
     """
     from mostlyright.core.exceptions import DataAvailabilityError
     from mostlyright.weather.obs import obs

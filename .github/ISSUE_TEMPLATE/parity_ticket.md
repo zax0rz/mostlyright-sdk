@@ -10,7 +10,7 @@ labels: parity-ticket
 **Type:** [SCHEMA | FUNCTION | BEHAVIOR | EXCEPTION | ENDPOINT | DATA]
 **Direction:** [PYTHON_TO_TS | TS_TO_PYTHON]
 **Canonical PR:** #<number> (the PR landing the change in the source language)
-**Target SDK:** [tradewinds-ts | tradewinds]
+**Target SDK:** [mostlyright-ts | mostlyrightmd]
 **Filed by:** @<author of canonical PR>
 **Assigned to:** @<author of parity PR — defaults to canonical PR author unless explicitly handed off>
 **Filed:** YYYY-MM-DD

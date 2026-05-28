@@ -40,7 +40,7 @@ class StationCitation:
 
 
 #: City ticker → (settlement station ICAO, citation URL).
-#: The 20-city Kalshi NHIGH/NLOW universe per v0.1.0 scope. The citation
+#: The 21-city Kalshi NHIGH/NLOW universe per v0.1.0 scope. The citation
 #: URL is the live Kalshi contract page; if the issuer renames the city
 #: ticker the citation URL still resolves and the test stays green.
 #:
@@ -95,6 +95,10 @@ KALSHI_SETTLEMENT_STATIONS: Final[dict[str, StationCitation]] = {
     "BNA": StationCitation("KBNA", "https://kalshi.com/markets/khighbna (Nashville International)"),
     "SLC": StationCitation(
         "KSLC", "https://kalshi.com/markets/khighslc (Salt Lake City International)"
+    ),
+    "TLV": StationCitation(
+        "KLAS",
+        "https://kalshi.com/markets/kxhightlv (Harry Reid/McCarran; settles vs NWS CLILAS)",
     ),
 }
 

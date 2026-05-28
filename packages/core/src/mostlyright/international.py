@@ -21,7 +21,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
 from mostlyright._internal._stations import STATIONS, is_us_station
-from mostlyright.core.exceptions import TradewindsError
+from mostlyright.core.exceptions import MostlyRightError
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ __all__ = [
 ]
 
 
-class DeferredMarketError(TradewindsError):
+class DeferredMarketError(MostlyRightError):
     """A market resolves to a station whose data source is deferred to v0.2.
 
     Currently raised for Taipei (CWA client) and Hong Kong-lowest (HKO
@@ -98,7 +98,7 @@ def _resolve_tz(station: str) -> str:
         if s.icao == station:
             return s.tz
     raise KeyError(
-        f"Unknown station {station!r}. Expected one of the 60 STATIONS entries (20 US + 40 intl)."
+        f"Unknown station {station!r}. Expected one of the 66 STATIONS entries (25 US + 41 intl)."
     )
 
 
@@ -271,7 +271,7 @@ def daily_extremes(
     if info is None:
         raise KeyError(
             f"Unknown station {station!r}. "
-            f"Expected one of the 60 STATIONS entries (20 US + 40 intl)."
+            f"Expected one of the 66 STATIONS entries (25 US + 41 intl)."
         )
 
     # Local imports — pandas + cache may not be importable in bare installs
@@ -387,7 +387,7 @@ def daily_extremes(
     # Phase 6 W3-T2 (codex iter-3 P2): daily_extremes' DEFAULT return is
     # list[dict] (preserves v0.1.0 zero-behaviour-change). Backend/return
     # kwargs are OPT-IN: callers must explicitly pass return_type='wrapper'
-    # (and optionally backend='polars') to get a TradewindsResult.
+    # (and optionally backend='polars') to get a MostlyRightResult.
     if return_type == "list" and backend == "pandas":
         return out
 
@@ -407,7 +407,7 @@ def daily_extremes(
     # Architect iter-1 CRITICAL-1 fix: pass through the caller's
     # return_type so a request for return_type="dataframe" actually
     # delivers a raw DataFrame instead of being silently upgraded to a
-    # TradewindsResult. validate_backend_kwargs is the gate that rejects
+    # MostlyRightResult. validate_backend_kwargs is the gate that rejects
     # backend="polars" + return_type="dataframe" upfront.
     validate_backend_kwargs(backend, return_type)  # type: ignore[arg-type]
 

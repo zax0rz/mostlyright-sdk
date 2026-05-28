@@ -4,6 +4,15 @@ All notable changes to `mostlyright`. The format follows [Keep a Changelog](http
 
 ## [Unreleased]
 
+### Changed — Phase 22: Station-model refactor (BREAKING, pre-1.0)
+- **Unified, venue-agnostic station catalog in core.** New `mostlyright.stations` module exposes `StationCatalog` (`CATALOG`, `Station`) with `get()`, `filter_by_venue()`, and `filter_by_country()`. A station is a physical fact; prediction-market participation is a `venues` tag (`frozenset[str]`) on `StationInfo`, not a separate module or a US/international split.
+- **Registry expanded to 66 stations (25 US + 41 international).** Added the five Kalshi settlement stations the v0.14.1 set had wrong — `KIAH` (Houston Intercontinental, not `KHOU`), `KDTW`, `KCVG`, `KBNA`, `KSLC`. The four non-settlement US weather stations (`KHOU`/`KMSY`/`KOKC`/`KSAT`) remain queryable with an empty `venues` tag.
+- **`KLAS` (Las Vegas, ticker `TLV`) tagged as a Kalshi settlement station** (issue #39). Kalshi trades `KXHIGHTLV`/`KXLOWTLV`, settling against the NWS CLILAS report; the station was already in the registry but carried no `venues` tag.
+- **Venue tags follow each issuer's actual settlement map, not country.** Kalshi and Polymarket settle several shared cities against different stations (NYC: `KNYC` vs `KLGA`; Chicago: `KMDW` vs `KORD`), so `filter_by_venue("kalshi")` ≠ "every US station". `kalshi`=21, `polymarket`=56. Markets derives its settlement universe by filtering the catalog; contract tests pin the tags against the citation + city-station maps.
+- **`StationInfo.kalshi_traded`** is now derived from venue tags instead of hard-coded `True`.
+- **`TradewindsError` → `MostlyRightError`** and **`TradewindsResult` → `MostlyRightResult`** across Python and TypeScript — no deprecation alias (pre-1.0). The base error code string changed `TRADEWINDS_ERROR` → `MOSTLYRIGHT_ERROR`. The `TRADEWINDS_CACHE_DIR` env-var migration shim is unaffected (separate v0.3-removal track).
+- **`schemas/stations.json`** now exports the `venues` tag for TS codegen parity.
+
 ## [1.3.1] — 2026-05-28 — GHCNh integer-°F precision fix
 
 ### Fixed

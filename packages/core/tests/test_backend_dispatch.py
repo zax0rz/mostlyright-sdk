@@ -6,7 +6,7 @@ Covers the strict validation order:
 3. ONLY THEN: missing [polars] extra raises SourceUnavailableError.
 
 Plus the wrap_result happy path: backend='pandas' + return_type='wrapper'
-returns a TradewindsResult wrapping the unchanged pandas frame, and
+returns a MostlyRightResult wrapping the unchanged pandas frame, and
 default kwargs preserve v0.1.0 zero-behaviour-change.
 """
 
@@ -21,7 +21,7 @@ from mostlyright.core._backend_dispatch import (
     validate_backend_kwargs,
     wrap_result,
 )
-from mostlyright.core.result import TradewindsResult
+from mostlyright.core.result import MostlyRightResult
 
 # ----------------------- validate_backend_kwargs -----------------------
 
@@ -80,7 +80,7 @@ def test_wrap_result_pandas_wrapper() -> None:
         source="iem.live",
         retrieved_at=ts,
     )
-    assert isinstance(out, TradewindsResult)
+    assert isinstance(out, MostlyRightResult)
     assert out.frame is df
     assert out.source == "iem.live"
     assert out.retrieved_at == ts
@@ -97,7 +97,7 @@ def test_wrap_result_polars_wrapper() -> None:
         source="iem.live",
         retrieved_at=ts,
     )
-    assert isinstance(out, TradewindsResult)
+    assert isinstance(out, MostlyRightResult)
     assert isinstance(out.frame, pl.DataFrame)
     assert out.source == "iem.live"
 

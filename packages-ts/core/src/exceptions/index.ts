@@ -2,7 +2,7 @@
 //
 // Mirrors the Python design in `packages/core/src/mostlyright/core/exceptions.py`
 // and `packages/core/src/mostlyright/_internal/exceptions.py`. Every error
-// subclasses `TradewindsError` and exposes a `toDict()` method that returns a
+// subclasses `MostlyRightError` and exposes a `toDict()` method that returns a
 // JSON-safe payload suitable for MCP `error.data` / extension messaging.
 //
 // Role-name vocabulary for SourceMismatchError matches Python:
@@ -105,7 +105,7 @@ export function toJsonSafe(value: unknown, seen?: WeakSet<object>): unknown {
 // Base class
 // ---------------------------------------------------------------------------
 
-export interface TradewindsErrorOptions {
+export interface MostlyRightErrorOptions {
   errorCode?: string;
   source?: string | null;
   requestId?: string | null;
@@ -119,18 +119,18 @@ export interface TradewindsErrorOptions {
  * involved (e.g. "iem.archive") when applicable, and `requestId` correlates a
  * JSON-RPC / MCP request id when applicable.
  */
-export class TradewindsError extends Error {
+export class MostlyRightError extends Error {
   /** Subclass override — the stable string enum surfaced via `errorCode`. */
-  static defaultErrorCode = "TRADEWINDS_ERROR";
+  static defaultErrorCode = "MOSTLYRIGHT_ERROR";
 
   readonly errorCode: string;
   readonly source: string | null;
   readonly requestId: string | null;
 
-  constructor(message = "", options: TradewindsErrorOptions = {}) {
+  constructor(message = "", options: MostlyRightErrorOptions = {}) {
     super(message);
     this.name = new.target.name;
-    const ctor = this.constructor as typeof TradewindsError;
+    const ctor = this.constructor as typeof MostlyRightError;
     this.errorCode = options.errorCode ?? ctor.defaultErrorCode;
     this.source = options.source ?? null;
     this.requestId = options.requestId ?? null;
@@ -164,7 +164,7 @@ export class TradewindsError extends Error {
 // SourceUnavailableError
 // ---------------------------------------------------------------------------
 
-export interface SourceUnavailableErrorOptions extends TradewindsErrorOptions {
+export interface SourceUnavailableErrorOptions extends MostlyRightErrorOptions {
   httpStatus?: number | null;
   retryable?: boolean;
   retryAfterS?: number | null;
@@ -172,7 +172,7 @@ export interface SourceUnavailableErrorOptions extends TradewindsErrorOptions {
   url?: string | null;
 }
 
-export class SourceUnavailableError extends TradewindsError {
+export class SourceUnavailableError extends MostlyRightError {
   static override defaultErrorCode = "SOURCE_UNAVAILABLE";
 
   readonly httpStatus: number | null;
@@ -225,12 +225,12 @@ export const DATA_AVAILABILITY_REASONS = [
 
 export type DataAvailabilityReason = (typeof DATA_AVAILABILITY_REASONS)[number];
 
-export interface DataAvailabilityErrorOptions extends TradewindsErrorOptions {
+export interface DataAvailabilityErrorOptions extends MostlyRightErrorOptions {
   reason: DataAvailabilityReason;
   hint: string;
 }
 
-export class DataAvailabilityError extends TradewindsError {
+export class DataAvailabilityError extends MostlyRightError {
   static override defaultErrorCode = "DATA_AVAILABILITY";
 
   readonly reason: DataAvailabilityReason;
@@ -283,7 +283,7 @@ export class DataAvailabilityError extends TradewindsError {
 // DataAvailabilityError && e.reason === "model_unavailable") ... }` paths
 // continue to work unchanged.
 
-export interface NwpNotAvailableErrorOptions extends TradewindsErrorOptions {
+export interface NwpNotAvailableErrorOptions extends MostlyRightErrorOptions {
   /** Station the caller asked for (echoed back for log/error attribution). */
   station: string;
   /** NWP model the caller asked for (e.g. `"gfs"`, `"hrrr"`). */
@@ -357,14 +357,14 @@ export class NwpNotAvailableError extends DataAvailabilityError {
 // SchemaValidationError
 // ---------------------------------------------------------------------------
 
-export interface SchemaValidationErrorOptions extends TradewindsErrorOptions {
+export interface SchemaValidationErrorOptions extends MostlyRightErrorOptions {
   schemaId: string;
   violations?: Array<Record<string, unknown>>;
   quarantineCount?: number;
   sampleViolations?: Array<Record<string, unknown>>;
 }
 
-export class SchemaValidationError extends TradewindsError {
+export class SchemaValidationError extends MostlyRightError {
   static override defaultErrorCode = "SCHEMA_VALIDATION_FAILED";
 
   readonly schemaId: string;
@@ -397,14 +397,14 @@ export class SchemaValidationError extends TradewindsError {
 
 export type SourceMismatchRole = "observations" | "forecasts" | "settlement";
 
-export interface SourceMismatchErrorOptions extends TradewindsErrorOptions {
+export interface SourceMismatchErrorOptions extends MostlyRightErrorOptions {
   schemaSource: string;
   dataSource: string;
   role?: SourceMismatchRole | null;
   catalogWarning?: string | null;
 }
 
-export class SourceMismatchError extends TradewindsError {
+export class SourceMismatchError extends MostlyRightError {
   static override defaultErrorCode = "SOURCE_MISMATCH";
 
   /** Canonical role-name vocabulary (design.md §R). */
@@ -442,13 +442,13 @@ export class SourceMismatchError extends TradewindsError {
 // LeakageError
 // ---------------------------------------------------------------------------
 
-export interface LeakageErrorOptions extends TradewindsErrorOptions {
+export interface LeakageErrorOptions extends MostlyRightErrorOptions {
   asOf: string;
   violatingCount: number;
   sampleViolations?: Array<Record<string, unknown>>;
 }
 
-export class LeakageError extends TradewindsError {
+export class LeakageError extends MostlyRightError {
   static override defaultErrorCode = "LEAKAGE_DETECTED";
 
   readonly asOf: string;
@@ -476,7 +476,7 @@ export class LeakageError extends TradewindsError {
 // IssuedAtMissingError (Phase 20 OM-04)
 // ---------------------------------------------------------------------------
 
-export interface IssuedAtMissingErrorOptions extends TradewindsErrorOptions {
+export interface IssuedAtMissingErrorOptions extends MostlyRightErrorOptions {
   violatingCount?: number;
   sampleViolations?: Array<Record<string, unknown>>;
 }
@@ -517,7 +517,7 @@ export class IssuedAtMissingError extends SchemaValidationError {
 // OpenMeteoSeamlessLeakageError (Phase 20 OM-04)
 // ---------------------------------------------------------------------------
 
-export interface OpenMeteoSeamlessLeakageErrorOptions extends TradewindsErrorOptions {
+export interface OpenMeteoSeamlessLeakageErrorOptions extends MostlyRightErrorOptions {
   model: string;
   endpointUrl: string;
   asOf?: string | null;
@@ -566,14 +566,14 @@ export class OpenMeteoSeamlessLeakageError extends LeakageError {
 // TemporalDriftError
 // ---------------------------------------------------------------------------
 
-export interface TemporalDriftErrorOptions extends TradewindsErrorOptions {
+export interface TemporalDriftErrorOptions extends MostlyRightErrorOptions {
   schemaId: string;
   assertedRange: [string, string];
   violatingRows: number;
   sampleViolations?: Array<Record<string, unknown>>;
 }
 
-export class TemporalDriftError extends TradewindsError {
+export class TemporalDriftError extends MostlyRightError {
   static override defaultErrorCode = "TEMPORAL_DRIFT";
 
   readonly schemaId: string;
@@ -604,13 +604,13 @@ export class TemporalDriftError extends TradewindsError {
 // PayloadTooLargeError
 // ---------------------------------------------------------------------------
 
-export interface PayloadTooLargeErrorOptions extends TradewindsErrorOptions {
+export interface PayloadTooLargeErrorOptions extends MostlyRightErrorOptions {
   declaredSize: number;
   limit: number;
   acceptedModes?: string[];
 }
 
-export class PayloadTooLargeError extends TradewindsError {
+export class PayloadTooLargeError extends MostlyRightError {
   static override defaultErrorCode = "PAYLOAD_TOO_LARGE";
 
   readonly declaredSize: number;
@@ -638,7 +638,7 @@ export class PayloadTooLargeError extends TradewindsError {
 // DeferredMarketError (TS-W6 placeholder; mirrors mostlyright.international)
 // ---------------------------------------------------------------------------
 
-export class DeferredMarketError extends TradewindsError {
+export class DeferredMarketError extends MostlyRightError {
   static override defaultErrorCode = "DEFERRED_MARKET";
 }
 
@@ -646,7 +646,7 @@ export class DeferredMarketError extends TradewindsError {
 // PolymarketEventError (TS-W5 placeholder; mirrors mostlyright.markets.polymarket)
 // ---------------------------------------------------------------------------
 
-export class PolymarketEventError extends TradewindsError {
+export class PolymarketEventError extends MostlyRightError {
   static override defaultErrorCode = "POLYMARKET_EVENT_INVALID";
 }
 
@@ -654,16 +654,16 @@ export class PolymarketEventError extends TradewindsError {
 // HTTP-layer hierarchy (mirrors mostlyright._internal.exceptions)
 // ---------------------------------------------------------------------------
 
-export interface TherminalErrorOptions extends TradewindsErrorOptions {
+export interface TherminalErrorOptions extends MostlyRightErrorOptions {
   statusCode?: number | null;
   retryAfter?: number | null;
 }
 
 /**
- * Base HTTP-layer marker. Subclass of `TradewindsError` so callers that
- * catch `TradewindsError` also catch transport errors.
+ * Base HTTP-layer marker. Subclass of `MostlyRightError` so callers that
+ * catch `MostlyRightError` also catch transport errors.
  */
-export class TherminalError extends TradewindsError {
+export class TherminalError extends MostlyRightError {
   static override defaultErrorCode = "HTTP_ERROR";
 
   readonly statusCode: number | null;
@@ -756,11 +756,11 @@ export class ServerError extends TherminalError {
  * `stream()` swallows empty-tick errors and waits for the next polite-floor
  * cycle. Only `latest()` raises `NoLiveDataError` on empty responses.
  */
-export class LiveStreamError extends TradewindsError {
+export class LiveStreamError extends MostlyRightError {
   static override defaultErrorCode = "LIVE_STREAM_ERROR";
 }
 
-export interface NoLiveDataErrorOptions extends TradewindsErrorOptions {
+export interface NoLiveDataErrorOptions extends MostlyRightErrorOptions {
   station: string;
   source: string;
 }

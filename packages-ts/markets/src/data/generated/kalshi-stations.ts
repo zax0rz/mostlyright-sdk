@@ -88,6 +88,10 @@ export const KALSHI_SETTLEMENT_STATIONS: Readonly<Record<string, KalshiStation>>
     citation: "https://kalshi.com/markets/khighslc (Salt Lake City International)",
     station: "KSLC",
   },
+  TLV: {
+    citation: "https://kalshi.com/markets/kxhightlv (Harry Reid/McCarran; settles vs NWS CLILAS)",
+    station: "KLAS",
+  },
 } as const;
 
 export const KNOWN_WRONG_STATIONS: ReadonlySet<string> = new Set<string>([

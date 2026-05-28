@@ -277,7 +277,12 @@ def _build_group_a_schemas() -> list[_OutputFile]:
 
 
 def _build_stations() -> _OutputFile:
-    """Emit ``schemas/stations.json`` — all 60+ stations, sorted by ICAO."""
+    """Emit ``schemas/stations.json`` — every station, sorted by ICAO.
+
+    ``venues`` is emitted as a sorted list (frozenset is not JSON-native and
+    the exporter is byte-deterministic by contract) so the TS station model
+    can mirror the venue tags.
+    """
     from mostlyright._internal._stations import STATIONS
 
     entries: list[dict[str, Any]] = []
@@ -292,6 +297,7 @@ def _build_stations() -> _OutputFile:
                 "latitude": info.latitude,
                 "longitude": info.longitude,
                 "country": info.country,
+                "venues": sorted(info.venues),
             }
         )
     entries.sort(key=lambda row: row["icao"])

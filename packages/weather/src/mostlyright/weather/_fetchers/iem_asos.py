@@ -17,7 +17,7 @@ Phase 1.5 PERF-01/02/03 — lifts mostlyright PR #85 (commit ``cf9eb85``, 2026-0
   never reads (closes three cache-poisoning paths PR #85 documented).
 - **PERF-03 timeout** lives in :mod:`mostlyright._internal._http` (separate concern).
 
-Tradewinds-specific deviation from PR #85 verbatim
+mostlyright-specific deviation from PR #85 verbatim
 ==================================================
 
 PR #85's :func:`yearly_chunks_exclusive_end` uses ``chunk_start = max(current, start)``,
@@ -229,7 +229,7 @@ def download_iem_asos(
 
         chunks = [(start, end + _td(days=1))]
     else:
-        # Tradewinds-specific: normalize start to Jan 1 of its year so per-month
+        # mostlyright-specific: normalize start to Jan 1 of its year so per-month
         # callers share a yearly cache key. PR #85's chunker uses
         # max(current, start), which floats the chunk_start with the caller —
         # fine for one-shot backfills, wasteful for mostlyright' per-month

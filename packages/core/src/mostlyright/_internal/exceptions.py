@@ -3,22 +3,22 @@
 These exceptions mirror the surface ``therminal-py`` exposed for HTTP
 transport errors. ``TherminalError`` remains as the HTTP-layer marker so
 existing call sites (Phase 1 fetchers) continue to catch it, but it is now
-a subclass of :class:`mostlyright.core.exceptions.TradewindsError` so that
-user code which catches ``TradewindsError`` also catches transport errors.
+a subclass of :class:`mostlyright.core.exceptions.MostlyRightError` so that
+user code which catches ``MostlyRightError`` also catches transport errors.
 Deprecation target: v0.2+ may collapse these into ``SourceUnavailableError``.
 """
 
-from mostlyright.core.exceptions import TradewindsError
+from mostlyright.core.exceptions import MostlyRightError
 
 
-class TherminalError(TradewindsError):
+class TherminalError(MostlyRightError):
     """Base exception for mostlyright HTTP-layer errors.
 
-    Subclass of :class:`TradewindsError` since Phase 2 — catching
-    ``TradewindsError`` now catches transport errors too. The HTTP-layer
+    Subclass of :class:`MostlyRightError` since Phase 2 — catching
+    ``MostlyRightError`` now catches transport errors too. The HTTP-layer
     ``status_code`` attribute is the only attribute on the original
     ``therminal-py`` surface; structured ``error_code`` / ``source`` /
-    ``request_id`` flow through ``TradewindsError.__init__``.
+    ``request_id`` flow through ``MostlyRightError.__init__``.
     """
 
     def __init__(self, message: str, status_code: int | None = None):

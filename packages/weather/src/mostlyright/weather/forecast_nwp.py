@@ -660,7 +660,7 @@ def forecast_nwp(
         if not per_cycle_frames:
             # Phase 17 Wave 4 iter-2 review HIGH (Finding 3): even the
             # empty-result path must honor backend/return_type so polars /
-            # TradewindsResult callers don't get a raw pandas DataFrame
+            # MostlyRightResult callers don't get a raw pandas DataFrame
             # back when every cycle failed.
             return _maybe_wrap_forecast(
                 _pd.DataFrame(),
@@ -984,7 +984,7 @@ def _maybe_wrap_forecast(
     Default (``backend="pandas", return_type="dataframe"``) returns
     ``df`` unchanged (zero-overhead, v0.1.0 compat). Other combinations
     route through ``wrap_result`` which converts to polars and/or wraps
-    in :class:`TradewindsResult`.
+    in :class:`MostlyRightResult`.
     """
     if backend == "pandas" and return_type == "dataframe":
         return df

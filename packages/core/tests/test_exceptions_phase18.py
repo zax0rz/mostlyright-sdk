@@ -5,16 +5,16 @@ from __future__ import annotations
 from mostlyright.core.exceptions import (
     IssuedAtMissingError,
     LeakageError,
+    MostlyRightError,
     OpenMeteoSeamlessLeakageError,
     SchemaValidationError,
-    TradewindsError,
 )
 
 
 def test_issued_at_missing_error_is_schema_validation_subclass() -> None:
     exc = IssuedAtMissingError()
     assert isinstance(exc, SchemaValidationError)
-    assert isinstance(exc, TradewindsError)
+    assert isinstance(exc, MostlyRightError)
 
 
 def test_issued_at_missing_error_default_error_code() -> None:
@@ -51,7 +51,7 @@ def test_open_meteo_seamless_leakage_error_is_leakage_subclass() -> None:
         endpoint_url="https://historical-forecast-api.open-meteo.com/v1/forecast",
     )
     assert isinstance(exc, LeakageError)
-    assert isinstance(exc, TradewindsError)
+    assert isinstance(exc, MostlyRightError)
 
 
 def test_open_meteo_seamless_leakage_error_default_error_code() -> None:

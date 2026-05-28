@@ -31,7 +31,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Final
 from urllib.parse import urlparse
 
-from mostlyright.core.exceptions import TradewindsError
+from mostlyright.core.exceptions import MostlyRightError
 from mostlyright.international import (
     DEFERRED_STATIONS,
     DeferredMarketError,
@@ -162,13 +162,13 @@ _SETTLE_DELAY_HOURS: dict[str, int] = {
 _SLUG_DATE_RE = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
 
 
-class PolymarketEventError(TradewindsError):
+class PolymarketEventError(MostlyRightError):
     """Polymarket event payload is malformed (bad UUID, bad URL, oversized)."""
 
     default_error_code = "POLYMARKET_EVENT_INVALID"
 
 
-class PolymarketSettlementError(TradewindsError):
+class PolymarketSettlementError(MostlyRightError):
     """Settlement engine couldn't resolve an event to a bucket.
 
     Reasons: no buckets parseable from description, daily_extremes
@@ -179,7 +179,7 @@ class PolymarketSettlementError(TradewindsError):
     default_error_code = "POLYMARKET_SETTLEMENT_FAILED"
 
 
-class TooEarlyToSettleError(TradewindsError):
+class TooEarlyToSettleError(MostlyRightError):
     """Settlement attempted before the resolution-source's finalization delay.
 
     Carries the wait time so the caller can schedule a retry.

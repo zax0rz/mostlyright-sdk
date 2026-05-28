@@ -83,7 +83,7 @@ losslessly through parquet, JSON, and TOON.
   do NOT carry tz info. Settlement-window math is delegated to
   `mostlyright.snapshot.settlement_date_for(observed_at, station_code,
   tz_override=...)`, which uses the per-station IANA zone (`_STATION_TZ` for
-  the 20 Kalshi-traded stations).
+  the US stations).
 - DST boundaries: ASOS valid times never shift (UTC is monotonic). Settlement
   dates DO shift on DST days — handled at the settlement-window join in
   `_pairs.py`, not in the adapter.

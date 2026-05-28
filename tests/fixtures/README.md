@@ -1,6 +1,6 @@
 # tests/fixtures — Two-tier fixture structure (Phase 4 SC-5)
 
-Tradewinds keeps two independent fixture trees, with strict policy on each:
+mostlyright keeps two independent fixture trees, with strict policy on each:
 
 | Tree | What it contains | Re-recording policy |
 |---|---|---|

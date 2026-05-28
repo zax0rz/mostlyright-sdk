@@ -19,7 +19,7 @@ BASE_DELAY = 1.0
 # Phase 1.5 PERF-03 — PR #85 (commit cf9eb85) HIGH-2 round-2 finding:
 # 12x larger payload-per-request after the IEM chunk bump (monthly -> 365-day).
 # Pre-bump ASOS was ~150 KB/month (30s plenty); post-bump it's ~1.8 MB/year on
-# the empirical KNYC sample. Tradewinds note: AWC + GHCNh + CLI did NOT change
+# the empirical KNYC sample. mostlyright note: AWC + GHCNh + CLI did NOT change
 # payload size — the bump is conservative overhead for those endpoints, not
 # load-bearing.
 HTTP_TIMEOUT = 60.0

@@ -27,6 +27,9 @@ export * from "./data/generated/index.js";
 export * from "./exceptions/index.js";
 export * from "./snapshot.js";
 
+// Phase 22: venue-agnostic station catalog (mirrors Python `mostlyright.stations`).
+export * from "./stations/index.js";
+
 // TS-W3 Plan 04 / 05 / 07: temporal primitives, formats, and validator.
 //
 // These surfaces are intentionally NOT re-exported from the main barrel —

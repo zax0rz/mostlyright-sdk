@@ -1,4 +1,4 @@
-"""Tests for ``mostlyright.core.result.TradewindsResult`` (Phase 6 W0)."""
+"""Tests for ``mostlyright.core.result.MostlyRightResult`` (Phase 6 W0)."""
 
 from __future__ import annotations
 
@@ -10,9 +10,9 @@ import pytest
 from mostlyright.core import (
     KnowledgeView,
     LeakageError,
+    MostlyRightResult,
     SourceMismatchError,
     TimePoint,
-    TradewindsResult,
     assert_no_leakage,
     validate_dataframe,
 )
@@ -23,7 +23,7 @@ from mostlyright.core.temporal.leakage import LeakageDetector
 
 def test_result_minimal_construction() -> None:
     df = pd.DataFrame({"value": [1, 2]})
-    result = TradewindsResult(
+    result = MostlyRightResult(
         frame=df,
         source="iem.live",
         retrieved_at=datetime(2025, 1, 1, tzinfo=UTC),
@@ -36,7 +36,7 @@ def test_result_minimal_construction() -> None:
 
 def test_result_is_frozen() -> None:
     df = pd.DataFrame({"value": [1]})
-    result = TradewindsResult(
+    result = MostlyRightResult(
         frame=df,
         source="iem.live",
         retrieved_at=datetime(2025, 1, 1, tzinfo=UTC),
@@ -48,7 +48,7 @@ def test_result_is_frozen() -> None:
 def test_result_rejects_empty_source() -> None:
     df = pd.DataFrame({"value": [1]})
     with pytest.raises(ValueError, match="non-empty string"):
-        TradewindsResult(
+        MostlyRightResult(
             frame=df,
             source="",
             retrieved_at=datetime(2025, 1, 1, tzinfo=UTC),
@@ -58,7 +58,7 @@ def test_result_rejects_empty_source() -> None:
 def test_result_rejects_naive_retrieved_at() -> None:
     df = pd.DataFrame({"value": [1]})
     with pytest.raises(ValueError, match="tz-aware"):
-        TradewindsResult(
+        MostlyRightResult(
             frame=df,
             source="iem.live",
             retrieved_at=datetime(2025, 1, 1),  # naive
@@ -68,7 +68,7 @@ def test_result_rejects_naive_retrieved_at() -> None:
 def test_result_rejects_non_datetime_retrieved_at() -> None:
     df = pd.DataFrame({"value": [1]})
     with pytest.raises(TypeError, match="must be a datetime"):
-        TradewindsResult(
+        MostlyRightResult(
             frame=df,
             source="iem.live",
             retrieved_at="2025-01-01T00:00:00Z",  # type: ignore[arg-type]
@@ -80,7 +80,7 @@ def test_result_rejects_non_datetime_retrieved_at() -> None:
 
 def test_frame_as_pandas_returns_pandas_as_is() -> None:
     df = pd.DataFrame({"a": [1, 2, 3]})
-    result = TradewindsResult(
+    result = MostlyRightResult(
         frame=df,
         source="iem.live",
         retrieved_at=datetime(2025, 1, 1, tzinfo=UTC),
@@ -94,7 +94,7 @@ def test_frame_as_pandas_returns_pandas_as_is() -> None:
 def test_legacy_df_with_attrs_stamps_all_provenance_fields() -> None:
     df = pd.DataFrame({"value": [1, 2]})
     ts = datetime(2025, 3, 4, 5, 6, 7, tzinfo=UTC)
-    result = TradewindsResult(
+    result = MostlyRightResult(
         frame=df,
         source="awc.live",
         retrieved_at=ts,
@@ -114,7 +114,7 @@ def test_legacy_df_with_attrs_stamps_all_provenance_fields() -> None:
 
 def test_legacy_df_with_attrs_omits_optional_fields_when_unset() -> None:
     df = pd.DataFrame({"value": [1]})
-    result = TradewindsResult(
+    result = MostlyRightResult(
         frame=df,
         source="iem.live",
         retrieved_at=datetime(2025, 1, 1, tzinfo=UTC),
@@ -129,7 +129,7 @@ def test_legacy_df_with_attrs_omits_optional_fields_when_unset() -> None:
 def test_legacy_df_with_attrs_returns_copy() -> None:
     # mutating the legacy view's attrs MUST NOT mutate the wrapper's frame.
     df = pd.DataFrame({"value": [1]})
-    result = TradewindsResult(
+    result = MostlyRightResult(
         frame=df,
         source="iem.live",
         retrieved_at=datetime(2025, 1, 1, tzinfo=UTC),
@@ -146,7 +146,7 @@ def test_legacy_df_with_attrs_returns_copy() -> None:
 def test_to_dict_is_json_safe() -> None:
     import json
 
-    result = TradewindsResult(
+    result = MostlyRightResult(
         frame=pd.DataFrame({"value": [1]}),
         source="iem.live",
         retrieved_at=datetime(2025, 1, 1, tzinfo=UTC),
@@ -165,7 +165,7 @@ def test_to_dict_is_json_safe() -> None:
 
 
 def test_validator_accepts_tradewinds_result() -> None:
-    """Validator unwraps TradewindsResult and validates byte-identically."""
+    """Validator unwraps MostlyRightResult and validates byte-identically."""
     df = pd.DataFrame(
         {
             "date": pd.to_datetime(["2025-01-06"]).date,
@@ -191,7 +191,7 @@ def test_validator_accepts_tradewinds_result() -> None:
     df2 = df.copy()
     # Reset attrs because the wrapper supplies them.
     df2.attrs.clear()
-    result = TradewindsResult(
+    result = MostlyRightResult(
         frame=df2,
         source="awc.live",  # still a mismatch
         retrieved_at=datetime(2025, 1, 6, 12, 0, tzinfo=UTC),
@@ -212,7 +212,7 @@ def test_knowledge_view_accepts_tradewinds_result() -> None:
             "value": [1, 2],
         }
     )
-    result = TradewindsResult(
+    result = MostlyRightResult(
         frame=df,
         source="iem.live",
         retrieved_at=datetime(2025, 1, 4, tzinfo=UTC),
@@ -233,7 +233,7 @@ def test_assert_no_leakage_accepts_tradewinds_result() -> None:
             "value": [99],
         }
     )
-    result = TradewindsResult(
+    result = MostlyRightResult(
         frame=df,
         source="iem.live",
         retrieved_at=datetime(2025, 1, 4, tzinfo=UTC),
@@ -249,7 +249,7 @@ def test_leakage_detector_check_accepts_tradewinds_result() -> None:
             "value": [42],
         }
     )
-    result = TradewindsResult(
+    result = MostlyRightResult(
         frame=df,
         source="iem.live",
         retrieved_at=datetime(2025, 1, 4, tzinfo=UTC),

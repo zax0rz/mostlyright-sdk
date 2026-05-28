@@ -1,7 +1,7 @@
 """Structured exception hierarchy for the mostlyright SDK and MCP server.
 
-Every exception subclasses :class:`TradewindsError` and exposes a
-:meth:`TradewindsError.to_dict` method that returns a JSON-safe dict
+Every exception subclasses :class:`MostlyRightError` and exposes a
+:meth:`MostlyRightError.to_dict` method that returns a JSON-safe dict
 suitable for placement in the MCP ``error.data`` field of a JSON-RPC error
 response. Attributes mirror the design doc §D + §R contract; payload values
 are coerced via :func:`mostlyright.core._json_safe.to_json_safe` so the
@@ -34,6 +34,7 @@ __all__ = [
     "IssuedAtMissingError",
     "LeakageError",
     "LiveStreamError",
+    "MostlyRightError",
     "NoLiveDataError",
     "NoLiveForNwpError",
     "NwpError",
@@ -46,7 +47,6 @@ __all__ = [
     "SourceUnavailableError",
     "StormNotFoundError",
     "TemporalDriftError",
-    "TradewindsError",
     # ``MostlyRightMCPError`` is intentionally NOT in ``__all__``. It is
     # available via module ``__getattr__`` for one release cycle with a
     # DeprecationWarning; removal target v0.3.
@@ -73,7 +73,7 @@ DATA_AVAILABILITY_REASONS: tuple[str, ...] = (
 DataAvailabilityReason = str
 
 
-class TradewindsError(Exception):
+class MostlyRightError(Exception):
     """Base class for all mostlyright structured errors.
 
     ``error_code`` is a stable enum (e.g. ``"SOURCE_UNAVAILABLE"``) used by
@@ -83,7 +83,7 @@ class TradewindsError(Exception):
     """
 
     #: Subclass override — the stable string enum surfaced via ``error_code``.
-    default_error_code: str = "TRADEWINDS_ERROR"
+    default_error_code: str = "MOSTLYRIGHT_ERROR"
 
     def __init__(
         self,
@@ -121,7 +121,7 @@ class TradewindsError(Exception):
         return to_json_safe(self._payload())
 
 
-class SourceUnavailableError(TradewindsError):
+class SourceUnavailableError(MostlyRightError):
     """A source (HTTP endpoint, vendored parser, etc.) returned an error or
     was otherwise unreachable. Carries enough metadata for callers to decide
     whether to retry and after how long.
@@ -166,7 +166,7 @@ class SourceUnavailableError(TradewindsError):
         return payload
 
 
-class DataAvailabilityError(TradewindsError):
+class DataAvailabilityError(MostlyRightError):
     """Typed exception for "I tried to fetch and got nothing usable".
 
     Phase 21 21-09 (Issue #26): replaces overloaded ``SourceUnavailableError``
@@ -232,7 +232,7 @@ class DataAvailabilityError(TradewindsError):
         return payload
 
 
-class SchemaValidationError(TradewindsError):
+class SchemaValidationError(MostlyRightError):
     """A DataFrame failed schema validation. Carries the full violation list
     (capped at 10,000 — surplus written to file via §Q file-path mode by the
     SDK) and a small inline sample for MCP wire serialization (≤10 entries).
@@ -274,7 +274,7 @@ class SchemaValidationError(TradewindsError):
         return payload
 
 
-class SourceMismatchError(TradewindsError):
+class SourceMismatchError(MostlyRightError):
     """The data's source does not match the schema's registered source, and
     the caller did not opt out via ``allow_source_drift``. ``role`` (if set)
     identifies which leg of a ``pull_pairs`` request mismatched and uses the
@@ -320,7 +320,7 @@ class SourceMismatchError(TradewindsError):
         return payload
 
 
-class LeakageError(TradewindsError):
+class LeakageError(MostlyRightError):
     """Temporal leakage detected — at least one row has ``knowledge_time``
     greater than the asserted ``as_of`` cutoff. Carries the count and a small
     sample of violating rows for actionable surfacing.
@@ -359,7 +359,7 @@ class LeakageError(TradewindsError):
         return payload
 
 
-class TemporalDriftError(TradewindsError):
+class TemporalDriftError(MostlyRightError):
     """Raised by the reproducibility audit (design.md §P) when one or more
     rows have ``retrieved_at`` outside the asserted range AND fall within the
     volatile window of ``now``. Indicates the source materially re-amended
@@ -402,7 +402,7 @@ class TemporalDriftError(TradewindsError):
         return payload
 
 
-class PayloadTooLargeError(TradewindsError):
+class PayloadTooLargeError(MostlyRightError):
     """The MCP server rejected an inline payload whose declared size exceeded
     the cap. ``accepted_modes`` advertises the alternatives (e.g. file-path
     mode per design.md §Q).
@@ -446,7 +446,7 @@ class PayloadTooLargeError(TradewindsError):
 # ----------------------------------------------------------------------
 
 
-class NwpError(TradewindsError):
+class NwpError(MostlyRightError):
     """Base class for Phase 3.2 NWP forecast errors.
 
     Subclasses cover the three failure modes a quant fetching live NWP
@@ -725,7 +725,7 @@ class NwpModelRetiredError(NwpError):
 # ----------------------------------------------------------------------
 
 
-class LiveStreamError(TradewindsError):
+class LiveStreamError(MostlyRightError):
     """Base class for ``mostlyright.live.stream`` / ``live.latest`` failures.
 
     Live-streaming errors are deliberately a separate sub-tree from
@@ -881,7 +881,7 @@ class NoLiveDataError(LiveStreamError):
 
 
 # ----------------------------------------------------------------------
-# Deprecation alias: MostlyRightMCPError → TradewindsError
+# Deprecation alias: MostlyRightMCPError → MostlyRightError
 # ----------------------------------------------------------------------
 _DEPRECATION_WARNINGS_EMITTED: set[str] = set()
 
@@ -893,10 +893,10 @@ def __getattr__(name: str) -> Any:
     if name == "MostlyRightMCPError":
         if name not in _DEPRECATION_WARNINGS_EMITTED:
             warnings.warn(
-                "MostlyRightMCPError is deprecated; use TradewindsError. Removal in v0.3.",
+                "MostlyRightMCPError is deprecated; use MostlyRightError. Removal in v0.3.",
                 DeprecationWarning,
                 stacklevel=2,
             )
             _DEPRECATION_WARNINGS_EMITTED.add(name)
-        return TradewindsError
+        return MostlyRightError
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

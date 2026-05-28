@@ -13,7 +13,7 @@
 // in v0.1.0 (climate-year parquets are Python-only); the stub matches the
 // Python signature so callers can `try/catch` the platform difference.
 
-import { TradewindsError } from "../exceptions/index.js";
+import { MostlyRightError } from "../exceptions/index.js";
 
 // ---------------------------------------------------------------------------
 // Schema registry — keep in sync with `packages-ts/core/src/schemas/generated`.
@@ -276,7 +276,7 @@ export function registerSchema(info: SchemaInfo): void {
 /**
  * Return a multi-line description of a registered schema.
  *
- * @throws TradewindsError if `schemaId` is not registered. The error code is
+ * @throws MostlyRightError if `schemaId` is not registered. The error code is
  *   `UNKNOWN_SCHEMA` so callers can distinguish from validation/IO errors.
  */
 export function describe(schemaId: string): string {
@@ -299,7 +299,7 @@ export function describe(schemaId: string): string {
 }
 
 /** Thrown by `describe` when `schemaId` is not registered. */
-export class UnknownSchemaError extends TradewindsError {
+export class UnknownSchemaError extends MostlyRightError {
   constructor(message: string) {
     super(message);
     this.name = "UnknownSchemaError";

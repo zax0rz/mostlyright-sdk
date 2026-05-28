@@ -76,7 +76,7 @@ def get_adapter(source: str) -> WeatherAdapter:
         DataAvailabilityError: ``source`` is not registered. The error carries
             ``reason="model_unavailable"`` so cross-SDK consumers can branch
             on ``e.reason`` rather than string-matching the message.
-            DataAvailabilityError is a subclass of TradewindsError, so code
+            DataAvailabilityError is a subclass of MostlyRightError, so code
             catching the broader base class continues to work.
     """
     cls = _REGISTRY.get(source)

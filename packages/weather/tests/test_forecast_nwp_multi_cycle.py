@@ -138,7 +138,7 @@ def test_forecast_nwp_cycle_range_honors_backend_polars() -> None:
     import pytest
 
     polars = pytest.importorskip("polars")
-    from mostlyright.core.result import TradewindsResult
+    from mostlyright.core.result import MostlyRightResult
 
     start = datetime(2025, 6, 1, 0, 0, tzinfo=UTC)
     end = datetime(2025, 6, 1, 2, 0, tzinfo=UTC)
@@ -181,11 +181,11 @@ def test_forecast_nwp_cycle_range_honors_backend_polars() -> None:
             return_type="wrapper",
         )
 
-    # backend='polars' + return_type='wrapper' → TradewindsResult holding
+    # backend='polars' + return_type='wrapper' → MostlyRightResult holding
     # a polars DataFrame. Before the fix this returned a raw pandas
     # DataFrame from pd.concat(...).
-    assert isinstance(result, TradewindsResult), (
-        f"expected TradewindsResult wrapper; got {type(result).__name__}"
+    assert isinstance(result, MostlyRightResult), (
+        f"expected MostlyRightResult wrapper; got {type(result).__name__}"
     )
     assert isinstance(result.frame, polars.DataFrame), (
         f"expected polars.DataFrame inside wrapper; got {type(result.frame).__name__}"
@@ -201,7 +201,7 @@ def test_forecast_nwp_cycle_range_empty_honors_backend_polars() -> None:
     import pytest
 
     polars = pytest.importorskip("polars")
-    from mostlyright.core.result import TradewindsResult
+    from mostlyright.core.result import MostlyRightResult
 
     start = datetime(2025, 6, 1, 0, 0, tzinfo=UTC)
     end = datetime(2025, 6, 1, 1, 0, tzinfo=UTC)
@@ -233,8 +233,8 @@ def test_forecast_nwp_cycle_range_empty_honors_backend_polars() -> None:
             return_type="wrapper",
         )
 
-    assert isinstance(result, TradewindsResult), (
-        f"expected TradewindsResult wrapper on empty result; got {type(result).__name__}"
+    assert isinstance(result, MostlyRightResult), (
+        f"expected MostlyRightResult wrapper on empty result; got {type(result).__name__}"
     )
     assert isinstance(result.frame, polars.DataFrame), (
         f"expected polars.DataFrame inside wrapper on empty result; got "

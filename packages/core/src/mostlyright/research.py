@@ -82,13 +82,12 @@ def _resolve_station(station: str) -> StationInfo:
     ``"K"`` when the input is exactly 4 letters).
 
     Raises:
-        ValueError: when ``station`` is not in the 20-station Phase 1
-            registry, OR when ``station`` resolves to an international
-            entry (Phase 3.1 expanded STATIONS to 60 — but ``research()``
-            still ships only the v0.14.1 Kalshi US-only join in v0.1.0
-            because NWS CLI (settlement source) is US-only and the
-            settlement-window math (``snapshot._lst_offset``) is calibrated
-            for US standard-time offsets). Intl callers should use
+        ValueError: when ``station`` is not in the registry, OR when
+            ``station`` resolves to an international entry — ``research()``
+            still ships only the US join in v0.1.0 because NWS CLI
+            (settlement source) is US-only and the settlement-window math
+            (``snapshot._lst_offset``) is calibrated for US standard-time
+            offsets. Intl callers should use
             :func:`mostlyright.international.daily_extremes` after warming
             the cache with their own observation fetcher; full intl
             ``research()`` ships in a follow-up phase.
@@ -98,12 +97,12 @@ def _resolve_station(station: str) -> StationInfo:
     if info is None:
         raise ValueError(
             f"Unknown station: {station!r} (normalized {code!r}). "
-            f"v0.1.0 supports the 20 Kalshi-traded stations from "
+            f"Expected a US station code or ICAO from "
             f"``mostlyright._internal._stations.STATIONS``."
         )
     if not is_us_station(info.icao):
         raise ValueError(
-            f"research() v0.1.0 supports only the 20 US Kalshi-traded stations; "
+            f"research() v0.1.0 supports only US stations; "
             f"got {station!r} (intl ICAO {info.icao!r}, country={info.country!r}). "
             f"For international weather aggregates use "
             f"mostlyright.international.daily_extremes(station, from_date, to_date) "
@@ -1513,10 +1512,10 @@ def research(
 
     Args:
         station: 3-letter NWS code (``"NYC"``) or 4-letter ICAO (``"KNYC"``).
-            Normalized via :func:`_station_code_normalized`. Must be one of
-            the 20 Kalshi-traded stations from
-            :data:`mostlyright._internal._stations.STATIONS`. International
-            expansion lands in Phase 3.1.
+            Normalized via :func:`_station_code_normalized`. Must be a US
+            station from :data:`mostlyright._internal._stations.STATIONS`
+            (``research()`` is US-only in v0.1.0; intl join lands in a
+            follow-up phase).
         from_date: Inclusive start (``YYYY-MM-DD`` in LST). Per-station LST
             settlement-date semantics - see
             :func:`mostlyright.snapshot.settlement_date_for`.
@@ -1537,8 +1536,8 @@ def research(
             ``list[dict]`` rows produced by ``build_pairs``.
         tz_override: IANA timezone name override for stations not yet in
             :data:`mostlyright.snapshot._STATION_TZ`. Passed through to
-            settlement-date math; rarely needed for the 20-station Phase 1
-            registry (all entries are covered).
+            settlement-date math; rarely needed for the US registry
+            (all entries are covered).
 
     Returns:
         DataFrame (or ``list[dict]`` when ``as_dataframe=False``) with one

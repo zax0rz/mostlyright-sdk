@@ -5,7 +5,7 @@ CONUS model run hourly by NCEP. The sfcf product carries the 13 fields
 mostlyright extracts at the 2-m / 10-m / surface levels.
 
 The variable strings here must match exactly what appears in the ``.idx``
-file produced by NCEP's wgrib2 indexer. Tradewinds keeps a minimal set;
+file produced by NCEP's wgrib2 indexer. mostlyright keeps a minimal set;
 adding fields means lifting the corresponding GRIB2 record id from a
 real cycle's ``.idx``.
 """

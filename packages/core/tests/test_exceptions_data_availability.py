@@ -16,7 +16,7 @@ from mostlyright.core import exceptions as exc_mod
 from mostlyright.core.exceptions import (
     DATA_AVAILABILITY_REASONS,
     DataAvailabilityError,
-    TradewindsError,
+    MostlyRightError,
 )
 
 
@@ -49,9 +49,9 @@ def test_data_availability_error_to_dict_payload() -> None:
 
 
 def test_data_availability_error_is_tradewinds_subclass() -> None:
-    """Back-compat: code that catches TradewindsError catches this too."""
+    """Back-compat: code that catches MostlyRightError catches this too."""
     exc = DataAvailabilityError(reason="rate_limited", hint="back off")
-    assert isinstance(exc, TradewindsError)
+    assert isinstance(exc, MostlyRightError)
     assert isinstance(exc, Exception)
 
 

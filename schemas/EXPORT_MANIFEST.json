@@ -39,8 +39,8 @@
     {
       "gated": false,
       "path": "kalshi-settlement-stations.json",
-      "sha256": "652e1e9636de9d34f6eb14bb93155916526802d93acfe908263d770dd9c80180",
-      "size_bytes": 2768
+      "sha256": "0cd896804d54bb14328aa9530b5c085b3e5ef4bedd525979f0fc94feb4c9abca",
+      "size_bytes": 2915
     },
     {
       "gated": false,
@@ -63,8 +63,8 @@
     {
       "gated": false,
       "path": "stations.json",
-      "sha256": "ebba0e597a78e8c1e239bc8fc6588088157b37877c3a8eeda392751fee78bca1",
-      "size_bytes": 14056
+      "sha256": "8be7bbd18eecc6e922903d94eb703cfd0730a4dd1b20606c5fe0c4783ff13d84",
+      "size_bytes": 18602
     }
   ]
 }
