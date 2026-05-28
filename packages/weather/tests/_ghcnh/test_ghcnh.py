@@ -823,13 +823,25 @@ class TestParseGhcnhFile:
         for obs in results:
             assert pattern.match(obs["station_code"]), f"Invalid station: {obs['station_code']}"
 
-    def test_no_rounding_on_temperatures(self, fixture_path):
+    def test_temp_f_precision_matches_source(self, fixture_path):
         from mostlyright._internal._convert import celsius_to_fahrenheit
         from mostlyright.weather._ghcnh import parse_ghcnh_file
+        from mostlyright.weather._internal.tgroup import parse_tgroup
 
         results = parse_ghcnh_file(fixture_path)
         for obs in results:
-            if obs["temp_c"] is not None:
+            if obs["temp_c"] is None or obs["temp_f"] is None:
+                continue
+            tgroup_temp, _ = parse_tgroup(obs["raw_metar"])
+            if tgroup_temp is not None:
+                # ASOS row: T-group in raw_metar → integer-°F recovery
+                assert obs["temp_f"].is_integer(), (
+                    f"Expected integer-valued temp_f for ASOS row at "
+                    f"{obs['observed_at']}, got {obs['temp_f']!r}"
+                )
+                assert obs["temp_f"] == float(round(obs["temp_c"] * 9 / 5 + 32))
+            else:
+                # Non-ASOS (synoptic, international): legacy celsius_to_fahrenheit
                 assert obs["temp_f"] == celsius_to_fahrenheit(obs["temp_c"])
 
     def test_exactly_30_fields_each(self, fixture_path):

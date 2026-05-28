@@ -66,7 +66,13 @@ DEFAULT_ROOT = Path.home() / ".mostlyright" / "cache"
 # rules). Mismatched versions on read trigger auto-invalidate + warning;
 # existing pre-Phase-18 caches with no version metadata are silently
 # re-fetched on next call.
-_CACHE_SCHEMA_VERSION = "v2-phase18-integer-f"
+#
+# Issue 16: bumped v2-phase18-integer-f -> v3-ghcnh-integer-f. The GHCNh path
+# now recovers integer-°F from the REM T-group (matching AWC/IEM), so caches
+# written by the prior parser carry stale celsius_to_fahrenheit temp_f for
+# US ASOS rows (e.g. 51.08 where the corrected value is 51.0). Without this
+# bump, read_cache would serve those stale rows to upgraded users.
+_CACHE_SCHEMA_VERSION = "v3-ghcnh-integer-f"
 _CACHE_SCHEMA_VERSION_KEY = b"_cache_schema_version"
 
 # FileLock timeout in seconds. 30s is long enough to swallow a slow parquet

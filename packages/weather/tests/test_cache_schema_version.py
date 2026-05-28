@@ -176,3 +176,35 @@ def test_invalidated_cache_overwritten_by_next_write(
     out = read_cache("KLGA", 2020, 4)
     assert out is not None
     assert out[0]["temp_f"] == 80.0
+
+
+# ---------------------------------------------------------------------------
+# Test F: Issue 16 — a cache tagged with the PRIOR version
+# (``v2-phase18-integer-f``) must invalidate on read, so GHCNh US ASOS rows
+# re-parse with integer-°F recovery instead of serving stale back-converted
+# temp_f (e.g. ``51.08`` where the corrected value is ``51.0``). The GHCNh fix
+# changes row semantics without changing the parquet shape, so the schema
+# version is the only signal that forces a re-parse. If the version bump is
+# reverted, this test fails.
+# ---------------------------------------------------------------------------
+def test_read_invalidates_prior_v2_phase18_cache(
+    tmp_cache_dir: Path,
+    freeze_to_past: datetime,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Pre-Issue-16 (``v2-phase18-integer-f``) caches auto-invalidate on read."""
+    path = cache_path("KLGA", 2020, 5)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    table = pa.Table.from_pylist(_sample_rows())
+    table_with_md = table.replace_schema_metadata(
+        {b"_cache_schema_version": b"v2-phase18-integer-f"}
+    )
+    pq.write_table(table_with_md, path, version="2.6", coerce_timestamps="us")
+
+    with caplog.at_level(logging.WARNING):
+        out = read_cache("KLGA", 2020, 5)
+    assert out is None, "prior v2-phase18-integer-f cache must invalidate after the Issue 16 bump"
+    warning_text = " ".join(r.message for r in caplog.records)
+    assert "schema version" in warning_text.lower() or "stale cache" in warning_text.lower(), (
+        f"expected a stale-cache warning; got: {warning_text!r}"
+    )
