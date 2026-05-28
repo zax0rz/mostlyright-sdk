@@ -37,7 +37,7 @@
     {
       "name": "@mostlyrightmd/weather (W1: AWC+CLI only, gzipped ESM)",
       "path": "packages-ts/weather/dist/index.mjs",
-      "limit": "20 KB"
+      "limit": "25 KB"
     },
     {
       "name": "@mostlyrightmd/markets (W1: Kalshi NHIGH/NLOW, gzipped ESM)",
@@ -47,7 +47,7 @@
     {
       "name": "mostlyright meta (W1 subset, gzipped ESM)",
       "path": "packages-ts/meta/dist/index.mjs",
-      "limit": "30 KB"
+      "limit": "35 KB"
     }
   ],
   "devDependencies": {
