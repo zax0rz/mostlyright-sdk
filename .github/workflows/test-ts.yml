@@ -1,11 +1,17 @@
 name: Test (TypeScript)
 
-# TS-W0 / TS-CI-01 — TypeScript fast suite on every push/PR.
+# TS-W0 / TS-CI-01 — TypeScript fast suite.
 # Pipeline: pnpm install -> codegen -> typecheck -> biome -> vitest -> size-limit.
 #
-# Triggers narrowly on TS-relevant paths so we don't burn CI minutes when only
-# Python source moves. The Python lane has its own `test.yml` with disjoint
-# path filters.
+# `test-ts` is a REQUIRED status check on `main`. A path-filtered required check
+# never reports for PRs that don't touch its paths, which leaves such PRs stuck
+# on "Expected — waiting for status" and unmergeable (e.g. a Python-only
+# external fork PR). So on `pull_request` this job runs UNCONDITIONALLY and
+# detects TS-relevant changes inside the job: when none changed, the heavy
+# steps are skipped and the job still reports success — preserving the original
+# "don't burn CI minutes when only Python source moves" intent while always
+# emitting the required `test-ts` context. The `push` trigger stays
+# path-filtered (off-PR pushes are not gated by required checks).
 
 on:
   push:
@@ -17,15 +23,7 @@ on:
       - "tsconfig.base.json"
       - "biome.json"
       - ".github/workflows/test-ts.yml"
-  pull_request:
-    paths:
-      - "packages-ts/**"
-      - "schemas/**"
-      - "package.json"
-      - "pnpm-workspace.yaml"
-      - "tsconfig.base.json"
-      - "biome.json"
-      - ".github/workflows/test-ts.yml"
+  pull_request: {}
 
 jobs:
   test-ts:
@@ -33,21 +31,46 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Detect whether this PR touches TS-relevant paths. Same path set the
+      # trigger used to filter on. When false, the heavy steps below skip and
+      # the job is a no-op success so the required `test-ts` context reports.
+      - name: Detect TS-relevant changes
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            ts:
+              - 'packages-ts/**'
+              - 'schemas/**'
+              - 'package.json'
+              - 'pnpm-workspace.yaml'
+              - 'tsconfig.base.json'
+              - 'biome.json'
+              - '.github/workflows/test-ts.yml'
+
+      - name: No-op (no TS-relevant changes)
+        if: steps.changes.outputs.ts != 'true'
+        run: echo "No TS-relevant changes in this PR; test-ts is a no-op success."
+
       - name: Setup pnpm
+        if: steps.changes.outputs.ts == 'true'
         uses: pnpm/action-setup@v4
         with:
           version: "9.12.0"
 
       - name: Setup Node
+        if: steps.changes.outputs.ts == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: pnpm
 
       - name: Install dependencies
+        if: steps.changes.outputs.ts == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Codegen (schemas -> generated TS)
+        if: steps.changes.outputs.ts == 'true'
         run: pnpm codegen
 
       # Build BEFORE typecheck — workspace packages (weather, meta) import
@@ -55,20 +78,25 @@ jobs:
       # exports that point at dist/. Without a build, TS sees only
       # missing-declaration errors. Codex TS-W2 review iter-1 caught this.
       - name: Build packages (produces dist/ for subpath imports)
+        if: steps.changes.outputs.ts == 'true'
         run: pnpm -r run build
 
       - name: Typecheck (tsc --noEmit across workspaces)
+        if: steps.changes.outputs.ts == 'true'
         run: pnpm -r run typecheck
 
       - name: Lint (biome check)
+        if: steps.changes.outputs.ts == 'true'
         run: pnpm -r run lint
 
       - name: Test (vitest + coverage)
+        if: steps.changes.outputs.ts == 'true'
         run: pnpm -r run test --run -- --coverage
 
       # Size-limit is a SOFT GATE until TS-W2 ships the first stable bundle
       # (no committed baseline yet, so a hard failure would block every PR).
       # Promote to hard-gate once the bundle stabilizes; track in TS-W2 PLAN.
       - name: Bundle size budget (size-limit, soft gate)
+        if: steps.changes.outputs.ts == 'true'
         run: pnpm -r run size-limit
         continue-on-error: true
