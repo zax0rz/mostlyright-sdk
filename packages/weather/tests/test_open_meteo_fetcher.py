@@ -175,6 +175,96 @@ def test_fetch_open_meteo_single_runs_when_issued_at_provided() -> None:
     assert (df["issued_at"] == pd.Timestamp("2024-06-01T12:00:00Z")).all()
 
 
+def test_fetch_open_meteo_single_runs_omits_date_params() -> None:
+    """Single-Runs API rejects start_date/end_date; fetcher must not send them.
+
+    Regression test for https://github.com/mostlyrightmd/mostlyright-sdk/issues/40.
+    """
+    captured_params: list[dict[str, str]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured_params.append(dict(httpx.QueryParams(request.url.query)))
+        # Return 168 hours of data (full horizon from run=)
+        hours = [
+            (pd.Timestamp("2024-06-01T06:00") + pd.Timedelta(hours=i)).isoformat()
+            for i in range(168)
+        ]
+        temps = list(range(168))
+        return httpx.Response(
+            200,
+            json={
+                "latitude": 40.78,
+                "longitude": -73.97,
+                "elevation": 51.0,
+                "hourly_units": {"time": "iso8601", "temperature_2m": "°C"},
+                "hourly": {"time": hours, "temperature_2m": temps},
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+    client = httpx.Client(transport=transport)
+    df = fetch_open_meteo(
+        "KNYC",
+        "2024-06-01",
+        "2024-06-02",
+        model="ncep_hrrr_conus",
+        mode="training",
+        issued_at="2024-06-01T06:00",
+        client=client,
+    )
+    assert len(captured_params) == 1
+    qp = captured_params[0]
+    # Single-Runs: run= must be present, date params must NOT
+    assert qp.get("run") == "2024-06-01T06:00", f"expected run= param, got {qp}"
+    assert "start_date" not in qp, f"start_date must not be sent to Single-Runs API: {qp}"
+    assert "end_date" not in qp, f"end_date must not be sent to Single-Runs API: {qp}"
+    assert not df.empty
+
+
+def test_fetch_open_meteo_single_runs_clips_response_to_date_range() -> None:
+    """Single-Runs returns full 168h horizon; fetcher must clip to [from_date, to_date].
+
+    Regression test for https://github.com/mostlyrightmd/mostlyright-sdk/issues/40.
+    """
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        # Return 168 hours starting from the run, spanning Jun 1-8
+        hours = [
+            (pd.Timestamp("2024-06-01T06:00") + pd.Timedelta(hours=i)).isoformat()
+            for i in range(168)
+        ]
+        temps = list(range(168))
+        return httpx.Response(
+            200,
+            json={
+                "latitude": 40.78,
+                "longitude": -73.97,
+                "elevation": 51.0,
+                "hourly_units": {"time": "iso8601", "temperature_2m": "°C"},
+                "hourly": {"time": hours, "temperature_2m": temps},
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+    client = httpx.Client(transport=transport)
+    # Request only Jun 1-2, but Single-Runs will return Jun 1-8
+    df = fetch_open_meteo(
+        "KNYC",
+        "2024-06-01",
+        "2024-06-02",
+        model="ncep_hrrr_conus",
+        mode="training",
+        issued_at="2024-06-01T06:00",
+        client=client,
+    )
+    assert not df.empty
+    # All valid_at should be within Jun 1 00:00 UTC to Jun 3 00:00 UTC (exclusive)
+    lo = pd.Timestamp("2024-06-01", tz="UTC")
+    hi = pd.Timestamp("2024-06-03", tz="UTC")
+    assert df["valid_at"].min() >= lo, f"min valid_at {df['valid_at'].min()} before {lo}"
+    assert df["valid_at"].max() < hi, f"max valid_at {df['valid_at'].max()} after {hi}"
+
+
 def test_fetch_open_meteo_seamless_without_opt_in_raises() -> None:
     client = MagicMock(spec=httpx.Client)
     with pytest.raises(OpenMeteoSeamlessLeakageError) as exc_info:

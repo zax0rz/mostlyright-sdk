@@ -514,15 +514,19 @@ def fetch_open_meteo(
     params: dict[str, Any] = {
         "latitude": lat,
         "longitude": lon,
-        "start_date": from_date,
-        "end_date": to_date,
         "models": model,
         "hourly": _build_hourly_param(endpoint),
         "timezone": "UTC",
         "timeformat": "iso8601",
     }
-    if issued_at is not None and mode == "training":
+    if endpoint == OPEN_METEO_SINGLE_RUNS_URL:
+        # Single-Runs API rejects start_date/end_date; use run= only.
+        # The response contains the full horizon (up to 168 h); we clip
+        # to [from_date, to_date] after parsing (see below).
         params["run"] = issued_at
+    else:
+        params["start_date"] = from_date
+        params["end_date"] = to_date
 
     close_client = False
     if client is None:
@@ -564,7 +568,7 @@ def fetch_open_meteo(
     if not payload:
         return _empty_df()
 
-    return _project_payload_to_dataframe(
+    df = _project_payload_to_dataframe(
         payload,
         station=station,
         model=model,
@@ -572,6 +576,14 @@ def fetch_open_meteo(
         issued_at_str=issued_at,
         retrieved_at=retrieved_at,
     )
+
+    # Single-Runs returns the full horizon from run=; clip to requested window.
+    if endpoint == OPEN_METEO_SINGLE_RUNS_URL and not df.empty:
+        lo = pd.Timestamp(from_date, tz="UTC")
+        hi = pd.Timestamp(to_date, tz="UTC") + pd.Timedelta(days=1)
+        df = df[(df["valid_at"] >= lo) & (df["valid_at"] < hi)]
+
+    return df
 
 
 __all__ = [
