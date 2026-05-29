@@ -102,7 +102,7 @@ def _resolve_tz(station: str) -> str:
         if s.icao == station:
             return s.tz
     raise KeyError(
-        f"Unknown station {station!r}. Expected one of the 66 STATIONS entries (25 US + 41 intl)."
+        f"Unknown station {station!r}. Expected one of the 94 STATIONS entries (29 US + 65 intl)."
     )
 
 
@@ -275,7 +275,7 @@ def daily_extremes(
     if info is None:
         raise KeyError(
             f"Unknown station {station!r}. "
-            f"Expected one of the 66 STATIONS entries (25 US + 41 intl)."
+            f"Expected one of the 94 STATIONS entries (29 US + 65 intl)."
         )
 
     # Local imports — pandas + cache may not be importable in bare installs
