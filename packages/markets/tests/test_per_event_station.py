@@ -33,26 +33,23 @@ def city_map():
 # ---------------------------------------------------------------------------
 def test_load_polymarket_city_stations_returns_dict(city_map):
     assert isinstance(city_map, dict)
-    # 40-ICAO coverage means roughly 39 city keys (Paris collapses 2 airports
-    # into one entry with a high/low split).
-    assert len(city_map) >= 39
-    # London is the canonical single-airport entry.
-    assert city_map["london"] == {"default": "EGLL"}
+    # Phase 23: the live Polymarket roster is 51 cities.
+    assert len(city_map) == 51
+    # London moved EGLL→EGLC (London City) in the Phase 23 reconcile.
+    assert city_map["london"] == {"default": "EGLC"}
 
 
 def test_load_polymarket_city_stations_is_independent_copy(city_map):
     """Mutating the returned map MUST NOT corrupt the module cache."""
     city_map["london"]["default"] = "MUTATED"
     fresh = load_polymarket_city_stations()
-    assert fresh["london"]["default"] == "EGLL"
+    assert fresh["london"]["default"] == "EGLC"
 
 
-def test_paris_entry_has_high_low_split(city_map):
-    assert city_map["paris"] == {
-        "high": "LFPG",
-        "low": "LFPB",
-        "default": "LFPG",
-    }
+def test_paris_collapsed_to_single_lfpb(city_map):
+    # Phase 23: the operator's roster lists Paris as a single station (LFPB);
+    # the old LFPG/LFPB high/low split is gone (LFPG kept as a bare record).
+    assert city_map["paris"] == {"default": "LFPB"}
 
 
 # ---------------------------------------------------------------------------
@@ -69,65 +66,76 @@ def test_tokyo_resolves_to_rjtt_default(city_map):
 
 
 def test_london_resolves_default_even_with_high_keyword(city_map):
-    """London map has no `high` key — falls back to default."""
+    """London map has no `high` key — falls back to default (EGLC, Phase 23)."""
     event = {"city": "london", "title": "Will London hit a record high?"}
     icao, measure = resolve_station_for_event(event, city_map)
-    assert icao == "EGLL"
+    assert icao == "EGLC"
     assert measure == "default"
 
 
-def test_sydney_default(city_map):
-    event = {"city": "sydney"}
+def test_single_airport_city_default(city_map):
+    """A single-airport roster city resolves to its default station."""
+    event = {"city": "madrid"}
     icao, measure = resolve_station_for_event(event, city_map)
-    assert icao == "YSSY"
+    assert icao == "LEMD"
     assert measure == "default"
 
 
 # ---------------------------------------------------------------------------
-# Paris split.
+# Resolver high/low routing (synthetic split fixture).
+#
+# Phase 23 collapsed Paris to a single station (LFPB), so no bundled roster
+# city has a high≠low split anymore. The resolver's split-routing logic is
+# still live; exercise it against an inline fixture so these tests don't depend
+# on the volatile bundled roster.
 # ---------------------------------------------------------------------------
-def test_paris_high_routes_to_lfpg(city_map):
-    event = {"city": "paris", "title": "Paris HIGHEST temperature 12-Jul-2025"}
-    icao, measure = resolve_station_for_event(event, city_map)
-    assert icao == "LFPG"
+_SPLIT_CITY_MAP = {
+    "splitville": {"high": "KAAA", "low": "KBBB", "default": "KAAA"},
+}
+
+
+def test_high_keyword_routes_to_high_station():
+    event = {"city": "splitville", "title": "Splitville HIGHEST temperature 12-Jul-2025"}
+    icao, measure = resolve_station_for_event(event, _SPLIT_CITY_MAP)
+    assert icao == "KAAA"
     assert measure == "high"
 
 
-def test_paris_low_routes_to_lfpb(city_map):
-    event = {"city": "paris", "title": "Paris LOWEST temperature 12-Jul-2025"}
-    icao, measure = resolve_station_for_event(event, city_map)
-    assert icao == "LFPB"
+def test_low_keyword_routes_to_low_station():
+    event = {"city": "splitville", "title": "Splitville LOWEST temperature 12-Jul-2025"}
+    icao, measure = resolve_station_for_event(event, _SPLIT_CITY_MAP)
+    assert icao == "KBBB"
     assert measure == "low"
 
 
-def test_paris_neutral_title_uses_default(city_map):
-    event = {"city": "paris", "title": "Paris temperature"}
-    icao, measure = resolve_station_for_event(event, city_map)
-    assert icao == "LFPG"  # default
+def test_neutral_title_uses_default():
+    event = {"city": "splitville", "title": "Splitville temperature"}
+    icao, measure = resolve_station_for_event(event, _SPLIT_CITY_MAP)
+    assert icao == "KAAA"
     assert measure == "default"
 
 
-def test_paris_keyword_in_slug(city_map):
-    event = {"city": "paris", "slug": "paris-lowest-temp-2025-12-31"}
-    icao, _ = resolve_station_for_event(event, city_map)
-    assert icao == "LFPB"
+def test_low_keyword_in_slug_routes_to_low_station():
+    event = {"city": "splitville", "slug": "splitville-lowest-temp-2025-12-31"}
+    icao, _ = resolve_station_for_event(event, _SPLIT_CITY_MAP)
+    assert icao == "KBBB"
 
 
-def test_paris_ambiguous_high_AND_low_title_falls_back_to_default(city_map):
+def test_ambiguous_high_AND_low_title_falls_back_to_default():
     """Ambiguous titles must route to default — never silently pick low.
 
     Architect review caught: the original implementation ran the "low" regex
     first, so any title with BOTH "low" and "high" tokens silently routed to
-    LFPB. Fix: when both keywords are present, return "default" (let the city
-    map decide), and the city's chosen default airport handles the event.
+    the low station. Fix: when both keywords are present, return "default"
+    (let the city map decide).
     """
     event = {
-        "city": "paris",
-        "title": "Will Paris see a record-LOW precipitation AND record-HIGH temperature?",
+        "city": "splitville",
+        "title": "Will Splitville see a record-LOW precipitation AND record-HIGH temperature?",
     }
-    icao, measure = resolve_station_for_event(event, city_map)
+    icao, measure = resolve_station_for_event(event, _SPLIT_CITY_MAP)
     assert measure == "default"
-    assert icao == "LFPG"  # default in the bundled map
+    assert icao == "KAAA"
 
 
 # ---------------------------------------------------------------------------
@@ -152,23 +160,29 @@ def test_hong_kong_low_defers(city_map):
         resolve_station_for_event(event, city_map)
 
 
-def test_hong_kong_high_resolves_cleanly(city_map):
-    """HK 'high' resolves via routine METAR — must NOT defer."""
+def test_hong_kong_high_now_defers(city_map):
+    """Phase 23 — Hong Kong settles against HKO (the Observatory, weather.gov.hk
+    v0.2 source). EVERY HK measure now defers, including 'high' (which used to
+    route via VHHH METAR before the roster reconcile)."""
     event = {"city": "hong_kong", "title": "Hong Kong HIGHEST temp 2025"}
-    icao, measure = resolve_station_for_event(event, city_map)
-    assert icao == "VHHH"
-    assert measure == "high"
+    with pytest.raises(DeferredMarketError, match="deferred"):
+        resolve_station_for_event(event, city_map)
 
 
 def test_deferred_station_measures_table_shape():
-    """The defer table contains the canonical (icao, measure) pairs."""
-    assert ("VHHH", "low") in DEFERRED_STATION_MEASURES
-    # HK high is NOT in the table.
-    assert ("VHHH", "high") not in DEFERRED_STATION_MEASURES
+    """The defer table contains the canonical (icao, measure) pairs. Phase 23:
+    Hong Kong fully defers via HKO; Taipei via RCSS. The old VHHH/RCTP airport
+    ICAOs are no longer deferred (they stay registry weather stations)."""
+    assert ("HKO", "high") in DEFERRED_STATION_MEASURES
+    assert ("HKO", "low") in DEFERRED_STATION_MEASURES
+    assert ("HKO", "default") in DEFERRED_STATION_MEASURES
     # Taipei: every measure is deferred.
-    assert ("RCTP", "high") in DEFERRED_STATION_MEASURES
-    assert ("RCTP", "low") in DEFERRED_STATION_MEASURES
-    assert ("RCTP", "default") in DEFERRED_STATION_MEASURES
+    assert ("RCSS", "high") in DEFERRED_STATION_MEASURES
+    assert ("RCSS", "low") in DEFERRED_STATION_MEASURES
+    assert ("RCSS", "default") in DEFERRED_STATION_MEASURES
+    # Old airport ICAOs no longer front a deferred market.
+    assert ("VHHH", "low") not in DEFERRED_STATION_MEASURES
+    assert ("RCTP", "default") not in DEFERRED_STATION_MEASURES
 
 
 # ---------------------------------------------------------------------------
@@ -189,7 +203,7 @@ def test_missing_city_field_raises_keyerror(city_map):
 def test_city_lookup_is_case_insensitive(city_map):
     event = {"city": "LONDON"}
     icao, _ = resolve_station_for_event(event, city_map)
-    assert icao == "EGLL"
+    assert icao == "EGLC"
 
 
 # ---------------------------------------------------------------------------
@@ -445,12 +459,12 @@ class TestResolverTier1_5:
         (news articles, weather alerts) MUST NOT trigger Tier 1.5 — the regex
         only matches canonical PWS / airport / weather-station paths."""
         event = {
-            "city": "boston",
+            "city": "atlanta",
             "description": "See https://www.wunderground.com/news/2024-summer-KIDS-overview",
         }
         icao, _ = resolve_station_for_event(event, city_map)
-        # Tier 1.5 should NOT fire on news path → catalog wins (boston → KBOS).
-        assert icao == "KBOS"
+        # Tier 1.5 should NOT fire on news path → catalog wins (atlanta → KATL).
+        assert icao == "KATL"
 
     def test_url_extraction_carries_market_measure(self, city_map):
         """The 'high'/'low' measure still comes from title — URL only sets the ICAO."""
@@ -480,16 +494,16 @@ class TestResolverTier1_5:
         """When no Wunderground URL, behavior unchanged — Tier 2 city derive."""
         event = {"city": "london", "title": "London temperature"}
         icao, _ = resolve_station_for_event(event, city_map)
-        assert icao == "EGLL"
+        assert icao == "EGLC"
 
     def test_non_wunderground_url_falls_through_to_catalog(self, city_map):
         """Only wunderground.com URLs trigger Tier 1.5."""
         event = {
-            "city": "boston",
-            "description": "https://weather.gov/forecast/KBOS",
+            "city": "atlanta",
+            "description": "https://weather.gov/forecast/KATL",
         }
         icao, _ = resolve_station_for_event(event, city_map)
-        # Catalog lookup wins, but boston defaults to KBOS anyway —
-        # the assertion is that we don't error AND we don't surface KBOS
+        # Catalog lookup wins, but atlanta defaults to KATL anyway —
+        # the assertion is that we don't error AND we don't surface KATL
         # via Tier 1.5 (weather.gov isn't allowlisted for extraction).
-        assert icao == "KBOS"
+        assert icao == "KATL"

@@ -192,7 +192,7 @@ class TestPolymarketDiscover:
                 "resolution_source_type",
                 "source",
             ]
-            assert df.iloc[0]["icao"] == "EGLL"
+            assert df.iloc[0]["icao"] == "EGLC"
             assert df.iloc[0]["measure"] == "high"
             assert df.iloc[0]["resolution_source_type"] == "wunderground"
             # Architect iter-1 HIGH-5: per-row source overlay column.
@@ -321,17 +321,17 @@ class TestPolymarketSettleResolutionPath:
     def test_settles_against_daily_extremes(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """End-to-end happy path with daily_extremes mocked.
 
-        Polymarket event resolves to EGLL high for 2026-05-22. We stub
-        daily_extremes to return one row with tmax_c=22.5 and verify
-        the settlement payload carries that value.
+        Polymarket event resolves to EGLC high for 2026-05-22 (Phase 23 moved
+        London EGLL→EGLC). We stub daily_extremes to return one row with
+        tmax_c=22.5 and verify the settlement payload carries that value.
         """
         from mostlyright.markets import polymarket as pm_module
 
         def fake_daily_extremes(station: str, from_date, to_date):
-            assert station == "EGLL"
+            assert station == "EGLC"
             return [
                 {
-                    "station": "EGLL",
+                    "station": "EGLC",
                     "local_date": from_date.isoformat(),
                     "n_obs": 24,
                     "tmin_c": 12.0,
@@ -356,7 +356,7 @@ class TestPolymarketSettleResolutionPath:
         # 'now' is well past the 6h Wunderground delay.
         now = datetime(2026, 5, 25, 0, 0, tzinfo=UTC)
         result = polymarket_settle(_UUID4, event=event, now=now)
-        assert result["icao"] == "EGLL"
+        assert result["icao"] == "EGLC"
         assert result["measure"] == "high"
         assert result["observed_value_c"] == 22.5
         assert result["observed_source"] == "iem.archive"
@@ -455,10 +455,11 @@ class TestArchitectIter1Fixes:
         assert eod_utc.day == 23
 
     def test_deferred_check_via_per_measure_table_not_just_station_set(self) -> None:
-        """HIGH-2: RCTP/'high' must be blocked by defense-in-depth gate.
+        """HIGH-2: RCSS/'default' must be blocked by defense-in-depth gate.
 
         resolve_station_for_event already blocks this, so we patch it
-        out to confirm the secondary gate fires.
+        out to confirm the secondary gate fires. Phase 23 moved Taipei
+        RCTP→RCSS, so the deferred ICAO under test is RCSS.
         """
         from unittest.mock import patch
 
@@ -469,7 +470,7 @@ class TestArchitectIter1Fixes:
         with patch.object(
             pm_module,
             "resolve_station_for_event",
-            return_value=("RCTP", "default"),
+            return_value=("RCSS", "default"),
         ):
             event = {
                 "id": _UUID4,

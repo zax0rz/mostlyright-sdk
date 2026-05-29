@@ -85,14 +85,14 @@ KNOWN_WRONG_STATIONS: Final[Mapping[str, frozenset[str]]] = MappingProxyType(
         "nyc": frozenset({"KNYC", "KJFK", "KEWR"}),
         # Chicago: Polymarket uses KORD. KMDW is the common wrong answer (Kalshi's choice).
         "chicago": frozenset({"KMDW"}),
-        # Houston: Polymarket uses KIAH. KHOU is the common wrong answer.
-        "houston": frozenset({"KHOU"}),
-        # Dallas: Polymarket uses KDFW. KDAL is the common wrong answer.
-        "dallas": frozenset({"KDAL"}),
+        # Houston: Phase 23 moved Polymarket to KHOU. KIAH (Kalshi's station) is
+        # now the cross-venue wrong answer for a Polymarket Houston market.
+        "houston": frozenset({"KIAH"}),
+        # Dallas: Phase 23 moved Polymarket to KDAL. KDFW (Kalshi's station) is
+        # now the cross-venue wrong answer.
+        "dallas": frozenset({"KDFW"}),
         # SF: Polymarket uses KSFO. KOAK is the common wrong answer.
         "san_francisco": frozenset({"KOAK"}),
-        # DC: Polymarket uses KDCA. KIAD/KBWI are the common wrong answers.
-        "washington_dc": frozenset({"KIAD", "KBWI"}),
     }
 )
 
@@ -686,13 +686,11 @@ def polymarket_settle(
 
     # Architect iter-1 HIGH-2: defense-in-depth must consult the
     # per-measure table (the source of truth in _per_event_station.py),
-    # not the coarser DEFERRED_STATIONS set. Otherwise an RCTP/"high"
+    # not the coarser DEFERRED_STATIONS set. Otherwise an RCSS/"high"
     # market could bypass the gate if the resolver ever missed.
     from ._per_event_station import DEFERRED_STATION_MEASURES
 
-    if (icao, measure) in DEFERRED_STATION_MEASURES or (
-        icao in DEFERRED_STATIONS and icao != "VHHH"
-    ):
+    if (icao, measure) in DEFERRED_STATION_MEASURES or (icao in DEFERRED_STATIONS):
         raise DeferredMarketError(
             f"market for ({icao}, {measure}) is deferred to v0.2",
         )

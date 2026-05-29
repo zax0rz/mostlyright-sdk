@@ -12,7 +12,12 @@
 #     from the v0.14.1 set (KIAH/KDTW/KCVG/KBNA/KSLC) and replaced the
 #     country-based venue tagging with per-ICAO membership so ``venues`` is a
 #     station-accurate fact rather than a US/international proxy.
-"""Station registry — 66 stations (25 US + 41 international) with ICAO / lat-lon metadata.
+#   - Phase 23 (2026-05-29): reconciled the Polymarket roster to the operator's
+#     authoritative 51-city list — added 28 station records (KLGA/KORD/KDAL/KBKF
+#     + 24 intl incl. EGLC/UUWW/RCSS), made ``_POLYMARKET_ICAOS`` an explicit
+#     enumerated set, applied 7 moves + the Houston cross-venue conflict, and
+#     untagged 27 stale cities (records kept). Kalshi roster unchanged.
+"""Station registry — 94 stations (29 US + 65 international) with ICAO / lat-lon metadata.
 
 Lives under ``src/mostlyright/_internal`` so it ships in the wheel and is
 available to pip-installed SDK users. Phase 3.1 expanded the v0.14.1
@@ -319,7 +324,52 @@ STATIONS: dict[str, StationInfo] = {
         longitude=-111.9778,
     ),
     # ------------------------------------------------------------------
-    # International — 41 ICAOs covering Polymarket's intl weather markets.
+    # US — Polymarket settlement stations NOT shared with Kalshi (Phase 23).
+    # KLGA (NYC) and KORD (Chicago) are the cross-venue divergence partners
+    # (Kalshi settles NYC=KNYC, Chicago=KMDW); the city map already pointed
+    # at them but the registry lacked the records. KDAL (Dallas Love) and
+    # KBKF (Buckley/Denver) are Polymarket's Phase 23 move targets away from
+    # the Kalshi stations KDFW / KDEN. All four carry only the ``polymarket``
+    # tag (assigned in the venue-tagging pass below).
+    # ------------------------------------------------------------------
+    "LGA": StationInfo(
+        code="LGA",
+        ghcnh_id="USW00014732",
+        icao="KLGA",
+        name="New York LaGuardia",
+        tz="America/New_York",
+        latitude=40.7772,
+        longitude=-73.8726,
+    ),
+    "ORD": StationInfo(
+        code="ORD",
+        ghcnh_id="USW00094846",
+        icao="KORD",
+        name="Chicago O'Hare International",
+        tz="America/Chicago",
+        latitude=41.9742,
+        longitude=-87.9073,
+    ),
+    "DAL": StationInfo(
+        code="DAL",
+        ghcnh_id="USW00013960",
+        icao="KDAL",
+        name="Dallas Love Field",
+        tz="America/Chicago",
+        latitude=32.8481,
+        longitude=-96.8512,
+    ),
+    "BKF": StationInfo(
+        code="BKF",
+        ghcnh_id="USW00093067",
+        icao="KBKF",
+        name="Buckley Space Force Base (Denver)",
+        tz="America/Denver",
+        latitude=39.7019,
+        longitude=-104.7517,
+    ),
+    # ------------------------------------------------------------------
+    # International — 65 ICAOs covering Polymarket's intl weather markets.
     # ``ghcnh_id=""`` because NCEI GHCNh is US-only; adapter layer skips
     # GHCNh for these stations (see ``research._fetch_observations_range``).
     # ICAO is used as both ``code`` and registry key.
@@ -738,6 +788,257 @@ STATIONS: dict[str, StationInfo] = {
         longitude=-58.5358,
         country="AR",
     ),
+    # ------------------------------------------------------------------
+    # International — Phase 23 Polymarket settlement-roster refresh.
+    # Move targets (London/Moscow/Taipei shift off EGLL/UUEE/RCTP) +
+    # 21 net-new roster cities. ``ghcnh_id=""`` (NCEI GHCNh is US-only).
+    # RCSS (Taipei Songshan) inherits RCTP's v0.2 deferral (CWA source).
+    # ------------------------------------------------------------------
+    # Move targets.
+    "EGLC": StationInfo(
+        code="EGLC",
+        ghcnh_id="",
+        icao="EGLC",
+        name="London City",
+        tz="Europe/London",
+        latitude=51.5053,
+        longitude=0.0553,
+        country="GB",
+    ),
+    "UUWW": StationInfo(
+        code="UUWW",
+        ghcnh_id="",
+        icao="UUWW",
+        name="Moscow Vnukovo",
+        tz="Europe/Moscow",
+        latitude=55.5915,
+        longitude=37.2615,
+        country="RU",
+    ),
+    "RCSS": StationInfo(
+        code="RCSS",
+        ghcnh_id="",
+        icao="RCSS",
+        name="Taipei Songshan",
+        tz="Asia/Taipei",
+        latitude=25.0694,
+        longitude=121.5519,
+        country="TW",
+    ),
+    # Net-new roster cities (Europe / Middle East / Africa).
+    "LTAC": StationInfo(
+        code="LTAC",
+        ghcnh_id="",
+        icao="LTAC",
+        name="Ankara Esenboga",
+        tz="Europe/Istanbul",
+        latitude=40.1281,
+        longitude=32.9951,
+        country="TR",
+    ),
+    "LTFM": StationInfo(
+        code="LTFM",
+        ghcnh_id="",
+        icao="LTFM",
+        name="Istanbul Airport",
+        tz="Europe/Istanbul",
+        latitude=41.2753,
+        longitude=28.7519,
+        country="TR",
+    ),
+    "LLBG": StationInfo(
+        code="LLBG",
+        ghcnh_id="",
+        icao="LLBG",
+        name="Tel Aviv Ben Gurion",
+        tz="Asia/Jerusalem",
+        latitude=32.0114,
+        longitude=34.8867,
+        country="IL",
+    ),
+    "OEJN": StationInfo(
+        code="OEJN",
+        ghcnh_id="",
+        icao="OEJN",
+        name="Jeddah King Abdulaziz International",
+        tz="Asia/Riyadh",
+        latitude=21.6796,
+        longitude=39.1565,
+        country="SA",
+    ),
+    "OPKC": StationInfo(
+        code="OPKC",
+        ghcnh_id="",
+        icao="OPKC",
+        name="Karachi Jinnah International",
+        tz="Asia/Karachi",
+        latitude=24.9065,
+        longitude=67.1608,
+        country="PK",
+    ),
+    "FACT": StationInfo(
+        code="FACT",
+        ghcnh_id="",
+        icao="FACT",
+        name="Cape Town International",
+        tz="Africa/Johannesburg",
+        latitude=-33.9648,
+        longitude=18.6017,
+        country="ZA",
+    ),
+    # Net-new roster cities (Asia).
+    "VILK": StationInfo(
+        code="VILK",
+        ghcnh_id="",
+        icao="VILK",
+        name="Lucknow Chaudhary Charan Singh International",
+        tz="Asia/Kolkata",
+        latitude=26.7606,
+        longitude=80.8893,
+        country="IN",
+    ),
+    "WMKK": StationInfo(
+        code="WMKK",
+        ghcnh_id="",
+        icao="WMKK",
+        name="Kuala Lumpur International",
+        tz="Asia/Kuala_Lumpur",
+        latitude=2.7456,
+        longitude=101.7099,
+        country="MY",
+    ),
+    "RPLL": StationInfo(
+        code="RPLL",
+        ghcnh_id="",
+        icao="RPLL",
+        name="Manila Ninoy Aquino International",
+        tz="Asia/Manila",
+        latitude=14.5086,
+        longitude=121.0197,
+        country="PH",
+    ),
+    "RKPK": StationInfo(
+        code="RKPK",
+        ghcnh_id="",
+        icao="RKPK",
+        name="Busan Gimhae International",
+        tz="Asia/Seoul",
+        latitude=35.1795,
+        longitude=128.9382,
+        country="KR",
+    ),
+    # Net-new roster cities (China).
+    "ZUUU": StationInfo(
+        code="ZUUU",
+        ghcnh_id="",
+        icao="ZUUU",
+        name="Chengdu Shuangliu International",
+        tz="Asia/Shanghai",
+        latitude=30.5785,
+        longitude=103.9471,
+        country="CN",
+    ),
+    "ZUCK": StationInfo(
+        code="ZUCK",
+        ghcnh_id="",
+        icao="ZUCK",
+        name="Chongqing Jiangbei International",
+        tz="Asia/Shanghai",
+        latitude=29.7192,
+        longitude=106.6417,
+        country="CN",
+    ),
+    "ZGGG": StationInfo(
+        code="ZGGG",
+        ghcnh_id="",
+        icao="ZGGG",
+        name="Guangzhou Baiyun International",
+        tz="Asia/Shanghai",
+        latitude=23.3924,
+        longitude=113.2988,
+        country="CN",
+    ),
+    "ZGSZ": StationInfo(
+        code="ZGSZ",
+        ghcnh_id="",
+        icao="ZGSZ",
+        name="Shenzhen Bao'an International",
+        tz="Asia/Shanghai",
+        latitude=22.6393,
+        longitude=113.8108,
+        country="CN",
+    ),
+    "ZSJN": StationInfo(
+        code="ZSJN",
+        ghcnh_id="",
+        icao="ZSJN",
+        name="Jinan Yaoqiang International",
+        tz="Asia/Shanghai",
+        latitude=36.8572,
+        longitude=117.2161,
+        country="CN",
+    ),
+    "ZSQD": StationInfo(
+        code="ZSQD",
+        ghcnh_id="",
+        icao="ZSQD",
+        name="Qingdao Jiaodong International",
+        tz="Asia/Shanghai",
+        latitude=36.3614,
+        longitude=120.0867,
+        country="CN",
+    ),
+    "ZHHH": StationInfo(
+        code="ZHHH",
+        ghcnh_id="",
+        icao="ZHHH",
+        name="Wuhan Tianhe International",
+        tz="Asia/Shanghai",
+        latitude=30.7838,
+        longitude=114.2081,
+        country="CN",
+    ),
+    "ZHCC": StationInfo(
+        code="ZHCC",
+        ghcnh_id="",
+        icao="ZHCC",
+        name="Zhengzhou Xinzheng International",
+        tz="Asia/Shanghai",
+        latitude=34.5197,
+        longitude=113.8408,
+        country="CN",
+    ),
+    # Net-new roster cities (Americas).
+    "CYYZ": StationInfo(
+        code="CYYZ",
+        ghcnh_id="",
+        icao="CYYZ",
+        name="Toronto Pearson International",
+        tz="America/Toronto",
+        latitude=43.6777,
+        longitude=-79.6248,
+        country="CA",
+    ),
+    "MMMX": StationInfo(
+        code="MMMX",
+        ghcnh_id="",
+        icao="MMMX",
+        name="Mexico City Benito Juarez International",
+        tz="America/Mexico_City",
+        latitude=19.4363,
+        longitude=-99.0721,
+        country="MX",
+    ),
+    "MPMG": StationInfo(
+        code="MPMG",
+        ghcnh_id="",
+        icao="MPMG",
+        name="Panama City Marcos A. Gelabert (Albrook)",
+        tz="America/Panama",
+        latitude=8.9733,
+        longitude=-79.5556,
+        country="PA",
+    ),
 }
 
 
@@ -757,16 +1058,20 @@ STATIONS: dict[str, StationInfo] = {
 # exists to prevent:
 #   - NYC: Kalshi → KNYC (Central Park); Polymarket → KLGA (LaGuardia).
 #   - Chicago: Kalshi → KMDW (Midway); Polymarket → KORD (O'Hare).
-#   - Houston: BOTH venues settle against KIAH, so KHOU (Hobby) — present
-#     in the registry as a weather station — carries no venue tag.
+#   - Houston: Kalshi → KIAH (Intercontinental); Polymarket → KHOU (Hobby)
+#     (Phase 23 — Polymarket moved off KIAH; KIAH stays Kalshi-only).
 #
 # ``_KALSHI_ICAOS`` mirrors ``markets.catalog.kalshi_stations`` citations and
-# ``_POLYMARKET_ICAOS`` mirrors ``markets ... polymarket_city_stations.json``
-# (intersected with this registry — Polymarket's KLGA/KORD are not in the
-# 66-station set). Core cannot import markets (layering / would be circular),
-# so these lists are duplicated here and pinned by markets-side contract
-# tests (``test_kalshi_stations.py``, ``test_polymarket_stations.py``) that
-# fail loudly on any drift.
+# ``_POLYMARKET_ICAOS`` is the explicit set of registry stations on
+# Polymarket's ``polymarket_city_stations.json`` roster. Phase 23 made this an
+# enumerated set (was country-derived "all non-US + 15 US"): the live roster
+# untagged 27 cities and added 21, so non-US no longer implies Polymarket.
+# Hong Kong settles against HKO (the Observatory) which has no airport ICAO
+# and is not a registry station, so it carries no tag (v0.2-deferred source).
+# Core cannot import markets (layering / would be circular), so these lists
+# are duplicated here and pinned by markets-side contract tests
+# (``test_kalshi_stations.py``, ``test_polymarket_stations.py``) that fail
+# loudly on any drift.
 # ----------------------------------------------------------------------
 
 #: The 21 Kalshi NHIGH/NLOW settlement ICAOs (== markets citation ICAOs).
@@ -796,28 +1101,71 @@ _KALSHI_ICAOS: frozenset[str] = frozenset(
     }
 )
 
-#: Polymarket settlement ICAOs that exist in this registry — the 41
-#: international stations plus the 15 US cities Polymarket settles against a
-#: station also in the catalog. Polymarket settles NYC→KLGA and Chicago→KORD,
-#: neither of which is a registry station, so KNYC/KMDW are NOT polymarket.
+#: The 50 Polymarket settlement ICAOs resident in this registry — the
+#: explicit station set of the 51-city ``polymarket_city_stations.json``
+#: roster (Phase 23). Hong Kong's 51st city settles against HKO, which is not
+#: a registry station (no airport ICAO; v0.2-deferred), so it is absent here.
+#: Enumerated (NOT country-derived): the Phase 23 roster untagged 27 cities
+#: whose stations remain in the registry as bare weather stations, so "non-US"
+#: no longer implies "polymarket". Pinned by ``test_polymarket_stations.py``.
 _POLYMARKET_ICAOS: frozenset[str] = frozenset(
-    {s.icao for s in STATIONS.values() if s.country != "US"}
-    | {
+    {
+        # US (11) — Polymarket's US roster. KLGA/KORD/KHOU/KDAL/KBKF diverge
+        # from Kalshi's KNYC/KMDW/KIAH/KDFW/KDEN for the same cities.
         "KATL",
         "KAUS",
-        "KBOS",
-        "KDCA",
-        "KDEN",
-        "KDFW",
-        "KIAH",
+        "KORD",
+        "KDAL",
+        "KBKF",
+        "KHOU",
         "KLAX",
         "KMIA",
-        "KMSP",
-        "KPHL",
-        "KPHX",
-        "KSEA",
+        "KLGA",
         "KSFO",
-        "KDTW",
+        "KSEA",
+        # International kept from the prior roster (14).
+        "EHAM",
+        "ZBAA",
+        "SAEZ",
+        "EFHK",
+        "LEMD",
+        "LIMC",
+        "EDDM",
+        "SBGR",
+        "RKSI",
+        "ZSPD",
+        "WSSS",
+        "RJTT",
+        "EPWA",
+        "NZWN",
+        # International move targets (4) — Paris LFPB (default flip off LFPG),
+        # London EGLC, Moscow UUWW, Taipei RCSS (RCSS v0.2-deferred).
+        "LFPB",
+        "EGLC",
+        "UUWW",
+        "RCSS",
+        # International net-new roster cities (21).
+        "LTAC",
+        "LTFM",
+        "LLBG",
+        "OEJN",
+        "OPKC",
+        "FACT",
+        "VILK",
+        "WMKK",
+        "RPLL",
+        "RKPK",
+        "ZUUU",
+        "ZUCK",
+        "ZGGG",
+        "ZGSZ",
+        "ZSJN",
+        "ZSQD",
+        "ZHHH",
+        "ZHCC",
+        "CYYZ",
+        "MMMX",
+        "MPMG",
     }
 )
 
@@ -852,7 +1200,7 @@ def is_us_station(icao: str) -> bool:
         icao: 4-letter ICAO identifier.
 
     Returns:
-        ``True`` for the 25 US registry entries; ``False`` for the 41
+        ``True`` for the 29 US registry entries; ``False`` for the 65
         international entries and for unknown ICAOs.
     """
     if not icao or not icao.startswith("K"):

@@ -1,4 +1,4 @@
-"""Per-Polymarket-city citation registry for the Phase 8 US-coverage additions.
+"""Per-Polymarket-city citation registry for the US-coverage roster.
 
 Audit trail for the empirical proof that drove each US-city station
 mapping in ``polymarket_city_stations.json``. The Polymarket event page
@@ -10,6 +10,12 @@ If a Polymarket market is renamed / deleted / relisted the citation MAY
 rot — at that point an operator must re-verify against a live event and
 either update the citation or carry an open parity ticket; never
 silently mutate the station mapping.
+
+Phase 23 (2026-05-29) reconciled this to the live 11-city US roster:
+Houston moved KIAH→KHOU, Dallas KDFW→KDAL, Denver KDEN→KBKF, and six
+cities (Boston, DC, Philadelphia, Phoenix, Minneapolis, Detroit) left the
+Polymarket roster — their citations were removed (station records stay in
+the catalog as bare weather stations).
 """
 
 from __future__ import annotations
@@ -36,20 +42,8 @@ POLYMARKET_CITY_CITATIONS: Final[dict[str, str]] = {
     "miami": (
         "https://polymarket.com/event/highest-temperature-in-miami (wunderground.com/.../KMIA)"
     ),
-    "denver": (
-        "https://polymarket.com/event/highest-temperature-in-denver (wunderground.com/.../KDEN)"
-    ),
-    "boston": (
-        "https://polymarket.com/event/highest-temperature-in-boston (wunderground.com/.../KBOS)"
-    ),
     "austin": (
         "https://polymarket.com/event/highest-temperature-in-austin (wunderground.com/.../KAUS)"
-    ),
-    "washington_dc": (
-        "https://polymarket.com/event/highest-temperature-in-dc (wunderground.com/.../KDCA)"
-    ),
-    "philadelphia": (
-        "https://polymarket.com/event/highest-temperature-in-philly (wunderground.com/.../KPHL)"
     ),
     "san_francisco": (
         "https://polymarket.com/event/highest-temperature-in-sf (wunderground.com/.../KSFO)"
@@ -61,19 +55,16 @@ POLYMARKET_CITY_CITATIONS: Final[dict[str, str]] = {
         "https://polymarket.com/event/highest-temperature-in-atlanta (wunderground.com/.../KATL)"
     ),
     "houston": (
-        "https://polymarket.com/event/highest-temperature-in-houston (wunderground.com/.../KIAH)"
+        "https://polymarket.com/event/highest-temperature-in-houston "
+        "(resolves via wunderground.com/.../KHOU — Phase 23 move off KIAH; KIAH stays Kalshi)"
     ),
     "dallas": (
-        "https://polymarket.com/event/highest-temperature-in-dallas (wunderground.com/.../KDFW)"
+        "https://polymarket.com/event/highest-temperature-in-dallas "
+        "(resolves via wunderground.com/.../KDAL — Phase 23 move off KDFW; KDFW stays Kalshi)"
     ),
-    "phoenix": (
-        "https://polymarket.com/event/highest-temperature-in-phoenix (wunderground.com/.../KPHX)"
-    ),
-    "minneapolis": (
-        "https://polymarket.com/event/highest-temperature-in-msp (wunderground.com/.../KMSP)"
-    ),
-    "detroit": (
-        "https://polymarket.com/event/highest-temperature-in-detroit (wunderground.com/.../KDTW)"
+    "denver": (
+        "https://polymarket.com/event/highest-temperature-in-denver "
+        "(resolves via wunderground.com/.../KBKF — Phase 23 move off KDEN; KDEN stays Kalshi)"
     ),
 }
 
