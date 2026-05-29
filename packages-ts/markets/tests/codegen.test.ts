@@ -21,24 +21,18 @@ describe("codegen: kalshi", () => {
 });
 
 describe("codegen: polymarket measure-specific mappings (TS-W0 iter-1 CRITICAL 1)", () => {
-  it("paris default is LFPG (Charles de Gaulle)", () => {
-    expect(POLYMARKET_CITY_STATIONS.paris?.default).toBe("LFPG");
+  it("paris collapsed to a single station LFPB (Phase 23, no high/low split)", () => {
+    // Phase 23: the operator roster lists Paris as one station (LFPB). The old
+    // LFPG/LFPB high/low split is gone; LFPG stays a bare registry record.
+    expect(POLYMARKET_CITY_STATIONS.paris?.default).toBe("LFPB");
+    expect(POLYMARKET_CITY_STATIONS.paris?.high).toBeUndefined();
+    expect(POLYMARKET_CITY_STATIONS.paris?.low).toBeUndefined();
   });
 
-  it("paris high is LFPG", () => {
-    expect(POLYMARKET_CITY_STATIONS.paris?.high).toBe("LFPG");
-  });
-
-  it("paris low is LFPB (Le Bourget) — NOT LFPG", () => {
-    // Silently routing paris-low to LFPG would corrupt every Polymarket
-    // Paris settlement. This is the bug KNOWN_WRONG_STATIONS exists to prevent.
-    expect(POLYMARKET_CITY_STATIONS.paris?.low).toBe("LFPB");
-    expect(POLYMARKET_CITY_STATIONS.paris?.low).not.toBe("LFPG");
-  });
-
-  it("hong_kong carries high/low keys (same value as default)", () => {
-    expect(POLYMARKET_CITY_STATIONS.hong_kong?.high).toBe("VHHH");
-    expect(POLYMARKET_CITY_STATIONS.hong_kong?.low).toBe("VHHH");
+  it("hong_kong carries high/low keys = HKO (Phase 23 — Observatory, deferred)", () => {
+    expect(POLYMARKET_CITY_STATIONS.hong_kong?.high).toBe("HKO");
+    expect(POLYMARKET_CITY_STATIONS.hong_kong?.low).toBe("HKO");
+    expect(POLYMARKET_CITY_STATIONS.hong_kong?.default).toBe("HKO");
   });
 
   it("tokyo carries high/low keys (same value as default)", () => {
@@ -46,9 +40,9 @@ describe("codegen: polymarket measure-specific mappings (TS-W0 iter-1 CRITICAL 1
     expect(POLYMARKET_CITY_STATIONS.tokyo?.low).toBe("RJTT");
   });
 
-  it("cities without measure-specific overrides have only `default`", () => {
+  it("london is a single-airport entry — EGLC (Phase 23 move off EGLL)", () => {
     const london = POLYMARKET_CITY_STATIONS.london;
-    expect(london?.default).toBe("EGLL");
+    expect(london?.default).toBe("EGLC");
     expect(london?.high).toBeUndefined();
     expect(london?.low).toBeUndefined();
   });
