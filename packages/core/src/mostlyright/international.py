@@ -37,8 +37,9 @@ __all__ = [
 class DeferredMarketError(MostlyRightError):
     """A market resolves to a station whose data source is deferred to v0.2.
 
-    Currently raised for Taipei (CWA client) and Hong Kong-lowest (HKO
-    client). v0.2 will land both clients and remove the deferral.
+    Currently raised for Taipei (RCSS, CWA client) and Hong Kong (HKO,
+    ``weather.gov.hk`` client). v0.2 will land both clients and remove the
+    deferral.
     """
 
     default_error_code = "DEFERRED_MARKET"
@@ -58,10 +59,13 @@ INTERNATIONAL_STATIONS: dict[str, str] = {
 
 
 #: Markets routed to stations whose data source is deferred to v0.2.
-#: Hong Kong (VHHH) defers only the "lowest" market (HKO is the issuer for
-#: the daily low); the high market resolves via standard METAR. Taipei
-#: (RCTP) defers all markets (CWA is the sole issuer there).
-DEFERRED_STATIONS: frozenset[str] = frozenset({"VHHH", "RCTP"})
+#: Phase 23 reconciled Hong Kong to its actual Polymarket settlement station,
+#: HKO (the HK Observatory) — no airport ICAO, sourced from ``weather.gov.hk``,
+#: so ALL HK markets now defer (previously HK-high routed via VHHH METAR).
+#: Taipei moved RCTP→RCSS (Songshan); RCSS defers all markets (CWA is the sole
+#: issuer there). VHHH/RCTP remain registry weather stations but no longer
+#: front any deferred market.
+DEFERRED_STATIONS: frozenset[str] = frozenset({"HKO", "RCSS"})
 
 #: Minimum hourly observations per local day for tmin/tmax/tmean to be
 #: published. Below this threshold the row still ships (so consumers see
@@ -98,7 +102,7 @@ def _resolve_tz(station: str) -> str:
         if s.icao == station:
             return s.tz
     raise KeyError(
-        f"Unknown station {station!r}. Expected one of the 66 STATIONS entries (25 US + 41 intl)."
+        f"Unknown station {station!r}. Expected one of the 94 STATIONS entries (29 US + 65 intl)."
     )
 
 
@@ -271,7 +275,7 @@ def daily_extremes(
     if info is None:
         raise KeyError(
             f"Unknown station {station!r}. "
-            f"Expected one of the 66 STATIONS entries (25 US + 41 intl)."
+            f"Expected one of the 94 STATIONS entries (29 US + 65 intl)."
         )
 
     # Local imports — pandas + cache may not be importable in bare installs

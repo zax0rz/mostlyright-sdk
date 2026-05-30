@@ -48,13 +48,48 @@ _KALSHI_ICAOS = {
     "KLAS",
 }
 
-# US registry stations no prediction-market venue settles against. Houston
-# trades on both venues but settles against KIAH, not KHOU.
-_NO_VENUE_ICAOS = {"KHOU", "KMSY", "KOKC", "KSAT"}
+# Registry stations no prediction-market venue settles against. Phase 23
+# untagged 27 Polymarket cities (records kept) + move-sources, so the bare
+# set grew from 4 to 29: 3 US (KHOU moved TO polymarket so it left this set)
+# plus 26 intl (roster drops + the London/Moscow/Taipei/HK/Paris move-sources).
+_NO_VENUE_ICAOS = {
+    # US bare weather stations.
+    "KMSY",
+    "KOKC",
+    "KSAT",
+    # Intl untagged in Phase 23 (cities dropped from the roster).
+    "EDDB",
+    "EDDF",
+    "EGKK",
+    "EKCH",
+    "ESSA",
+    "LEBL",
+    "LFPO",
+    "LIRF",
+    "LOWW",
+    "LSZH",
+    "NZAA",
+    "OERK",
+    "OMDB",
+    "OTHH",
+    "RJAA",
+    "VABB",
+    "VIDP",
+    "VTBS",
+    "YBBN",
+    "YMML",
+    "YSSY",
+    # Intl move-sources (kept as records; Polymarket moved off them).
+    "EGLL",  # London → EGLC
+    "UUEE",  # Moscow → UUWW
+    "RCTP",  # Taipei → RCSS
+    "VHHH",  # Hong Kong → HKO (non-registry)
+    "LFPG",  # Paris default → LFPB
+}
 
 
 def test_catalog_covers_full_registry() -> None:
-    assert len(CATALOG) == len(STATIONS) == 66
+    assert len(CATALOG) == len(STATIONS) == 94
     assert len(CATALOG) > 0
 
 
@@ -97,26 +132,31 @@ def test_kalshi_venue_equals_settlement_universe() -> None:
     assert len(kalshi) == 21
 
 
-def test_polymarket_venue_is_intl_plus_shared_us() -> None:
+def test_polymarket_venue_is_the_explicit_roster() -> None:
     poly = {s.icao for s in CATALOG.filter_by_venue("polymarket")}
-    # Every international station is a Polymarket station.
-    intl_icaos = {s.icao for s in CATALOG if s.country != "US"}
-    assert intl_icaos <= poly
-    # 41 intl + 15 shared US cities Polymarket settles against a registry
-    # station (NYC→KLGA and Chicago→KORD are NOT registry stations).
-    assert len(poly) == 56
+    # Phase 23: polymarket is an explicit 50-station roster, NOT "every intl".
+    # Cities that left the roster keep their station records but lose the tag.
+    assert len(poly) == 50
+    # NYC→KLGA / Chicago→KORD are now registry stations and ARE tagged.
+    assert {"KLGA", "KORD"} <= poly
+    # Untagged examples: roster drops + move-sources are NOT polymarket.
+    assert {"EGLL", "LFPG", "VHHH", "RJAA", "YSSY", "OMDB"}.isdisjoint(poly)
 
 
-def test_kalshi_and_polymarket_diverge_on_nyc_and_chicago() -> None:
+def test_kalshi_and_polymarket_diverge_on_nyc_chicago_houston() -> None:
     # The load-bearing nuance: KNYC/KMDW are Kalshi-only because Polymarket
-    # settles NYC/Chicago against KLGA/KORD (not in the registry).
+    # settles NYC/Chicago against KLGA/KORD.
     assert "kalshi" in CATALOG.get("KNYC").venues
     assert "polymarket" not in CATALOG.get("KNYC").venues
     assert "kalshi" in CATALOG.get("KMDW").venues
     assert "polymarket" not in CATALOG.get("KMDW").venues
-    # Houston settles against KIAH on both venues; KHOU carries no tag.
-    assert CATALOG.get("KIAH").venues == frozenset({"kalshi", "polymarket"})
-    assert CATALOG.get("KHOU").venues == frozenset()
+    # KLGA / KORD are Polymarket-only (the divergence partners).
+    assert CATALOG.get("KLGA").venues == frozenset({"polymarket"})
+    assert CATALOG.get("KORD").venues == frozenset({"polymarket"})
+    # Houston (Phase 23): Kalshi settles KIAH, Polymarket moved to KHOU —
+    # now divergent (previously both settled KIAH).
+    assert CATALOG.get("KIAH").venues == frozenset({"kalshi"})
+    assert CATALOG.get("KHOU").venues == frozenset({"polymarket"})
 
 
 def test_international_stations_not_tagged_kalshi() -> None:
@@ -131,10 +171,10 @@ def test_bare_weather_stations_have_no_venue() -> None:
 
 def test_filter_by_country() -> None:
     us = CATALOG.filter_by_country("US")
-    assert len(us) == 25
+    assert len(us) == 29
     assert all(s.country == "US" for s in us)
     intl = [s for s in CATALOG if s.country != "US"]
-    assert len(intl) == 41
+    assert len(intl) == 65
     assert CATALOG.filter_by_country("GB")[0].icao == "EGKK"
 
 

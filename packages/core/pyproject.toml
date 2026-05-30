@@ -1,6 +1,6 @@
 [project]
 name = "mostlyrightmd"
-version = "1.4.0"
+version = "1.5.0"
 description = "Python SDK for quants, ML engineers, and AI agents — one interface to public data. Adapters ship weather + prediction-market settlements (Kalshi NHIGH/NLOW, Polymarket) today; SEC filings, Federal Reserve series, court filings, FDA approvals, and equities are next. Schema-versioned, leakage-free, local-first. Imports as `mostlyright`."
 readme = "README.md"
 license = "MIT"

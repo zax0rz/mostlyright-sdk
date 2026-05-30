@@ -27,10 +27,11 @@ describe("Polymarket venue tag <-> city-station map", () => {
     }
     const catalogIcaos = new Set([...CATALOG].map((s) => s.icao));
 
-    // Polymarket settles NYC/Chicago against KLGA/KORD, which are not registry
-    // stations — the only settlement ICAOs without a venue tag.
+    // Phase 23: KLGA/KORD are now registry stations. HKO (Hong Kong
+    // Observatory — no airport ICAO, v0.2-deferred) is the sole settlement
+    // ICAO without a registry record / venue tag.
     const notInCatalog = [...settlementIcaos].filter((i) => !catalogIcaos.has(i)).sort();
-    expect(notInCatalog).toEqual(["KLGA", "KORD"]);
+    expect(notInCatalog).toEqual(["HKO"]);
 
     const expected = new Set([...settlementIcaos].filter((i) => catalogIcaos.has(i)));
     const tagged = new Set(CATALOG.filterByVenue("polymarket").map((s) => s.icao));
@@ -40,6 +41,10 @@ describe("Polymarket venue tag <-> city-station map", () => {
   it("Polymarket NYC/Chicago stations differ from Kalshi's", () => {
     expect(POLYMARKET_CITY_STATIONS.nyc?.default).toBe("KLGA");
     expect(POLYMARKET_CITY_STATIONS.chicago?.default).toBe("KORD");
+    // Phase 23: KLGA/KORD are polymarket-only registry stations; KNYC/KMDW
+    // stay kalshi-only — divergence preserved on both sides.
+    expect([...CATALOG.get("KLGA").venues]).toEqual(["polymarket"]);
+    expect([...CATALOG.get("KORD").venues]).toEqual(["polymarket"]);
     expect(CATALOG.get("KNYC").venues).not.toContain("polymarket");
     expect(CATALOG.get("KMDW").venues).not.toContain("polymarket");
   });

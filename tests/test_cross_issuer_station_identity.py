@@ -40,6 +40,17 @@ def test_chicago_kalshi_is_KMDW_polymarket_is_KORD():
     assert poly["chicago"]["default"] == "KORD"
 
 
+def test_houston_kalshi_is_KIAH_polymarket_is_KHOU():
+    """Phase 23 divergence — Kalshi settles Houston against KIAH
+    (Intercontinental); Polymarket moved to KHOU (Hobby). Previously both
+    settled KIAH, so this is a NEW cross-issuer disagreement the catalog
+    must preserve."""
+    poly = load_polymarket_city_stations()
+    assert KALSHI_SETTLEMENT_STATIONS["HOU"].station == "KIAH"
+    assert poly["houston"]["default"] == "KHOU"
+    assert KALSHI_SETTLEMENT_STATIONS["HOU"].station != poly["houston"]["default"]
+
+
 def test_KLGA_is_kalshi_wrong_but_polymarket_right_for_nyc():
     """The cross-inverse invariant — KLGA is in Kalshi's global denylist
     AND KLGA is the CORRECT Polymarket NYC station (so NOT in its denylist).

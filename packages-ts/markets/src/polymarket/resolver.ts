@@ -4,9 +4,8 @@
 // `_derive_city` helper. The resolver chain:
 //
 //   - Tier 0 (deferred check): if the resolved ICAO is in DEFERRED_STATIONS
-//     (Taipei RCTP, Hong Kong VHHH) AND the market is low-extreme, raise
-//     DeferredMarketError. The Python contract defers only HK-LOW + Taipei
-//     because v0.2 will land CWA + HKO clients.
+//     (Taipei RCSS, Hong Kong HKO), raise DeferredMarketError. Phase 23: both
+//     fully defer every measure — v0.2 will land CWA + weather.gov.hk clients.
 //   - Tier 1: explicit `event.city` field if a known city.
 //   - Tier 2: derive city from slug + title + tags (lowercase substring
 //     match against the catalog, longest-key-first so multi-token cities
@@ -182,19 +181,11 @@ export function resolveStationForEvent(
   const urlText = `${desc} ${resSrc}`;
   const extractedIcao = extractIcaoFromResolutionSource(urlText);
   if (extractedIcao !== null) {
-    if (extractedIcao === "RCTP") {
+    // Phase 23: HKO (Hong Kong) and RCSS (Taipei) fully defer — every measure —
+    // until their v0.2 source clients (weather.gov.hk / CWA) land.
+    if (DEFERRED_STATIONS.has(extractedIcao)) {
       throw new DeferredMarketError(
-        `Polymarket market for station ${extractedIcao} is deferred until the v0.2 CWA client lands`,
-      );
-    }
-    if (extractedIcao === "VHHH" && marketMeasure === "low") {
-      throw new DeferredMarketError(
-        `Polymarket low-extreme market for station ${extractedIcao} is deferred until the v0.2 HKO client lands`,
-      );
-    }
-    if (DEFERRED_STATIONS.has(extractedIcao) && marketMeasure === "default") {
-      throw new DeferredMarketError(
-        `Polymarket market for deferred station ${extractedIcao} (measure=default) requires v0.2 client`,
+        `Polymarket market for station ${extractedIcao} is deferred until the v0.2 source client lands (HKO/RCSS)`,
       );
     }
     // City: explicit Tier 1 wins; otherwise slug-derived; otherwise empty.
@@ -229,23 +220,12 @@ export function resolveStationForEvent(
   const icao = entry[stationMeasure] ?? entry.default;
   if (typeof icao !== "string") return null;
 
-  // Tier 0 deferred-station guard. Taipei (RCTP) defers all markets;
-  // Hong Kong (VHHH) defers only the low market because HKO is the issuer
-  // for the daily low. High markets at HK resolve via standard METAR.
-  if (icao === "RCTP") {
+  // Tier 0 deferred-station guard. Phase 23: Hong Kong (HKO) and Taipei (RCSS)
+  // fully defer every measure until their v0.2 source clients land
+  // (weather.gov.hk for HK, CWA for Taipei).
+  if (DEFERRED_STATIONS.has(icao)) {
     throw new DeferredMarketError(
-      `Polymarket market for station ${icao} is deferred until the v0.2 CWA client lands`,
-    );
-  }
-  if (icao === "VHHH" && marketMeasure === "low") {
-    throw new DeferredMarketError(
-      `Polymarket low-extreme market for station ${icao} is deferred until the v0.2 HKO client lands`,
-    );
-  }
-  if (DEFERRED_STATIONS.has(icao) && marketMeasure === "default") {
-    // Conservative default fallback for deferred stations.
-    throw new DeferredMarketError(
-      `Polymarket market for deferred station ${icao} (measure=default) requires v0.2 client`,
+      `Polymarket market for station ${icao} is deferred until the v0.2 source client lands (HKO/RCSS)`,
     );
   }
 

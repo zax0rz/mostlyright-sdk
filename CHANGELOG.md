@@ -4,6 +4,17 @@ All notable changes to `mostlyright`. The format follows [Keep a Changelog](http
 
 ## [Unreleased]
 
+### Changed — Phase 23: Polymarket settlement catalog refresh (BREAKING, pre-1.0)
+- **Registry expanded to 94 stations (29 US + 65 international).** Added 28 records to reconcile the catalog to Polymarket's authoritative 51-city settlement roster: 4 US (`KLGA` NYC, `KORD` Chicago, `KDAL` Dallas, `KBKF` Denver) + 24 international (21 net-new cities — Ankara, Busan, Cape Town, Chengdu, Chongqing, Guangzhou, Istanbul, Jeddah, Jinan, Karachi, Kuala Lumpur, Lucknow, Manila, Mexico City, Panama City, Qingdao, Shenzhen, Tel Aviv, Toronto, Wuhan, Zhengzhou — plus move targets `EGLC`, `UUWW`, `RCSS`).
+- **`mostlyright.stations._POLYMARKET_ICAOS` is now an explicit enumerated set (50 stations), not country-derived.** Polymarket no longer settles every international station, so "non-US ⇒ polymarket" was retired. `filter_by_venue("polymarket")` equals the registry-resident stations of the 51-city map (the 51st, Hong Kong, settles against `HKO` — the Observatory, no airport ICAO, v0.2-deferred).
+- **7 station moves** (Polymarket only; old ICAOs kept as bare records): Dallas `KDFW`→`KDAL`, Denver `KDEN`→`KBKF`, London `EGLL`→`EGLC`, Moscow `UUEE`→`UUWW`, Taipei `RCTP`→`RCSS`, Paris default `LFPG`→`LFPB`, Hong Kong `VHHH`→`HKO`.
+- **Houston cross-venue conflict.** Polymarket moved to `KHOU` (Hobby) while Kalshi stays `KIAH` (Intercontinental) — a new cross-issuer divergence alongside NYC (`KNYC` vs `KLGA`) and Chicago (`KMDW` vs `KORD`). Guarded by `tests/test_cross_issuer_station_identity.py`.
+- **27 stale Polymarket cities untagged** (station records retained as bare weather stations): 6 US (Boston, DC, Minneapolis, Philadelphia, Phoenix, Detroit — Detroit stays `kalshi`) + 21 international.
+- **Deferred sources retargeted.** `DEFERRED_STATIONS` `{VHHH, RCTP}` → `{HKO, RCSS}`; Hong Kong now fully defers every measure (previously HK-high routed via VHHH METAR). Taipei defers via `RCSS` (CWA). v0.2 lands the `weather.gov.hk` + CWA clients.
+- **Kalshi roster frozen** — `_KALSHI_ICAOS` (21) unchanged; no `kalshi` tag removed. v0.14.1 parity gate stays green.
+- TS ships lockstep via codegen (`schemas/stations.json`, `polymarket-city-stations.json` → `@mostlyrightmd/core` + `@mostlyrightmd/markets`).
+- **Note:** new non-K station metadata uses authoritative public airport data; live IEM/AWC coverage per ICAO should be confirmed (`@pytest.mark.live`) before advertising these as live markets.
+
 ## [1.4.0] — 2026-05-28 — Phase 22: Station-model refactor + Las Vegas (Kalshi TLV)
 
 ### Changed — Phase 22: Station-model refactor (BREAKING, pre-1.0)
