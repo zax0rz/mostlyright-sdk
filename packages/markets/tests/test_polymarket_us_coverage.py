@@ -15,6 +15,9 @@ from mostlyright.markets.polymarket import KNOWN_WRONG_STATIONS
 from mostlyright.markets.polymarket_city_citations import POLYMARKET_CITY_CITATIONS
 
 #: The Phase 8 US cities. Exact set — adding one requires a PLAN change.
+# Phase 23 reduced Polymarket's US roster to 11 cities — Boston, DC,
+# Philadelphia, Phoenix, Minneapolis, and Detroit left the live roster (their
+# station records remain in the catalog as bare weather stations).
 US_CITIES_PHASE_8 = frozenset(
     {
         "nyc",
@@ -22,18 +25,12 @@ US_CITIES_PHASE_8 = frozenset(
         "los_angeles",
         "miami",
         "denver",
-        "boston",
         "austin",
-        "washington_dc",
-        "philadelphia",
         "san_francisco",
         "seattle",
         "atlanta",
         "houston",
         "dallas",
-        "phoenix",
-        "minneapolis",
-        "detroit",
     }
 )
 

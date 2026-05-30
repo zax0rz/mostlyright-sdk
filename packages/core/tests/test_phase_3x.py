@@ -29,8 +29,14 @@ def test_paris_split_present():
 def test_deferred_stations():
     from mostlyright.international import DEFERRED_STATIONS
 
-    assert "VHHH" in DEFERRED_STATIONS  # Hong Kong
-    assert "RCTP" in DEFERRED_STATIONS  # Taipei
+    # Phase 23: Hong Kong settles against HKO (the Observatory, weather.gov.hk
+    # v0.2 source) and Taipei moved to RCSS (Songshan, CWA source). The old
+    # VHHH/RCTP airport ICAOs stay registry records but no longer front a
+    # deferred market.
+    assert "HKO" in DEFERRED_STATIONS  # Hong Kong
+    assert "RCSS" in DEFERRED_STATIONS  # Taipei
+    assert "VHHH" not in DEFERRED_STATIONS
+    assert "RCTP" not in DEFERRED_STATIONS
 
 
 def test_daily_extremes_empty_cache_returns_empty_list(monkeypatch):

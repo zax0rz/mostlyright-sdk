@@ -77,8 +77,12 @@ export const SETTLE_DELAY_HOURS: Readonly<Record<string, number>> = Object.freez
  */
 export const SLUG_DATE_RE = /(\d{4})-(\d{2})-(\d{2})/g;
 
-/** Markets routed to v0.2 sources (CWA/HKO clients). */
-export const DEFERRED_STATIONS: ReadonlySet<string> = new Set(["VHHH", "RCTP"]);
+/**
+ * Markets routed to v0.2 sources. Phase 23: Hong Kong settles against HKO (the
+ * Observatory, weather.gov.hk) and Taipei moved RCTP→RCSS (CWA). Both fully
+ * defer every measure; the old VHHH/RCTP airport ICAOs are no longer deferred.
+ */
+export const DEFERRED_STATIONS: ReadonlySet<string> = new Set(["HKO", "RCSS"]);
 
 /** Discovery row shape — one per active weather event. */
 export interface PolymarketDiscoveryRow {

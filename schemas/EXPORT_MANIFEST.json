@@ -45,8 +45,8 @@
     {
       "gated": false,
       "path": "polymarket-city-stations.json",
-      "sha256": "6316d8fd0f85b4f6ebb1cbb4abe0572b654edfc782a05ffaa14babb8cd8187ee",
-      "size_bytes": 3046
+      "sha256": "52708834f952cc2d42e36e95d6dd677120552357f682155faed8500800af0d86",
+      "size_bytes": 2701
     },
     {
       "gated": false,
@@ -63,8 +63,8 @@
     {
       "gated": false,
       "path": "stations.json",
-      "sha256": "8be7bbd18eecc6e922903d94eb703cfd0730a4dd1b20606c5fe0c4783ff13d84",
-      "size_bytes": 18602
+      "sha256": "3d82674b4ddd2707f49c42f783bb889db214be6b6ea2a89e99faf663f64535de",
+      "size_bytes": 25606
     }
   ]
 }
