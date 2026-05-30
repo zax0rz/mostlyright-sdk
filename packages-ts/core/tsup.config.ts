@@ -7,7 +7,7 @@ import { defineConfig } from "tsup";
 // The subpath build is invoked via `exports["./internal/..."]` in
 // package.json so weather/markets/meta can import the canonical
 // constants instead of duplicating them. See TS-W1 iter-1 HIGH 3.
-export default defineConfig([
+const allConfigs = [
   {
     entry: ["src/index.ts"],
     format: ["esm", "cjs", "iife"],
@@ -217,4 +217,28 @@ export default defineConfig([
       return { js: ".cjs" };
     },
   },
-]);
+];
+
+// Build serialization. package.json "build" invokes `tsup` once per config via
+// TSUP_ONLY=<index>. Each config's bundled-DTS runs in its own tsup worker
+// thread (one Worker per array entry — see tsup build(): Promise.all over the
+// config array). tsup's default array export fans all 12 out concurrently;
+// every worker loads the full TS program, so on a 2-core CI runner the fan-out
+// OOMs/contends and intermittently DROPS .d.ts outputs while the build still
+// exits 0 with a partial dist/. Dependent packages then fail non-
+// deterministically with TS7016 "Could not find a declaration file for module
+// '@mostlyrightmd/core/...'". Running one DTS worker at a time makes it
+// deterministic; config[0] (clean:true) runs first and clears dist/ before the
+// clean:false subpath configs append. Keep the index list in package.json
+// "build" in sync with allConfigs.length.
+const only = process.env.TSUP_ONLY;
+if (only !== undefined && only !== "") {
+  const idx = Number(only);
+  if (!Number.isInteger(idx) || idx < 0 || idx >= allConfigs.length) {
+    throw new Error(`TSUP_ONLY=${only} is out of range [0, ${allConfigs.length - 1}]`);
+  }
+}
+
+export default defineConfig(
+  only !== undefined && only !== "" ? allConfigs[Number(only)] : allConfigs,
+);

@@ -39,7 +39,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build packages
-        run: pnpm -r build
+        # Root `build` script = explicit dependency-ordered build; avoids the flaky
+        # cross-package DTS race (TS7016 on @mostlyrightmd/core subpaths).
+        run: pnpm run build
 
       - name: Capture current research() output → drift/
         env:

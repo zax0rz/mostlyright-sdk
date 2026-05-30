@@ -72,7 +72,14 @@ jobs:
         # .github/workflows/test-ts.yml (which has this comment verbatim).
         # Symptom before the fix: TS2307 "Cannot find module '@mostlyrightmd/core'"
         # on the rc2 push (Build was originally below Typecheck).
-        run: pnpm -r run build
+        #
+        # Root `build` script builds packages in explicit dependency order
+        # (core -> weather -> markets -> meta) via separate `--filter` calls.
+        # `pnpm -r run build` (even at --workspace-concurrency=1) does NOT reliably
+        # order them: weather/markets declare core only in devDependencies, so
+        # pnpm's topological sort skips the edge and a dependent's DTS phase can read
+        # core's dist/ before every subpath .d.ts exists — flaky TS7016 on core subpaths.
+        run: pnpm run build
 
       - name: Typecheck
         run: pnpm -r run typecheck

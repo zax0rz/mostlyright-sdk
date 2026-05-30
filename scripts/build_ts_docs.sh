@@ -26,7 +26,9 @@ pnpm install --frozen-lockfile
 # `pnpm -r run build` produces `.d.ts` for every package — TypeDoc reads
 # the .ts sources directly (entryPointStrategy: "resolve"), but a successful
 # build also catches type errors that would surface as half-rendered MDX.
-pnpm -r run build
+# Root `build` script = explicit dependency-ordered build; avoids the flaky
+# cross-package DTS race (TS7016 on @mostlyrightmd/core subpaths).
+pnpm run build
 
 # `--options packages-ts/typedoc.json` points TypeDoc at the root TS config.
 # Output dir (`docs-ts-build/markdown`) is set inside typedoc.json relative
