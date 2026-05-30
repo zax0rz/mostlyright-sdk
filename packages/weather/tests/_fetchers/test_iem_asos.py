@@ -167,7 +167,7 @@ class TestDownloadIemAsosYearlyChunks:
         station = _make_station()
         calls: list[tuple[str, Path]] = []
 
-        def fake_download(url: str, dest: Path) -> None:
+        def fake_download(url: str, dest: Path, *, client: object = None) -> None:
             calls.append((url, dest))
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(b"station,valid\nNYC,2025-01-01 00:51\n")
@@ -205,7 +205,7 @@ class TestDownloadIemAsosYearlyChunks:
         station = _make_station()
         fetched_urls: list[str] = []
 
-        def fake_download(url: str, dest: Path) -> None:
+        def fake_download(url: str, dest: Path, *, client: object = None) -> None:
             fetched_urls.append(url)
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(b"ok")
@@ -236,7 +236,7 @@ class TestDownloadIemAsosYearlyChunks:
         station = _make_station()
         fetched: list[str] = []
 
-        def fake_download(url: str, dest: Path) -> None:
+        def fake_download(url: str, dest: Path, *, client: object = None) -> None:
             fetched.append(url)
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(b"ok")
@@ -266,7 +266,7 @@ class TestDownloadIemAsosYearlyChunks:
     def test_speci_uses_speci_suffix(self, tmp_path: Path, frozen_today_utc: date) -> None:
         station = _make_station()
 
-        def fake_download(url: str, dest: Path) -> None:
+        def fake_download(url: str, dest: Path, *, client: object = None) -> None:
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(b"x")
 
@@ -342,7 +342,7 @@ class TestPartialNamespace:
         station = _make_station()
         captured_dests: list[Path] = []
 
-        def fake_download(url: str, dest: Path) -> None:
+        def fake_download(url: str, dest: Path, *, client: object = None) -> None:
             captured_dests.append(dest)
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(b"fresh")
@@ -388,7 +388,7 @@ class TestPartialNamespace:
 
         captured: list[Path] = []
 
-        def fake_download(url: str, dest: Path) -> None:
+        def fake_download(url: str, dest: Path, *, client: object = None) -> None:
             captured.append(dest)
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(b"x")
@@ -430,7 +430,7 @@ class TestPartialNamespace:
             def now(cls, tz=None):  # type: ignore[override]
                 return fake_dt
 
-        def fake_download(url: str, dest: Path) -> None:
+        def fake_download(url: str, dest: Path, *, client: object = None) -> None:
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(b"x")
 
@@ -531,7 +531,7 @@ class TestPartialNamespace:
 
         fetched: list[str] = []
 
-        def fake_download(url: str, dest: Path) -> None:
+        def fake_download(url: str, dest: Path, *, client: object = None) -> None:
             fetched.append(url)
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(b"partial-fresh")
@@ -573,7 +573,7 @@ class TestDownloadIemAsosRetry:
         station = _make_station()
         captured_urls: list[str] = []
 
-        def fake_download(url: str, dest: Path) -> None:
+        def fake_download(url: str, dest: Path, *, client: object = None) -> None:
             captured_urls.append(url)
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(b"ok")
@@ -604,7 +604,7 @@ class TestDownloadIemAsosRetry:
         """Persistent 5xx (or 404) inside the helper bubbles up to the caller."""
         station = _make_station()
 
-        def boom(url: str, dest: Path) -> None:
+        def boom(url: str, dest: Path, *, client: object = None) -> None:
             raise RuntimeError("simulated retry exhaustion")
 
         with (

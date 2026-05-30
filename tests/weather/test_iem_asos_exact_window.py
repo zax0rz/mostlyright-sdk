@@ -56,7 +56,7 @@ def test_exact_window_url_uses_day_granular_params(tmp_path, frozen_today_utc):
     station = _make_station()
     captured_urls: list[str] = []
 
-    def _fake_download(url: str, dest: Path) -> None:
+    def _fake_download(url: str, dest: Path, *, client: object = None) -> None:
         captured_urls.append(url)
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text("station,valid\n", encoding="utf-8")
@@ -98,7 +98,7 @@ def test_exact_window_false_preserves_year_normalization(tmp_path, frozen_today_
     station = _make_station()
     captured_urls: list[str] = []
 
-    def _fake_download(url: str, dest: Path) -> None:
+    def _fake_download(url: str, dest: Path, *, client: object = None) -> None:
         captured_urls.append(url)
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text("station,valid\n", encoding="utf-8")
@@ -133,7 +133,7 @@ def test_exact_window_paths_under_caller_dest_dir(tmp_path, frozen_today_utc):
     station = _make_station()
     dest_dir = tmp_path / "iem_asos_exact"
 
-    def _fake_download(url: str, dest: Path) -> None:
+    def _fake_download(url: str, dest: Path, *, client: object = None) -> None:
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text("station,valid\n", encoding="utf-8")
 
@@ -163,7 +163,7 @@ def test_exact_window_returns_list_of_csv_paths(tmp_path, frozen_today_utc):
     """Function returns list[Path] of `.csv` files (parser handles them)."""
     station = _make_station()
 
-    def _fake_download(url: str, dest: Path) -> None:
+    def _fake_download(url: str, dest: Path, *, client: object = None) -> None:
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text("station,valid\n", encoding="utf-8")
 

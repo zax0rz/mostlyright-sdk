@@ -21,6 +21,7 @@ mostlyright does not have — see ROADMAP Phase 3.2 "Out of scope").
 from __future__ import annotations
 
 import logging
+import threading
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Literal
@@ -97,6 +98,16 @@ SUPPORTED_NWP_MIRRORS: frozenset[str] = frozenset(
 #: MUST gate concurrency to ``<= NOMADS_CONCURRENCY_CAP``. AWS BDP and
 #: other mirrors have no such cap.
 NOMADS_CONCURRENCY_CAP: int = 4
+
+
+#: Phase 24-02: module-level bound on the TOTAL number of concurrent
+#: upstream NWP HTTP requests across BOTH fan-out axes (multi-cycle x
+#: per-variable). Acquired ONLY around each leaf HTTP call below — never
+#: held across an ``executor.submit``/``.result()`` boundary (that would
+#: deadlock the nested cycle/variable pools) and never held while the
+#: caller decodes the returned bytes. cfgrib decode therefore overlaps the
+#: network of another worker.
+_NWP_REQUEST_SEMAPHORE = threading.BoundedSemaphore(NOMADS_CONCURRENCY_CAP)
 
 
 #: Per-model mirror priority order (Phase 17 FORECAST-02). Replaces the
@@ -672,10 +683,11 @@ def fetch_idx_text(
         httpx.RequestError: Connection / DNS / TLS failure.
     """
     if client is None:
-        with httpx.Client(timeout=timeout) as fresh:
+        with httpx.Client(timeout=timeout) as fresh, _NWP_REQUEST_SEMAPHORE:
             response = fresh.get(plan.idx_url)
     else:
-        response = client.get(plan.idx_url, timeout=timeout)
+        with _NWP_REQUEST_SEMAPHORE:
+            response = client.get(plan.idx_url, timeout=timeout)
     response.raise_for_status()
     return response.text
 
@@ -698,10 +710,11 @@ def fetch_grib2_content_length(
         ValueError: ``Content-Length`` header missing or non-integer.
     """
     if client is None:
-        with httpx.Client(timeout=timeout) as fresh:
+        with httpx.Client(timeout=timeout) as fresh, _NWP_REQUEST_SEMAPHORE:
             response = fresh.head(plan.grib2_url)
     else:
-        response = client.head(plan.grib2_url, timeout=timeout)
+        with _NWP_REQUEST_SEMAPHORE:
+            response = client.head(plan.grib2_url, timeout=timeout)
     response.raise_for_status()
     cl = response.headers.get("content-length")
     if cl is None:
@@ -756,12 +769,16 @@ def fetch_byte_range(
     if client is None:
         with (
             httpx.Client(timeout=timeout) as fresh,
+            _NWP_REQUEST_SEMAPHORE,
             fresh.stream("GET", plan.grib2_url, headers=headers) as response,
         ):
             response.raise_for_status()
             assert_range_honored(response, url=plan.grib2_url)
             return response.read()
-    with client.stream("GET", plan.grib2_url, headers=headers, timeout=timeout) as response:
+    with (
+        _NWP_REQUEST_SEMAPHORE,
+        client.stream("GET", plan.grib2_url, headers=headers, timeout=timeout) as response,
+    ):
         response.raise_for_status()
         assert_range_honored(response, url=plan.grib2_url)
         return response.read()

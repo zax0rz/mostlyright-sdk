@@ -31,7 +31,7 @@ from pathlib import Path
 
 import httpx
 from mostlyright._internal._bounds import validate_ghcnh_id_for_path
-from mostlyright._internal._http import download_with_retry
+from mostlyright._internal._http import HTTP_TIMEOUT, download_with_retry
 
 log = logging.getLogger(__name__)
 
@@ -59,6 +59,7 @@ def download_ghcnh(
     dest_dir: Path,
     *,
     skip_cache: bool = False,
+    client: httpx.Client | None = None,
 ) -> Path:
     """Download a NOAA GHCNh PSV file for one station-year.
 
@@ -106,7 +107,7 @@ def download_ghcnh(
         return dest
 
     url = _ghcnh_url(station_id, year)
-    download_with_retry(url, dest)
+    download_with_retry(url, dest, client=client)
     # Polite delay only after a real network round-trip succeeded.
     time.sleep(NCEI_POLITE_DELAY)
     return dest
@@ -147,23 +148,30 @@ def download_ghcnh_range(
     # Validate up front (per-year loop would also catch on first iteration).
     validate_ghcnh_id_for_path(station_id, field="station_id")
 
+    # Phase 24-04: one pooled client for the whole year range — reuse a
+    # single TCP+TLS connection instead of a fresh handshake per year.
     paths: list[Path] = []
-    for year in range(start_year, end_year + 1):
-        try:
-            path = download_ghcnh(
-                station_id,
-                year,
-                dest_dir,
-                skip_cache=skip_cache,
-            )
-        except httpx.HTTPStatusError as exc:
-            if exc.response.status_code == 404:
-                log.warning(
-                    "GHCNh %s %d: no data (404), skipping",
+    client = httpx.Client(timeout=HTTP_TIMEOUT)
+    try:
+        for year in range(start_year, end_year + 1):
+            try:
+                path = download_ghcnh(
                     station_id,
                     year,
+                    dest_dir,
+                    skip_cache=skip_cache,
+                    client=client,
                 )
-                continue
-            raise
-        paths.append(path)
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code == 404:
+                    log.warning(
+                        "GHCNh %s %d: no data (404), skipping",
+                        station_id,
+                        year,
+                    )
+                    continue
+                raise
+            paths.append(path)
+    finally:
+        client.close()
     return paths

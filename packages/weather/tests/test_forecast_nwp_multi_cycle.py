@@ -78,8 +78,15 @@ def test_forecast_nwp_cycle_range_iterates_and_concats() -> None:
 
     assert isinstance(df, pd.DataFrame)
     assert len(df) == 7, f"expected 7 concatenated rows; got {len(df)}"
-    assert per_cycle_calls == expected_cycles, (
-        f"per-cycle calls drift: {per_cycle_calls!r} vs {expected_cycles!r}"
+    # Phase 24-02: cycles now fetch concurrently, so the *call* order is
+    # nondeterministic — assert the SET of cycles instead.
+    assert sorted(per_cycle_calls) == expected_cycles, (
+        f"per-cycle calls drift: {sorted(per_cycle_calls)!r} vs {expected_cycles!r}"
+    )
+    # But OUTPUT row order MUST stay deterministic (cycle_range order),
+    # regardless of which cycle's future resolved first.
+    assert list(df["issued_at"]) == [pd.Timestamp(c) for c in expected_cycles], (
+        "multi-cycle concat must preserve cycle_range order"
     )
 
 

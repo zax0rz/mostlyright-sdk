@@ -32,6 +32,7 @@ from __future__ import annotations
 import logging
 import math
 import tempfile
+from concurrent.futures import ThreadPoolExecutor, wait
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -53,6 +54,7 @@ from mostlyright.core.schemas.forecast_nwp import (
 from ._fetchers._nwp_archive import (
     DEFAULT_MIRROR_CHAIN,
     IDX_STYLE_BY_MODEL,
+    NOMADS_CONCURRENCY_CAP,
     SOURCES_BY_MODEL,
     SUPPORTED_NWP_MIRRORS,
     SUPPORTED_NWP_MODELS,
@@ -332,13 +334,23 @@ def _try_fetch_records_for_mirror(
         # NCEP family is "wgrib2" (the parse_idx default) so this preserves
         # byte-identical behavior; ECMWF Wave-2 plug-in uses "eccodes".
         idx_style = IDX_STYLE_BY_MODEL.get(model, "wgrib2")
-        records = compute_byte_end(
-            parse_idx(idx_text, style=idx_style),  # type: ignore[arg-type]
-            content_length=fetch_grib2_content_length(plan, client=client),
-        )
-        content_length = (
-            records[-1].byte_end + 1 if records and records[-1].byte_end is not None else 0
-        )
+        parsed = parse_idx(idx_text, style=idx_style)  # type: ignore[arg-type]
+        # Phase 24-01: derive byte_end WITHOUT a Content-Length HEAD first.
+        # compute_byte_end bounds every non-final record from the next
+        # record's offset; only the file's LAST record needs the HEAD. The
+        # NCEP variable maps (HRRR's 9 fields etc.) are all mid-file, so the
+        # HEAD was pure waste on the common path. Issue it lazily only when a
+        # filtered record is the file's final one (byte_end still None).
+        records = compute_byte_end(parsed)
+        filtered = filter_records(records, variable_map)
+        if any(rec.byte_end is None for rec in filtered):
+            content_length = fetch_grib2_content_length(plan, client=client)
+            records = compute_byte_end(parsed, content_length=content_length)
+            filtered = filter_records(records, variable_map)
+        else:
+            content_length = (
+                records[-1].byte_end + 1 if records and records[-1].byte_end is not None else 0
+            )
     except (httpx.HTTPStatusError, httpx.RequestError) as exc:
         log.info(
             "forecast_nwp: mirror %s failed for %s cycle %s fxx %d: %s",
@@ -349,7 +361,6 @@ def _try_fetch_records_for_mirror(
             exc,
         )
         return None
-    filtered = filter_records(records, variable_map)
     return plan, filtered, content_length
 
 
@@ -394,27 +405,47 @@ def _extract_records(
     for rec in filtered_records:
         record_groups.setdefault((rec.variable, rec.level), []).append(rec)
 
+    # Resolve one record per (col, key) up front. The ambiguity check (a
+    # variable/level with multiple .idx records) must fire deterministically
+    # regardless of the fan-out below, so it stays out of the worker.
+    work: list[tuple[str, tuple[str, str], IdxRecord]] = []
+    for col, key in variable_map.items():
+        group = record_groups.get(key)
+        if not group:
+            continue
+        if len(group) > 1:
+            raise GribIntegrityError(
+                f"ambiguous .idx records for {key}: "
+                f"{[r.forecast_period for r in group]} — "
+                "mostlyright v0.1 picks one record per (variable, level); "
+                "for accumulated fields with multiple windows, "
+                "extend VARIABLE_MAP to a (variable, level, forecast_period) "
+                "tuple or pin the desired window via Phase 3.4 QC engine.",
+                model=model,
+                variable=key[0],
+            )
+        rec = group[0]
+        if rec.byte_end is None:
+            continue
+        work.append((col, key, rec))
+
+    if not work:
+        return
+
     with tempfile.TemporaryDirectory(prefix="mostlyright_nwp_") as tmpdir:
         tmp = Path(tmpdir)
-        for col, key in variable_map.items():
-            group = record_groups.get(key)
-            if not group:
-                rec = None
-            elif len(group) == 1:
-                rec = group[0]
-            else:
-                raise GribIntegrityError(
-                    f"ambiguous .idx records for {key}: "
-                    f"{[r.forecast_period for r in group]} — "
-                    "mostlyright v0.1 picks one record per (variable, level); "
-                    "for accumulated fields with multiple windows, "
-                    "extend VARIABLE_MAP to a (variable, level, forecast_period) "
-                    "tuple or pin the desired window via Phase 3.4 QC engine.",
-                    model=model,
-                    variable=key[0],
-                )
-            if rec is None or rec.byte_end is None:
-                continue
+
+        def _extract_one(
+            col: str, key: tuple[str, str], rec: IdxRecord
+        ) -> tuple[str, list[tuple[float | None, float | None]]]:
+            """Fetch + decode + extract one variable's record.
+
+            Returns ``(col, extracted)``. Writes NO shared state — the
+            caller reduces results after the pool joins so ``distances_km``
+            stays deterministic. Raises :class:`_MirrorTransportFailed` on a
+            transport error (mirror fallback) or :class:`GribIntegrityError`
+            on a decode failure (surfaces to the user).
+            """
             try:
                 payload = fetch_byte_range(
                     plan,
@@ -431,8 +462,10 @@ def _extract_records(
                 # with the full body instead of 206 Partial Content) —
                 # same recovery strategy: try the next mirror.
                 raise _MirrorTransportFailed(key[0], str(exc)) from exc
+            # Filename keyed by col so concurrent workers never collide even
+            # if two columns map to the same .idx record.
             record_path = (
-                tmp / f"{rec.record_no}_{rec.variable}_{rec.level.replace(' ', '_')}.grib2"
+                tmp / f"{col}_{rec.record_no}_{rec.variable}_{rec.level.replace(' ', '_')}.grib2"
             )
             record_path.write_bytes(payload)
             try:
@@ -453,6 +486,42 @@ def _extract_records(
                 )
             finally:
                 ds.close()
+            return col, extracted
+
+        # Phase 24-01: fan out the per-variable fetch+decode across a bounded
+        # pool. NOMADS_CONCURRENCY_CAP bounds upstream concurrency; never
+        # exceed the number of submitted records. Each leaf byte-range fetch
+        # is additionally gated by the module-level semaphore in
+        # _nwp_archive so the combined cycle x variable fan-out (Phase 24-02)
+        # stays under the same cap.
+        max_workers = min(NOMADS_CONCURRENCY_CAP, len(work))
+        results: dict[str, list[tuple[float | None, float | None]]] = {}
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            col_to_future = {
+                col: executor.submit(_extract_one, col, key, rec) for col, key, rec in work
+            }
+            wait(col_to_future.values())  # join all before deciding — no leaked threads
+        # Exception precedence must match the serial implementation, which
+        # walked variable_map order and raised the FIRST failure it hit —
+        # regardless of type — then stopped. So reduce in work (== variable_map)
+        # order and re-raise that first exception. Bucketing by type and
+        # preferring transport over integrity would let a transport error on a
+        # LATER variable mask a GribIntegrityError on an EARLIER one, silently
+        # turning "this mirror's bytes are corrupt" into a mirror fallback.
+        for col, _key, _rec in work:
+            exc = col_to_future[col].exception()
+            if exc is not None:
+                raise exc
+            _returned_col, extracted = col_to_future[col].result()
+            results[col] = extracted
+
+        # Reduce sequentially in variable_map order so distances_km is
+        # first-wins-by-map-order, identical to the serial implementation
+        # regardless of worker completion order.
+        for col in variable_map:
+            extracted = results.get(col)
+            if extracted is None:
+                continue
             for i, (value, dist_km) in enumerate(extracted):
                 column_values[col][i] = value
                 if distances_km[i] is None:
@@ -621,8 +690,7 @@ def forecast_nwp(
         for _c in cycles_to_fetch:
             check_historical_depth(model, _c)
 
-        per_cycle_frames: list[pd.DataFrame] = []
-        for _c in cycles_to_fetch:
+        def _fetch_cycle(_c: datetime) -> pd.DataFrame | None:
             try:
                 # Phase 17 Wave 4 iter-2 review HIGH (Finding 3): force the
                 # per-cycle recursive call to return a raw pandas DataFrame
@@ -642,7 +710,8 @@ def forecast_nwp(
                     return_type="dataframe",
                 )
                 if cycle_df is not None and not cycle_df.empty:
-                    per_cycle_frames.append(cycle_df)
+                    return cycle_df
+                return None
             except (
                 NwpModelNotAvailableError,
                 NoLiveForNwpError,
@@ -656,7 +725,29 @@ def forecast_nwp(
                     _c.isoformat(),
                     exc,
                 )
-                continue
+                return None
+
+        # Phase 24-02: fan out the per-cycle fetches across a bounded pool
+        # (up to NOMADS_CONCURRENCY_CAP cycles in flight). httpx.Client is
+        # thread-safe; the leaf NWP HTTP calls are gated by _nwp_archive's
+        # module-level semaphore so the combined cycle x variable
+        # concurrency stays under the cap. Results are collected BY INDEX
+        # and concatenated in cycle_range order, so row order is
+        # deterministic regardless of which cycle finishes first.
+        results_by_index: dict[int, pd.DataFrame | None] = {}
+        max_workers = min(NOMADS_CONCURRENCY_CAP, len(cycles_to_fetch))
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_index = {
+                executor.submit(_fetch_cycle, _c): i for i, _c in enumerate(cycles_to_fetch)
+            }
+            wait(future_to_index)
+            for future, index in future_to_index.items():
+                results_by_index[index] = future.result()
+        per_cycle_frames: list[pd.DataFrame] = [
+            results_by_index[i]
+            for i in range(len(cycles_to_fetch))
+            if results_by_index.get(i) is not None
+        ]
         if not per_cycle_frames:
             # Phase 17 Wave 4 iter-2 review HIGH (Finding 3): even the
             # empty-result path must honor backend/return_type so polars /
