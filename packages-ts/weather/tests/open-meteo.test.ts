@@ -38,6 +38,18 @@ const SAMPLE_PREVIOUS_RUNS = {
   },
 };
 
+// Single-Runs payload: returns the FULL run horizon (here spanning two days),
+// using the non-previous-day keys (`temperature_2m`). Two of these timestamps
+// fall outside a single-day [from, to] window so the clip is observable.
+const SAMPLE_SINGLE_RUNS = {
+  latitude: 40.78,
+  longitude: -73.97,
+  hourly: {
+    time: ["2024-06-01T00:00", "2024-06-01T23:00", "2024-06-02T00:00", "2024-06-02T12:00"],
+    temperature_2m: [18.5, 19.0, 20.0, 21.0],
+  },
+};
+
 describe("Phase 20 OM-08 — 36-model registry", () => {
   it("OPEN_METEO_MODELS has exactly 36 entries", () => {
     expect(OPEN_METEO_MODELS.size).toBe(36);
@@ -104,6 +116,38 @@ describe("Phase 20 OM-07 — openMeteoForecasts dispatch", () => {
     expect(url.startsWith(OPEN_METEO_SINGLE_RUNS_URL)).toBe(true);
   });
 
+  it("single_run request omits start_date/end_date (API rejects them) and sends run=", async () => {
+    const fetchFn = mockFetch(SAMPLE_SINGLE_RUNS);
+    await openMeteoForecasts("KNYC", "2024-06-01", "2024-06-03", {
+      model: "gfs_global",
+      mode: "training",
+      issuedAt: "2024-06-01T00:00",
+      fetchFn,
+    });
+    const url = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
+    expect(url.startsWith(OPEN_METEO_SINGLE_RUNS_URL)).toBe(true);
+    expect(url).not.toContain("start_date");
+    expect(url).not.toContain("end_date");
+    expect(url).toContain("run=");
+  });
+
+  it("single_run response is clipped to [fromDate, toDate] (full horizon trimmed)", async () => {
+    const fetchFn = mockFetch(SAMPLE_SINGLE_RUNS);
+    const rows = await openMeteoForecasts("KNYC", "2024-06-01", "2024-06-01", {
+      model: "gfs_global",
+      mode: "training",
+      issuedAt: "2024-06-01T00:00",
+      fetchFn,
+    });
+    expect(rows.map((r) => r.validAt)).toEqual([
+      "2024-06-01T00:00:00.000Z",
+      "2024-06-01T23:00:00.000Z",
+    ]);
+    for (const r of rows) {
+      expect(r.source).toBe("open_meteo.single_run");
+    }
+  });
+
   it("live mode hits Live Forecast API", async () => {
     const fetchFn = mockFetch(SAMPLE_PREVIOUS_RUNS);
     await openMeteoForecasts("KNYC", "2024-06-01", "2024-06-01", {
@@ -157,7 +201,7 @@ describe("Phase 20 OM-07 — openMeteoForecasts dispatch", () => {
   it("unknown model rejects", async () => {
     await expect(
       openMeteoForecasts("KNYC", "2024-06-01", "2024-06-01", {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // biome-ignore lint/suspicious/noExplicitAny: deliberately passing an invalid model to assert it rejects
         model: "bogus_model" as any,
       }),
     ).rejects.toThrow(/OPEN_METEO_MODELS/);

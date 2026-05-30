@@ -165,13 +165,19 @@ export async function openMeteoForecasts(
   const params = new URLSearchParams();
   params.set("latitude", String(lat));
   params.set("longitude", String(lon));
-  params.set("start_date", fromDate);
-  params.set("end_date", toDate);
   params.set("hourly", buildHourlyParam(endpoint));
   params.set("models", model);
   params.set("timezone", "UTC");
-  if (endpoint === OPEN_METEO_SINGLE_RUNS_URL && opts.issuedAt) {
-    params.set("run", opts.issuedAt);
+  if (endpoint === OPEN_METEO_SINGLE_RUNS_URL) {
+    // Single-Runs API rejects start_date/end_date (HTTP 400); send run= only.
+    // The response carries the full run horizon, which we clip to
+    // [fromDate, toDate] after parsing — parity with Python fetch_open_meteo.
+    if (opts.issuedAt) {
+      params.set("run", opts.issuedAt);
+    }
+  } else {
+    params.set("start_date", fromDate);
+    params.set("end_date", toDate);
   }
 
   const fetchFn = opts.fetchFn ?? fetch;
@@ -258,6 +264,17 @@ export async function openMeteoForecasts(
       weatherCode: maybeNumber(pickHourlyValue(h, "weather_code", isPrev, i)),
       source,
       retrievedAt,
+    });
+  }
+
+  // Single-Runs returns the full run horizon; clip to the requested window
+  // [fromDate, toDate] (end-inclusive day) — parity with Python fetch_open_meteo.
+  if (source === "open_meteo.single_run" && rows.length > 0) {
+    const loMs = Date.parse(`${fromDate}T00:00:00Z`);
+    const hiMs = Date.parse(`${toDate}T00:00:00Z`) + 86_400_000;
+    return rows.filter((r) => {
+      const v = Date.parse(r.validAt);
+      return v >= loMs && v < hiMs;
     });
   }
   return rows;
