@@ -7,9 +7,9 @@ low (e.g. Paris uses LFPG for "highest temperature" markets but LFPB for
 produces colder overnight lows than CDG's tarmac).
 
 This module implements that lookup against
-``polymarket_city_stations.json``. It also gates the two markets whose
-data source ships in v0.2 (Taipei CWA, Hong Kong-lowest HKO) by raising
-:class:`mostlyright.international.DeferredMarketError`.
+``polymarket_city_stations.json``. It also gates the markets whose data
+source ships in v0.2 (Taipei RCSS via CWA, Hong Kong HKO via weather.gov.hk)
+by raising :class:`mostlyright.international.DeferredMarketError`.
 """
 
 from __future__ import annotations
@@ -24,7 +24,6 @@ from mostlyright.international import DEFERRED_STATIONS, DeferredMarketError
 log = logging.getLogger(__name__)
 
 __all__ = [
-    "DEFERRED_HK_MEASURES",
     "DEFERRED_STATION_MEASURES",
     "extract_icao_from_resolution_source",
     "load_polymarket_city_stations",
@@ -39,21 +38,21 @@ _CITY_STATIONS_PATH: Path = Path(__file__).parent / "polymarket_city_stations.js
 #: Process-level cache. ``None`` means "not yet loaded".
 _CACHED_CITY_STATIONS: dict[str, dict[str, str]] | None = None
 
-#: Hong Kong: only the "low" market defers (HKO is the issuer for daily
-#: lows). The "high" market resolves fine against routine METAR.
-DEFERRED_HK_MEASURES: frozenset[str] = frozenset({"low"})
-
-#: Per-(icao, measure) defer table built from ``DEFERRED_STATIONS`` + the
-#: HK-low carve-out. ``measure`` is one of ``"high"``, ``"low"``, or
-#: ``"default"`` (matches the JSON keys + the resolver output).
+#: Per-(icao, measure) defer table. ``measure`` is one of ``"high"``,
+#: ``"low"``, or ``"default"`` (matches the JSON keys + the resolver output).
+#: Phase 23: Hong Kong reconciled to HKO (the Observatory, ``weather.gov.hk``
+#: source) — ALL HK measures now defer (previously only HK-low via VHHH).
+#: Taipei moved RCTP→RCSS; every RCSS measure defers until the CWA client lands.
 DEFERRED_STATION_MEASURES: frozenset[tuple[str, str]] = frozenset(
     {
-        # Hong Kong: only "low" defers — keep "high" and "default" routable.
-        ("VHHH", "low"),
+        # Hong Kong: HKO is the issuer for every measure (no live source yet).
+        ("HKO", "high"),
+        ("HKO", "low"),
+        ("HKO", "default"),
         # Taipei: every measure defers until the CWA client lands.
-        ("RCTP", "high"),
-        ("RCTP", "low"),
-        ("RCTP", "default"),
+        ("RCSS", "high"),
+        ("RCSS", "low"),
+        ("RCSS", "default"),
     }
 )
 
@@ -228,7 +227,7 @@ def resolve_station_for_event(
     extracted_icao = extract_icao_from_resolution_source(url_text)
     if extracted_icao is not None:
         if (extracted_icao, measure) in DEFERRED_STATION_MEASURES or (
-            extracted_icao in DEFERRED_STATIONS and extracted_icao != "VHHH"
+            extracted_icao in DEFERRED_STATIONS
         ):
             raise DeferredMarketError(
                 f"market for ({extracted_icao}, {measure}) is deferred to v0.2 "
@@ -261,11 +260,10 @@ def resolve_station_for_event(
     icao = stations[measure]
 
     if (icao, measure) in DEFERRED_STATION_MEASURES or (
-        # Whole-station defer: every measure for RCTP, plus any future
-        # entry added to DEFERRED_STATIONS that's not in the per-measure
-        # table. HK is intentionally NOT in this set so its "high" market
-        # routes normally.
-        icao in DEFERRED_STATIONS and icao != "VHHH"
+        # Whole-station defer: every measure for a DEFERRED_STATIONS entry
+        # (HKO, RCSS). Phase 23 — both fully defer, so no per-station carve-out
+        # remains; the per-measure table and this set agree.
+        icao in DEFERRED_STATIONS
     ):
         raise DeferredMarketError(
             f"market for ({icao}, {measure}) is deferred to v0.2 "

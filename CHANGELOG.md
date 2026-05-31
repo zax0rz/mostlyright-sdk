@@ -2,7 +2,29 @@
 
 All notable changes to `mostlyright`. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.5.1] — 2026-05-31 — Open-Meteo Single-Runs HTTP 400 fix + ingest parallelization
+
+### Fixed
+- **Open-Meteo Single-Runs API rejected with HTTP 400** ([#50](https://github.com/mostlyrightmd/mostlyright-sdk/pull/50) Python, [#53](https://github.com/mostlyrightmd/mostlyright-sdk/pull/53) TypeScript — cross-SDK parity). The Single-Runs endpoint (`single-runs-api.open-meteo.com/v1/forecast`) returns **HTTP 400** when sent `start_date`/`end_date`, so every Single-Runs request (training mode + `issued_at`) was failing against the live API. Both fetchers were sending the date params unconditionally. Fix mirrors `fetch_open_meteo` in both SDKs: for the Single-Runs endpoint send `run=` **only**, then clip the full run-horizon response to the requested `[from_date, to_date]` window (end-inclusive day) after parsing. All other endpoints (Previous-Runs, Live, Seamless) keep their date params unchanged. TDD regression tests in both SDKs assert the URL omits `start_date`/`end_date` + carries `run=`, and that a multi-day horizon is trimmed to the requested day.
+
+### Changed
+- **Phase 24 — ingest performance: parallelized forecast extraction** ([#49](https://github.com/mostlyrightmd/mostlyright-sdk/pull/49)). Forecast extraction now runs per-station work in parallel during ingest. Python-internal performance change only — **byte-identical output**, no public-API or behavior change. No TypeScript counterpart.
+
+### Notes
+- Dual publish: PyPI `1.5.1` (`mostlyrightmd`, `mostlyrightmd-weather`, `mostlyrightmd-markets`) carries the Python Single-Runs fix [#50] + the ingest parallelization [#49]; npm `vts-1.5.1` (`@mostlyrightmd/core`, `@mostlyrightmd/weather`, `@mostlyrightmd/markets`, `mostlyright`) carries the TypeScript Single-Runs fix [#53].
+
+## [1.5.0] — 2026-05-30 — Phase 23: Polymarket settlement catalog refresh
+
+### Changed — Phase 23: Polymarket settlement catalog refresh (BREAKING, pre-1.0)
+- **Registry expanded to 94 stations (29 US + 65 international).** Added 28 records to reconcile the catalog to Polymarket's authoritative 51-city settlement roster: 4 US (`KLGA` NYC, `KORD` Chicago, `KDAL` Dallas, `KBKF` Denver) + 24 international (21 net-new cities — Ankara, Busan, Cape Town, Chengdu, Chongqing, Guangzhou, Istanbul, Jeddah, Jinan, Karachi, Kuala Lumpur, Lucknow, Manila, Mexico City, Panama City, Qingdao, Shenzhen, Tel Aviv, Toronto, Wuhan, Zhengzhou — plus move targets `EGLC`, `UUWW`, `RCSS`).
+- **`mostlyright.stations._POLYMARKET_ICAOS` is now an explicit enumerated set (50 stations), not country-derived.** Polymarket no longer settles every international station, so "non-US ⇒ polymarket" was retired. `filter_by_venue("polymarket")` equals the registry-resident stations of the 51-city map (the 51st, Hong Kong, settles against `HKO` — the Observatory, no airport ICAO, v0.2-deferred).
+- **7 station moves** (Polymarket only; old ICAOs kept as bare records): Dallas `KDFW`→`KDAL`, Denver `KDEN`→`KBKF`, London `EGLL`→`EGLC`, Moscow `UUEE`→`UUWW`, Taipei `RCTP`→`RCSS`, Paris default `LFPG`→`LFPB`, Hong Kong `VHHH`→`HKO`.
+- **Houston cross-venue conflict.** Polymarket moved to `KHOU` (Hobby) while Kalshi stays `KIAH` (Intercontinental) — a new cross-issuer divergence alongside NYC (`KNYC` vs `KLGA`) and Chicago (`KMDW` vs `KORD`). Guarded by `tests/test_cross_issuer_station_identity.py`.
+- **27 stale Polymarket cities untagged** (station records retained as bare weather stations): 6 US (Boston, DC, Minneapolis, Philadelphia, Phoenix, Detroit — Detroit stays `kalshi`) + 21 international.
+- **Deferred sources retargeted.** `DEFERRED_STATIONS` `{VHHH, RCTP}` → `{HKO, RCSS}`; Hong Kong now fully defers every measure (previously HK-high routed via VHHH METAR). Taipei defers via `RCSS` (CWA). v0.2 lands the `weather.gov.hk` + CWA clients.
+- **Kalshi roster frozen** — `_KALSHI_ICAOS` (21) unchanged; no `kalshi` tag removed. v0.14.1 parity gate stays green.
+- TS ships lockstep via codegen (`schemas/stations.json`, `polymarket-city-stations.json` → `@mostlyrightmd/core` + `@mostlyrightmd/markets`).
+- **Note:** new non-K station metadata uses authoritative public airport data; live IEM/AWC coverage per ICAO should be confirmed (`@pytest.mark.live`) before advertising these as live markets.
 
 ## [1.4.0] — 2026-05-28 — Phase 22: Station-model refactor + Las Vegas (Kalshi TLV)
 

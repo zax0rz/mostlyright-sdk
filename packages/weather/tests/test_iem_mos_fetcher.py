@@ -16,6 +16,16 @@ from mostlyright.weather._fetchers._iem_mos import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _isolate_mos_cache(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    """Phase 24-03: fetch_iem_mos now has a per-runtime disk cache. Point the
+    cache root at a fresh tmp dir per test so these never read/write the real
+    ~/.mostlyright/cache (which would make them order-dependent + pollute the
+    developer's cache)."""
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
+    monkeypatch.delenv("TRADEWINDS_CACHE_DIR", raising=False)
+
+
 def _make_mock_client(payload: dict | None, status: int = 200) -> MagicMock:
     """Return a MagicMock httpx.Client that always returns ``payload``."""
     mock = MagicMock()

@@ -39,7 +39,7 @@ describe("polymarketDiscover", () => {
     };
     const rows = await polymarketDiscover({ fetchFn, sleepBetweenMs: 0 });
     expect(rows).toHaveLength(2);
-    expect(rows.map((r) => r.icao)).toEqual(["EGLL", "LFPB"]); // London EGLL, Paris coldest → LFPB
+    expect(rows.map((r) => r.icao)).toEqual(["EGLC", "LFPB"]); // London EGLC (Phase 23), Paris → LFPB
     expect(rows.map((r) => r.measure)).toEqual(["high", "low"]);
     // We should not have looped forever — at most 2 page fetches (page 1 + terminating empty page).
     expect(calls).toBeLessThanOrEqual(2);
@@ -120,7 +120,7 @@ describe("polymarketDiscover", () => {
     };
     const rows = await polymarketDiscover({ fetchFn, sleepBetweenMs: 0 });
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.icao).toBe("EGLL");
+    expect(rows[0]?.icao).toBe("EGLC");
   });
 
   it("throws on unexpected page shape (codex iter-2 P2)", async () => {

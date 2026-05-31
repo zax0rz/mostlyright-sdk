@@ -53,8 +53,9 @@ import time
 from datetime import UTC, date, datetime
 from pathlib import Path
 
+import httpx
 from mostlyright._internal._bounds import validate_icao_for_path
-from mostlyright._internal._http import download_with_retry
+from mostlyright._internal._http import HTTP_TIMEOUT, download_with_retry
 from mostlyright._internal.models.station import StationInfo
 from mostlyright.weather._fetchers._iem_chunks import yearly_chunks_exclusive_end
 
@@ -237,19 +238,25 @@ def download_iem_asos(
         normalized_start = date(start.year, 1, 1)
         chunks = yearly_chunks_exclusive_end(normalized_start, end)
     today_utc = datetime.now(UTC).date()
+    # Phase 24-04: one pooled client across all chunks of this station fetch
+    # (one TCP+TLS handshake instead of one per yearly chunk).
     paths: list[Path] = []
-    for chunk_start, chunk_end in chunks:
-        # OR not AND (Pitfall 3): either condition independently can poison the
-        # cache. UTC not local (Pitfall 2): date.today() truncates on non-UTC hosts.
-        chunk_is_partial = skip_cache or chunk_end > today_utc
-        filename = _iem_cache_filename(chunk_start, chunk_end, suffix, partial=chunk_is_partial)
-        dest = dest_dir / station.code / filename
-        if dest.exists() and not chunk_is_partial:
-            log.info("IEM ASOS cache hit: %s", dest)
+    client = httpx.Client(timeout=HTTP_TIMEOUT)
+    try:
+        for chunk_start, chunk_end in chunks:
+            # OR not AND (Pitfall 3): either condition independently can poison the
+            # cache. UTC not local (Pitfall 2): date.today() truncates on non-UTC hosts.
+            chunk_is_partial = skip_cache or chunk_end > today_utc
+            filename = _iem_cache_filename(chunk_start, chunk_end, suffix, partial=chunk_is_partial)
+            dest = dest_dir / station.code / filename
+            if dest.exists() and not chunk_is_partial:
+                log.info("IEM ASOS cache hit: %s", dest)
+                paths.append(dest)
+                continue
+            url = _build_iem_url(station, chunk_start, chunk_end, report_type)
+            download_with_retry(url, dest, client=client)
+            time.sleep(IEM_POLITE_DELAY)
             paths.append(dest)
-            continue
-        url = _build_iem_url(station, chunk_start, chunk_end, report_type)
-        download_with_retry(url, dest)
-        time.sleep(IEM_POLITE_DELAY)
-        paths.append(dest)
+    finally:
+        client.close()
     return paths

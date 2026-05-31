@@ -36,9 +36,11 @@ describe("deriveCity", () => {
     expect(deriveCity({ slug: "will-london-be-above-25c-on-2025-07-04" })).toBe("london");
   });
 
-  it("prefers longest-matching city (multi-token)", () => {
-    expect(deriveCity({ slug: "will-london-gatwick-be-above-25c-on-2025-07-04" })).toBe(
-      "london_gatwick",
+  it("resolves a multi-token city key from a hyphenated slug", () => {
+    // Phase 23 dropped london_gatwick from the roster; san_francisco is the
+    // canonical multi-token entry now.
+    expect(deriveCity({ slug: "will-san-francisco-be-above-25c-on-2025-07-04" })).toBe(
+      "san_francisco",
     );
   });
 
@@ -64,15 +66,16 @@ describe("deriveCity", () => {
 });
 
 describe("resolveStationForEvent", () => {
-  it("resolves London → EGLL via slug derivation", () => {
+  it("resolves London → EGLC via slug derivation (Phase 23 move off EGLL)", () => {
     const r = resolveStationForEvent({ slug: "will-london-above-25c-2025" }, "high");
-    expect(r?.icao).toBe("EGLL");
+    expect(r?.icao).toBe("EGLC");
     expect(r?.city).toBe("london");
   });
 
-  it("resolves Paris HIGH → LFPG, Paris LOW → LFPB (city-split aware)", () => {
+  it("resolves Paris → LFPB regardless of measure (Phase 23 single-station)", () => {
+    // Phase 23 collapsed Paris to one station (LFPB); the LFPG/LFPB split is gone.
     const high = resolveStationForEvent({ slug: "will-paris-hottest-2025" }, "high");
-    expect(high?.icao).toBe("LFPG");
+    expect(high?.icao).toBe("LFPB");
     const low = resolveStationForEvent({ slug: "will-paris-lowest-2025" }, "low");
     expect(low?.icao).toBe("LFPB");
   });
@@ -89,9 +92,12 @@ describe("resolveStationForEvent", () => {
     );
   });
 
-  it("accepts Hong Kong HIGH (METAR resolves it)", () => {
-    const r = resolveStationForEvent({ slug: "will-hong-kong-hottest-2025" }, "high");
-    expect(r?.icao).toBe("VHHH");
+  it("raises DeferredMarketError for Hong Kong HIGH (Phase 23 — HKO deferred)", () => {
+    // Phase 23: HK settles against HKO (weather.gov.hk v0.2). Every measure
+    // defers now, including high (previously routed via VHHH METAR).
+    expect(() => resolveStationForEvent({ slug: "will-hong-kong-hottest-2025" }, "high")).toThrow(
+      DeferredMarketError,
+    );
   });
 
   it("returns null when no city matches", () => {
@@ -103,7 +109,7 @@ describe("resolveStationForEvent", () => {
       { slug: "ambiguous", city: "london" } as { slug: string; city: string },
       "default",
     );
-    expect(r?.icao).toBe("EGLL");
+    expect(r?.icao).toBe("EGLC");
   });
 });
 
@@ -203,19 +209,19 @@ describe("resolveStationForEvent — Tier 1.5 URL extraction", () => {
     // Hostile-pattern guard: news URLs / arbitrary slugs MUST NOT trigger Tier 1.5.
     const r = resolveStationForEvent(
       {
-        slug: "boston",
-        city: "boston",
+        slug: "atlanta",
+        city: "atlanta",
         description: "https://www.wunderground.com/news/2024-summer-KIDS-overview",
       } as { slug: string; city: string; description: string },
       "high",
     );
-    expect(r?.icao).toBe("KBOS"); // boston catalog default
-    expect(r?.city).toBe("boston");
+    expect(r?.icao).toBe("KATL"); // atlanta catalog default
+    expect(r?.city).toBe("atlanta");
   });
 
   it("no URL → falls through to Tier 2 city derive", () => {
     const r = resolveStationForEvent({ slug: "will-london-be-above-25c-2025" }, "high");
-    expect(r?.icao).toBe("EGLL");
+    expect(r?.icao).toBe("EGLC");
     expect(r?.city).toBe("london");
   });
 

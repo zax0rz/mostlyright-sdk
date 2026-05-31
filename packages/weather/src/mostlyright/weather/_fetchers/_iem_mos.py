@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 import time
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -32,6 +33,17 @@ _KT_TO_MS: float = 0.5144444
 
 #: IEM polite-floor delay between MOS GETs (reused convention from iem_asos).
 _MOS_POLITE_DELAY_S: float = 1.0
+
+#: Phase 24-03: a runtime older than ``now - COMPLETION_LAG`` is immutable
+#: (its forecast is fully published) and therefore cacheable. A just-issued
+#: runtime may still be filling, so it is fetched live and never cached —
+#: the forecast-cache analogue of the observation cache's current-month
+#: skip. 6h is conservatively ≥ one synoptic cycle interval.
+_MOS_COMPLETION_LAG: timedelta = timedelta(hours=6)
+
+#: Sentinel returned by :func:`_read_mos_cache` for a negative-cached
+#: (known-404 / known-empty) past runtime — distinct from ``None`` (miss).
+_MOS_NEGATIVE: object = object()
 
 #: NBE runtime-cycle transition: IEM moved NBE from {01,07,13,19}Z to
 #: {00,06,12,18}Z on 2026-05-05. Historical backfills that span this
@@ -162,6 +174,77 @@ def _parse_mos_row(
     }
 
 
+def _mos_runtime_is_cacheable(rt: datetime, *, now: datetime) -> bool:
+    """True if ``rt`` is old enough that its forecast is immutable.
+
+    A runtime within :data:`_MOS_COMPLETION_LAG` of ``now`` may still be
+    publishing rows, so it is fetched live and never read from / written to
+    cache (mirrors the observation cache's current-month skip).
+    """
+    return rt < now - _MOS_COMPLETION_LAG
+
+
+def _mos_cache_path(station: str, model: str, rt: datetime) -> Path:
+    """Per-runtime parquet cache path under the forecasts tier.
+
+    Layout::
+
+        {cache_root}/v1/forecasts/iem_mos/{station}/{model}/{YYYYMMDDTHHMMSSZ}.parquet
+
+    A runtime is the natural immutable cache unit. The ISO instant is
+    compacted to a colon-free basic form so the filename is safe on every
+    platform (Windows rejects ``:``). Path traversal is guarded the same
+    way as the observation cache.
+    """
+    from mostlyright._internal._bounds import assert_path_under, validate_icao_for_path
+    from mostlyright.weather.cache import CACHE_VERSION, _cache_root
+
+    validate_icao_for_path(station, field="station")
+    root = _cache_root()
+    runtime_key = rt.astimezone(UTC).strftime("%Y%m%dT%H%M%SZ")
+    raw = (
+        root / CACHE_VERSION / "forecasts" / "iem_mos" / station / model / f"{runtime_key}.parquet"
+    )
+    assert_path_under(raw, root, field="mos_cache_path")
+    return raw
+
+
+def _read_mos_cache(path: Path) -> list[dict[str, Any]] | object | None:
+    """Read a cached runtime: rows on a positive hit, :data:`_MOS_NEGATIVE`
+    on a negative-cache (``.404`` sentinel) hit, ``None`` on a miss.
+    """
+    import pyarrow.parquet as pq
+
+    if path.exists():
+        try:
+            table = pq.read_table(path)
+        except (FileNotFoundError, OSError):
+            return None
+        return table.to_pylist()
+    if path.with_suffix(".404").exists():
+        return _MOS_NEGATIVE
+    return None
+
+
+def _write_mos_cache(path: Path, rows: list[dict[str, Any]]) -> None:
+    """Atomically write a runtime's parsed rows to cache (filelock-guarded)."""
+    import pyarrow as pa
+    from mostlyright.weather.cache import _atomic_write
+
+    _atomic_write(path, pa.Table.from_pylist(rows))
+
+
+def _write_mos_sentinel(path: Path) -> None:
+    """Write the ``.404`` negative-cache marker for a known-empty runtime."""
+    from filelock import FileLock
+    from mostlyright.weather.cache import LOCK_TIMEOUT_SECONDS
+
+    sentinel = path.with_suffix(".404")
+    sentinel.parent.mkdir(parents=True, exist_ok=True)
+    with FileLock(str(sentinel) + ".lock", timeout=LOCK_TIMEOUT_SECONDS):
+        sentinel.touch()
+
+
 def fetch_iem_mos(
     station: str,
     from_date: str,
@@ -234,6 +317,28 @@ def fetch_iem_mos(
             cur = cur + timedelta(days=1)
 
         for rt in runtimes:
+            # Phase 24-03: immutable past runtimes hit the per-runtime disk
+            # cache. A hit skips BOTH the GET and the politeness sleep
+            # (Option C — politeness applies to real downloads only).
+            cache_path = (
+                _mos_cache_path(station, model, rt)
+                if _mos_runtime_is_cacheable(rt, now=retrieved_at)
+                else None
+            )
+            if cache_path is not None:
+                cached = _read_mos_cache(cache_path)
+                if cached is _MOS_NEGATIVE:
+                    # Negative-cached (known 404 / empty): no GET, no sleep.
+                    continue
+                if cached is not None:
+                    for cached_row in cached:  # type: ignore[union-attr]
+                        # retrieved_at is per-call provenance, not row
+                        # identity — re-stamp so the returned frame is
+                        # internally consistent with df.attrs.
+                        row = dict(cached_row)
+                        row["retrieved_at"] = retrieved_at
+                        rows.append(row)
+                    continue
             params = {
                 "station": station,
                 # IEM /api/1/mos.json regex ^(AVN|GFS|...|NBE|...)$ is
@@ -250,10 +355,13 @@ def fetch_iem_mos(
                     model,
                     rt.isoformat(),
                 )
+                if cache_path is not None:
+                    _write_mos_sentinel(cache_path)
                 time.sleep(_MOS_POLITE_DELAY_S)
                 continue
             resp.raise_for_status()
             payload = resp.json()
+            runtime_rows: list[dict[str, Any]] = []
             for raw_row in payload.get("data", []):
                 projected = _parse_mos_row(
                     raw_row,
@@ -262,7 +370,14 @@ def fetch_iem_mos(
                     retrieved_at=retrieved_at,
                 )
                 if projected is not None:
-                    rows.append(projected)
+                    runtime_rows.append(projected)
+            if cache_path is not None:
+                if runtime_rows:
+                    _write_mos_cache(cache_path, runtime_rows)
+                else:
+                    # Fetched but empty — also immutable for a past runtime.
+                    _write_mos_sentinel(cache_path)
+            rows.extend(runtime_rows)
             time.sleep(_MOS_POLITE_DELAY_S)
     finally:
         if close_client:

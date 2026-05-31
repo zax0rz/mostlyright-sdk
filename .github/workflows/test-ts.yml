@@ -79,7 +79,14 @@ jobs:
       # missing-declaration errors. Codex TS-W2 review iter-1 caught this.
       - name: Build packages (produces dist/ for subpath imports)
         if: steps.changes.outputs.ts == 'true'
-        run: pnpm -r run build
+        # Root `build` script builds packages in explicit dependency order
+        # (core -> weather -> markets -> meta) via separate `--filter` calls.
+        # `pnpm -r run build` (even at --workspace-concurrency=1) does NOT reliably
+        # order them: weather/markets declare core only in devDependencies, so
+        # pnpm's topological sort skips the edge and a dependent's tsup DTS phase can
+        # read core's dist/ before every subpath .d.ts is emitted — flaky TS7016
+        # "Could not find a declaration file for '@mostlyrightmd/core/...'".
+        run: pnpm run build
 
       - name: Typecheck (tsc --noEmit across workspaces)
         if: steps.changes.outputs.ts == 'true'

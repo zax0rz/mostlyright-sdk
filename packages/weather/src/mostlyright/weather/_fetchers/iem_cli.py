@@ -29,7 +29,7 @@ from pathlib import Path
 import httpx
 from filelock import FileLock
 from mostlyright._internal._bounds import validate_icao_for_path
-from mostlyright._internal._http import download_with_retry
+from mostlyright._internal._http import HTTP_TIMEOUT, download_with_retry
 
 # Match cache.py's lock timeout so concurrent downloaders surface deadlocks
 # rather than hanging forever.
@@ -57,6 +57,7 @@ def download_cli(
     dest_dir: Path,
     *,
     skip_cache: bool = False,
+    client: httpx.Client | None = None,
 ) -> Path:
     """Download IEM CLI JSON for one station-year.
 
@@ -115,7 +116,7 @@ def download_cli(
         # partial fetch never appears under raw_path. We then unwrap and
         # rewrite to dest atomically.
         raw_path = dest_dir / station_icao / f"cli_{year}_raw.json"
-        download_with_retry(url, raw_path)
+        download_with_retry(url, raw_path, client=client)
 
         try:
             raw_text = raw_path.read_text(encoding="utf-8", errors="replace")
@@ -181,15 +182,23 @@ def download_cli_range(
     # next to the public argument).
     validate_icao_for_path(station_icao, field="station_icao")
 
+    # Phase 24-04: one pooled client across the year range (one handshake,
+    # not one per year).
     paths: list[Path] = []
-    for year in range(start_year, end_year + 1):
-        try:
-            path = download_cli(station_icao, year, dest_dir, skip_cache=skip_cache)
-        except httpx.HTTPStatusError as exc:
-            if exc.response.status_code == 404:
-                log.info("%s CLI %d: no data (404), skipping", station_icao, year)
-                continue
-            raise
-        paths.append(path)
+    client = httpx.Client(timeout=HTTP_TIMEOUT)
+    try:
+        for year in range(start_year, end_year + 1):
+            try:
+                path = download_cli(
+                    station_icao, year, dest_dir, skip_cache=skip_cache, client=client
+                )
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code == 404:
+                    log.info("%s CLI %d: no data (404), skipping", station_icao, year)
+                    continue
+                raise
+            paths.append(path)
+    finally:
+        client.close()
 
     return paths

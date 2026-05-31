@@ -17,7 +17,7 @@
   },
   "scripts": {
     "codegen": "pnpm -r run codegen",
-    "build": "pnpm -r run build",
+    "build": "pnpm --filter @mostlyrightmd/core run build && pnpm --filter @mostlyrightmd/weather run build && pnpm --filter @mostlyrightmd/markets run build && pnpm --filter mostlyright run build",
     "test": "pnpm -r run test",
     "lint": "biome check .",
     "format": "biome format --write .",
@@ -25,8 +25,8 @@
     "size": "size-limit",
     "changeset": "changeset",
     "changeset:version": "changeset version",
-    "changeset:publish": "pnpm -r run build && changeset publish",
-    "docs:ts": "pnpm -r run build && pnpm typedoc --options packages-ts/typedoc.json"
+    "changeset:publish": "pnpm run build && changeset publish",
+    "docs:ts": "pnpm run build && pnpm typedoc --options packages-ts/typedoc.json"
   },
   "size-limit": [
     {

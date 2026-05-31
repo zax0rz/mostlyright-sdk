@@ -53,15 +53,15 @@ def test_stations_registry_is_nonempty() -> None:
     assert len(STATIONS) > 0
 
 
-def test_stations_registry_has_66_entries() -> None:
-    # Phase 3.1 expanded the v0.14.1 20-US registry to cover Polymarket intl
-    # markets; Phase 22 added the 5 missing Kalshi settlement stations → 66
-    # (25 US + 41 intl).
-    assert len(STATIONS) == 66
+def test_stations_registry_has_94_entries() -> None:
+    # Phase 3.1 expanded the v0.14.1 20-US registry; Phase 22 added the 5
+    # missing Kalshi settlement stations (→66); Phase 23 added 28 Polymarket
+    # roster stations (4 US + 24 intl) → 94 (29 US + 65 intl).
+    assert len(STATIONS) == 94
     us = [s for s in STATIONS.values() if s.country == "US"]
     intl = [s for s in STATIONS.values() if s.country != "US"]
-    assert len(us) == 25
-    assert len(intl) == 41
+    assert len(us) == 29
+    assert len(intl) == 65
 
 
 def test_stations_nyc_metadata() -> None:

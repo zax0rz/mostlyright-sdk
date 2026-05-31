@@ -23,13 +23,15 @@ describe("POLYMARKET_KNOWN_WRONG_STATIONS", () => {
     expect(POLYMARKET_KNOWN_WRONG_STATIONS.chicago?.has("KORD")).toBe(false);
   });
 
-  it("denies KHOU for Houston", () => {
-    expect(POLYMARKET_KNOWN_WRONG_STATIONS.houston?.has("KHOU")).toBe(true);
+  it("denies KIAH for Houston (Phase 23 — Polymarket moved to KHOU)", () => {
+    // After the move, KIAH (Kalshi's Houston station) is the cross-venue wrong
+    // answer; KHOU is now the CORRECT Polymarket station.
+    expect(POLYMARKET_KNOWN_WRONG_STATIONS.houston?.has("KIAH")).toBe(true);
+    expect(POLYMARKET_KNOWN_WRONG_STATIONS.houston?.has("KHOU")).toBe(false);
   });
 
-  it("denies KIAD and KBWI for washington_dc", () => {
-    expect(POLYMARKET_KNOWN_WRONG_STATIONS.washington_dc?.has("KIAD")).toBe(true);
-    expect(POLYMARKET_KNOWN_WRONG_STATIONS.washington_dc?.has("KBWI")).toBe(true);
+  it("dropped washington_dc — DC left the Polymarket roster in Phase 23", () => {
+    expect(POLYMARKET_KNOWN_WRONG_STATIONS.washington_dc).toBeUndefined();
   });
 
   it("is shallow-frozen — top-level rebinding fails in strict mode", () => {

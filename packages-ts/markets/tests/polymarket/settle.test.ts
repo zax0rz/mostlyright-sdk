@@ -112,7 +112,7 @@ describe("polymarketSettle — settlement", () => {
       loader: async () => rows,
     });
     expect(result.eventId).toBe("evt-abc");
-    expect(result.icao).toBe("EGLL");
+    expect(result.icao).toBe("EGLC");
     expect(result.settlementDate).toBe("2026-05-23");
     expect(result.measure).toBe("high");
     expect(result.unit).toBe("celsius");

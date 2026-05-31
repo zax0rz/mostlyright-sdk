@@ -13,92 +13,92 @@ export const POLYMARKET_CITY_STATIONS: Readonly<Record<string, PolymarketCitySta
   amsterdam: {
     default: "EHAM",
   },
+  ankara: {
+    default: "LTAC",
+  },
   atlanta: {
     default: "KATL",
-  },
-  auckland: {
-    default: "NZAA",
   },
   austin: {
     default: "KAUS",
   },
-  bangkok: {
-    default: "VTBS",
-  },
-  barcelona: {
-    default: "LEBL",
-  },
   beijing: {
     default: "ZBAA",
   },
-  berlin: {
-    default: "EDDB",
-  },
-  boston: {
-    default: "KBOS",
-  },
-  brisbane: {
-    default: "YBBN",
-  },
   buenos_aires: {
     default: "SAEZ",
+  },
+  busan: {
+    default: "RKPK",
+  },
+  cape_town: {
+    default: "FACT",
+  },
+  chengdu: {
+    default: "ZUUU",
   },
   chicago: {
     default: "KORD",
     high: "KORD",
     low: "KORD",
   },
-  copenhagen: {
-    default: "EKCH",
+  chongqing: {
+    default: "ZUCK",
   },
   dallas: {
-    default: "KDFW",
-  },
-  delhi: {
-    default: "VIDP",
+    default: "KDAL",
   },
   denver: {
-    default: "KDEN",
+    default: "KBKF",
   },
-  detroit: {
-    default: "KDTW",
-  },
-  doha: {
-    default: "OTHH",
-  },
-  dubai: {
-    default: "OMDB",
-  },
-  frankfurt: {
-    default: "EDDF",
+  guangzhou: {
+    default: "ZGGG",
   },
   helsinki: {
     default: "EFHK",
   },
   hong_kong: {
-    default: "VHHH",
-    high: "VHHH",
-    low: "VHHH",
+    default: "HKO",
+    high: "HKO",
+    low: "HKO",
   },
   houston: {
-    default: "KIAH",
+    default: "KHOU",
+  },
+  istanbul: {
+    default: "LTFM",
+  },
+  jeddah: {
+    default: "OEJN",
+  },
+  jinan: {
+    default: "ZSJN",
+  },
+  karachi: {
+    default: "OPKC",
+  },
+  kuala_lumpur: {
+    default: "WMKK",
   },
   london: {
-    default: "EGLL",
-  },
-  london_gatwick: {
-    default: "EGKK",
+    default: "EGLC",
   },
   los_angeles: {
     default: "KLAX",
     high: "KLAX",
     low: "KLAX",
   },
+  lucknow: {
+    default: "VILK",
+  },
   madrid: {
     default: "LEMD",
   },
-  melbourne: {
-    default: "YMML",
+  manila: {
+    default: "RPLL",
+  },
+  mexico_city: {
+    default: "MMMX",
   },
   miami: {
     default: "KMIA",
@@ -106,14 +106,8 @@ export const POLYMARKET_CITY_STATIONS: Readonly<Record<string, PolymarketCitySta
   milan: {
     default: "LIMC",
   },
-  minneapolis: {
-    default: "KMSP",
-  },
   moscow: {
-    default: "UUEE",
-  },
-  mumbai: {
-    default: "VABB",
+    default: "UUWW",
   },
   munich: {
     default: "EDDM",
@@ -123,25 +117,14 @@ export const POLYMARKET_CITY_STATIONS: Readonly<Record<string, PolymarketCitySta
     high: "KLGA",
     low: "KLGA",
   },
+  panama_city: {
+    default: "MPMG",
+  },
   paris: {
-    default: "LFPG",
-    high: "LFPG",
-    low: "LFPB",
+    default: "LFPB",
   },
-  paris_orly: {
-    default: "LFPO",
-  },
-  philadelphia: {
-    default: "KPHL",
-  },
-  phoenix: {
-    default: "KPHX",
-  },
-  riyadh: {
-    default: "OERK",
-  },
-  rome: {
-    default: "LIRF",
+  qingdao: {
+    default: "ZSQD",
   },
   san_francisco: {
     default: "KSFO",
@@ -158,39 +141,36 @@ export const POLYMARKET_CITY_STATIONS: Readonly<Record<string, PolymarketCitySta
   shanghai: {
     default: "ZSPD",
   },
+  shenzhen: {
+    default: "ZGSZ",
+  },
   singapore: {
     default: "WSSS",
   },
-  stockholm: {
-    default: "ESSA",
-  },
-  sydney: {
-    default: "YSSY",
-  },
   taipei: {
-    default: "RCTP",
+    default: "RCSS",
+  },
+  tel_aviv: {
+    default: "LLBG",
   },
   tokyo: {
     default: "RJTT",
     high: "RJTT",
     low: "RJTT",
   },
-  tokyo_narita: {
-    default: "RJAA",
-  },
-  vienna: {
-    default: "LOWW",
+  toronto: {
+    default: "CYYZ",
   },
   warsaw: {
     default: "EPWA",
   },
-  washington_dc: {
-    default: "KDCA",
-  },
   wellington: {
     default: "NZWN",
   },
-  zurich: {
-    default: "LSZH",
+  wuhan: {
+    default: "ZHHH",
+  },
+  zhengzhou: {
+    default: "ZHCC",
   },
 } as const;

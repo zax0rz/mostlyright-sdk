@@ -1,6 +1,6 @@
 {
   "name": "@mostlyrightmd/core",
-  "version": "1.4.0",
+  "version": "1.5.1",
   "description": "TypeScript SDK core for quants, ML pipelines, and AI agents: types, schemas, validators, temporal-safety primitives, and the research() join over weather data + prediction-market settlements. Local-first, no hosted backend.",
   "keywords": [
     "weather",
@@ -117,7 +117,7 @@
   "files": ["dist"],
   "scripts": {
     "prebuild": "pnpm --filter @mostlyrightmd/codegen run codegen",
-    "build": "tsup",
+    "build": "for i in 0 1 2 3 4 5 6 7 8 9 10 11; do TSUP_ONLY=$i tsup || exit 1; done",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",

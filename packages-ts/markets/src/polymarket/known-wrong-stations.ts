@@ -17,12 +17,12 @@ export const POLYMARKET_KNOWN_WRONG_STATIONS: Readonly<Record<string, ReadonlySe
     nyc: new Set(["KNYC", "KJFK", "KEWR"]),
     // Chicago: Polymarket uses KORD. KMDW is the common wrong answer.
     chicago: new Set(["KMDW"]),
-    // Houston: Polymarket uses KIAH. KHOU is the common wrong answer.
-    houston: new Set(["KHOU"]),
-    // Dallas: Polymarket uses KDFW. KDAL is the common wrong answer.
-    dallas: new Set(["KDAL"]),
+    // Houston: Phase 23 moved Polymarket to KHOU. KIAH (Kalshi's station) is
+    // now the cross-venue wrong answer for a Polymarket Houston market.
+    houston: new Set(["KIAH"]),
+    // Dallas: Phase 23 moved Polymarket to KDAL. KDFW (Kalshi's station) is
+    // now the cross-venue wrong answer.
+    dallas: new Set(["KDFW"]),
     // SF: Polymarket uses KSFO. KOAK is the common wrong answer.
     san_francisco: new Set(["KOAK"]),
-    // DC: Polymarket uses KDCA. KIAD/KBWI are common wrong answers.
-    washington_dc: new Set(["KIAD", "KBWI"]),
   });

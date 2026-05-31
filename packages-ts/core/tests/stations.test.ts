@@ -28,15 +28,46 @@ const KALSHI_ICAOS = new Set([
   "KLAS",
 ]);
 
-// US registry stations no prediction-market venue settles against. Houston
-// trades on both venues but settles against KIAH, not KHOU.
-const NO_VENUE_ICAOS = new Set(["KHOU", "KMSY", "KOKC", "KSAT"]);
+// Registry stations no prediction-market venue settles against. Phase 23 grew
+// this from 4 to 29: 3 US bare (KHOU moved TO polymarket) + 26 intl (roster
+// drops + the London/Moscow/Taipei/HK/Paris move-sources).
+const NO_VENUE_ICAOS = new Set([
+  "KMSY",
+  "KOKC",
+  "KSAT",
+  "EDDB",
+  "EDDF",
+  "EGKK",
+  "EKCH",
+  "ESSA",
+  "LEBL",
+  "LFPO",
+  "LIRF",
+  "LOWW",
+  "LSZH",
+  "NZAA",
+  "OERK",
+  "OMDB",
+  "OTHH",
+  "RJAA",
+  "VABB",
+  "VIDP",
+  "VTBS",
+  "YBBN",
+  "YMML",
+  "YSSY",
+  "EGLL",
+  "UUEE",
+  "RCTP",
+  "VHHH",
+  "LFPG",
+]);
 
 const icaosOf = (stations: ReadonlyArray<Station>) => new Set(stations.map((s) => s.icao));
 
 describe("StationCatalog", () => {
-  it("covers the full 66-station registry", () => {
-    expect(CATALOG.size).toBe(66);
+  it("covers the full 94-station registry", () => {
+    expect(CATALOG.size).toBe(94);
     expect(CATALOG.size).toBe(STATIONS.length);
   });
 
@@ -67,22 +98,29 @@ describe("StationCatalog", () => {
     expect(CATALOG.filterByVenue("kalshi").length).toBe(21);
   });
 
-  it("polymarket venue is intl + the shared-US cities (41 + 15 = 56)", () => {
+  it("polymarket venue is the explicit 50-station roster, NOT every intl", () => {
     const poly = icaosOf(CATALOG.filterByVenue("polymarket"));
-    const intl = [...CATALOG].filter((s) => s.country !== "US").map((s) => s.icao);
-    for (const icao of intl) expect(poly.has(icao)).toBe(true);
-    expect(CATALOG.filterByVenue("polymarket").length).toBe(56);
+    expect(CATALOG.filterByVenue("polymarket").length).toBe(50);
+    // NYC→KLGA / Chicago→KORD are now registry stations and ARE tagged.
+    expect(poly.has("KLGA")).toBe(true);
+    expect(poly.has("KORD")).toBe(true);
+    // Roster drops + move-sources are NOT polymarket.
+    for (const icao of ["EGLL", "LFPG", "VHHH", "RJAA", "YSSY", "OMDB"]) {
+      expect(poly.has(icao)).toBe(false);
+    }
   });
 
-  it("Kalshi and Polymarket diverge on NYC and Chicago", () => {
-    // KNYC/KMDW are Kalshi-only — Polymarket settles NYC/Chicago against
-    // KLGA/KORD, which are not registry stations.
+  it("Kalshi and Polymarket diverge on NYC, Chicago, and Houston", () => {
+    // KNYC/KMDW are Kalshi-only — Polymarket settles NYC/Chicago against KLGA/KORD.
     expect(CATALOG.get("KNYC").venues).toContain("kalshi");
     expect(CATALOG.get("KNYC").venues).not.toContain("polymarket");
     expect(CATALOG.get("KMDW").venues).not.toContain("polymarket");
-    // Houston settles against KIAH on both venues; KHOU carries no tag.
-    expect([...CATALOG.get("KIAH").venues].sort()).toEqual(["kalshi", "polymarket"]);
-    expect(CATALOG.get("KHOU").venues).toEqual([]);
+    // KLGA/KORD are Polymarket-only (the divergence partners).
+    expect([...CATALOG.get("KLGA").venues]).toEqual(["polymarket"]);
+    expect([...CATALOG.get("KORD").venues]).toEqual(["polymarket"]);
+    // Houston (Phase 23): Kalshi=KIAH, Polymarket moved to KHOU — now divergent.
+    expect([...CATALOG.get("KIAH").venues]).toEqual(["kalshi"]);
+    expect([...CATALOG.get("KHOU").venues]).toEqual(["polymarket"]);
   });
 
   it("international stations are never tagged kalshi", () => {
@@ -98,8 +136,8 @@ describe("StationCatalog", () => {
   });
 
   it("filterByCountry works", () => {
-    expect(CATALOG.filterByCountry("US").length).toBe(25);
-    expect([...CATALOG].filter((s) => s.country !== "US").length).toBe(41);
+    expect(CATALOG.filterByCountry("US").length).toBe(29);
+    expect([...CATALOG].filter((s) => s.country !== "US").length).toBe(65);
     expect(CATALOG.filterByCountry("GB")[0]?.icao).toBe("EGKK");
   });
 
