@@ -6,6 +6,7 @@ Used by both GHCNh and IEM download runners.
 from __future__ import annotations
 
 import logging
+import math
 import os
 import time
 from pathlib import Path
@@ -49,7 +50,11 @@ def _float_env(name: str, default: float) -> float:
     except ValueError:
         log.warning("Ignoring non-numeric %s=%r; using default %.1f", name, raw, default)
         return default
-    if value <= 0:
+    # float() accepts "nan"/"inf"; both slip past the `<= 0` check (nan
+    # comparisons are always False, inf is positive). An inf timeout means
+    # "hang forever" and nan is undefined in httpx — reject non-finite values
+    # so a fat-fingered env var never silently disables the timeout.
+    if not math.isfinite(value) or value <= 0:
         log.warning("Ignoring non-positive %s=%r; using default %.1f", name, raw, default)
         return default
     return value

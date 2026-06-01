@@ -249,3 +249,17 @@ class TestEnvOverrides:
         finally:
             monkeypatch.delenv("MOSTLYRIGHT_HTTP_MAX_RETRIES", raising=False)
             importlib.reload(mod)
+
+    @pytest.mark.parametrize("bad", ["nan", "inf", "-inf"])
+    def test_non_finite_http_timeout_falls_back_to_default(
+        self, monkeypatch: pytest.MonkeyPatch, bad: str
+    ) -> None:
+        """float() accepts nan/inf; both must be rejected — an inf timeout
+        means 'hang forever' and nan is undefined in httpx. Fall back to the
+        finite default rather than silently disabling the timeout."""
+        mod = self._reload(monkeypatch, {"MOSTLYRIGHT_HTTP_TIMEOUT": bad})
+        try:
+            assert mod.HTTP_TIMEOUT == 60.0
+        finally:
+            monkeypatch.delenv("MOSTLYRIGHT_HTTP_TIMEOUT", raising=False)
+            importlib.reload(mod)
