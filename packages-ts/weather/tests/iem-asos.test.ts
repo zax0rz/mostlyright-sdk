@@ -147,6 +147,69 @@ describe("downloadIemAsos — start normalization (Jan-1 cache-key parity)", () 
   });
 });
 
+describe("downloadIemAsos — exactStart (GH #57)", () => {
+  it("issues ONE date-bounded request when exactStart=true (no Jan-1 widening)", async () => {
+    fetchSpy.mockResolvedValueOnce(csvResponse(200, ""));
+    const out = await downloadIemAsos("NYC", "2026-05-20", "2026-05-22", {
+      reportType: 3,
+      politenessMs: 0,
+      exactStart: true,
+    });
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(out).toHaveLength(1);
+    const calledUrl = String(fetchSpy.mock.calls[0]?.[0]);
+    // day1/month1/year1 reflect the caller's exact start (NOT Jan-1-normalized).
+    expect(calledUrl).toContain("year1=2026&month1=5&day1=20");
+    // day2/month2/year2 reflect the EXCLUSIVE end = caller's inclusive end + 1 day.
+    expect(calledUrl).toContain("year2=2026&month2=5&day2=23");
+    // Envelope mirrors the same exact range.
+    expect(out[0]?.chunkStart).toBe("2026-05-20");
+    expect(out[0]?.chunkEnd).toBe("2026-05-23");
+  });
+
+  it("single-day window with exactStart=true does not expand to a year", async () => {
+    fetchSpy.mockResolvedValueOnce(csvResponse(200, ""));
+    await downloadIemAsos("KNYC", "2026-05-20", "2026-05-20", {
+      reportType: 3,
+      politenessMs: 0,
+      exactStart: true,
+    });
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const calledUrl = String(fetchSpy.mock.calls[0]?.[0]);
+    // Must NOT contain the whole-year widening that triggered GH #57.
+    expect(calledUrl).not.toContain("year1=2026&month1=1&day1=1");
+    expect(calledUrl).not.toContain("year2=2027&month2=1&day2=1");
+    // Must contain the exact narrow window: [2026-05-20, 2026-05-21).
+    expect(calledUrl).toContain("year1=2026&month1=5&day1=20");
+    expect(calledUrl).toContain("year2=2026&month2=5&day2=21");
+  });
+
+  it("end + 1 day correctly rolls over month/year boundaries with exactStart", async () => {
+    fetchSpy.mockResolvedValueOnce(csvResponse(200, ""));
+    // Dec 31 → next-year Jan 1 (year + month + day all change).
+    await downloadIemAsos("NYC", "2025-12-30", "2025-12-31", {
+      reportType: 3,
+      politenessMs: 0,
+      exactStart: true,
+    });
+    const calledUrl = String(fetchSpy.mock.calls[0]?.[0]);
+    expect(calledUrl).toContain("year1=2025&month1=12&day1=30");
+    expect(calledUrl).toContain("year2=2026&month2=1&day2=1");
+  });
+
+  it("default (exactStart omitted) preserves the Jan-1-widened path", async () => {
+    // Regression guard for warm_cache callers — backward compat.
+    fetchSpy.mockResolvedValueOnce(csvResponse(200, ""));
+    await downloadIemAsos("NYC", "2024-06-15", "2024-08-20", {
+      reportType: 3,
+      politenessMs: 0,
+    });
+    const calledUrl = String(fetchSpy.mock.calls[0]?.[0]);
+    expect(calledUrl).toContain("year1=2024&month1=1&day1=1");
+    expect(calledUrl).toContain("year2=2025&month2=1&day2=1");
+  });
+});
+
 describe("downloadIemAsos — input validation guards", () => {
   it("rejects report_type outside {3, 4} synchronously, no HTTP", async () => {
     await expect(
