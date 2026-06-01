@@ -14,7 +14,45 @@ import httpx
 
 log = logging.getLogger(__name__)
 
-MAX_RETRIES = 3
+# GH #51: env-var overrides so batch callers can tune IEM 429 behavior
+# without monkey-patching site-packages. Defaults are unchanged from prior
+# releases; both vars apply process-wide at module load. Set on shell
+# launch or in CI:
+#   MOSTLYRIGHT_HTTP_MAX_RETRIES=1
+#   MOSTLYRIGHT_HTTP_TIMEOUT=5.0
+# Invalid values (non-numeric, negative) silently fall back to defaults
+# so a typo in an env var never blocks legitimate fetches.
+def _int_env(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None or raw == "":
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        log.warning("Ignoring non-integer %s=%r; using default %d", name, raw, default)
+        return default
+    if value < 0:
+        log.warning("Ignoring negative %s=%r; using default %d", name, raw, default)
+        return default
+    return value
+
+
+def _float_env(name: str, default: float) -> float:
+    raw = os.environ.get(name)
+    if raw is None or raw == "":
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        log.warning("Ignoring non-numeric %s=%r; using default %.1f", name, raw, default)
+        return default
+    if value <= 0:
+        log.warning("Ignoring non-positive %s=%r; using default %.1f", name, raw, default)
+        return default
+    return value
+
+
+MAX_RETRIES = _int_env("MOSTLYRIGHT_HTTP_MAX_RETRIES", 3)
 BASE_DELAY = 1.0
 # Phase 1.5 PERF-03 — PR #85 (commit cf9eb85) HIGH-2 round-2 finding:
 # 12x larger payload-per-request after the IEM chunk bump (monthly -> 365-day).
@@ -22,7 +60,7 @@ BASE_DELAY = 1.0
 # the empirical KNYC sample. mostlyright note: AWC + GHCNh + CLI did NOT change
 # payload size — the bump is conservative overhead for those endpoints, not
 # load-bearing.
-HTTP_TIMEOUT = 60.0
+HTTP_TIMEOUT = _float_env("MOSTLYRIGHT_HTTP_TIMEOUT", 60.0)
 # Retryable HTTP responses. 429 (Too Many Requests) is included because IEM
 # ASOS rate-limits bursts of monthly downloads (12+ months x 2 report_types
 # in quick succession is enough to trip it on a fresh cache). Without retry,
