@@ -73,6 +73,22 @@ export interface DownloadIemAsosOptions extends FetchWithRetryOptions {
    * {@link IEM_POLITE_DELAY_MS}. Set to `0` in unit tests.
    */
   politenessMs?: number;
+  /**
+   * When `true`, fetch the EXACT caller-supplied window — skip the Jan-1
+   * start-normalization AND skip yearly chunking. Issues a single HTTP
+   * request to IEM bounded by `[start, end+1day)` (IEM `day2` is exclusive).
+   *
+   * Use this for one-off short windows (e.g. `obs(strategy="exact_window")`
+   * — a few-day historical lookup). The default (`false`) preserves the
+   * year-padded path needed for cache-idempotent multi-month / multi-year
+   * archive fetches (`obs(strategy="warm_cache")`, `research()`,
+   * `dailyExtremes()`).
+   *
+   * Regression: GH #57 — without this flag, a 1-day call expanded into a
+   * ~734 KB whole-calendar-year fetch and ~75× the payload trimmed in
+   * memory downstream.
+   */
+  exactStart?: boolean;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -130,6 +146,22 @@ function splitIso(iso: IsoDate): [number, number, number] {
 }
 
 /**
+ * Add one calendar day to an ISO `YYYY-MM-DD` date, handling month/year
+ * overflow (Dec 31 → next-year Jan 1) and leap years correctly. Used by
+ * the `exactStart` path to convert the caller's inclusive `end` into IEM's
+ * exclusive `day2`.
+ *
+ * `Date.UTC(...)` builds a UTC timestamp (NOT subject to local-TZ shifts),
+ * then `.toISOString().slice(0, 10)` extracts the UTC date string. Safe for
+ * leap years: `addOneDay("2024-02-28")` → `"2024-02-29"`.
+ */
+function addOneDay(iso: IsoDate): IsoDate {
+  const [y, m, d] = splitIso(iso);
+  const next = new Date(Date.UTC(y, m - 1, d + 1));
+  return next.toISOString().slice(0, 10) as IsoDate;
+}
+
+/**
  * Download yearly chunks of IEM ASOS data for one station, returning the
  * raw CSV bodies in chunker-natural order.
  *
@@ -169,19 +201,23 @@ export async function downloadIemAsos(
     return [];
   }
 
-  // mostlyright-specific normalization: clamp caller's `start` to Jan 1 of
-  // its year so per-month callers share a yearly cache key (parity-faithful
-  // with Python's `normalized_start = date(start.year, 1, 1)`). Mirrored in
-  // TS so the URL shape (and the future TS-W3 cache key) stays byte-stable
-  // with Python on the same range.
-  const normalizedStart: IsoDate = `${start.slice(0, 4)}-01-01`;
-  const chunks = yearlyChunksExclusiveEnd(normalizedStart, end);
+  // GH #57: `exactStart` opts out of Jan-1 widening + yearly chunking.
+  // Issues a SINGLE byte-bounded request for `[start, end+1day exclusive]`
+  // (IEM `day2` is exclusive). Used by `obs(strategy="exact_window")` so a
+  // 1-day historical call pulls ~1 day of bytes, not the whole calendar
+  // year (~734 KB). The default path below preserves the year-padded shape
+  // needed for cache-idempotent multi-month / archive callers (parity-
+  // faithful with Python's `normalized_start = date(start.year, 1, 1)`).
+  const chunks: ReadonlyArray<readonly [IsoDate, IsoDate]> = opts.exactStart
+    ? [[start, addOneDay(end)] as const]
+    : yearlyChunksExclusiveEnd(`${start.slice(0, 4)}-01-01`, end);
 
   const politenessMs = opts.politenessMs ?? IEM_POLITE_DELAY_MS;
   // Strip fetcher-specific opts from the bag forwarded to fetchWithRetry.
-  const { reportType: _rtDrop, politenessMs: _pmDrop, ...fetchOpts } = opts;
+  const { reportType: _rtDrop, politenessMs: _pmDrop, exactStart: _esDrop, ...fetchOpts } = opts;
   void _rtDrop;
   void _pmDrop;
+  void _esDrop;
 
   const out: IemChunkResult[] = [];
   for (const [chunkStart, chunkEnd] of chunks) {
