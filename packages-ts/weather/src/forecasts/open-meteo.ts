@@ -117,6 +117,29 @@ function maybeNumber(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * Coerce to a nullable integer for integer-schema fields, rounding fractional
+ * upstream values instead of passing them through. Mirrors the Python fetcher's
+ * `pd.to_numeric(...).round().astype("Int64")` (issue #55): without this, a
+ * fractional value (e.g. `cloud_cover` of `12.5`) would violate the `integer`
+ * type in `schema.forecast.station.v1` and diverge from the Python SDK output.
+ *
+ * Uses banker's rounding (round half to even) to match pandas/NumPy `.round()`
+ * exactly — JS `Math.round` rounds halves up (`12.5 -> 13`) whereas pandas
+ * rounds to even (`12.5 -> 12`), which would otherwise break byte-parity at
+ * `.5` boundaries.
+ */
+function maybeInt(value: unknown): number | null {
+  const n = maybeNumber(value);
+  if (n === null) return null;
+  const floor = Math.floor(n);
+  const diff = n - floor;
+  if (diff < 0.5) return floor;
+  if (diff > 0.5) return floor + 1;
+  // Exactly .5 → round to the even neighbour (banker's rounding).
+  return floor % 2 === 0 ? floor : floor + 1;
+}
+
 function pickHourlyValue(
   hourly: Record<string, unknown[]>,
   key: string,
@@ -248,20 +271,20 @@ export async function openMeteoForecasts(
       dewPointC: maybeNumber(pickHourlyValue(h, "dew_point_2m", isPrev, i)),
       apparentTempC: maybeNumber(pickHourlyValue(h, "apparent_temperature", isPrev, i)),
       windSpeedMs: maybeNumber(pickHourlyValue(h, "wind_speed_10m", isPrev, i)),
-      windDirDeg: maybeNumber(pickHourlyValue(h, "wind_direction_10m", isPrev, i)),
+      windDirDeg: maybeInt(pickHourlyValue(h, "wind_direction_10m", isPrev, i)),
       windGustsMs: maybeNumber(pickHourlyValue(h, "wind_gusts_10m", isPrev, i)),
       precipProbability: popPct === null ? null : popPct / 100,
       precipitationMm: maybeNumber(pickHourlyValue(h, "precipitation", isPrev, i)),
-      cloudCoverPct: maybeNumber(pickHourlyValue(h, "cloud_cover", isPrev, i)),
+      cloudCoverPct: maybeInt(pickHourlyValue(h, "cloud_cover", isPrev, i)),
       surfacePressureHpa: maybeNumber(pickHourlyValue(h, "surface_pressure", isPrev, i)),
       pressureMslHpa: maybeNumber(pickHourlyValue(h, "pressure_msl", isPrev, i)),
       shortwaveRadiationWm2: maybeNumber(pickHourlyValue(h, "shortwave_radiation", isPrev, i)),
       directRadiationWm2: maybeNumber(pickHourlyValue(h, "direct_radiation", isPrev, i)),
       capeJkg: maybeNumber(pickHourlyValue(h, "cape", isPrev, i)),
-      freezingLevelM: maybeNumber(pickHourlyValue(h, "freezing_level_height", isPrev, i)),
+      freezingLevelM: maybeInt(pickHourlyValue(h, "freezing_level_height", isPrev, i)),
       snowDepthM: maybeNumber(pickHourlyValue(h, "snow_depth", isPrev, i)),
-      visibilityM: maybeNumber(pickHourlyValue(h, "visibility", isPrev, i)),
-      weatherCode: maybeNumber(pickHourlyValue(h, "weather_code", isPrev, i)),
+      visibilityM: maybeInt(pickHourlyValue(h, "visibility", isPrev, i)),
+      weatherCode: maybeInt(pickHourlyValue(h, "weather_code", isPrev, i)),
       source,
       retrievedAt,
     });

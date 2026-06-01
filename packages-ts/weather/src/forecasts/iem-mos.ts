@@ -14,6 +14,54 @@ const KT_TO_MS = 0.5144444;
 
 const NBE_CYCLE_CUTOVER = Date.UTC(2026, 5 - 1, 5, 0, 0, 0); // 2026-05-05T00:00:00Z
 
+/**
+ * Max number of MOS runtime-cycle requests in flight at once (GH #58).
+ *
+ * The fan-out is bounded rather than unbounded: a `Promise.all` over the full
+ * day × runtime-hour grid would launch ~1,460 simultaneous requests for a
+ * year-scale window, risking client connection limits, memory pressure, and
+ * IEM-side rate limiting. A cap of 8 keeps essentially all of the small-window
+ * speedup (typical ±1–3 day windows have ≤ 12 cycles) while staying polite for
+ * large historical ranges.
+ */
+export const MOS_FETCH_CONCURRENCY = 8;
+
+/**
+ * Map `items` through `fn` with at most `limit` invocations in flight at once,
+ * returning results in input order (NOT resolution order). Bounded-concurrency
+ * replacement for `Promise.all(items.map(fn))` — preserves the byte-identical
+ * ordering the serial path produced while capping peak fan-out.
+ *
+ * Fail-fast: if any invocation throws, the shared `failed` flag stops the other
+ * workers from pulling new items, so no further `fn` calls are dispatched once
+ * the function is destined to reject. This restores the serial loop's behavior
+ * of not issuing more requests after an error (codex review iter-3 P2). Workers
+ * already mid-flight finish their current item; at most `limit` are in flight.
+ */
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+  let failed = false;
+  async function worker(): Promise<void> {
+    while (cursor < items.length && !failed) {
+      const index = cursor++;
+      try {
+        results[index] = await fn(items[index] as T, index);
+      } catch (err) {
+        failed = true;
+        throw err;
+      }
+    }
+  }
+  const poolSize = Math.min(limit, items.length);
+  await Promise.all(Array.from({ length: poolSize }, () => worker()));
+  return results;
+}
+
 /** Pick the right NBE runtime-hour set based on the requested range. */
 function runtimeHoursFor(model: IemMosModel, fromDt: Date, toDt: Date): readonly number[] {
   if (model !== "nbe") return [0, 6, 12, 18];
@@ -143,8 +191,18 @@ export async function iemMosForecasts(
   const hours = runtimeHoursFor(model, fromDt, toDt);
   const retrievedAt = new Date().toISOString();
 
-  const rows: IemMosRow[] = [];
+  // GH #58: collect every (day × runtime-hour) URL first, then fan out
+  // concurrently with a bounded pool. The cycles are independent (nothing in
+  // one depends on another's response), so the previous serial-await loop
+  // was paying N round-trips of ~620–760 ms each (~3.2 s for 12 cycles).
+  // Bounded fan-out (MOS_FETCH_CONCURRENCY) collapses the wall-clock to
+  // ~ceil(N/limit) round-trips on typical short windows while staying polite
+  // on large historical ranges (an unbounded Promise.all over a year-scale
+  // window would launch ~1,460 simultaneous requests — codex review P2).
+  // Row ordering is preserved by keeping the URL list in day-then-hour order
+  // and indexing results by position — byte-identical output to the serial path.
   const dayMs = 86_400_000;
+  const urls: string[] = [];
   for (let day = fromDt.getTime(); day <= toDt.getTime(); day += dayMs) {
     for (const h of hours) {
       const rt = new Date(day);
@@ -154,24 +212,37 @@ export async function iemMosForecasts(
       // sending lowercase returns HTTP 422 (issue #17). Mirrors the upper()
       // applied to `model` on returned rows above and the Python fix at
       // _iem_mos.py:239.
-      const url = `${IEM_MOS_URL}?station=${encodeURIComponent(
-        station,
-      )}&model=${encodeURIComponent(model.toUpperCase())}&runtime=${encodeURIComponent(
-        rt.toISOString(),
-      )}`;
-      const resp = await fetchFn(url);
-      if (resp.status === 404) continue;
-      if (!resp.ok) {
-        throw new Error(`iemMosForecasts: HTTP ${resp.status} on ${url}`);
-      }
-      const payload = (await resp.json()) as { data?: RawMosRow[] };
-      for (const raw of payload.data ?? []) {
-        const projected = parseRow(raw, station, model, retrievedAt);
-        if (projected !== null) rows.push(projected);
-      }
+      urls.push(
+        `${IEM_MOS_URL}?station=${encodeURIComponent(
+          station,
+        )}&model=${encodeURIComponent(model.toUpperCase())}&runtime=${encodeURIComponent(
+          rt.toISOString(),
+        )}`,
+      );
     }
   }
-  return rows;
+
+  // Run the FULL per-cycle lifecycle (fetch → status check → body read → row
+  // projection) inside the bounded pool, NOT just the header fetch. `fetch()`
+  // resolves once headers arrive, so bounding only the fetch promise would
+  // still leave unbounded response bodies open and defer error handling until
+  // every URL had been requested (codex review iter-2 P2). Returning per-cycle
+  // row arrays and flattening in input order keeps byte-identical output.
+  const perCycle = await mapWithConcurrency(urls, MOS_FETCH_CONCURRENCY, async (url) => {
+    const resp = (await fetchFn(url)) as Response;
+    if (resp.status === 404) return [] as IemMosRow[];
+    if (!resp.ok) {
+      throw new Error(`iemMosForecasts: HTTP ${resp.status} on ${url}`);
+    }
+    const payload = (await resp.json()) as { data?: RawMosRow[] };
+    const out: IemMosRow[] = [];
+    for (const raw of payload.data ?? []) {
+      const projected = parseRow(raw, station, model, retrievedAt);
+      if (projected !== null) out.push(projected);
+    }
+    return out;
+  });
+  return perCycle.flat();
 }
 
 export const __internal__ = {
