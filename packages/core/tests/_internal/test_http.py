@@ -11,6 +11,7 @@ fetchers.
 
 from __future__ import annotations
 
+import importlib
 from pathlib import Path
 
 import httpx
@@ -162,3 +163,103 @@ class TestDownloadWithRetry:
         assert dest.exists()
         assert dest.read_bytes() == b"final"
         assert not dest.with_suffix(".csv.tmp").exists()
+
+
+class TestEnvOverrides:
+    """GH #51: MOSTLYRIGHT_HTTP_MAX_RETRIES / MOSTLYRIGHT_HTTP_TIMEOUT env
+    vars override the module-load defaults so batch callers can tune IEM
+    429 behavior without monkey-patching site-packages."""
+
+    @staticmethod
+    def _reload(monkeypatch: pytest.MonkeyPatch, env: dict[str, str]) -> object:
+        """Force re-evaluation of the module-load env reads."""
+        for k, v in env.items():
+            monkeypatch.setenv(k, v)
+        import mostlyright._internal._http as http_mod
+
+        return importlib.reload(http_mod)
+
+    def test_max_retries_env_override(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        mod = self._reload(monkeypatch, {"MOSTLYRIGHT_HTTP_MAX_RETRIES": "1"})
+        try:
+            assert mod.MAX_RETRIES == 1
+        finally:
+            monkeypatch.delenv("MOSTLYRIGHT_HTTP_MAX_RETRIES", raising=False)
+            importlib.reload(mod)
+
+    def test_http_timeout_env_override(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        mod = self._reload(monkeypatch, {"MOSTLYRIGHT_HTTP_TIMEOUT": "5.5"})
+        try:
+            assert mod.HTTP_TIMEOUT == 5.5
+        finally:
+            monkeypatch.delenv("MOSTLYRIGHT_HTTP_TIMEOUT", raising=False)
+            importlib.reload(mod)
+
+    def test_defaults_when_env_unset(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.delenv("MOSTLYRIGHT_HTTP_MAX_RETRIES", raising=False)
+        monkeypatch.delenv("MOSTLYRIGHT_HTTP_TIMEOUT", raising=False)
+        import mostlyright._internal._http as http_mod
+
+        mod = importlib.reload(http_mod)
+        try:
+            assert mod.MAX_RETRIES == 3
+            assert mod.HTTP_TIMEOUT == 60.0
+        finally:
+            importlib.reload(mod)
+
+    def test_invalid_max_retries_falls_back_to_default(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Non-integer / negative values must not crash module import — fall
+        back to the default so a typo doesn't block legitimate fetches."""
+        mod = self._reload(monkeypatch, {"MOSTLYRIGHT_HTTP_MAX_RETRIES": "not-a-number"})
+        try:
+            assert mod.MAX_RETRIES == 3
+        finally:
+            monkeypatch.delenv("MOSTLYRIGHT_HTTP_MAX_RETRIES", raising=False)
+            importlib.reload(mod)
+
+    def test_invalid_http_timeout_falls_back_to_default(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        mod = self._reload(monkeypatch, {"MOSTLYRIGHT_HTTP_TIMEOUT": "-1"})
+        try:
+            assert mod.HTTP_TIMEOUT == 60.0
+        finally:
+            monkeypatch.delenv("MOSTLYRIGHT_HTTP_TIMEOUT", raising=False)
+            importlib.reload(mod)
+
+    def test_zero_max_retries_falls_back_to_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """MAX_RETRIES drives ``range(MAX_RETRIES)`` in the retry loop, so 0
+        would issue NO request and return without writing ``dest`` — a silent
+        no-op download. Sub-1 values must fall back to the default, never 0."""
+        mod = self._reload(monkeypatch, {"MOSTLYRIGHT_HTTP_MAX_RETRIES": "0"})
+        try:
+            assert mod.MAX_RETRIES == 3
+        finally:
+            monkeypatch.delenv("MOSTLYRIGHT_HTTP_MAX_RETRIES", raising=False)
+            importlib.reload(mod)
+
+    def test_max_retries_one_is_accepted(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """1 is the legitimate minimum (one attempt, no retry) and must be
+        honored — the sub-1 guard rejects only values below 1."""
+        mod = self._reload(monkeypatch, {"MOSTLYRIGHT_HTTP_MAX_RETRIES": "1"})
+        try:
+            assert mod.MAX_RETRIES == 1
+        finally:
+            monkeypatch.delenv("MOSTLYRIGHT_HTTP_MAX_RETRIES", raising=False)
+            importlib.reload(mod)
+
+    @pytest.mark.parametrize("bad", ["nan", "inf", "-inf"])
+    def test_non_finite_http_timeout_falls_back_to_default(
+        self, monkeypatch: pytest.MonkeyPatch, bad: str
+    ) -> None:
+        """float() accepts nan/inf; both must be rejected — an inf timeout
+        means 'hang forever' and nan is undefined in httpx. Fall back to the
+        finite default rather than silently disabling the timeout."""
+        mod = self._reload(monkeypatch, {"MOSTLYRIGHT_HTTP_TIMEOUT": bad})
+        try:
+            assert mod.HTTP_TIMEOUT == 60.0
+        finally:
+            monkeypatch.delenv("MOSTLYRIGHT_HTTP_TIMEOUT", raising=False)
+            importlib.reload(mod)
