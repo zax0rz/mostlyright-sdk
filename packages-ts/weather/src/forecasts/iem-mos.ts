@@ -31,6 +31,12 @@ export const MOS_FETCH_CONCURRENCY = 8;
  * returning results in input order (NOT resolution order). Bounded-concurrency
  * replacement for `Promise.all(items.map(fn))` — preserves the byte-identical
  * ordering the serial path produced while capping peak fan-out.
+ *
+ * Fail-fast: if any invocation throws, the shared `failed` flag stops the other
+ * workers from pulling new items, so no further `fn` calls are dispatched once
+ * the function is destined to reject. This restores the serial loop's behavior
+ * of not issuing more requests after an error (codex review iter-3 P2). Workers
+ * already mid-flight finish their current item; at most `limit` are in flight.
  */
 async function mapWithConcurrency<T, R>(
   items: readonly T[],
@@ -39,10 +45,16 @@ async function mapWithConcurrency<T, R>(
 ): Promise<R[]> {
   const results = new Array<R>(items.length);
   let cursor = 0;
+  let failed = false;
   async function worker(): Promise<void> {
-    while (cursor < items.length) {
+    while (cursor < items.length && !failed) {
       const index = cursor++;
-      results[index] = await fn(items[index] as T, index);
+      try {
+        results[index] = await fn(items[index] as T, index);
+      } catch (err) {
+        failed = true;
+        throw err;
+      }
     }
   }
   const poolSize = Math.min(limit, items.length);

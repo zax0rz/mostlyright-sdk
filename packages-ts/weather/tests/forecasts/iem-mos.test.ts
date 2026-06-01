@@ -169,6 +169,33 @@ describe("iemMosForecasts", () => {
     expect(dispatched).toBe(12);
   });
 
+  // Fail-fast (codex iter-3): a non-404 HTTP error rejects AND stops the pool
+  // from dispatching the remaining queued cycles — matching the serial path,
+  // which threw on the first error and issued no further requests.
+  it("stops dispatching further cycles after a non-404 HTTP error", async () => {
+    let dispatched = 0;
+    // 3-day post-cutover NBE window = 12 cycles. First response is a 500.
+    const fetchFn = vi.fn(async () => {
+      dispatched++;
+      return {
+        ok: false,
+        status: 500,
+        async json() {
+          return null;
+        },
+      };
+    }) as unknown as typeof fetch;
+
+    await expect(
+      iemMosForecasts("KNYC", "2026-05-10", "2026-05-12", { model: "nbe", fetchFn }),
+    ).rejects.toThrow(/HTTP 500/);
+
+    // The first batch (≤ MOS_FETCH_CONCURRENCY) may be in flight when the error
+    // fires, but NO new cycles are dispatched afterward — far fewer than all 12.
+    expect(dispatched).toBeLessThanOrEqual(MOS_FETCH_CONCURRENCY);
+    expect(dispatched).toBeLessThan(12);
+  });
+
   // Issue #17 regression: IEM /api/1/mos.json validates `model` against
   // ^(AVN|GFS|ETA|NAM|NBS|NBE|ECM|LAV|MEX)$ and returns HTTP 422 for any
   // lowercase value. Python had the same bug and was fixed in 240969d;
