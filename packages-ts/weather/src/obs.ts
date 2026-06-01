@@ -110,10 +110,14 @@ async function fetchIemForWindow(
   const out: ObsRow[] = [];
 
   if (resolvedStrategy === "exact_window") {
-    // Date-bounded fetch — pull only the bytes the caller asked for.
+    // GH #57: `exactStart: true` opts out of `downloadIemAsos`'s default
+    // Jan-1 widening + yearly chunking — issues ONE byte-bounded request
+    // for `[fromDate, toDate+1day exclusive]`. Without this flag a 1-day
+    // call pulled ~734 KB (whole calendar year) instead of ~9.8 KB.
     const chunks = await downloadIemAsos(station, fromDate, toDate, {
       reportType: 3,
       politenessMs: 1000,
+      exactStart: true,
     });
     for (const chunk of chunks) {
       const rows = parseIemCsv(chunk.csv, { observationTypeOverride: "METAR" });
