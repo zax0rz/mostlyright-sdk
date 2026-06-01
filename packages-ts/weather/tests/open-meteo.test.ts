@@ -228,4 +228,44 @@ describe("Phase 20 OM-07 — openMeteoForecasts dispatch", () => {
     expect(h23).toBeDefined();
     expect(h23?.issuedAt).toBe("2024-05-31T18:00:00.000Z");
   });
+
+  // Regression for #55 / cross-SDK parity: integer-schema fields with fractional
+  // upstream values must round (banker's rounding, matching pandas `.round()`),
+  // not pass through fractional and violate schema.forecast.station.v1.
+  it("fractional integer-schema fields round (banker's) to match the Python SDK", async () => {
+    const payload = {
+      latitude: 40.78,
+      longitude: -73.97,
+      hourly: {
+        time: ["2024-06-01T00:00", "2024-06-01T01:00", "2024-06-01T02:00"],
+        temperature_2m_previous_day1: [18.5, 19.0, 19.2],
+        // Fractional values in nominally-integer columns.
+        weather_code_previous_day1: [3.4, 51.6, 0.0],
+        cloud_cover_previous_day1: [12.5, 49.9, 88.2],
+        // .5 cases exercise round-half-to-even: 180.5 → 180 (even),
+        // 270.5 → 270 (even), 359.4 → 359.
+        wind_direction_10m_previous_day1: [180.5, 270.5, 359.4],
+      },
+    };
+    const fetchFn = mockFetch(payload);
+    const rows = await openMeteoForecasts("KNYC", "2024-06-01", "2024-06-01", {
+      model: "gfs_global",
+      mode: "training",
+      fetchFn,
+    });
+    // No rows dropped.
+    expect(rows.length).toBe(3);
+    // 3.4 → 3, 51.6 → 52, 0.0 → 0.
+    expect(rows.map((r) => r.weatherCode)).toEqual([3, 52, 0]);
+    // 12.5 → 12 (banker's), 49.9 → 50, 88.2 → 88.
+    expect(rows.map((r) => r.cloudCoverPct)).toEqual([12, 50, 88]);
+    // 180.5 → 180, 270.5 → 270 (both round to even), 359.4 → 359.
+    expect(rows.map((r) => r.windDirDeg)).toEqual([180, 270, 359]);
+    // Integer-valued (no fractional component).
+    for (const r of rows) {
+      expect(Number.isInteger(r.weatherCode)).toBe(true);
+      expect(Number.isInteger(r.cloudCoverPct)).toBe(true);
+      expect(Number.isInteger(r.windDirDeg)).toBe(true);
+    }
+  });
 });
