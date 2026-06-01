@@ -210,22 +210,27 @@ export async function iemMosForecasts(
     }
   }
 
-  const responses = await mapWithConcurrency(urls, MOS_FETCH_CONCURRENCY, (url) => fetchFn(url));
-  const rows: IemMosRow[] = [];
-  for (let i = 0; i < responses.length; i++) {
-    const resp = responses[i] as Response;
-    const url = urls[i] as string;
-    if (resp.status === 404) continue;
+  // Run the FULL per-cycle lifecycle (fetch → status check → body read → row
+  // projection) inside the bounded pool, NOT just the header fetch. `fetch()`
+  // resolves once headers arrive, so bounding only the fetch promise would
+  // still leave unbounded response bodies open and defer error handling until
+  // every URL had been requested (codex review iter-2 P2). Returning per-cycle
+  // row arrays and flattening in input order keeps byte-identical output.
+  const perCycle = await mapWithConcurrency(urls, MOS_FETCH_CONCURRENCY, async (url) => {
+    const resp = (await fetchFn(url)) as Response;
+    if (resp.status === 404) return [] as IemMosRow[];
     if (!resp.ok) {
       throw new Error(`iemMosForecasts: HTTP ${resp.status} on ${url}`);
     }
     const payload = (await resp.json()) as { data?: RawMosRow[] };
+    const out: IemMosRow[] = [];
     for (const raw of payload.data ?? []) {
       const projected = parseRow(raw, station, model, retrievedAt);
-      if (projected !== null) rows.push(projected);
+      if (projected !== null) out.push(projected);
     }
-  }
-  return rows;
+    return out;
+  });
+  return perCycle.flat();
 }
 
 export const __internal__ = {
