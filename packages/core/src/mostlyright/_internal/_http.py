@@ -14,6 +14,7 @@ import httpx
 
 log = logging.getLogger(__name__)
 
+
 # GH #51: env-var overrides so batch callers can tune IEM 429 behavior
 # without monkey-patching site-packages. Defaults are unchanged from prior
 # releases; both vars apply process-wide at module load. Set on shell
