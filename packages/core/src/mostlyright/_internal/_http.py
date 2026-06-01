@@ -19,11 +19,11 @@ log = logging.getLogger(__name__)
 # without monkey-patching site-packages. Defaults are unchanged from prior
 # releases; both vars apply process-wide at module load. Set on shell
 # launch or in CI:
-#   MOSTLYRIGHT_HTTP_MAX_RETRIES=1
+#   MOSTLYRIGHT_HTTP_MAX_RETRIES=1   (1 = one attempt, no retry; minimum 1)
 #   MOSTLYRIGHT_HTTP_TIMEOUT=5.0
-# Invalid values (non-numeric, negative) silently fall back to defaults
-# so a typo in an env var never blocks legitimate fetches.
-def _int_env(name: str, default: int) -> int:
+# Invalid values (non-numeric, or below the allowed minimum) silently fall
+# back to defaults so a typo in an env var never blocks legitimate fetches.
+def _int_env(name: str, default: int, *, minimum: int = 0) -> int:
     raw = os.environ.get(name)
     if raw is None or raw == "":
         return default
@@ -32,8 +32,10 @@ def _int_env(name: str, default: int) -> int:
     except ValueError:
         log.warning("Ignoring non-integer %s=%r; using default %d", name, raw, default)
         return default
-    if value < 0:
-        log.warning("Ignoring negative %s=%r; using default %d", name, raw, default)
+    if value < minimum:
+        log.warning(
+            "Ignoring %s=%r below minimum %d; using default %d", name, raw, minimum, default
+        )
         return default
     return value
 
@@ -53,7 +55,11 @@ def _float_env(name: str, default: float) -> float:
     return value
 
 
-MAX_RETRIES = _int_env("MOSTLYRIGHT_HTTP_MAX_RETRIES", 3)
+# minimum=1: the retry loop runs `range(MAX_RETRIES)`, so 0 would issue NO
+# request at all and return without writing `dest` (a silent no-op download).
+# Reject sub-1 values back to the default (codex review P2). 1 = one attempt,
+# no retry.
+MAX_RETRIES = _int_env("MOSTLYRIGHT_HTTP_MAX_RETRIES", 3, minimum=1)
 BASE_DELAY = 1.0
 # Phase 1.5 PERF-03 — PR #85 (commit cf9eb85) HIGH-2 round-2 finding:
 # 12x larger payload-per-request after the IEM chunk bump (monthly -> 365-day).

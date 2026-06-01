@@ -228,3 +228,24 @@ class TestEnvOverrides:
         finally:
             monkeypatch.delenv("MOSTLYRIGHT_HTTP_TIMEOUT", raising=False)
             importlib.reload(mod)
+
+    def test_zero_max_retries_falls_back_to_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """MAX_RETRIES drives ``range(MAX_RETRIES)`` in the retry loop, so 0
+        would issue NO request and return without writing ``dest`` — a silent
+        no-op download. Sub-1 values must fall back to the default, never 0."""
+        mod = self._reload(monkeypatch, {"MOSTLYRIGHT_HTTP_MAX_RETRIES": "0"})
+        try:
+            assert mod.MAX_RETRIES == 3
+        finally:
+            monkeypatch.delenv("MOSTLYRIGHT_HTTP_MAX_RETRIES", raising=False)
+            importlib.reload(mod)
+
+    def test_max_retries_one_is_accepted(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """1 is the legitimate minimum (one attempt, no retry) and must be
+        honored — the sub-1 guard rejects only values below 1."""
+        mod = self._reload(monkeypatch, {"MOSTLYRIGHT_HTTP_MAX_RETRIES": "1"})
+        try:
+            assert mod.MAX_RETRIES == 1
+        finally:
+            monkeypatch.delenv("MOSTLYRIGHT_HTTP_MAX_RETRIES", raising=False)
+            importlib.reload(mod)
