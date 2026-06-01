@@ -2,6 +2,21 @@
 
 All notable changes to `mostlyright`. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.2] — 2026-06-01 — Fetcher correctness fixes + configurable HTTP retries/timeout
+
+Patch release: four bug fixes across the Python and TypeScript SDKs — fractional integer-field handling in Open-Meteo, an exact-window observation fetch that no longer over-fetches a whole year, bounded-parallel IEM MOS forecast fetches, and env-var overrides for HTTP retry/timeout.
+
+### Fixed
+- **Open-Meteo integer-schema fields dropped rows on fractional values** ([#59](https://github.com/mostlyrightmd/mostlyright-sdk/pull/59) Python + TypeScript parity mirror). When the upstream API returned a fractional value in a nominally-integer column (e.g. `cloud_cover` of `12.5`), pandas' safe `Int64` cast raised and rows could be silently dropped. The fetcher now rounds before the cast; the TypeScript fetcher mirrors this with banker's rounding (round half to even) so integer-schema fields (`wind_dir_deg`, `cloud_cover_pct`, `freezing_level_m`, `visibility_m`, `weather_code`) stay byte-equivalent to the Python output and valid against `schema.forecast.station.v1`.
+- **`obs(strategy="exact_window")` over-fetched a whole calendar year (TypeScript)** ([#60](https://github.com/mostlyrightmd/mostlyright-sdk/pull/60)). The TS IEM ASOS fetcher always widened the start to Jan 1 (the cache-key shape needed by archive callers), so a 1-day exact-window lookup pulled ~734 KB instead of ~9.8 KB. A new internal `exactStart` path issues a single date-bounded request for `[from, to+1 day)`, matching the Python `_exact_fetch` behavior. The default year-padded path is unchanged for `warm_cache` / `research()` callers.
+- **IEM MOS forecast fetches ran serially (TypeScript)** ([#61](https://github.com/mostlyrightmd/mostlyright-sdk/pull/61)). Independent runtime-cycle requests now fan out with a bounded concurrency pool (cap 8) instead of one-at-a-time awaits — most of the speedup on typical short windows while staying polite on large historical ranges. Output is byte-identical to the serial path (input ordering preserved); the pool fails fast on a non-404 HTTP error.
+
+### Added
+- **Configurable HTTP retries and timeout via environment variables (Python)** ([#62](https://github.com/mostlyrightmd/mostlyright-sdk/pull/62)). `MOSTLYRIGHT_HTTP_MAX_RETRIES` and `MOSTLYRIGHT_HTTP_TIMEOUT` let batch callers tune IEM 429 backoff without monkey-patching site-packages. Defaults are unchanged (3 retries, 60 s). Invalid values fall back to the defaults with a warning: `MAX_RETRIES` requires a minimum of 1 (0 would issue no request at all), and the timeout rejects non-positive and non-finite (`nan`/`inf`) values.
+
+### Notes
+- Dual publish: PyPI `1.5.2` (`mostlyrightmd`, `mostlyrightmd-weather`, `mostlyrightmd-markets`) carries the Python Open-Meteo rounding fix [#59] + HTTP env overrides [#62]; npm `vts-1.5.2` (`@mostlyrightmd/core`, `@mostlyrightmd/weather`, `@mostlyrightmd/markets`, `mostlyright`) carries the TypeScript Open-Meteo rounding mirror [#59], the exact-window fetch fix [#60], and the bounded-parallel MOS fetch [#61].
+
 ## [1.5.1] — 2026-05-31 — Open-Meteo Single-Runs HTTP 400 fix + ingest parallelization
 
 ### Fixed

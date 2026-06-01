@@ -2,6 +2,9 @@
 
 import { describe, expect, it, vi } from "vitest";
 
+// MOS_FETCH_CONCURRENCY is an internal tuning constant (not re-exported from
+// the public barrel), imported directly from the module for this regression.
+import { MOS_FETCH_CONCURRENCY } from "../../src/forecasts/iem-mos.js";
 import { type IemMosRow, iemMosForecasts } from "../../src/forecasts/index.js";
 
 const SAMPLE_ROW = {
@@ -110,6 +113,87 @@ describe("iemMosForecasts", () => {
     });
     // runtime=00Z, ftime=06Z → 6 hours
     expect(rows[0]?.forecastHour).toBe(6);
+  });
+
+  // Issue #58 regression: cycles must fan out concurrently (not serially),
+  // but with BOUNDED concurrency (codex review P2 — an unbounded Promise.all
+  // over a year-scale window would launch ~1,460 simultaneous requests).
+  it("issues runtime-cycle fetches concurrently but bounded by MOS_FETCH_CONCURRENCY", async () => {
+    let dispatched = 0;
+    let inFlight = 0;
+    let peakInFlight = 0;
+    const resolvers: Array<() => void> = [];
+
+    const fetchFn = vi.fn(async () => {
+      dispatched++;
+      inFlight++;
+      peakInFlight = Math.max(peakInFlight, inFlight);
+      await new Promise<void>((resolve) => {
+        resolvers.push(() => {
+          inFlight--;
+          resolve();
+        });
+      });
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return { data: [] };
+        },
+      };
+    }) as unknown as typeof fetch;
+
+    // Window AFTER NBE cutover (2026-05-05) → 4 cycles per day; 3-day window
+    // = 12 cycles total (> MOS_FETCH_CONCURRENCY, so the cap is observable).
+    const promise = iemMosForecasts("KNYC", "2026-05-10", "2026-05-12", {
+      model: "nbe",
+      fetchFn,
+    });
+
+    // Drain: tick the event loop and release one in-flight request at a time.
+    // Each release frees a pool slot so a queued cycle can dispatch, until all
+    // 12 cycles have been dispatched and resolved. Bounded guard prevents a
+    // hang if the implementation regresses.
+    for (let guard = 0; guard < 1000 && (dispatched < 12 || resolvers.length > 0); guard++) {
+      await new Promise((r) => setImmediate(r));
+      const r = resolvers.shift();
+      if (r) r();
+    }
+    await promise;
+
+    // Concurrent (not serial): more than one request was in flight at once.
+    expect(peakInFlight).toBeGreaterThan(1);
+    // Bounded: peak never exceeded the configured cap.
+    expect(peakInFlight).toBeLessThanOrEqual(MOS_FETCH_CONCURRENCY);
+    // All 12 day×runtime cycles were eventually dispatched.
+    expect(dispatched).toBe(12);
+  });
+
+  // Fail-fast (codex iter-3): a non-404 HTTP error rejects AND stops the pool
+  // from dispatching the remaining queued cycles — matching the serial path,
+  // which threw on the first error and issued no further requests.
+  it("stops dispatching further cycles after a non-404 HTTP error", async () => {
+    let dispatched = 0;
+    // 3-day post-cutover NBE window = 12 cycles. First response is a 500.
+    const fetchFn = vi.fn(async () => {
+      dispatched++;
+      return {
+        ok: false,
+        status: 500,
+        async json() {
+          return null;
+        },
+      };
+    }) as unknown as typeof fetch;
+
+    await expect(
+      iemMosForecasts("KNYC", "2026-05-10", "2026-05-12", { model: "nbe", fetchFn }),
+    ).rejects.toThrow(/HTTP 500/);
+
+    // The first batch (≤ MOS_FETCH_CONCURRENCY) may be in flight when the error
+    // fires, but NO new cycles are dispatched afterward — far fewer than all 12.
+    expect(dispatched).toBeLessThanOrEqual(MOS_FETCH_CONCURRENCY);
+    expect(dispatched).toBeLessThan(12);
   });
 
   // Issue #17 regression: IEM /api/1/mos.json validates `model` against

@@ -429,6 +429,51 @@ def test_fetch_open_meteo_dtype_coercion() -> None:
     assert df["valid_at"].dt.tz is not None
 
 
+def test_fetch_open_meteo_fractional_int_column_does_not_drop_rows() -> None:
+    """Regression for #55: int-schema columns with fractional values must
+    round to nearest int instead of triggering a TypeError in pandas' safe
+    Int64 cast (which previously caused silent row drops)."""
+    payload = {
+        "latitude": 40.78,
+        "longitude": -73.97,
+        "elevation": 51.0,
+        "hourly_units": {
+            "time": "iso8601",
+            "temperature_2m_previous_day1": "°C",
+            "weather_code_previous_day1": "wmo code",
+            "cloud_cover_previous_day1": "%",
+        },
+        "hourly": {
+            "time": [
+                "2024-06-01T00:00",
+                "2024-06-01T01:00",
+                "2024-06-01T02:00",
+            ],
+            "temperature_2m_previous_day1": [18.5, 19.0, 19.2],
+            # Fractional values in nominally-int columns: must round, not drop.
+            "weather_code_previous_day1": [3.4, 51.6, 0.0],
+            "cloud_cover_previous_day1": [12.5, 49.9, 88.2],
+        },
+    }
+    client = _make_mock_client(payload)
+    df = fetch_open_meteo(
+        "NYC",
+        "2024-06-01",
+        "2024-06-01",
+        model="gfs_global",
+        mode="training",
+        client=client,
+    )
+    # All three rows must be preserved (no silent drops).
+    assert len(df) == 3
+    assert str(df["weather_code"].dtype) == "Int64"
+    assert str(df["cloud_cover_pct"].dtype) == "Int64"
+    # 3.4 → 3, 51.6 → 52, 0.0 → 0 (banker's rounding for .5 handled by pandas).
+    assert list(df["weather_code"].astype("Int64")) == [3, 52, 0]
+    # 12.5 → 12 (banker's), 49.9 → 50, 88.2 → 88.
+    assert list(df["cloud_cover_pct"].astype("Int64")) == [12, 50, 88]
+
+
 def test_fetch_open_meteo_endpoint_constants_are_distinct() -> None:
     assert OPEN_METEO_PREVIOUS_RUNS_URL != OPEN_METEO_SINGLE_RUNS_URL
     assert OPEN_METEO_PREVIOUS_RUNS_URL != OPEN_METEO_SEAMLESS_URL

@@ -6,6 +6,7 @@ Used by both GHCNh and IEM download runners.
 from __future__ import annotations
 
 import logging
+import math
 import os
 import time
 from pathlib import Path
@@ -14,7 +15,56 @@ import httpx
 
 log = logging.getLogger(__name__)
 
-MAX_RETRIES = 3
+
+# GH #51: env-var overrides so batch callers can tune IEM 429 behavior
+# without monkey-patching site-packages. Defaults are unchanged from prior
+# releases; both vars apply process-wide at module load. Set on shell
+# launch or in CI:
+#   MOSTLYRIGHT_HTTP_MAX_RETRIES=1   (1 = one attempt, no retry; minimum 1)
+#   MOSTLYRIGHT_HTTP_TIMEOUT=5.0
+# Invalid values (non-numeric, or below the allowed minimum) silently fall
+# back to defaults so a typo in an env var never blocks legitimate fetches.
+def _int_env(name: str, default: int, *, minimum: int = 0) -> int:
+    raw = os.environ.get(name)
+    if raw is None or raw == "":
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        log.warning("Ignoring non-integer %s=%r; using default %d", name, raw, default)
+        return default
+    if value < minimum:
+        log.warning(
+            "Ignoring %s=%r below minimum %d; using default %d", name, raw, minimum, default
+        )
+        return default
+    return value
+
+
+def _float_env(name: str, default: float) -> float:
+    raw = os.environ.get(name)
+    if raw is None or raw == "":
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        log.warning("Ignoring non-numeric %s=%r; using default %.1f", name, raw, default)
+        return default
+    # float() accepts "nan"/"inf"; both slip past the `<= 0` check (nan
+    # comparisons are always False, inf is positive). An inf timeout means
+    # "hang forever" and nan is undefined in httpx — reject non-finite values
+    # so a fat-fingered env var never silently disables the timeout.
+    if not math.isfinite(value) or value <= 0:
+        log.warning("Ignoring non-positive %s=%r; using default %.1f", name, raw, default)
+        return default
+    return value
+
+
+# minimum=1: the retry loop runs `range(MAX_RETRIES)`, so 0 would issue NO
+# request at all and return without writing `dest` (a silent no-op download).
+# Reject sub-1 values back to the default (codex review P2). 1 = one attempt,
+# no retry.
+MAX_RETRIES = _int_env("MOSTLYRIGHT_HTTP_MAX_RETRIES", 3, minimum=1)
 BASE_DELAY = 1.0
 # Phase 1.5 PERF-03 — PR #85 (commit cf9eb85) HIGH-2 round-2 finding:
 # 12x larger payload-per-request after the IEM chunk bump (monthly -> 365-day).
@@ -22,7 +72,7 @@ BASE_DELAY = 1.0
 # the empirical KNYC sample. mostlyright note: AWC + GHCNh + CLI did NOT change
 # payload size — the bump is conservative overhead for those endpoints, not
 # load-bearing.
-HTTP_TIMEOUT = 60.0
+HTTP_TIMEOUT = _float_env("MOSTLYRIGHT_HTTP_TIMEOUT", 60.0)
 # Retryable HTTP responses. 429 (Too Many Requests) is included because IEM
 # ASOS rate-limits bursts of monthly downloads (12+ months x 2 report_types
 # in quick succession is enough to trip it on a fresh cache). Without retry,
