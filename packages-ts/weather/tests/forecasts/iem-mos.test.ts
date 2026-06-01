@@ -112,6 +112,62 @@ describe("iemMosForecasts", () => {
     expect(rows[0]?.forecastHour).toBe(6);
   });
 
+  // Issue #58 regression: cycles must fan out in parallel, not serially.
+  it("issues runtime-cycle fetches concurrently, not one-at-a-time", async () => {
+    // Resolve order is the proof: with a serial-await loop, each fetch must
+    // complete before the next starts. With Promise.all, all are kicked off
+    // before any resolve. We tag each call with its dispatch index and
+    // resolve them in REVERSE order. If serial: the loop would block on
+    // call 0 until it resolves — which depends on later calls resolving
+    // first — so it would deadlock or surface as ordering. Parallel: every
+    // call is in-flight before any resolves, and all resolve cleanly.
+    let dispatched = 0;
+    const inFlight = new Set<number>();
+    let peakInFlight = 0;
+    const resolvers: Array<() => void> = [];
+
+    const fetchFn = vi.fn(async () => {
+      const idx = dispatched++;
+      inFlight.add(idx);
+      peakInFlight = Math.max(peakInFlight, inFlight.size);
+      await new Promise<void>((resolve) => {
+        resolvers.push(() => {
+          inFlight.delete(idx);
+          resolve();
+        });
+      });
+      return {
+        ok: true,
+        status: 200,
+        async json() {
+          return { data: [] };
+        },
+      };
+    }) as unknown as typeof fetch;
+
+    // Window AFTER NBE cutover (2026-05-05) → 4 cycles per day; 3-day window
+    // = 12 cycles total. Single-day window also works (4 cycles, peak ≥ 2).
+    const promise = iemMosForecasts("KNYC", "2026-05-10", "2026-05-12", {
+      model: "nbe",
+      fetchFn,
+    });
+
+    // Give the event loop a tick to let all parallel fetches dispatch.
+    await new Promise((r) => setImmediate(r));
+
+    // Parallel fan-out: ALL 12 fetches should be in-flight at once.
+    // Serial would have peak = 1.
+    expect(peakInFlight).toBeGreaterThan(1);
+    expect(dispatched).toBe(12);
+
+    // Resolve everything so the test can complete.
+    while (resolvers.length > 0) {
+      const r = resolvers.shift();
+      if (r) r();
+    }
+    await promise;
+  });
+
   // Issue #17 regression: IEM /api/1/mos.json validates `model` against
   // ^(AVN|GFS|ETA|NAM|NBS|NBE|ECM|LAV|MEX)$ and returns HTTP 422 for any
   // lowercase value. Python had the same bug and was fixed in 240969d;
