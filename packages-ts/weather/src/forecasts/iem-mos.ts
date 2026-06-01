@@ -14,6 +14,42 @@ const KT_TO_MS = 0.5144444;
 
 const NBE_CYCLE_CUTOVER = Date.UTC(2026, 5 - 1, 5, 0, 0, 0); // 2026-05-05T00:00:00Z
 
+/**
+ * Max number of MOS runtime-cycle requests in flight at once (GH #58).
+ *
+ * The fan-out is bounded rather than unbounded: a `Promise.all` over the full
+ * day × runtime-hour grid would launch ~1,460 simultaneous requests for a
+ * year-scale window, risking client connection limits, memory pressure, and
+ * IEM-side rate limiting. A cap of 8 keeps essentially all of the small-window
+ * speedup (typical ±1–3 day windows have ≤ 12 cycles) while staying polite for
+ * large historical ranges.
+ */
+export const MOS_FETCH_CONCURRENCY = 8;
+
+/**
+ * Map `items` through `fn` with at most `limit` invocations in flight at once,
+ * returning results in input order (NOT resolution order). Bounded-concurrency
+ * replacement for `Promise.all(items.map(fn))` — preserves the byte-identical
+ * ordering the serial path produced while capping peak fan-out.
+ */
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+  async function worker(): Promise<void> {
+    while (cursor < items.length) {
+      const index = cursor++;
+      results[index] = await fn(items[index] as T, index);
+    }
+  }
+  const poolSize = Math.min(limit, items.length);
+  await Promise.all(Array.from({ length: poolSize }, () => worker()));
+  return results;
+}
+
 /** Pick the right NBE runtime-hour set based on the requested range. */
 function runtimeHoursFor(model: IemMosModel, fromDt: Date, toDt: Date): readonly number[] {
   if (model !== "nbe") return [0, 6, 12, 18];
@@ -144,13 +180,15 @@ export async function iemMosForecasts(
   const retrievedAt = new Date().toISOString();
 
   // GH #58: collect every (day × runtime-hour) URL first, then fan out
-  // concurrently via Promise.all. The cycles are independent (nothing in
+  // concurrently with a bounded pool. The cycles are independent (nothing in
   // one depends on another's response), so the previous serial-await loop
   // was paying N round-trips of ~620–760 ms each (~3.2 s for 12 cycles).
-  // Parallel fan-out collapses the wall-clock to ~one round-trip (~4.8×
-  // speedup on typical ±1-day windows). Row ordering is preserved by
-  // keeping the URL list in day-then-hour order and flattening results
-  // in the same order — byte-identical output to the serial path.
+  // Bounded fan-out (MOS_FETCH_CONCURRENCY) collapses the wall-clock to
+  // ~ceil(N/limit) round-trips on typical short windows while staying polite
+  // on large historical ranges (an unbounded Promise.all over a year-scale
+  // window would launch ~1,460 simultaneous requests — codex review P2).
+  // Row ordering is preserved by keeping the URL list in day-then-hour order
+  // and indexing results by position — byte-identical output to the serial path.
   const dayMs = 86_400_000;
   const urls: string[] = [];
   for (let day = fromDt.getTime(); day <= toDt.getTime(); day += dayMs) {
@@ -172,7 +210,7 @@ export async function iemMosForecasts(
     }
   }
 
-  const responses = await Promise.all(urls.map((url) => fetchFn(url)));
+  const responses = await mapWithConcurrency(urls, MOS_FETCH_CONCURRENCY, (url) => fetchFn(url));
   const rows: IemMosRow[] = [];
   for (let i = 0; i < responses.length; i++) {
     const resp = responses[i] as Response;

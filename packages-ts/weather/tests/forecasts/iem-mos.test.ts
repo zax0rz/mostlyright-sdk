@@ -2,6 +2,9 @@
 
 import { describe, expect, it, vi } from "vitest";
 
+// MOS_FETCH_CONCURRENCY is an internal tuning constant (not re-exported from
+// the public barrel), imported directly from the module for this regression.
+import { MOS_FETCH_CONCURRENCY } from "../../src/forecasts/iem-mos.js";
 import { type IemMosRow, iemMosForecasts } from "../../src/forecasts/index.js";
 
 const SAMPLE_ROW = {
@@ -112,27 +115,22 @@ describe("iemMosForecasts", () => {
     expect(rows[0]?.forecastHour).toBe(6);
   });
 
-  // Issue #58 regression: cycles must fan out in parallel, not serially.
-  it("issues runtime-cycle fetches concurrently, not one-at-a-time", async () => {
-    // Resolve order is the proof: with a serial-await loop, each fetch must
-    // complete before the next starts. With Promise.all, all are kicked off
-    // before any resolve. We tag each call with its dispatch index and
-    // resolve them in REVERSE order. If serial: the loop would block on
-    // call 0 until it resolves — which depends on later calls resolving
-    // first — so it would deadlock or surface as ordering. Parallel: every
-    // call is in-flight before any resolves, and all resolve cleanly.
+  // Issue #58 regression: cycles must fan out concurrently (not serially),
+  // but with BOUNDED concurrency (codex review P2 — an unbounded Promise.all
+  // over a year-scale window would launch ~1,460 simultaneous requests).
+  it("issues runtime-cycle fetches concurrently but bounded by MOS_FETCH_CONCURRENCY", async () => {
     let dispatched = 0;
-    const inFlight = new Set<number>();
+    let inFlight = 0;
     let peakInFlight = 0;
     const resolvers: Array<() => void> = [];
 
     const fetchFn = vi.fn(async () => {
-      const idx = dispatched++;
-      inFlight.add(idx);
-      peakInFlight = Math.max(peakInFlight, inFlight.size);
+      dispatched++;
+      inFlight++;
+      peakInFlight = Math.max(peakInFlight, inFlight);
       await new Promise<void>((resolve) => {
         resolvers.push(() => {
-          inFlight.delete(idx);
+          inFlight--;
           resolve();
         });
       });
@@ -146,26 +144,29 @@ describe("iemMosForecasts", () => {
     }) as unknown as typeof fetch;
 
     // Window AFTER NBE cutover (2026-05-05) → 4 cycles per day; 3-day window
-    // = 12 cycles total. Single-day window also works (4 cycles, peak ≥ 2).
+    // = 12 cycles total (> MOS_FETCH_CONCURRENCY, so the cap is observable).
     const promise = iemMosForecasts("KNYC", "2026-05-10", "2026-05-12", {
       model: "nbe",
       fetchFn,
     });
 
-    // Give the event loop a tick to let all parallel fetches dispatch.
-    await new Promise((r) => setImmediate(r));
-
-    // Parallel fan-out: ALL 12 fetches should be in-flight at once.
-    // Serial would have peak = 1.
-    expect(peakInFlight).toBeGreaterThan(1);
-    expect(dispatched).toBe(12);
-
-    // Resolve everything so the test can complete.
-    while (resolvers.length > 0) {
+    // Drain: tick the event loop and release one in-flight request at a time.
+    // Each release frees a pool slot so a queued cycle can dispatch, until all
+    // 12 cycles have been dispatched and resolved. Bounded guard prevents a
+    // hang if the implementation regresses.
+    for (let guard = 0; guard < 1000 && (dispatched < 12 || resolvers.length > 0); guard++) {
+      await new Promise((r) => setImmediate(r));
       const r = resolvers.shift();
       if (r) r();
     }
     await promise;
+
+    // Concurrent (not serial): more than one request was in flight at once.
+    expect(peakInFlight).toBeGreaterThan(1);
+    // Bounded: peak never exceeded the configured cap.
+    expect(peakInFlight).toBeLessThanOrEqual(MOS_FETCH_CONCURRENCY);
+    // All 12 day×runtime cycles were eventually dispatched.
+    expect(dispatched).toBe(12);
   });
 
   // Issue #17 regression: IEM /api/1/mos.json validates `model` against
