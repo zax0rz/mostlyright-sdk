@@ -344,7 +344,10 @@ def _coerce_canonical_dtypes(df: pd.DataFrame) -> pd.DataFrame:
     )
     for col in int_cols:
         if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
+            # Round fractional values before Int64 cast: pandas' safe-cast raises
+            # TypeError on non-integer floats, which would silently drop rows when
+            # the upstream API returns fractional values in an int-schema column.
+            df[col] = pd.to_numeric(df[col], errors="coerce").round().astype("Int64")
 
     float_cols = (
         "temp_c",
