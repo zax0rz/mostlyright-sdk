@@ -1381,6 +1381,14 @@ def _validate_research_kwargs(
 _FORECAST_SOURCES_ALLOWED: frozenset[str] = frozenset({"iem_mos", "open_meteo"})
 
 
+_OM_RESEARCH_VARIABLES: tuple[str, ...] = (
+    "temperature_2m",
+    "precipitation",
+    "precipitation_probability",
+)
+_OM_RESEARCH_SOURCE: str = "open_meteo.previous_runs"
+
+
 def _fetch_open_meteo_range(
     info: StationInfo,
     from_date: str,
@@ -1390,24 +1398,79 @@ def _fetch_open_meteo_range(
 ) -> dict[str, list[dict[str, Any]]]:
     """Phase 20 OM-05 — fetch Open-Meteo forecasts grouped by settlement date.
 
-    Wraps ``mostlyright.weather._fetchers._open_meteo.fetch_open_meteo`` in
-    training mode (Previous Runs API) and pivots its tabular DataFrame
-    into the ``{date_iso: [forecast_row, ...]}`` shape that
-    ``build_pairs(forecasts_by_date=...)`` expects. Each row carries
-    ``model`` / ``issued_at`` / ``valid_at`` / ``temperature_f`` /
-    ``pop_6hr_pct`` / ``qpf_6hr_in`` keys for build_pairs_row compatibility.
+    Reads from the Phase 20 forecast cache before hitting the network. On a
+    cache miss the fetcher writes each elapsed month's rows back so subsequent
+    calls for the same window are served from disk. Only the 3 variables
+    consumed by the pairs join are requested (Fix 3 — cuts weighted call cost).
+
+    Returns the ``{date_iso: [forecast_row, ...]}`` shape that
+    ``build_pairs(forecasts_by_date=...)`` expects.
     """
+    from datetime import date as _date
+    from datetime import timedelta as _timedelta
+
     import pandas as pd
 
     from mostlyright.weather._fetchers._open_meteo import fetch_open_meteo
+    from mostlyright.weather.cache import read_forecast_cache, write_forecast_cache
 
-    df = fetch_open_meteo(info.icao, from_date, to_date, model=model, mode="training")
+    # Enumerate (year, month) partitions covered by [from_date, to_date].
+    start = _date.fromisoformat(from_date)
+    end = _date.fromisoformat(to_date)
+    months: list[tuple[int, int]] = []
+    cur = _date(start.year, start.month, 1)
+    while cur <= end:
+        months.append((cur.year, cur.month))
+        cur = _date(cur.year + (cur.month // 12), (cur.month % 12) + 1, 1)
+
+    # Serve cached partitions; collect months that need a network fetch.
+    all_rows: list[dict[str, Any]] = []
+    missing: list[tuple[int, int]] = []
+    for y, m in months:
+        hit = read_forecast_cache(info.icao, _OM_RESEARCH_SOURCE, model, y, m)
+        if hit is not None:
+            all_rows.extend(hit)
+        else:
+            missing.append((y, m))
+
+    # Fetch the missing span and populate the cache.
+    if missing:
+        miss_start = max(_date(missing[0][0], missing[0][1], 1), start)
+        miss_end_y, miss_end_m = missing[-1]
+        last_day = _date(miss_end_y + (miss_end_m // 12), (miss_end_m % 12) + 1, 1) - _timedelta(
+            days=1
+        )
+        miss_end = min(last_day, end)
+
+        df_fetched = fetch_open_meteo(
+            info.icao,
+            miss_start.isoformat(),
+            miss_end.isoformat(),
+            model=model,
+            mode="training",
+            variables=_OM_RESEARCH_VARIABLES,
+        )
+
+        if df_fetched is not None and not df_fetched.empty:
+            for y, m in missing:
+                mask = (df_fetched["valid_at"].dt.year == y) & (
+                    df_fetched["valid_at"].dt.month == m
+                )
+                month_rows = df_fetched[mask].to_dict("records")
+                if month_rows:
+                    cleaned_rows = [
+                        {k: (None if pd.isna(v) else v) for k, v in r.items()} for r in month_rows
+                    ]
+                    write_forecast_cache(info.icao, _OM_RESEARCH_SOURCE, model, y, m, cleaned_rows)
+                    all_rows.extend(cleaned_rows)
+
     groups: dict[str, list[dict[str, Any]]] = {}
-    if df is None or df.empty:
+    if not all_rows:
         return groups
-    for _, row in df.iterrows():
+
+    for row in all_rows:
         ftime = row.get("valid_at")
-        if ftime is None or (isinstance(ftime, float) and ftime != ftime):
+        if ftime is None or pd.isna(ftime):
             continue
         try:
             ftime_dt = pd.to_datetime(ftime, utc=True)
@@ -1421,8 +1484,7 @@ def _fetch_open_meteo_range(
         try:
             issued_iso = (
                 pd.to_datetime(issued_at, utc=True).strftime("%Y-%m-%dT%H:%M:%SZ")
-                if issued_at is not None
-                and not (isinstance(issued_at, float) and issued_at != issued_at)
+                if issued_at is not None and not pd.isna(issued_at)
                 else None
             )
         except Exception:
@@ -1430,21 +1492,21 @@ def _fetch_open_meteo_range(
         valid_iso = ftime_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
         temp_c = row.get("temp_c")
         temperature_f: float | None = None
-        if temp_c is not None and not (isinstance(temp_c, float) and temp_c != temp_c):
+        if temp_c is not None and not pd.isna(temp_c):
             try:
                 temperature_f = float(temp_c) * 9.0 / 5.0 + 32.0
             except (TypeError, ValueError):
                 temperature_f = None
         pop_prob = row.get("precip_probability")
         pop_6hr_pct: float | None = None
-        if pop_prob is not None and not (isinstance(pop_prob, float) and pop_prob != pop_prob):
+        if pop_prob is not None and not pd.isna(pop_prob):
             try:
                 pop_6hr_pct = float(pop_prob) * 100.0
             except (TypeError, ValueError):
                 pop_6hr_pct = None
         precip_mm = row.get("precipitation_mm")
         qpf_6hr_in: float | None = None
-        if precip_mm is not None and not (isinstance(precip_mm, float) and precip_mm != precip_mm):
+        if precip_mm is not None and not pd.isna(precip_mm):
             try:
                 qpf_6hr_in = float(precip_mm) / 25.4
             except (TypeError, ValueError):
