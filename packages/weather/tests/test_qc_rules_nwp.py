@@ -54,8 +54,8 @@ def test_registry_includes_all_phase17_models() -> None:
     assert set(QC_RULES_NWP.keys()) == expected
 
 
-def test_ncep_base_has_7_rules() -> None:
-    assert len(RULES_NWP_NCEP) == 7
+def test_ncep_base_has_10_rules() -> None:
+    assert len(RULES_NWP_NCEP) == 10
     rule_names = {r.name for r in RULES_NWP_NCEP}
     assert {
         "temp_k_2m_extreme",
@@ -65,6 +65,9 @@ def test_ncep_base_has_7_rules() -> None:
         "precip_mm_1h_max",
         "pressure_sfc_range",
         "mslp_range",
+        "cloud_cover_range",
+        "visibility_range",
+        "cloud_ceiling_range",
     } == rule_names
 
 
@@ -91,7 +94,7 @@ def test_ncep_wind_gust_extreme_flagged() -> None:
 
 def test_ecmwf_inherits_ncep_temp_rule() -> None:
     """ECMWF rule list is NCEP base + 1 extension."""
-    assert len(RULES_NWP_ECMWF) == 8
+    assert len(RULES_NWP_ECMWF) == 11
     assert apply_rules(RULES_NWP_ECMWF, {"temp_k_2m": -10.0}) == "suspect"
 
 
@@ -106,13 +109,13 @@ def test_ecmwf_tp_meters_negative_suspect() -> None:
 
 
 def test_gefs_inherits_ncep_plus_ensemble_dispersion() -> None:
-    assert len(RULES_NWP_GEFS) == 8
+    assert len(RULES_NWP_GEFS) == 11
     # NCEP rules still fire.
     assert apply_rules(RULES_NWP_GEFS, {"temp_k_2m": 100.0}) == "flagged"
 
 
 def test_hafs_inherits_ncep_plus_basin_lat() -> None:
-    assert len(RULES_NWP_HAFS) == 8
+    assert len(RULES_NWP_HAFS) == 11
     # NCEP rules still fire.
     assert apply_rules(RULES_NWP_HAFS, {"temp_k_2m": -10.0}) == "suspect"
 
@@ -123,7 +126,7 @@ def test_hafs_storm_lat_outside_basin_suspect() -> None:
 
 
 def test_msc_hrdps_inherits_ncep_plus_domain() -> None:
-    assert len(RULES_NWP_MSC_HRDPS) == 8
+    assert len(RULES_NWP_MSC_HRDPS) == 11
 
 
 def test_msc_hrdps_grid_dist_outside_domain_suspect() -> None:

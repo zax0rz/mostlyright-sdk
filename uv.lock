@@ -862,9 +862,9 @@ name = "mostlyrightmd-workspace"
 version = "0.0.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "mostlyrightmd" },
-    { name = "mostlyrightmd-markets" },
-    { name = "mostlyrightmd-weather" },
+    { name = "mostlyrightmd", extra = ["parquet", "polars"] },
+    { name = "mostlyrightmd-markets", extra = ["parquet", "polars", "polymarket", "trades"] },
+    { name = "mostlyrightmd-weather", extra = ["nwp", "parquet", "polars"] },
 ]
 
 [package.dev-dependencies]
@@ -891,9 +891,9 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "mostlyrightmd", editable = "packages/core" },
-    { name = "mostlyrightmd-markets", editable = "packages/markets" },
-    { name = "mostlyrightmd-weather", editable = "packages/weather" },
+    { name = "mostlyrightmd", extras = ["parquet", "polars"], editable = "packages/core" },
+    { name = "mostlyrightmd-markets", extras = ["parquet", "polars", "polymarket", "trades"], editable = "packages/markets" },
+    { name = "mostlyrightmd-weather", extras = ["nwp", "parquet", "polars"], editable = "packages/weather" },
 ]
 
 [package.metadata.requires-dev]

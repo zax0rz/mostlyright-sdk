@@ -1,0 +1,188 @@
+{
+  "$id": "https://mostlyright.dev/schemas/schema.forecast_nwp.v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "cloud_ceiling_m": {
+      "description": "units: m",
+      "type": [
+        "null",
+        "number"
+      ]
+    },
+    "cloud_cover_pct": {
+      "description": "units: percent",
+      "type": [
+        "null",
+        "number"
+      ]
+    },
+    "dewpoint_k_2m": {
+      "description": "units: K",
+      "type": [
+        "null",
+        "number"
+      ]
+    },
+    "forecast_hour": {
+      "description": "units: hours \u2014 lead time in hours (alias: fxx)",
+      "type": "integer"
+    },
+    "grid_dist_km": {
+      "description": "units: km \u2014 great-circle distance from station to nearest grid cell",
+      "type": "number"
+    },
+    "grid_kind": {
+      "description": "grid-projection label (lambert_conformal_conus, regular_latlon_global_0p25, ...)",
+      "type": "string"
+    },
+    "issued_at": {
+      "description": "model run / cycle reference time",
+      "format": "date-time",
+      "type": "string"
+    },
+    "mirror": {
+      "description": "NOAA BDP mirror that served the underlying bytes",
+      "enum": [
+        "aws_bdp",
+        "azure_bdp",
+        "ecmwf_aws",
+        "ecmwf_azure",
+        "ecmwf_data_portal",
+        "ecmwf_gcp",
+        "gcp_bdp",
+        "msc",
+        "nomads"
+      ],
+      "type": "string"
+    },
+    "model": {
+      "enum": [
+        "cfs",
+        "ecmwf_aifs_ens",
+        "ecmwf_aifs_single",
+        "ecmwf_ifs_ens",
+        "ecmwf_ifs_hres",
+        "gdas",
+        "gdps",
+        "gefs",
+        "geps",
+        "gfs",
+        "hafs",
+        "hiresw",
+        "hrdps",
+        "href",
+        "hrrr",
+        "hrrrak",
+        "nam",
+        "nbm",
+        "rap",
+        "rdps",
+        "reps",
+        "rrfs",
+        "rtma",
+        "urma"
+      ],
+      "type": "string"
+    },
+    "precip_mm_1h": {
+      "description": "units: mm",
+      "type": [
+        "null",
+        "number"
+      ]
+    },
+    "pressure_pa_mslp": {
+      "description": "units: Pa",
+      "type": [
+        "null",
+        "number"
+      ]
+    },
+    "pressure_pa_surface": {
+      "description": "units: Pa",
+      "type": [
+        "null",
+        "number"
+      ]
+    },
+    "qc_status": {
+      "description": "inline physics-bounds verdict; finer-grained QC lands in Phase 3.4",
+      "enum": [
+        "clean",
+        "flagged",
+        "suspect"
+      ],
+      "type": "string"
+    },
+    "relative_humidity_pct_2m": {
+      "description": "units: percent",
+      "type": [
+        "null",
+        "number"
+      ]
+    },
+    "retrieved_at": {
+      "description": "wall-clock UTC when the bytes were fetched",
+      "format": "date-time",
+      "type": "string"
+    },
+    "station": {
+      "type": "string"
+    },
+    "temp_k_2m": {
+      "description": "units: K",
+      "type": [
+        "null",
+        "number"
+      ]
+    },
+    "valid_at": {
+      "description": "forecast target time = issued_at + forecast_hour",
+      "format": "date-time",
+      "type": "string"
+    },
+    "visibility_m": {
+      "description": "units: m",
+      "type": [
+        "null",
+        "number"
+      ]
+    },
+    "wind_gust_ms": {
+      "description": "units: m/s",
+      "type": [
+        "null",
+        "number"
+      ]
+    },
+    "wind_u_ms_10m": {
+      "description": "units: m/s",
+      "type": [
+        "null",
+        "number"
+      ]
+    },
+    "wind_v_ms_10m": {
+      "description": "units: m/s",
+      "type": [
+        "null",
+        "number"
+      ]
+    }
+  },
+  "required": [
+    "forecast_hour",
+    "grid_dist_km",
+    "grid_kind",
+    "issued_at",
+    "mirror",
+    "model",
+    "qc_status",
+    "retrieved_at",
+    "station",
+    "valid_at"
+  ],
+  "title": "schema.forecast_nwp.v1",
+  "type": "object",
+  "version": "v1"
+}
