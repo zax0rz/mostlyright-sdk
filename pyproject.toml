@@ -7,9 +7,9 @@ requires-python = ">=3.11"
 # mode by default (otherwise plain `uv sync` skips members; users would need
 # `uv sync --all-packages` and would hit ModuleNotFoundError on `import mostlyright`).
 dependencies = [
-    "mostlyrightmd[parquet,polars]",
-    "mostlyrightmd-weather[nwp,parquet,polars]",
-    "mostlyrightmd-markets[parquet,polars,polymarket,trades]",
+    "mostlyrightmd",
+    "mostlyrightmd-weather",
+    "mostlyrightmd-markets",
 ]
 
 [build-system]
