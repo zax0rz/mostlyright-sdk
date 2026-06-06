@@ -1435,12 +1435,24 @@ def _fetch_open_meteo_range(
 
     # Fetch the missing span and populate the cache.
     if missing:
-        miss_start = max(_date(missing[0][0], missing[0][1], 1), start)
+        # Issue #64 / codex P2: fetch on FULL-MONTH boundaries, not clamped to
+        # the request subrange. Clamping to [start, end] meant a subrange request
+        # (e.g. 2024-06-01..06-02) wrote only those days into the June partition;
+        # a later June window then read that partition as a "hit" and silently
+        # dropped the uncached days. Fetching whole months makes every written
+        # partition complete. The current UTC month is never served from cache
+        # (read_forecast_cache skip) nor written (write_forecast_cache skip), so
+        # its incompleteness is harmless — we only clamp the upper bound to today
+        # so we never request future dates with no data.
+        from datetime import datetime as _datetime
+
+        today = _datetime.now(UTC).date()
+        miss_start = _date(missing[0][0], missing[0][1], 1)
         miss_end_y, miss_end_m = missing[-1]
         last_day = _date(miss_end_y + (miss_end_m // 12), (miss_end_m % 12) + 1, 1) - _timedelta(
             days=1
         )
-        miss_end = min(last_day, end)
+        miss_end = min(last_day, today)
 
         df_fetched = fetch_open_meteo(
             info.icao,

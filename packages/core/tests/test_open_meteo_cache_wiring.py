@@ -245,3 +245,47 @@ def test_fetch_open_meteo_range_handles_nat(
 
     # Should run to completion and produce some non-empty results for the non-NaT valid_at rows
     assert out
+
+
+def test_fetch_open_meteo_range_subrange_caches_full_month(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Issue #64 / codex P2: a subrange request must cache the FULL month, so a
+    later request for a *different* subrange of the same month is served complete
+    from cache instead of silently dropping the uncached days.
+    """
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
+    from mostlyright.research import _fetch_open_meteo_range
+
+    info = STATIONS["NYC"]
+
+    fetch_spans: list[tuple[str, str]] = []
+
+    def fake_fetch(*args: Any, **kwargs: Any) -> pd.DataFrame:
+        frm, to = args[1], args[2]
+        fetch_spans.append((frm, to))
+        return _fake_om_payload_df(frm, to)
+
+    with patch(
+        "mostlyright.weather._fetchers._open_meteo.fetch_open_meteo",
+        side_effect=fake_fetch,
+    ):
+        # First call: a 2-day subrange of an elapsed month (June 2024).
+        _fetch_open_meteo_range(info, "2024-06-01", "2024-06-02", model="gfs_global")
+        # The fetch must cover the WHOLE month, not just 06-01..06-02 — otherwise
+        # the June partition would be written incomplete.
+        assert fetch_spans[0] == ("2024-06-01", "2024-06-30"), (
+            f"expected full-month fetch span, got {fetch_spans[0]}"
+        )
+        n_after_first = len(fetch_spans)
+
+        # Second call: a DIFFERENT June subrange. Must be served from the
+        # now-complete cache (no refetch) and return the requested days.
+        out2 = _fetch_open_meteo_range(info, "2024-06-10", "2024-06-15", model="gfs_global")
+
+    assert len(fetch_spans) == n_after_first, (
+        "second same-month subrange refetched — partition was cached incomplete"
+    )
+    # The mid-window day must be present (not silently dropped). NYC LST is
+    # UTC-5, so a mid-day-UTC valid_at maps to the same settlement date.
+    assert "2024-06-12" in out2, f"June 12 missing from second-subrange result: {sorted(out2)[:5]}"
