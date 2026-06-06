@@ -31,12 +31,16 @@ pairs() returns one row per settlement date, joining:
 
 This is the primary training/feature surface for AI settlement models.
 
-Forecast join:
-  - IEM MOS records (`forecast.json`) have `issued_at`; grouped by issued_at to
-    pick the most-recent run before market close, then temperature_f values for
-    valid_at timestamps within the settlement window are aggregated (max/min).
-  - Open-Meteo records (`forecast_series.json`) have no issued_at; all records
-    in the settlement window are used. temperature_c is converted to F.
+Forecast join (records are split by their authoritative ``source`` field —
+``source`` prefixed ``open_meteo`` -> Open-Meteo, else IEM MOS; see issue #67):
+  - IEM MOS records (`forecast.json`, `source="iem.archive"`) are grouped by
+    issued_at to pick the most-recent run before market close, then
+    temperature_f values for valid_at timestamps within the settlement window
+    are aggregated (max/min).
+  - Open-Meteo records (`forecast_series.json`, `source="open_meteo.*"`) use
+    all records in the settlement window. temperature_c is converted to F
+    (or a pre-converted temperature_f is used as-is). NOTE: Phase 20+ OM rows
+    also carry a derived `issued_at`, so `issued_at` is NOT the discriminator.
   - If both are available, IEM MOS is preferred. Open-Meteo used as fallback.
   - If forecast data is unavailable, forecast columns are None - the row is
     still returned.
