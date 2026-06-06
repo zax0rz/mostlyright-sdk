@@ -38,7 +38,16 @@ def test_write_then_read_forecast_cache(tmp_path: Path, monkeypatch: pytest.Monk
             "temp_c": 22.5,
         }
     ]
-    write_forecast_cache("KNYC", "open_meteo.previous_runs", "gfs_global", 2024, 6, rows)
+    write_forecast_cache(
+        "KNYC",
+        "open_meteo.previous_runs",
+        "gfs_global",
+        2024,
+        6,
+        rows,
+        from_date="2024-06-01",
+        to_date="2024-06-30",
+    )
     got = read_forecast_cache("KNYC", "open_meteo.previous_runs", "gfs_global", 2024, 6)
     assert got is not None
     assert len(got) == 1

@@ -534,6 +534,10 @@ def forecast_cache_path(
     return raw
 
 
+_FORECAST_CACHE_FROM_KEY = b"_forecast_cache_from"
+_FORECAST_CACHE_TO_KEY = b"_forecast_cache_to"
+
+
 def _is_seamless_source(source: str | None) -> bool:
     """True if ``source`` is the banned Open-Meteo seamless endpoint."""
     return source == "open_meteo.seamless"
@@ -545,6 +549,9 @@ def read_forecast_cache(
     model: str,
     year: int,
     month: int,
+    *,
+    need_from: str | None = None,
+    need_to: str | None = None,
 ) -> list[dict] | None:
     """Return cached forecast rows for the partition key or ``None`` on miss.
 
@@ -552,6 +559,8 @@ def read_forecast_cache(
         - the partition file does not exist
         - ``source`` is live or seamless (never cached)
         - (year, month) is the current UTC month (cycles may still publish)
+        - the partition has no coverage metadata (old format; re-fetch to repair)
+        - the cached range does not cover [need_from, need_to] when supplied
     """
     if _is_live_source(source) or _is_seamless_source(source):
         return None
@@ -565,6 +574,36 @@ def read_forecast_cache(
         table = pq.read_table(path)
     except (FileNotFoundError, OSError):
         return None
+    metadata = table.schema.metadata or {}
+    cached_from = metadata.get(_FORECAST_CACHE_FROM_KEY, b"").decode("utf-8")
+    cached_to = metadata.get(_FORECAST_CACHE_TO_KEY, b"").decode("utf-8")
+    if not cached_from or not cached_to:
+        logger.debug(
+            "forecast cache: no range metadata for %s/%s %04d-%02d; treating as miss",
+            station,
+            model,
+            year,
+            month,
+        )
+        return None
+    if (
+        need_from is not None
+        and need_to is not None
+        and (cached_from > need_from or cached_to < need_to)
+    ):
+        logger.debug(
+            "forecast cache: partial coverage for %s/%s %04d-%02d "
+            "(cached=%s..%s need=%s..%s); treating as miss",
+            station,
+            model,
+            year,
+            month,
+            cached_from,
+            cached_to,
+            need_from,
+            need_to,
+        )
+        return None
     return table.to_pylist()
 
 
@@ -575,6 +614,9 @@ def write_forecast_cache(
     year: int,
     month: int,
     rows: list[dict],
+    *,
+    from_date: str | None = None,
+    to_date: str | None = None,
 ) -> None:
     """Atomically write ``rows`` to the forecast cache partition.
 
@@ -582,6 +624,10 @@ def write_forecast_cache(
         - ``source`` is live or seamless (never cached)
         - (year, month) is the current UTC month (cycles may still publish)
         - ``rows`` is empty
+
+    Pass ``from_date`` and ``to_date`` (ISO-8601, inclusive) to embed coverage
+    metadata in the parquet.  ``read_forecast_cache`` treats partitions without
+    this metadata as cache misses so callers should always supply them.
     """
     if _is_live_source(source) or _is_seamless_source(source):
         logger.debug(
@@ -606,6 +652,11 @@ def write_forecast_cache(
     if not rows:
         return
     table = pa.Table.from_pylist(rows)
+    if from_date is not None and to_date is not None:
+        md = dict(table.schema.metadata or {})
+        md[_FORECAST_CACHE_FROM_KEY] = from_date.encode("utf-8")
+        md[_FORECAST_CACHE_TO_KEY] = to_date.encode("utf-8")
+        table = table.replace_schema_metadata(md)
     _atomic_write(forecast_cache_path(station, source, model, year, month), table)
 
 
@@ -633,6 +684,8 @@ __all__ = [
     "DEFAULT_ROOT",
     "_CACHE_SCHEMA_VERSION",  # Phase 18 PREC-04
     "_CACHE_SCHEMA_VERSION_KEY",  # Phase 18 PREC-04
+    "_FORECAST_CACHE_FROM_KEY",
+    "_FORECAST_CACHE_TO_KEY",
     "_has_cached_year",
     "cache_path",
     "climate_cache_path",

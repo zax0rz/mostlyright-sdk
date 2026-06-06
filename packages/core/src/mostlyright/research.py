@@ -1424,23 +1424,36 @@ def _fetch_open_meteo_range(
         cur = _date(cur.year + (cur.month // 12), (cur.month % 12) + 1, 1)
 
     # Serve cached partitions; collect months that need a network fetch.
+    # Pass month boundaries as need_from/need_to so a partition written for
+    # only a subset of days (e.g. June 1-2) doesn't masquerade as a full hit.
     all_rows: list[dict[str, Any]] = []
     missing: list[tuple[int, int]] = []
     for y, m in months:
-        hit = read_forecast_cache(info.icao, _OM_RESEARCH_SOURCE, model, y, m)
+        month_first = f"{y:04d}-{m:02d}-01"
+        month_last = (_date(y + (m // 12), (m % 12) + 1, 1) - _timedelta(days=1)).isoformat()
+        hit = read_forecast_cache(
+            info.icao,
+            _OM_RESEARCH_SOURCE,
+            model,
+            y,
+            m,
+            need_from=month_first,
+            need_to=month_last,
+        )
         if hit is not None:
             all_rows.extend(hit)
         else:
             missing.append((y, m))
 
-    # Fetch the missing span and populate the cache.
+    # Fetch missing months as full calendar months so each written partition
+    # carries complete coverage metadata and subsequent requests for any
+    # subrange of those months hit the cache.
     if missing:
-        miss_start = max(_date(missing[0][0], missing[0][1], 1), start)
+        miss_start = _date(missing[0][0], missing[0][1], 1)
         miss_end_y, miss_end_m = missing[-1]
-        last_day = _date(miss_end_y + (miss_end_m // 12), (miss_end_m % 12) + 1, 1) - _timedelta(
+        miss_end = _date(miss_end_y + (miss_end_m // 12), (miss_end_m % 12) + 1, 1) - _timedelta(
             days=1
         )
-        miss_end = min(last_day, end)
 
         df_fetched = fetch_open_meteo(
             info.icao,
@@ -1461,7 +1474,20 @@ def _fetch_open_meteo_range(
                     cleaned_rows = [
                         {k: (None if pd.isna(v) else v) for k, v in r.items()} for r in month_rows
                     ]
-                    write_forecast_cache(info.icao, _OM_RESEARCH_SOURCE, model, y, m, cleaned_rows)
+                    month_from = f"{y:04d}-{m:02d}-01"
+                    month_to = (
+                        _date(y + (m // 12), (m % 12) + 1, 1) - _timedelta(days=1)
+                    ).isoformat()
+                    write_forecast_cache(
+                        info.icao,
+                        _OM_RESEARCH_SOURCE,
+                        model,
+                        y,
+                        m,
+                        cleaned_rows,
+                        from_date=month_from,
+                        to_date=month_to,
+                    )
                     all_rows.extend(cleaned_rows)
 
     groups: dict[str, list[dict[str, Any]]] = {}

@@ -183,7 +183,16 @@ def test_fetch_open_meteo_range_partial_cache_hit(
             "precipitation_mm": 0.0,
         }
     ]
-    write_forecast_cache("KNYC", source, model, 2024, 7, july_cached_rows)
+    write_forecast_cache(
+        "KNYC",
+        source,
+        model,
+        2024,
+        7,
+        july_cached_rows,
+        from_date="2024-07-01",
+        to_date="2024-07-31",
+    )
 
     # June & August fetched data
     june_rows = _fake_om_payload_df("2024-06-15", "2024-06-15")
@@ -245,3 +254,205 @@ def test_fetch_open_meteo_range_handles_nat(
 
     # Should run to completion and produce some non-empty results for the non-NaT valid_at rows
     assert out
+
+
+# ---------------------------------------------------------------------------
+# Coverage metadata tests (fix/66)
+# ---------------------------------------------------------------------------
+
+
+def test_forecast_cache_partial_month_triggers_refetch(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Cache June 1-2, then request June 15-20 → cache miss, full month re-fetched."""
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
+    from mostlyright.research import _fetch_open_meteo_range
+    from mostlyright.weather.cache import forecast_cache_path, write_forecast_cache
+
+    info = STATIONS["NYC"]
+    model = "gfs_global"
+    source = "open_meteo.previous_runs"
+
+    # Simulate broken PR #66 state: partition with metadata covering only June 1-2.
+    partial_rows = [
+        {
+            "station": "KNYC",
+            "issued_at": pd.Timestamp("2024-05-31T12:00:00Z"),
+            "valid_at": pd.Timestamp("2024-06-01T12:00:00Z"),
+            "model": model,
+            "source": source,
+            "temp_c": 20.0,
+            "precip_probability": 0.0,
+            "precipitation_mm": 0.0,
+        }
+    ]
+    write_forecast_cache(
+        "KNYC", source, model, 2024, 6, partial_rows, from_date="2024-06-01", to_date="2024-06-02"
+    )
+
+    # Full-month fetch returns data covering June 1-30.
+    full_june_df = _fake_om_payload_df("2024-06-01", "2024-06-30")
+    call_count = {"n": 0}
+
+    def fake_fetch(*args: Any, **kwargs: Any) -> pd.DataFrame:
+        call_count["n"] += 1
+        return full_june_df
+
+    with patch(
+        "mostlyright.weather._fetchers._open_meteo.fetch_open_meteo",
+        side_effect=fake_fetch,
+    ):
+        out = _fetch_open_meteo_range(info, "2024-06-15", "2024-06-20", model=model)
+
+    assert call_count["n"] == 1, "expected exactly one network fetch"
+    assert out, "expected non-empty result for June 15-20"
+
+    # Partition must be overwritten with full-month metadata.
+    import pyarrow.parquet as pq
+    from mostlyright.weather.cache import _FORECAST_CACHE_FROM_KEY, _FORECAST_CACHE_TO_KEY
+
+    table = pq.read_table(forecast_cache_path("KNYC", source, model, 2024, 6))
+    md = table.schema.metadata or {}
+    assert md.get(_FORECAST_CACHE_FROM_KEY) == b"2024-06-01"
+    assert md.get(_FORECAST_CACHE_TO_KEY) == b"2024-06-30"
+
+
+def test_forecast_cache_full_month_hit_no_refetch(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Full-month partition → any subrange request is served from cache, no network call."""
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
+    from mostlyright.research import _fetch_open_meteo_range
+    from mostlyright.weather.cache import write_forecast_cache
+
+    info = STATIONS["NYC"]
+    model = "gfs_global"
+    source = "open_meteo.previous_runs"
+
+    # Pre-cache all of June with full-month metadata.
+    june_rows = [
+        {
+            "station": "KNYC",
+            "issued_at": pd.Timestamp(f"2024-06-{d:02d}T00:00:00Z") - pd.Timedelta(days=1),
+            "valid_at": pd.Timestamp(f"2024-06-{d:02d}T12:00:00Z"),
+            "model": model,
+            "source": source,
+            "temp_c": float(d),
+            "precip_probability": 0.0,
+            "precipitation_mm": 0.0,
+        }
+        for d in range(1, 31)
+    ]
+    write_forecast_cache(
+        "KNYC", source, model, 2024, 6, june_rows, from_date="2024-06-01", to_date="2024-06-30"
+    )
+
+    call_count = {"n": 0}
+
+    def fake_fetch(*args: Any, **kwargs: Any) -> pd.DataFrame:
+        call_count["n"] += 1
+        return _fake_om_payload_df("2024-06-01", "2024-06-30")
+
+    with patch(
+        "mostlyright.weather._fetchers._open_meteo.fetch_open_meteo",
+        side_effect=fake_fetch,
+    ):
+        out = _fetch_open_meteo_range(info, "2024-06-01", "2024-06-20", model=model)
+
+    assert call_count["n"] == 0, "full-month cache hit should not trigger any network fetch"
+    assert out, "expected non-empty result"
+
+
+def test_forecast_cache_backwards_compat_no_metadata(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Partition written without range metadata (old code) → treated as miss, re-fetched, repaired."""
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
+    from mostlyright.research import _fetch_open_meteo_range
+    from mostlyright.weather.cache import (
+        _FORECAST_CACHE_FROM_KEY,
+        _FORECAST_CACHE_TO_KEY,
+        forecast_cache_path,
+        write_forecast_cache,
+    )
+
+    info = STATIONS["NYC"]
+    model = "gfs_global"
+    source = "open_meteo.previous_runs"
+
+    # Write partition the old way — no from_date/to_date kwargs → no range metadata.
+    old_rows = [
+        {
+            "station": "KNYC",
+            "issued_at": pd.Timestamp("2024-06-01T00:00:00Z"),
+            "valid_at": pd.Timestamp("2024-06-01T12:00:00Z"),
+            "model": model,
+            "source": source,
+            "temp_c": 20.0,
+            "precip_probability": 0.0,
+            "precipitation_mm": 0.0,
+        }
+    ]
+    write_forecast_cache("KNYC", source, model, 2024, 6, old_rows)
+
+    # Verify: no metadata in the file we just wrote.
+    import pyarrow.parquet as pq
+
+    old_table = pq.read_table(forecast_cache_path("KNYC", source, model, 2024, 6))
+    assert _FORECAST_CACHE_FROM_KEY not in (old_table.schema.metadata or {})
+
+    full_june_df = _fake_om_payload_df("2024-06-01", "2024-06-30")
+    call_count = {"n": 0}
+
+    def fake_fetch(*args: Any, **kwargs: Any) -> pd.DataFrame:
+        call_count["n"] += 1
+        return full_june_df
+
+    with patch(
+        "mostlyright.weather._fetchers._open_meteo.fetch_open_meteo",
+        side_effect=fake_fetch,
+    ):
+        _fetch_open_meteo_range(info, "2024-06-01", "2024-06-15", model=model)
+
+    assert call_count["n"] == 1, "old partition without metadata must trigger re-fetch"
+
+    # After re-fetch, partition must have range metadata.
+    new_table = pq.read_table(forecast_cache_path("KNYC", source, model, 2024, 6))
+    md = new_table.schema.metadata or {}
+    assert md.get(_FORECAST_CACHE_FROM_KEY) == b"2024-06-01"
+    assert md.get(_FORECAST_CACHE_TO_KEY) == b"2024-06-30"
+
+
+def test_forecast_cache_current_month_never_cached(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Current UTC month is never written to or served from cache."""
+    monkeypatch.setenv("MOSTLYRIGHT_CACHE_DIR", str(tmp_path))
+    from datetime import UTC, datetime
+
+    from mostlyright.research import _fetch_open_meteo_range
+    from mostlyright.weather.cache import forecast_cache_path
+
+    info = STATIONS["NYC"]
+    model = "gfs_global"
+    source = "open_meteo.previous_runs"
+
+    now = datetime.now(UTC)
+    cur_year, cur_month = now.year, now.month
+    from_iso = f"{cur_year}-{cur_month:02d}-01"
+    to_iso = f"{cur_year}-{cur_month:02d}-05"
+
+    df = _fake_om_payload_df(from_iso, to_iso)
+
+    def fake_fetch(*args: Any, **kwargs: Any) -> pd.DataFrame:
+        return df
+
+    with patch(
+        "mostlyright.weather._fetchers._open_meteo.fetch_open_meteo",
+        side_effect=fake_fetch,
+    ):
+        _fetch_open_meteo_range(info, from_iso, to_iso, model=model)
+
+    # No cache file should be written for the current UTC month.
+    cache_file = forecast_cache_path("KNYC", source, model, cur_year, cur_month)
+    assert not cache_file.exists(), "current UTC month must never be cached"
