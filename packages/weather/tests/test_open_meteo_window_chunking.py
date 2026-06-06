@@ -167,3 +167,47 @@ def test_chunked_window_preserves_source_attrs() -> None:
     # Provenance attrs must survive the multi-chunk concat.
     assert df.attrs.get("source") == "open_meteo.previous_runs"
     assert df.attrs.get("retrieved_at") is not None
+
+
+def test_single_runs_polite_delay_uses_fixed_horizon_not_window() -> None:
+    """Issue #64 / codex P2: Single-Runs sends only run= and returns a fixed
+    ~168h horizon, so its weight-aware polite delay must use that 7-day span —
+    NOT the (here year-long) requested window. Otherwise an exact-cycle long
+    request sleeps for tens of seconds after a single API call."""
+    from unittest.mock import patch
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        hours = []
+        cur = pd.Timestamp("2024-01-01")
+        for _ in range(168):
+            hours.append(cur.strftime("%Y-%m-%dT%H:%M"))
+            cur += pd.Timedelta(hours=1)
+        return httpx.Response(
+            200,
+            json={
+                "latitude": 40.78,
+                "longitude": -73.97,
+                "elevation": 51.0,
+                "hourly_units": {"time": "iso8601", "temperature_2m": "°C"},
+                "hourly": {"time": hours, "temperature_2m": [20.0] * 168},
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+    client = httpx.Client(transport=transport)
+    sleeps: list[float] = []
+    with patch("mostlyright.weather._fetchers._open_meteo.time.sleep", side_effect=sleeps.append):
+        fetch_open_meteo(
+            "NYC",
+            "2024-01-01",
+            "2024-12-31",  # ~1 year requested, but Single-Runs returns fixed horizon
+            model="gfs_global",
+            mode="training",
+            issued_at="2024-01-01T06:00",
+            variables=("temperature_2m",),
+            client=client,
+        )
+    # With the fixed 7-day horizon + 3 vars the weighted cost is 1 -> one 0.2s
+    # polite sleep. The buggy window-scaled path would sleep ~5s (cost ~26).
+    assert sleeps, "expected a polite delay sleep"
+    assert max(sleeps) <= 0.5, f"polite delay scaled by requested window: {max(sleeps)}s"

@@ -67,6 +67,11 @@ _OM_POLITE_DELAY_S: float = 0.2
 _OM_MAX_DAYS_PER_CALL: int = 14
 _OM_VAR_FREE_BUDGET: int = 10
 
+#: Single-Runs returns a fixed ~168h (7-day) horizon from ``run=`` regardless
+#: of the requested window, so its weighted cost / polite delay uses this fixed
+#: span — NOT the (possibly year-long) caller window.
+_OM_SINGLE_RUNS_HORIZON_DAYS: int = 7
+
 #: Retry-After cap (mirrors ``_kalshi_client._RETRY_AFTER_CAP_SECONDS``).
 _RETRY_AFTER_CAP_SECONDS: float = 60.0
 _MAX_RETRIES: int = 3
@@ -623,8 +628,15 @@ def fetch_open_meteo(
                         continue
                     raise
 
-            # Weight-aware polite delay scales with per-call cost.
-            num_days = (date.fromisoformat(chunk_to) - date.fromisoformat(chunk_from)).days + 1
+            # Weight-aware polite delay scales with per-call cost. Single-Runs
+            # ignores start_date/end_date and returns a FIXED ~168h horizon from
+            # run=, so its cost uses that fixed span — not the requested window.
+            # Otherwise an exact-cycle multi-month/year request would sleep for
+            # tens of seconds after a single API call (codex P2).
+            if endpoint == OPEN_METEO_SINGLE_RUNS_URL:
+                num_days = _OM_SINGLE_RUNS_HORIZON_DAYS
+            else:
+                num_days = (date.fromisoformat(chunk_to) - date.fromisoformat(chunk_from)).days + 1
             cost = _weighted_call_cost(len(vars_to_fetch), num_days)
             time.sleep(_OM_POLITE_DELAY_S * ceil(cost))
 
