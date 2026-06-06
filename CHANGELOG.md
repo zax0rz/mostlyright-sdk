@@ -16,6 +16,9 @@ Minor release bundling two correctness fixes and two feature PRs.
 ### Documentation
 - **Clarified that `research()` returns daily rows, not hourly observations** ([#70](https://github.com/mostlyrightmd/mostlyright-sdk/pull/70), addresses [#52](https://github.com/mostlyrightmd/mostlyright-sdk/issues/52)). The `Returns` docstring now states that `research()` yields one daily settlement-summary row per date (`obs_*` are settlement-window aggregates), points to `weather.obs()` for an observation-only daily frame, and notes that sub-daily / `raw_metar` access is a Sprint 0.5+ item.
 
+### Notes
+- Dual version bump: PyPI `1.6.0` (`mostlyrightmd`, `mostlyrightmd-weather`, `mostlyrightmd-markets`) and npm `vts-1.6.0` (`@mostlyrightmd/core`, `@mostlyrightmd/weather`, `@mostlyrightmd/markets`, `mostlyright`). The TS twin gains the `ForecastNwpV1` type + ajv validator for the new NWP columns ([#63] parity); the Open-Meteo rate-limiting ([#64]) and forecast-join ([#67]) changes are Python-internal and tracked for TS via CROSS-SDK-SYNC.md.
+
 ## [1.5.2] — 2026-06-01 — Fetcher correctness fixes + configurable HTTP retries/timeout
 
 Patch release: four bug fixes across the Python and TypeScript SDKs — fractional integer-field handling in Open-Meteo, an exact-window observation fetch that no longer over-fetches a whole year, bounded-parallel IEM MOS forecast fetches, and env-var overrides for HTTP retry/timeout.
