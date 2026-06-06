@@ -209,9 +209,13 @@ def _aggregate_fcst_temps_openmeteo(
     window_start_iso: str,
     window_end_iso: str,
 ) -> tuple[float | None, float | None]:
-    """Aggregate Open-Meteo hourly temperature_c (-> F) over the settlement window.
+    """Aggregate Open-Meteo hourly temperature (-> F) over the settlement window.
 
-    Open-Meteo stores temperature in Celsius. Conversion: F = C * 9/5 + 32.
+    Open-Meteo rows store temperature in Celsius under ``temperature_c``.
+    Conversion: F = C * 9/5 + 32. As a fallback, rows that already carry a
+    pre-converted ``temperature_f`` (the shape ``research._fetch_open_meteo_range``
+    emits) are used as-is — without this fallback, source-discriminated OM rows
+    from the research() wrapper would aggregate to null (issue #67).
 
     Args:
         run_records: All Open-Meteo hourly records for the date.
@@ -221,12 +225,17 @@ def _aggregate_fcst_temps_openmeteo(
     Returns:
         (fcst_high_f, fcst_low_f) or (None, None) if no records in window.
     """
-    temps_f = [
-        r["temperature_c"] * 9 / 5 + 32
-        for r in run_records
-        if r.get("temperature_c") is not None
-        and window_start_iso <= r.get("valid_at", "") <= window_end_iso
-    ]
+    temps_f: list[float] = []
+    for r in run_records:
+        if not (window_start_iso <= r.get("valid_at", "") <= window_end_iso):
+            continue
+        temp_c = r.get("temperature_c")
+        if temp_c is not None:
+            temps_f.append(temp_c * 9 / 5 + 32)
+            continue
+        temp_f = r.get("temperature_f")
+        if temp_f is not None:
+            temps_f.append(temp_f)
     return (max(temps_f), min(temps_f)) if temps_f else (None, None)
 
 
@@ -250,7 +259,10 @@ def build_pairs_row(
         climate: NWS CLI record for the date (or None). Must be a dict or None
             - non-dict values are treated as None.
         forecasts: All forecast records with valid_at (or None if unavailable).
-            IEM MOS records have issued_at; Open-Meteo records do not.
+            Records are split by their ``source`` field: ``source`` prefixed
+            ``open_meteo`` -> Open-Meteo, everything else (e.g.
+            ``source="iem.archive"``) -> IEM MOS. ``issued_at`` is NOT used as
+            the discriminator (Phase 20+ Open-Meteo rows carry one too).
         forecast_model: Filter IEM MOS records to this model before run
             selection. None = no filtering (best available run).
         tz_override: IANA timezone name override for stations not in the known
@@ -295,9 +307,20 @@ def build_pairs_row(
         win_start_iso = win_start.strftime("%Y-%m-%dT%H:%M:%SZ")
         win_end_iso = win_end.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        # Separate IEM MOS (has issued_at) from Open-Meteo (no issued_at)
-        iem_records = [r for r in forecasts if r.get("issued_at")]
-        om_records = [r for r in forecasts if not r.get("issued_at")]
+        # Separate IEM MOS from Open-Meteo by the authoritative ``source``
+        # field (issue #67). ``issued_at`` presence is NOT a valid
+        # discriminator: Phase 20+ Open-Meteo rows carry a derived
+        # ``issued_at`` (for cycle-math / previous-runs caching), so the old
+        # ``issued_at``-based split misrouted those rows into the IEM MOS
+        # aggregation path, silently nulling forecast temps and polluting IEM
+        # run-selection. IEM rows carry ``source="iem.archive"``; Open-Meteo
+        # rows carry ``source`` prefixed ``open_meteo`` (.previous_runs /
+        # .single_run / .seamless / .live). research._fetch_open_meteo_range
+        # already documents this contract ("discriminates via row.get('source')").
+        om_records = [r for r in forecasts if str(r.get("source") or "").startswith("open_meteo")]
+        iem_records = [
+            r for r in forecasts if not str(r.get("source") or "").startswith("open_meteo")
+        ]
 
         # Apply forecast_model filter to IEM MOS records before run selection.
         # Phase 17 Wave 4 iter-3 review HIGH: case-insensitive match because
