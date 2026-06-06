@@ -190,6 +190,49 @@ def _mslp_rule(row: dict[str, Any]) -> QCStatus:
     return "clean"
 
 
+def _cloud_cover_rule(row: dict[str, Any]) -> QCStatus:
+    cc = row.get("cloud_cover_pct")
+    if cc is None:
+        return "clean"
+    try:
+        cc = float(cc)
+    except (TypeError, ValueError):
+        return "clean"
+    if cc < 0 or cc > 100:
+        return "suspect"
+    return "clean"
+
+
+def _visibility_rule(row: dict[str, Any]) -> QCStatus:
+    vis = row.get("visibility_m")
+    if vis is None:
+        return "clean"
+    try:
+        vis = float(vis)
+    except (TypeError, ValueError):
+        return "clean"
+    if vis < 0:
+        return "suspect"
+    if vis > 100_000:
+        return "flagged"
+    return "clean"
+
+
+def _cloud_ceiling_rule(row: dict[str, Any]) -> QCStatus:
+    ceil = row.get("cloud_ceiling_m")
+    if ceil is None:
+        return "clean"
+    try:
+        ceil = float(ceil)
+    except (TypeError, ValueError):
+        return "clean"
+    if ceil < 0:
+        return "suspect"
+    if ceil > 20_000:
+        return "flagged"
+    return "clean"
+
+
 RULES_NWP_NCEP: list[QCRule] = [
     QCRule(
         "temp_k_2m_extreme",
@@ -232,6 +275,24 @@ RULES_NWP_NCEP: list[QCRule] = [
         "pressure_pa_mslp",
         _mslp_rule,
         "MSLP outside [87000, 108500] Pa is sensor error",
+    ),
+    QCRule(
+        "cloud_cover_range",
+        "cloud_cover_pct",
+        _cloud_cover_rule,
+        "Cloud cover outside [0, 100] % is non-physical",
+    ),
+    QCRule(
+        "visibility_range",
+        "visibility_m",
+        _visibility_rule,
+        "Visibility < 0 m is non-physical; > 100 km is flagged",
+    ),
+    QCRule(
+        "cloud_ceiling_range",
+        "cloud_ceiling_m",
+        _cloud_ceiling_rule,
+        "Cloud ceiling < 0 m is non-physical; > 20 km is flagged",
     ),
 ]
 

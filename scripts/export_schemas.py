@@ -94,6 +94,7 @@ _GROUP_A_SCHEMA_IDS: tuple[str, ...] = (
     "schema.settlement.cli.v1",
     "schema.observation_ledger.v1",
     "schema.observation_qc.v1",
+    "schema.forecast_nwp.v1",
 )
 
 
@@ -249,9 +250,10 @@ def _gated_payload(reason: str) -> str:
 
 
 def _build_group_a_schemas() -> list[_OutputFile]:
-    """Render the 5 Group A schemas under schemas/json/."""
+    """Render the Group A schemas under schemas/json/."""
     from mostlyright.core.schemas import (
         ForecastSchema,
+        NwpForecastSchema,
         ObservationLedgerSchema,
         ObservationQCSchema,
         ObservationSchema,
@@ -266,6 +268,7 @@ def _build_group_a_schemas() -> list[_OutputFile]:
         SettlementSchema.schema_id: SettlementSchema,
         ObservationLedgerSchema.schema_id: ObservationLedgerSchema,
         ObservationQCSchema.schema_id: ObservationQCSchema,
+        NwpForecastSchema.schema_id: NwpForecastSchema,
     }
     out: list[_OutputFile] = []
     for schema_id in _GROUP_A_SCHEMA_IDS:
