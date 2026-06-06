@@ -374,15 +374,29 @@ def _try_fetch_records_for_mirror(
 _WINDOW_RE = re.compile(r"\b(ave|acc|max|min)\b")
 
 
-def _pick_record(group: list[IdxRecord]) -> IdxRecord:
+def _pick_record(group: list[IdxRecord]) -> IdxRecord | None:
     """Disambiguate multiple .idx records for the same (variable, level).
 
-    Prefer instantaneous (non-window) over window-aggregated; break ties by lowest record_no.
+    Resolution rules (issue #63 Option A) — only resolve the cases we
+    understand, and fail loud on the rest:
+
+    - Prefer an instantaneous (non-window) record over window-aggregated ones;
+      break ties by lowest ``record_no``. Handles the GFS
+      ``TCDC:entire atmosphere`` instantaneous-vs-averaged pair.
+    - If every record is window-aggregated but they share an IDENTICAL
+      ``forecast_period`` (the GFS ``APCP:surface`` twin — two records, same
+      accumulation window, same data), pick the lowest ``record_no``.
+    - Otherwise — multiple DISTINCT aggregation windows with no instantaneous
+      record — return ``None`` so the caller fails loud with a
+      :class:`GribIntegrityError` rather than silently populating the column
+      from an arbitrary window.
     """
     non_window = [r for r in group if not _WINDOW_RE.search(r.forecast_period)]
     if non_window:
         return min(non_window, key=lambda r: r.record_no)
-    return min(group, key=lambda r: r.record_no)
+    if len({r.forecast_period for r in group}) == 1:
+        return min(group, key=lambda r: r.record_no)
+    return None
 
 
 class _MirrorTransportFailed(Exception):
@@ -436,6 +450,18 @@ def _extract_records(
             continue
         if len(group) > 1:
             rec = _pick_record(group)
+            if rec is None:
+                # Genuinely ambiguous (multiple distinct aggregation windows,
+                # no instantaneous record) — fail loud rather than silently
+                # pick an arbitrary window (issue #63 / codex P2).
+                raise GribIntegrityError(
+                    f"ambiguous .idx records for {key}: "
+                    f"{[r.forecast_period for r in group]} — multiple distinct "
+                    f"aggregation windows with no instantaneous record; cannot "
+                    f"disambiguate safely",
+                    model=model,
+                    variable=key[0],
+                )
             log.warning(
                 "ambiguous .idx records for %s: %s — picked record_no=%d (%s)",
                 key,

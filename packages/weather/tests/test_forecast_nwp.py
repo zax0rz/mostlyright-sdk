@@ -702,11 +702,14 @@ class TestDisambiguationHeuristics:
         assert _pick_record([r1, r2]) == r1
         assert _pick_record([r2, r1]) == r1
 
-    def test_pick_record_handles_all_window_records_correctly(self) -> None:
+    def test_pick_record_ambiguous_distinct_windows_returns_none(self) -> None:
+        """Issue #63 / codex P2: distinct aggregation windows (e.g. max vs min)
+        with no instantaneous record are genuinely ambiguous — _pick_record
+        returns None so the caller fails loud rather than silently picking an
+        arbitrary window."""
         from mostlyright.weather._fetchers._nwp_idx import IdxRecord
         from mostlyright.weather.forecast_nwp import _pick_record
 
-        # e.g., max vs min, picks by lowest record_no if all are window-aggregated
         r_max = IdxRecord(
             record_no=10,
             byte_offset=1000,
@@ -726,7 +729,62 @@ class TestDisambiguationHeuristics:
             forecast_period="0-1 hour min fcst",
         )
 
-        assert _pick_record([r_max, r_min]) == r_max
+        assert _pick_record([r_max, r_min]) is None
+        assert _pick_record([r_min, r_max]) is None
+
+    def test_pick_record_identical_window_twin_picks_lowest_record_no(self) -> None:
+        """The GFS APCP:surface twin — two records, IDENTICAL window — is safe
+        to resolve by lowest record_no (same data)."""
+        from mostlyright.weather._fetchers._nwp_idx import IdxRecord
+        from mostlyright.weather.forecast_nwp import _pick_record
+
+        r1 = IdxRecord(596, 0, 99, "d=", "APCP", "surface", "0-1 hour acc fcst")
+        r2 = IdxRecord(597, 100, 199, "d=", "APCP", "surface", "0-1 hour acc fcst")
+        assert _pick_record([r1, r2]) == r1
+        assert _pick_record([r2, r1]) == r1
+
+    def test_extract_records_raises_on_ambiguous_distinct_windows(self) -> None:
+        """Issue #63 / codex P2: _extract_records must raise GribIntegrityError
+        (loud fail) when a (variable, level) resolves to multiple DISTINCT
+        windows with no instantaneous record — not silently pick one."""
+        if not _HAS_NWP_EXTRA:
+            pytest.skip("requires [nwp] extra installed")
+        import httpx
+        from mostlyright.weather._fetchers._nwp_archive import build_fetch_plan
+        from mostlyright.weather._fetchers._nwp_idx import IdxRecord
+        from mostlyright.weather.forecast_nwp import _extract_records
+
+        plan = build_fetch_plan(
+            model="gfs",
+            mirror="aws_bdp",
+            cycle=datetime(2026, 5, 23, 12, tzinfo=UTC),
+            fxx=1,
+        )
+        # Two DISTINCT accumulation windows for the same key, no instantaneous.
+        records = [
+            IdxRecord(596, 0, 99, "d=", "APCP", "surface", "0-1 hour acc fcst"),
+            IdxRecord(600, 200, 299, "d=", "APCP", "surface", "0-6 hour acc fcst"),
+        ]
+
+        # Transport must never be reached — the ambiguity check raises first.
+        def fail_transport(request: httpx.Request) -> httpx.Response:
+            raise AssertionError("transport should not be reached on ambiguous records")
+
+        client = httpx.Client(transport=httpx.MockTransport(fail_transport))
+        try:
+            with pytest.raises(GribIntegrityError):
+                _extract_records(
+                    plan=plan,
+                    filtered_records=records,
+                    variable_map={"precip_mm_1h": ("APCP", "surface")},
+                    station_coords=[(40.7, -74.0)],
+                    column_values={"precip_mm_1h": [None]},
+                    distances_km=[None],
+                    model="gfs",
+                    client=client,
+                )
+        finally:
+            client.close()
 
     def test_extract_records_disambiguates_without_raising_error(self) -> None:
         """Integration-level test of _extract_records with duplicate entries."""
