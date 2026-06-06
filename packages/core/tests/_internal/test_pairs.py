@@ -563,6 +563,34 @@ class TestBuildPairsRow:
         assert row["fcst_high_f"] == pytest.approx(86.0)  # 87.8F leak excluded
         assert row["fcst_low_f"] == pytest.approx(86.0)
 
+    def test_om_pandas_timestamp_fields_do_not_raise(self) -> None:
+        """Issue #67 (codex P2): rows passed straight from
+        ``fetch_open_meteo(...).to_dict("records")`` carry pandas Timestamp
+        ``valid_at`` / ``issued_at``. build_pairs_row must coerce them, not
+        TypeError comparing Timestamp to the ISO-string window bounds."""
+        import pandas as pd
+
+        om = [
+            {
+                "valid_at": pd.Timestamp("2024-07-04T14:00:00Z"),
+                "issued_at": pd.Timestamp("2024-07-04T06:00:00Z"),
+                "temperature_c": 32.0,  # 89.6F
+                "model": "open-meteo-gfs",
+                "source": "open_meteo.previous_runs",
+            },
+            {
+                "valid_at": pd.Timestamp("2024-07-04T08:00:00Z"),
+                "issued_at": pd.Timestamp("2024-07-04T06:00:00Z"),
+                "temperature_c": 20.0,  # 68F
+                "model": "open-meteo-gfs",
+                "source": "open_meteo.previous_runs",
+            },
+        ]
+        row = build_pairs_row("2024-07-04", "NYC", [], None, om)
+        assert row["fcst_high_f"] == pytest.approx(89.6)
+        assert row["fcst_low_f"] == pytest.approx(68.0)
+        assert row["fcst_issued_at"] == "2024-07-04T06:00:00Z"
+
     def test_legacy_source_less_om_shape_classified_as_om(self) -> None:
         """Issue #67 (codex P2): the previously-documented OM shape — no
         ``source`` AND no ``issued_at``, carrying ``temperature_c`` — must

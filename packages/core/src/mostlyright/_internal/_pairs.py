@@ -184,6 +184,29 @@ def _select_best_run(
     return best_issued, runs[best_issued]
 
 
+def _to_iso_z(v: Any) -> Any:
+    """Coerce a timestamp-ish value to a canonical UTC ``...Z`` ISO string.
+
+    Open-Meteo rows produced directly by ``fetch_open_meteo(...).to_dict(
+    "records")`` carry pandas ``Timestamp`` ``valid_at`` / ``issued_at`` values,
+    not ISO strings. The forecast-window comparisons below are string-based, so
+    a direct caller of ``build_pairs_row`` would otherwise hit a ``TypeError``
+    comparing ``Timestamp`` to ``str`` (issue #67 / codex P2). ``str`` /
+    ``None`` pass through unchanged; anything date-like (pandas ``Timestamp`` is
+    a ``datetime`` subclass) is normalized to UTC and stamped ``%Y-%m-%dT%H:%M:%SZ``.
+    """
+    if v is None or isinstance(v, str):
+        return v
+    if hasattr(v, "strftime"):
+        try:
+            if getattr(v, "tzinfo", None) is not None:
+                v = v.astimezone(UTC)
+            return v.strftime("%Y-%m-%dT%H:%M:%SZ")
+        except Exception:
+            return v
+    return v
+
+
 def _is_open_meteo_record(r: dict[str, Any]) -> bool:
     """True if ``r`` is an Open-Meteo forecast record (issue #67).
 
@@ -393,9 +416,21 @@ def build_pairs_row(
             # Legacy source-less OM rows have no issued_at provenance and are
             # kept (documented all-window behavior — nothing to leak).
             cutoff_iso = market_close.strftime("%Y-%m-%dT%H:%M:%SZ")
+            # Normalize valid_at / issued_at to ISO-Z strings up front so direct
+            # callers passing raw fetch_open_meteo output (pandas Timestamps)
+            # don't TypeError against the string window bounds (codex P2). Shallow
+            # copies — the caller's row dicts are not mutated.
+            norm_om = [
+                {
+                    **r,
+                    "valid_at": _to_iso_z(r.get("valid_at")),
+                    "issued_at": _to_iso_z(r.get("issued_at")),
+                }
+                for r in om_records
+            ]
             window_om = [
                 r
-                for r in om_records
+                for r in norm_om
                 if win_start_iso <= r.get("valid_at", "") <= win_end_iso
                 and ((iss := r.get("issued_at")) is None or iss <= cutoff_iso)
             ]
