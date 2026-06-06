@@ -2,6 +2,16 @@
 
 All notable changes to `mostlyright`. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.3] — 2026-06-06 — Open-Meteo forecast-join correctness + research() docs
+
+Patch release: a forecast-join correctness fix for multi-source / Phase 20+ Open-Meteo callers, plus a documentation clarification for `research()`'s return granularity.
+
+### Fixed
+- **`build_pairs_row()` misclassified Open-Meteo forecasts as IEM MOS when a derived `issued_at` was present** ([#69](https://github.com/mostlyrightmd/mostlyright-sdk/pull/69), fixes [#67](https://github.com/mostlyrightmd/mostlyright-sdk/issues/67)). Phase 20+ Open-Meteo rows carry a derived `issued_at`, so the old `issued_at`-presence discriminator routed them into the IEM MOS aggregation path — silently nulling forecast temperatures and polluting IEM run-selection when both sources were combined. Records are now split by the authoritative `source` field (`open_meteo*` → Open-Meteo, else IEM; legacy source-less/`issued_at`-less rows stay Open-Meteo for backward compatibility). The fix also preserves Open-Meteo `pop_6hr_pct` / `qpf_6hr_in` and `fcst_issued_at` provenance through the source-routed path, and — critically — **excludes Open-Meteo rows from runs issued after market close** from the temp/POP/QPF aggregation (not just the timestamp), closing a lookahead-leakage path. The IEM-MOS byte-equivalent parity gate is unaffected.
+
+### Documentation
+- **Clarified that `research()` returns daily rows, not hourly observations** ([#70](https://github.com/mostlyrightmd/mostlyright-sdk/pull/70), addresses [#52](https://github.com/mostlyrightmd/mostlyright-sdk/issues/52)). The `Returns` docstring now states that `research()` yields one daily settlement-summary row per date (`obs_*` are settlement-window aggregates), points to `weather.obs()` for an observation-only daily frame, and notes that sub-daily / `raw_metar` access is a Sprint 0.5+ item.
+
 ## [1.5.2] — 2026-06-01 — Fetcher correctness fixes + configurable HTTP retries/timeout
 
 Patch release: four bug fixes across the Python and TypeScript SDKs — fractional integer-field handling in Open-Meteo, an exact-window observation fetch that no longer over-fetches a whole year, bounded-parallel IEM MOS forecast fetches, and env-var overrides for HTTP retry/timeout.
