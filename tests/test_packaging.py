@@ -21,6 +21,7 @@ behavior contract (Phase 1 v0.1.0) + Phase 6 PLAN.md W1-T3 cap-lift.
 
 from __future__ import annotations
 
+import re
 import tomllib
 from pathlib import Path
 
@@ -201,14 +202,27 @@ def test_weather_pins_core_to_active_major() -> None:
 
 
 def test_core_research_extra_pins_weather_to_active_major() -> None:
-    # Mirror of PKG-03 on the other side: `mostlyrightmd[research]` must
-    # pull an active-major mostlyrightmd-weather, not any 0.x.
+    # Mirror of PKG-03 on the other side: `mostlyrightmd[research]` must pull an
+    # active-major mostlyrightmd-weather (<2.0), not any 0.x. The floor is
+    # >=1.6.0: research() passes ``variables=`` to fetch_open_meteo, a kwarg
+    # introduced in weather 1.6.0 (#64) — an older pin would TypeError at call
+    # time. Accept the 1.6.0 floor or any higher active-major 1.x floor.
     research = _extras("core").get("research", [])
-    assert any(
-        d.startswith("mostlyrightmd-weather")
-        and (">=1.0.0,<2.0" in d.replace(" ", "") or ">=0.1.0,<0.2" in d.replace(" ", ""))
+    weather = [
+        d.replace(" ", "")
         for d in research
-    ), (
-        "mostlyrightmd[research] extra must constrain mostlyrightmd-weather to "
-        "the active major (>=1.0.0,<2.0 or >=0.1.0,<0.2)"
+        if d.replace(" ", "").startswith("mostlyrightmd-weather")
+    ]
+    assert weather, "mostlyrightmd[research] must depend on mostlyrightmd-weather"
+
+    def _floor_ge_1_6_active_major(dep: str) -> bool:
+        if ",<2.0" not in dep:
+            return False
+        m = re.search(r">=1\.(\d+)\.", dep)
+        return m is not None and int(m.group(1)) >= 6
+
+    assert any(_floor_ge_1_6_active_major(d) for d in weather), (
+        "mostlyrightmd[research] extra must constrain mostlyrightmd-weather to the "
+        "active major (<2.0) with a >=1.6.0 floor (fetch_open_meteo variables= kwarg); "
+        f"got {weather}"
     )
