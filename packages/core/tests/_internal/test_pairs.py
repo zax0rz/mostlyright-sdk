@@ -537,6 +537,28 @@ class TestBuildPairsRow:
         row = build_pairs_row("2024-07-04", "NYC", [], None, om)
         assert row["fcst_pop_6hr_pct"] == 60.0  # max over window
         assert row["fcst_qpf_6hr_in"] == pytest.approx(0.3)  # sum over window
+        # Issue #67 (codex P2): OM issued_at provenance must survive routing.
+        assert row["fcst_issued_at"] == "2024-07-04T06:00:00Z"
+
+    def test_om_issued_at_provenance_never_leaks_past_market_close(self) -> None:
+        """Issue #67 (codex P2): fcst_issued_at exposes the most-recent OM run
+        at-or-before market close — never a run issued after settlement."""
+        # NYC market close for 2024-07-04 is 21:30Z. A 23:00Z-issued run must
+        # NOT be exposed; the 06:00Z run is the latest eligible.
+        om = [
+            _om_record(
+                "2024-07-04T14:00:00Z",
+                temperature_c=30.0,
+                issued_at="2024-07-04T06:00:00Z",
+            ),
+            _om_record(
+                "2024-07-04T15:00:00Z",
+                temperature_c=31.0,
+                issued_at="2024-07-04T23:00:00Z",  # after market close - must be ignored
+            ),
+        ]
+        row = build_pairs_row("2024-07-04", "NYC", [], None, om)
+        assert row["fcst_issued_at"] == "2024-07-04T06:00:00Z"
 
     def test_legacy_source_less_om_shape_classified_as_om(self) -> None:
         """Issue #67 (codex P2): the previously-documented OM shape — no

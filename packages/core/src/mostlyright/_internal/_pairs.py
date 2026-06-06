@@ -410,6 +410,21 @@ def build_pairs_row(
             qpfs_om = [r["qpf_6hr_in"] for r in window_om if r.get("qpf_6hr_in") is not None]
             if qpfs_om:
                 fcst_qpf = sum(qpfs_om)
+            # ISSUED_AT provenance (leakage-safety): Phase 20+ OM rows carry a
+            # derived issued_at. Pre-#67 these rows flowed through the IEM
+            # branch, which set fcst_issued via _select_best_run; after source
+            # routing the OM branch must restore that provenance itself or
+            # fcst_issued_at regresses to None for forecast_source="open_meteo".
+            # Use the most-recent issued_at at-or-before market close so the
+            # exposed timestamp never leaks a forecast issued after settlement.
+            cutoff_iso = market_close.strftime("%Y-%m-%dT%H:%M:%SZ")
+            om_issued = [
+                iss
+                for r in window_om
+                if (iss := r.get("issued_at")) is not None and iss <= cutoff_iso
+            ]
+            if om_issued:
+                fcst_issued = max(om_issued)
 
         fcst.update(
             {
