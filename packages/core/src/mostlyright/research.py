@@ -1540,8 +1540,16 @@ def research(
             (all entries are covered).
 
     Returns:
-        DataFrame (or ``list[dict]`` when ``as_dataframe=False``) with one
-        row per settlement date in ``[from_date, to_date]``. Columns:
+        DataFrame (or ``list[dict]`` when ``as_dataframe=False``) with **one
+        row per settlement date** in ``[from_date, to_date]`` — a *daily*
+        summary, NOT hourly/sub-daily observations (issue #52). Each row's
+        ``obs_*`` columns are aggregates over that date's settlement window:
+        ``obs_high_f``/``obs_low_f`` are the window max/min and ``obs_mean_f``
+        is the mean of the sub-daily METARs. ``research()`` does not return
+        raw hourly rows; sub-daily / ``raw_metar`` access is a Sprint 0.5+
+        item (raw METARs are preserved internally for the planned re-parse
+        workflow). For an observation-only daily frame without CLI/forecast
+        columns, see :func:`mostlyright.weather.obs` (also daily). Columns:
 
         ``date`` (index when DataFrame), ``station``, ``cli_high_f``,
         ``cli_low_f``, ``cli_report_type``, ``obs_high_f``, ``obs_low_f``,
