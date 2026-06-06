@@ -86,18 +86,40 @@ def _iem_record(
 
 def _om_record(
     valid_at: str,
-    temperature_c: float = 28.0,
+    temperature_c: float | None = 28.0,
     model: str = "open-meteo-gfs",
     precipitation_probability_pct: float | None = None,
+    source: str = "open_meteo.previous_runs",
+    issued_at: str | None = None,
+    temperature_f: float | None = None,
+    pop_6hr_pct: float | None = None,
+    qpf_6hr_in: float | None = None,
 ) -> dict:
-    """Open-Meteo hourly forecast record matching specs/forecast_series.json."""
-    return {
+    """Open-Meteo hourly forecast record matching specs/forecast_series.json.
+
+    Real Open-Meteo rows always carry a ``source`` prefixed ``open_meteo`` —
+    that field (NOT ``issued_at`` presence) is the authoritative discriminator
+    from IEM MOS (issue #67). Phase 20+ rows also carry a derived ``issued_at``.
+    ``temperature_f`` is accepted to mirror the pre-converted shape that
+    ``research._fetch_open_meteo_range`` emits.
+    """
+    rec: dict = {
         "valid_at": valid_at,
-        "temperature_c": temperature_c,
         "model": model,
         "precipitation_probability_pct": precipitation_probability_pct,
-        # No issued_at - this distinguishes Open-Meteo from IEM MOS
+        "source": source,
     }
+    if temperature_c is not None:
+        rec["temperature_c"] = temperature_c
+    if temperature_f is not None:
+        rec["temperature_f"] = temperature_f
+    if issued_at is not None:
+        rec["issued_at"] = issued_at
+    if pop_6hr_pct is not None:
+        rec["pop_6hr_pct"] = pop_6hr_pct
+    if qpf_6hr_in is not None:
+        rec["qpf_6hr_in"] = qpf_6hr_in
+    return rec
 
 
 # ---------------------------------------------------------------------------
@@ -413,6 +435,160 @@ class TestBuildPairsRow:
         row = build_pairs_row("2024-07-04", "NYC", [], None, iem + om)
         assert row["fcst_high_f"] == pytest.approx(86.0)
         assert row["fcst_model"] == "open-meteo-gfs"
+
+    # ----- issue #67: source-based OM/IEM discrimination -----
+
+    def test_om_with_derived_issued_at_classified_by_source(self) -> None:
+        """Issue #67: Phase 20+ OM rows carry a derived ``issued_at`` but must
+        still be classified as Open-Meteo via their ``source`` prefix, not
+        misrouted into the IEM MOS aggregation path."""
+        om = [
+            _om_record(
+                "2024-07-04T08:00:00Z",
+                temperature_c=20.0,  # 68F
+                source="open_meteo.previous_runs",
+                issued_at="2024-07-04T06:00:00Z",
+            ),
+            _om_record(
+                "2024-07-04T14:00:00Z",
+                temperature_c=32.0,  # 89.6F
+                source="open_meteo.previous_runs",
+                issued_at="2024-07-04T06:00:00Z",
+            ),
+        ]
+        row = build_pairs_row("2024-07-04", "NYC", [], None, om)
+        assert row["fcst_high_f"] == pytest.approx(89.6)
+        assert row["fcst_low_f"] == pytest.approx(68.0)
+        assert row["fcst_model"] == "open-meteo-gfs"
+
+    def test_iem_preferred_over_om_even_when_om_has_issued_at(self) -> None:
+        """Issue #67: a hot OM row carrying ``issued_at`` must NOT pollute the
+        IEM MOS run-selection; IEM still wins and OM stays a fallback."""
+        iem = [
+            _iem_record(
+                "2024-07-04T12:00:00Z",
+                "2024-07-04T14:00:00Z",
+                temperature_f=89.0,
+                model="GFS",
+            )
+        ]
+        om = [
+            _om_record(
+                "2024-07-04T14:00:00Z",
+                temperature_c=99.0,  # very hot - must not win, must not corrupt IEM run
+                source="open_meteo.previous_runs",
+                issued_at="2024-07-04T06:00:00Z",
+            )
+        ]
+        row = build_pairs_row("2024-07-04", "NYC", [], None, iem + om)
+        assert row["fcst_high_f"] == 89.0
+        assert row["fcst_model"] == "GFS"
+
+    def test_om_research_wrapper_shape_temperature_f(self) -> None:
+        """Issue #67: rows shaped like ``_fetch_open_meteo_range`` output —
+        ``source`` + derived ``issued_at`` + pre-converted ``temperature_f``
+        (no ``temperature_c``) — must still aggregate, not return null."""
+        om = [
+            _om_record(
+                "2024-07-04T08:00:00Z",
+                temperature_c=None,
+                temperature_f=68.0,
+                source="open_meteo.previous_runs",
+                issued_at="2024-07-04T06:00:00Z",
+            ),
+            _om_record(
+                "2024-07-04T14:00:00Z",
+                temperature_c=None,
+                temperature_f=89.6,
+                source="open_meteo.previous_runs",
+                issued_at="2024-07-04T06:00:00Z",
+            ),
+        ]
+        row = build_pairs_row("2024-07-04", "NYC", [], None, om)
+        assert row["fcst_high_f"] == pytest.approx(89.6)
+        assert row["fcst_low_f"] == pytest.approx(68.0)
+
+    def test_om_research_wrapper_pop_and_qpf_survive(self) -> None:
+        """Issue #67 (codex P2): research-wrapper OM rows carry ``pop_6hr_pct``
+        / ``qpf_6hr_in`` (not ``precipitation_probability_pct``). Now that
+        source routing sends them to the OM branch, those precip columns must
+        still populate — not regress to None as they would if the OM branch
+        only read ``precipitation_probability_pct`` and never set QPF."""
+        om = [
+            _om_record(
+                "2024-07-04T08:00:00Z",
+                temperature_c=None,
+                temperature_f=68.0,
+                source="open_meteo.previous_runs",
+                issued_at="2024-07-04T06:00:00Z",
+                pop_6hr_pct=20.0,
+                qpf_6hr_in=0.1,
+            ),
+            _om_record(
+                "2024-07-04T14:00:00Z",
+                temperature_c=None,
+                temperature_f=89.6,
+                source="open_meteo.previous_runs",
+                issued_at="2024-07-04T06:00:00Z",
+                pop_6hr_pct=60.0,
+                qpf_6hr_in=0.2,
+            ),
+        ]
+        row = build_pairs_row("2024-07-04", "NYC", [], None, om)
+        assert row["fcst_pop_6hr_pct"] == 60.0  # max over window
+        assert row["fcst_qpf_6hr_in"] == pytest.approx(0.3)  # sum over window
+        # Issue #67 (codex P2): OM issued_at provenance must survive routing.
+        assert row["fcst_issued_at"] == "2024-07-04T06:00:00Z"
+
+    def test_om_after_close_run_excluded_from_aggregation(self) -> None:
+        """Issue #67 (codex P1, leakage): an OM row from a run issued AFTER
+        market close must not contribute its temp/POP/QPF to the pair, and its
+        timestamp must not be exposed. Only the eligible (<=close) run counts."""
+        # NYC market close for 2024-07-04 is 21:30Z. A 23:00Z-issued run is
+        # lookahead — its hot 31C reading must NOT raise fcst_high_f.
+        om = [
+            _om_record(
+                "2024-07-04T14:00:00Z",
+                temperature_c=30.0,  # 86F - eligible run
+                issued_at="2024-07-04T06:00:00Z",
+            ),
+            _om_record(
+                "2024-07-04T15:00:00Z",
+                temperature_c=31.0,  # 87.8F - AFTER close, must be excluded
+                issued_at="2024-07-04T23:00:00Z",
+            ),
+        ]
+        row = build_pairs_row("2024-07-04", "NYC", [], None, om)
+        assert row["fcst_issued_at"] == "2024-07-04T06:00:00Z"
+        assert row["fcst_high_f"] == pytest.approx(86.0)  # 87.8F leak excluded
+        assert row["fcst_low_f"] == pytest.approx(86.0)
+
+    def test_legacy_source_less_om_shape_classified_as_om(self) -> None:
+        """Issue #67 (codex P2): the previously-documented OM shape — no
+        ``source`` AND no ``issued_at``, carrying ``temperature_c`` — must
+        still classify as Open-Meteo (a record lacking both fields can only be
+        legacy OM; real IEM always carries issued_at). Without the legacy
+        fallback these rows would misroute to the IEM branch and null out."""
+        legacy_om = [
+            {"valid_at": "2024-07-04T08:00:00Z", "temperature_c": 20.0, "model": "om"},  # 68F
+            {"valid_at": "2024-07-04T14:00:00Z", "temperature_c": 32.0, "model": "om"},  # 89.6F
+        ]
+        row = build_pairs_row("2024-07-04", "NYC", [], None, legacy_om)
+        assert row["fcst_high_f"] == pytest.approx(89.6)
+        assert row["fcst_low_f"] == pytest.approx(68.0)
+
+    def test_om_pop_zero_not_dropped(self) -> None:
+        """A valid 0.0 POP must survive the alias fallback (no truthiness bug)."""
+        om = [
+            _om_record(
+                "2024-07-04T14:00:00Z",
+                temperature_c=20.0,
+                source="open_meteo.previous_runs",
+                precipitation_probability_pct=0.0,
+            )
+        ]
+        row = build_pairs_row("2024-07-04", "NYC", [], None, om)
+        assert row["fcst_pop_6hr_pct"] == 0.0
 
     def test_fcst_pop_6hr_pct_from_iem(self) -> None:
         records = [
