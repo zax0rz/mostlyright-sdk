@@ -538,6 +538,20 @@ class TestBuildPairsRow:
         assert row["fcst_pop_6hr_pct"] == 60.0  # max over window
         assert row["fcst_qpf_6hr_in"] == pytest.approx(0.3)  # sum over window
 
+    def test_legacy_source_less_om_shape_classified_as_om(self) -> None:
+        """Issue #67 (codex P2): the previously-documented OM shape — no
+        ``source`` AND no ``issued_at``, carrying ``temperature_c`` — must
+        still classify as Open-Meteo (a record lacking both fields can only be
+        legacy OM; real IEM always carries issued_at). Without the legacy
+        fallback these rows would misroute to the IEM branch and null out."""
+        legacy_om = [
+            {"valid_at": "2024-07-04T08:00:00Z", "temperature_c": 20.0, "model": "om"},  # 68F
+            {"valid_at": "2024-07-04T14:00:00Z", "temperature_c": 32.0, "model": "om"},  # 89.6F
+        ]
+        row = build_pairs_row("2024-07-04", "NYC", [], None, legacy_om)
+        assert row["fcst_high_f"] == pytest.approx(89.6)
+        assert row["fcst_low_f"] == pytest.approx(68.0)
+
     def test_om_pop_zero_not_dropped(self) -> None:
         """A valid 0.0 POP must survive the alias fallback (no truthiness bug)."""
         om = [

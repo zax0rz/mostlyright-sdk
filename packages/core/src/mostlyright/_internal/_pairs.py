@@ -184,6 +184,26 @@ def _select_best_run(
     return best_issued, runs[best_issued]
 
 
+def _is_open_meteo_record(r: dict[str, Any]) -> bool:
+    """True if ``r`` is an Open-Meteo forecast record (issue #67).
+
+    The authoritative signal is the ``source`` field: real Open-Meteo rows
+    carry ``source`` prefixed ``open_meteo`` (.previous_runs / .single_run /
+    .seamless / .live), while IEM MOS rows carry ``source="iem.archive"``.
+
+    For backward compatibility, the previously-documented *legacy* Open-Meteo
+    shape — no ``source`` AND no ``issued_at`` (the old ``forecast_series.json``
+    discriminator) — is also treated as Open-Meteo. Real IEM MOS rows always
+    carry an ``issued_at``, so a record lacking both fields can only be a
+    legacy OM row; this avoids regressing source-less OM callers to null.
+    """
+    src = str(r.get("source") or "")
+    if src.startswith("open_meteo"):
+        return True
+    # Legacy OM shape (pre-Phase-20): no source, no issued_at.
+    return not src and not r.get("issued_at")
+
+
 def _aggregate_fcst_temps_iem(
     run_records: list[dict[str, Any]],
     window_start_iso: str,
@@ -312,19 +332,16 @@ def build_pairs_row(
         win_end_iso = win_end.strftime("%Y-%m-%dT%H:%M:%SZ")
 
         # Separate IEM MOS from Open-Meteo by the authoritative ``source``
-        # field (issue #67). ``issued_at`` presence is NOT a valid
-        # discriminator: Phase 20+ Open-Meteo rows carry a derived
+        # field (issue #67), with a legacy no-source/no-issued_at fallback —
+        # see _is_open_meteo_record. ``issued_at`` presence alone is NOT a
+        # valid discriminator: Phase 20+ Open-Meteo rows carry a derived
         # ``issued_at`` (for cycle-math / previous-runs caching), so the old
         # ``issued_at``-based split misrouted those rows into the IEM MOS
         # aggregation path, silently nulling forecast temps and polluting IEM
-        # run-selection. IEM rows carry ``source="iem.archive"``; Open-Meteo
-        # rows carry ``source`` prefixed ``open_meteo`` (.previous_runs /
-        # .single_run / .seamless / .live). research._fetch_open_meteo_range
-        # already documents this contract ("discriminates via row.get('source')").
-        om_records = [r for r in forecasts if str(r.get("source") or "").startswith("open_meteo")]
-        iem_records = [
-            r for r in forecasts if not str(r.get("source") or "").startswith("open_meteo")
-        ]
+        # run-selection. research._fetch_open_meteo_range already documents
+        # this contract ("discriminates via row.get('source')").
+        om_records = [r for r in forecasts if _is_open_meteo_record(r)]
+        iem_records = [r for r in forecasts if not _is_open_meteo_record(r)]
 
         # Apply forecast_model filter to IEM MOS records before run selection.
         # Phase 17 Wave 4 iter-3 review HIGH: case-insensitive match because
