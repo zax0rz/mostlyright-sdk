@@ -540,25 +540,28 @@ class TestBuildPairsRow:
         # Issue #67 (codex P2): OM issued_at provenance must survive routing.
         assert row["fcst_issued_at"] == "2024-07-04T06:00:00Z"
 
-    def test_om_issued_at_provenance_never_leaks_past_market_close(self) -> None:
-        """Issue #67 (codex P2): fcst_issued_at exposes the most-recent OM run
-        at-or-before market close — never a run issued after settlement."""
-        # NYC market close for 2024-07-04 is 21:30Z. A 23:00Z-issued run must
-        # NOT be exposed; the 06:00Z run is the latest eligible.
+    def test_om_after_close_run_excluded_from_aggregation(self) -> None:
+        """Issue #67 (codex P1, leakage): an OM row from a run issued AFTER
+        market close must not contribute its temp/POP/QPF to the pair, and its
+        timestamp must not be exposed. Only the eligible (<=close) run counts."""
+        # NYC market close for 2024-07-04 is 21:30Z. A 23:00Z-issued run is
+        # lookahead — its hot 31C reading must NOT raise fcst_high_f.
         om = [
             _om_record(
                 "2024-07-04T14:00:00Z",
-                temperature_c=30.0,
+                temperature_c=30.0,  # 86F - eligible run
                 issued_at="2024-07-04T06:00:00Z",
             ),
             _om_record(
                 "2024-07-04T15:00:00Z",
-                temperature_c=31.0,
-                issued_at="2024-07-04T23:00:00Z",  # after market close - must be ignored
+                temperature_c=31.0,  # 87.8F - AFTER close, must be excluded
+                issued_at="2024-07-04T23:00:00Z",
             ),
         ]
         row = build_pairs_row("2024-07-04", "NYC", [], None, om)
         assert row["fcst_issued_at"] == "2024-07-04T06:00:00Z"
+        assert row["fcst_high_f"] == pytest.approx(86.0)  # 87.8F leak excluded
+        assert row["fcst_low_f"] == pytest.approx(86.0)
 
     def test_legacy_source_less_om_shape_classified_as_om(self) -> None:
         """Issue #67 (codex P2): the previously-documented OM shape — no

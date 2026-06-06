@@ -383,48 +383,54 @@ def build_pairs_row(
 
         # Fall back to Open-Meteo if IEM MOS yielded no temperature data
         if fcst_high is None and om_records:
-            fcst_high, fcst_low = _aggregate_fcst_temps_openmeteo(
-                om_records, win_start_iso, win_end_iso
-            )
-            fcst_model = next((r.get("model") for r in om_records if r.get("model")), "open-meteo")
-            window_om = [
-                r for r in om_records if win_start_iso <= r.get("valid_at", "") <= win_end_iso
-            ]
-            # POP: accept the unit-contract ``precipitation_probability_pct``
-            # OR the ``pop_6hr_pct`` alias that research._fetch_open_meteo_range
-            # emits. Without the alias, source-discriminated wrapper rows (which
-            # carry pop_6hr_pct, not precipitation_probability_pct) would regress
-            # POP to None now that they no longer flow through the IEM branch
-            # (issue #67). Explicit None-checks preserve a valid 0.0 reading.
-            probs: list[float] = []
-            for r in window_om:
-                p = r.get("precipitation_probability_pct")
-                if p is None:
-                    p = r.get("pop_6hr_pct")
-                if p is not None:
-                    probs.append(p)
-            fcst_pop = max(probs) if probs else None
-            # QPF: the OM unit-contract shape carries no QPF, but the research
-            # wrapper emits ``qpf_6hr_in`` — sum it over the window to match the
-            # IEM-branch semantics (else wrapper QPF regresses to None too).
-            qpfs_om = [r["qpf_6hr_in"] for r in window_om if r.get("qpf_6hr_in") is not None]
-            if qpfs_om:
-                fcst_qpf = sum(qpfs_om)
-            # ISSUED_AT provenance (leakage-safety): Phase 20+ OM rows carry a
-            # derived issued_at. Pre-#67 these rows flowed through the IEM
-            # branch, which set fcst_issued via _select_best_run; after source
-            # routing the OM branch must restore that provenance itself or
-            # fcst_issued_at regresses to None for forecast_source="open_meteo".
-            # Use the most-recent issued_at at-or-before market close so the
-            # exposed timestamp never leaks a forecast issued after settlement.
+            # Leakage guard (issue #67, codex P1): Phase 20+ OM rows carry a
+            # derived issued_at. Pre-#67 these flowed through the IEM branch,
+            # where _select_best_run filtered runs issued AFTER market close.
+            # The OM branch has no such filter, so apply the cutoff here too —
+            # otherwise a row from a run issued after settlement (e.g. live /
+            # single-run cycles mixed into training pairs) would leak its
+            # temperature/POP/QPF into the pair, not just its timestamp.
+            # Legacy source-less OM rows have no issued_at provenance and are
+            # kept (documented all-window behavior — nothing to leak).
             cutoff_iso = market_close.strftime("%Y-%m-%dT%H:%M:%SZ")
-            om_issued = [
-                iss
-                for r in window_om
-                if (iss := r.get("issued_at")) is not None and iss <= cutoff_iso
+            window_om = [
+                r
+                for r in om_records
+                if win_start_iso <= r.get("valid_at", "") <= win_end_iso
+                and ((iss := r.get("issued_at")) is None or iss <= cutoff_iso)
             ]
-            if om_issued:
-                fcst_issued = max(om_issued)
+            fcst_high, fcst_low = _aggregate_fcst_temps_openmeteo(
+                window_om, win_start_iso, win_end_iso
+            )
+            if window_om:
+                fcst_model = next(
+                    (r.get("model") for r in window_om if r.get("model")), "open-meteo"
+                )
+                # POP: accept the unit-contract ``precipitation_probability_pct``
+                # OR the ``pop_6hr_pct`` alias research._fetch_open_meteo_range
+                # emits. Without the alias, source-discriminated wrapper rows
+                # would regress POP to None now that they no longer flow through
+                # the IEM branch. Explicit None-checks preserve a valid 0.0.
+                probs: list[float] = []
+                for r in window_om:
+                    p = r.get("precipitation_probability_pct")
+                    if p is None:
+                        p = r.get("pop_6hr_pct")
+                    if p is not None:
+                        probs.append(p)
+                fcst_pop = max(probs) if probs else None
+                # QPF: the OM unit-contract shape carries no QPF, but the
+                # research wrapper emits ``qpf_6hr_in`` — sum over the window to
+                # match IEM-branch semantics (else wrapper QPF regresses too).
+                qpfs_om = [r["qpf_6hr_in"] for r in window_om if r.get("qpf_6hr_in") is not None]
+                if qpfs_om:
+                    fcst_qpf = sum(qpfs_om)
+                # ISSUED_AT provenance: most-recent run timestamp (all already
+                # <= cutoff by the window_om filter above). None for legacy
+                # source-less rows.
+                om_issued = [iss for r in window_om if (iss := r.get("issued_at")) is not None]
+                if om_issued:
+                    fcst_issued = max(om_issued)
 
         fcst.update(
             {
