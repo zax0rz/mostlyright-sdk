@@ -569,12 +569,15 @@ def fetch_open_meteo(
 
     lat, lon = _station_to_lat_lon(station)
 
-    # Chunk date ranges >14 days for Previous Runs API (no issued_at).
-    # Single Runs uses run= and returns a full 168h horizon — no chunking.
-    if issued_at is None and endpoint == OPEN_METEO_PREVIOUS_RUNS_URL:
-        chunks = _chunk_date_range(from_date, to_date)
-    else:
+    # Chunk date ranges >14 days for every endpoint that bills by start_date/
+    # end_date window (Previous Runs, Seamless, Live) — keeps per-call weighted
+    # cost low and avoids the free-tier rate limit (#64). Single Runs is the one
+    # exception: it sends only run= and returns a fixed ~168h horizon, so it
+    # stays a single call (codex P2).
+    if endpoint == OPEN_METEO_SINGLE_RUNS_URL:
         chunks = [(from_date, to_date)]
+    else:
+        chunks = _chunk_date_range(from_date, to_date)
 
     close_client = client is None
     if client is None:

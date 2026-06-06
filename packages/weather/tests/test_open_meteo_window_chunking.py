@@ -211,3 +211,31 @@ def test_single_runs_polite_delay_uses_fixed_horizon_not_window() -> None:
     # polite sleep. The buggy window-scaled path would sleep ~5s (cost ~26).
     assert sleeps, "expected a polite delay sleep"
     assert max(sleeps) <= 0.5, f"polite delay scaled by requested window: {max(sleeps)}s"
+
+
+def test_seamless_window_over_14_days_is_chunked() -> None:
+    """Issue #64 / codex P2: the seamless endpoint also bills by start_date/
+    end_date, so long seamless windows must chunk too — only Single-Runs (run=)
+    is exempt."""
+    calls: list[dict[str, str]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        qp = dict(httpx.QueryParams(request.url.query))
+        calls.append(qp)
+        return httpx.Response(200, json=_payload_for_window(qp["start_date"], qp["end_date"]))
+
+    transport = httpx.MockTransport(handler)
+    client = httpx.Client(transport=transport)
+    fetch_open_meteo(
+        "NYC",
+        "2024-06-01",
+        "2024-06-30",  # 30 days -> must chunk into ≤14-day requests
+        model="gfs_global",
+        mode="seamless",
+        allow_leakage=True,
+        variables=("temperature_2m",),
+        client=client,
+    )
+    assert len(calls) >= 3, f"seamless 30-day window not chunked: {len(calls)} call(s)"
+    # Every chunk must carry date params (seamless uses start_date/end_date).
+    assert all("start_date" in c and "end_date" in c for c in calls)
