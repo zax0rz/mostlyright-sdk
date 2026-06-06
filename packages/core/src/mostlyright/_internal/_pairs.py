@@ -258,11 +258,17 @@ def _aggregate_fcst_temps_openmeteo(
 ) -> tuple[float | None, float | None]:
     """Aggregate Open-Meteo hourly temperature (-> F) over the settlement window.
 
-    Open-Meteo rows store temperature in Celsius under ``temperature_c``.
-    Conversion: F = C * 9/5 + 32. As a fallback, rows that already carry a
-    pre-converted ``temperature_f`` (the shape ``research._fetch_open_meteo_range``
-    emits) are used as-is — without this fallback, source-discriminated OM rows
-    from the research() wrapper would aggregate to null (issue #67).
+    Open-Meteo rows store temperature in Celsius. The field name varies by
+    producer, so accept all three shapes (issue #67):
+
+    - ``temperature_c`` — the unit-contract / specs name (°C -> F).
+    - ``temp_c`` — the canonical column name on a raw
+      ``fetch_open_meteo(...).to_dict("records")`` row (°C -> F).
+    - ``temperature_f`` — pre-converted Fahrenheit, the shape
+      ``research._fetch_open_meteo_range`` emits (used as-is).
+
+    Without covering all three, source-discriminated OM rows from either the
+    research() wrapper or the public fetcher would aggregate to null.
 
     Args:
         run_records: All Open-Meteo hourly records for the date.
@@ -277,6 +283,8 @@ def _aggregate_fcst_temps_openmeteo(
         if not (window_start_iso <= r.get("valid_at", "") <= window_end_iso):
             continue
         temp_c = r.get("temperature_c")
+        if temp_c is None:
+            temp_c = r.get("temp_c")
         if temp_c is not None:
             temps_f.append(temp_c * 9 / 5 + 32)
             continue

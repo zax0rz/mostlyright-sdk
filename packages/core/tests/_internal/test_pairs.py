@@ -570,18 +570,20 @@ class TestBuildPairsRow:
         TypeError comparing Timestamp to the ISO-string window bounds."""
         import pandas as pd
 
+        # Mirror raw fetcher output: pandas Timestamps + the canonical ``temp_c``
+        # field name (not ``temperature_c``/``temperature_f``).
         om = [
             {
                 "valid_at": pd.Timestamp("2024-07-04T14:00:00Z"),
                 "issued_at": pd.Timestamp("2024-07-04T06:00:00Z"),
-                "temperature_c": 32.0,  # 89.6F
+                "temp_c": 32.0,  # 89.6F
                 "model": "open-meteo-gfs",
                 "source": "open_meteo.previous_runs",
             },
             {
                 "valid_at": pd.Timestamp("2024-07-04T08:00:00Z"),
                 "issued_at": pd.Timestamp("2024-07-04T06:00:00Z"),
-                "temperature_c": 20.0,  # 68F
+                "temp_c": 20.0,  # 68F
                 "model": "open-meteo-gfs",
                 "source": "open_meteo.previous_runs",
             },
