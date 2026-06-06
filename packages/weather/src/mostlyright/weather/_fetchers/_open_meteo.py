@@ -654,6 +654,21 @@ def fetch_open_meteo(
         hi = pd.Timestamp(to_date, tz="UTC") + pd.Timedelta(days=1)
         df = df[(df["valid_at"] >= lo) & (df["valid_at"] < hi)]
 
+    # Restamp source-identity / fetch provenance (issue #64 / codex P2):
+    # BOTH pd.concat (multi-chunk Previous-Runs windows >14 days) and boolean
+    # row-masking (the Single-Runs clip above) drop ``df.attrs``. Each per-chunk
+    # frame already carries attrs["source"]/["retrieved_at"] from
+    # _project_payload_to_dataframe; without re-stamping, chunked/clipped frames
+    # return rows lacking the documented provenance and fail
+    # validate_dataframe(...)'s source_attr_required check. Use the latest chunk
+    # retrieved_at as the combined-frame timestamp.
+    df.attrs["source"] = frames[0].attrs.get("source")
+    _retrieved = [
+        f.attrs.get("retrieved_at") for f in frames if f.attrs.get("retrieved_at") is not None
+    ]
+    if _retrieved:
+        df.attrs["retrieved_at"] = max(_retrieved)
+
     return df
 
 

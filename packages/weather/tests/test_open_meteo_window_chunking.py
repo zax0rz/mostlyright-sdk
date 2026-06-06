@@ -141,3 +141,29 @@ def test_single_runs_mode_not_chunked() -> None:
     # Single-Runs uses run= once; no client-side chunking.
     assert len(calls) == 1
     assert calls[0].get("run") == "2024-06-01T06:00"
+
+
+def test_chunked_window_preserves_source_attrs() -> None:
+    """Issue #64 / codex P2: a >14-day Previous-Runs window is fetched in
+    multiple chunks and concatenated; pd.concat drops df.attrs, so the combined
+    frame must be re-stamped with the documented source-identity / retrieved_at
+    provenance (else validate_dataframe's source_attr_required fails)."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        qp = dict(httpx.QueryParams(request.url.query))
+        return httpx.Response(200, json=_payload_for_window(qp["start_date"], qp["end_date"]))
+
+    transport = httpx.MockTransport(handler)
+    client = httpx.Client(transport=transport)
+    df = fetch_open_meteo(
+        "NYC",
+        "2024-06-01",
+        "2024-06-30",  # 30 days -> 3 chunks -> pd.concat
+        model="gfs_global",
+        mode="training",
+        variables=("temperature_2m",),
+        client=client,
+    )
+    # Provenance attrs must survive the multi-chunk concat.
+    assert df.attrs.get("source") == "open_meteo.previous_runs"
+    assert df.attrs.get("retrieved_at") is not None
