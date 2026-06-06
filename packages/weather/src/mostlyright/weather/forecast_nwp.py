@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import logging
 import math
+import re
 import tempfile
 from concurrent.futures import ThreadPoolExecutor, wait
 from datetime import UTC, datetime, timedelta
@@ -129,6 +130,9 @@ _GRIB_VAR_TO_CFGRIB_NAME: dict[tuple[str, str], str] = {
     ("PRES", "surface"): "sp",
     ("MSLMA", "mean sea level"): "mslma",
     ("PRMSL", "mean sea level"): "prmsl",
+    ("TCDC", "entire atmosphere"): "tcc",
+    ("VIS", "surface"): "vis",
+    ("HGT", "cloud ceiling"): "gh",
 }
 
 
@@ -364,6 +368,37 @@ def _try_fetch_records_for_mirror(
     return plan, filtered, content_length
 
 
+# ----------------------------------------------------------------------
+# Disambiguation helpers
+# ----------------------------------------------------------------------
+_WINDOW_RE = re.compile(r"\b(ave|acc|max|min)\b")
+
+
+def _pick_record(group: list[IdxRecord]) -> IdxRecord | None:
+    """Disambiguate multiple .idx records for the same (variable, level).
+
+    Resolution rules (issue #63 Option A) — only resolve the cases we
+    understand, and fail loud on the rest:
+
+    - Prefer an instantaneous (non-window) record over window-aggregated ones;
+      break ties by lowest ``record_no``. Handles the GFS
+      ``TCDC:entire atmosphere`` instantaneous-vs-averaged pair.
+    - If every record is window-aggregated but they share an IDENTICAL
+      ``forecast_period`` (the GFS ``APCP:surface`` twin — two records, same
+      accumulation window, same data), pick the lowest ``record_no``.
+    - Otherwise — multiple DISTINCT aggregation windows with no instantaneous
+      record — return ``None`` so the caller fails loud with a
+      :class:`GribIntegrityError` rather than silently populating the column
+      from an arbitrary window.
+    """
+    non_window = [r for r in group if not _WINDOW_RE.search(r.forecast_period)]
+    if non_window:
+        return min(non_window, key=lambda r: r.record_no)
+    if len({r.forecast_period for r in group}) == 1:
+        return min(group, key=lambda r: r.record_no)
+    return None
+
+
 class _MirrorTransportFailed(Exception):
     """Internal sentinel — a byte-range HTTP call failed mid-extraction.
 
@@ -414,17 +449,28 @@ def _extract_records(
         if not group:
             continue
         if len(group) > 1:
-            raise GribIntegrityError(
-                f"ambiguous .idx records for {key}: "
-                f"{[r.forecast_period for r in group]} — "
-                "mostlyright v0.1 picks one record per (variable, level); "
-                "for accumulated fields with multiple windows, "
-                "extend VARIABLE_MAP to a (variable, level, forecast_period) "
-                "tuple or pin the desired window via Phase 3.4 QC engine.",
-                model=model,
-                variable=key[0],
+            rec = _pick_record(group)
+            if rec is None:
+                # Genuinely ambiguous (multiple distinct aggregation windows,
+                # no instantaneous record) — fail loud rather than silently
+                # pick an arbitrary window (issue #63 / codex P2).
+                raise GribIntegrityError(
+                    f"ambiguous .idx records for {key}: "
+                    f"{[r.forecast_period for r in group]} — multiple distinct "
+                    f"aggregation windows with no instantaneous record; cannot "
+                    f"disambiguate safely",
+                    model=model,
+                    variable=key[0],
+                )
+            log.warning(
+                "ambiguous .idx records for %s: %s — picked record_no=%d (%s)",
+                key,
+                [r.forecast_period for r in group],
+                rec.record_no,
+                rec.forecast_period,
             )
-        rec = group[0]
+        else:
+            rec = group[0]
         if rec.byte_end is None:
             continue
         work.append((col, key, rec))
@@ -938,6 +984,9 @@ def forecast_nwp(
             "precip_mm_1h",
             "pressure_pa_surface",
             "pressure_pa_mslp",
+            "cloud_cover_pct",
+            "visibility_m",
+            "cloud_ceiling_m",
         )
         for i, (station_id, _, _) in enumerate(resolved):
             row: dict[str, Any] = {
@@ -1051,6 +1100,9 @@ def _empty_dataframe(*, model: str, grid_kind: str) -> pd.DataFrame:
             "precip_mm_1h": pd.Series(dtype="float64"),
             "pressure_pa_surface": pd.Series(dtype="float64"),
             "pressure_pa_mslp": pd.Series(dtype="float64"),
+            "cloud_cover_pct": pd.Series(dtype="float64"),
+            "visibility_m": pd.Series(dtype="float64"),
+            "cloud_ceiling_m": pd.Series(dtype="float64"),
             "qc_status": pd.Series(dtype="object"),
             "retrieved_at": pd.Series(dtype="datetime64[ns, UTC]"),
         }

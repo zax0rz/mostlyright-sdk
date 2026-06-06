@@ -31,12 +31,16 @@ pairs() returns one row per settlement date, joining:
 
 This is the primary training/feature surface for AI settlement models.
 
-Forecast join:
-  - IEM MOS records (`forecast.json`) have `issued_at`; grouped by issued_at to
-    pick the most-recent run before market close, then temperature_f values for
-    valid_at timestamps within the settlement window are aggregated (max/min).
-  - Open-Meteo records (`forecast_series.json`) have no issued_at; all records
-    in the settlement window are used. temperature_c is converted to F.
+Forecast join (records are split by their authoritative ``source`` field —
+``source`` prefixed ``open_meteo`` -> Open-Meteo, else IEM MOS; see issue #67):
+  - IEM MOS records (`forecast.json`, `source="iem.archive"`) are grouped by
+    issued_at to pick the most-recent run before market close, then
+    temperature_f values for valid_at timestamps within the settlement window
+    are aggregated (max/min).
+  - Open-Meteo records (`forecast_series.json`, `source="open_meteo.*"`) use
+    all records in the settlement window. temperature_c is converted to F
+    (or a pre-converted temperature_f is used as-is). NOTE: Phase 20+ OM rows
+    also carry a derived `issued_at`, so `issued_at` is NOT the discriminator.
   - If both are available, IEM MOS is preferred. Open-Meteo used as fallback.
   - If forecast data is unavailable, forecast columns are None - the row is
     still returned.
@@ -180,6 +184,49 @@ def _select_best_run(
     return best_issued, runs[best_issued]
 
 
+def _to_iso_z(v: Any) -> Any:
+    """Coerce a timestamp-ish value to a canonical UTC ``...Z`` ISO string.
+
+    Open-Meteo rows produced directly by ``fetch_open_meteo(...).to_dict(
+    "records")`` carry pandas ``Timestamp`` ``valid_at`` / ``issued_at`` values,
+    not ISO strings. The forecast-window comparisons below are string-based, so
+    a direct caller of ``build_pairs_row`` would otherwise hit a ``TypeError``
+    comparing ``Timestamp`` to ``str`` (issue #67 / codex P2). ``str`` /
+    ``None`` pass through unchanged; anything date-like (pandas ``Timestamp`` is
+    a ``datetime`` subclass) is normalized to UTC and stamped ``%Y-%m-%dT%H:%M:%SZ``.
+    """
+    if v is None or isinstance(v, str):
+        return v
+    if hasattr(v, "strftime"):
+        try:
+            if getattr(v, "tzinfo", None) is not None:
+                v = v.astimezone(UTC)
+            return v.strftime("%Y-%m-%dT%H:%M:%SZ")
+        except Exception:
+            return v
+    return v
+
+
+def _is_open_meteo_record(r: dict[str, Any]) -> bool:
+    """True if ``r`` is an Open-Meteo forecast record (issue #67).
+
+    The authoritative signal is the ``source`` field: real Open-Meteo rows
+    carry ``source`` prefixed ``open_meteo`` (.previous_runs / .single_run /
+    .seamless / .live), while IEM MOS rows carry ``source="iem.archive"``.
+
+    For backward compatibility, the previously-documented *legacy* Open-Meteo
+    shape — no ``source`` AND no ``issued_at`` (the old ``forecast_series.json``
+    discriminator) — is also treated as Open-Meteo. Real IEM MOS rows always
+    carry an ``issued_at``, so a record lacking both fields can only be a
+    legacy OM row; this avoids regressing source-less OM callers to null.
+    """
+    src = str(r.get("source") or "")
+    if src.startswith("open_meteo"):
+        return True
+    # Legacy OM shape (pre-Phase-20): no source, no issued_at.
+    return not src and not r.get("issued_at")
+
+
 def _aggregate_fcst_temps_iem(
     run_records: list[dict[str, Any]],
     window_start_iso: str,
@@ -209,9 +256,19 @@ def _aggregate_fcst_temps_openmeteo(
     window_start_iso: str,
     window_end_iso: str,
 ) -> tuple[float | None, float | None]:
-    """Aggregate Open-Meteo hourly temperature_c (-> F) over the settlement window.
+    """Aggregate Open-Meteo hourly temperature (-> F) over the settlement window.
 
-    Open-Meteo stores temperature in Celsius. Conversion: F = C * 9/5 + 32.
+    Open-Meteo rows store temperature in Celsius. The field name varies by
+    producer, so accept all three shapes (issue #67):
+
+    - ``temperature_c`` — the unit-contract / specs name (°C -> F).
+    - ``temp_c`` — the canonical column name on a raw
+      ``fetch_open_meteo(...).to_dict("records")`` row (°C -> F).
+    - ``temperature_f`` — pre-converted Fahrenheit, the shape
+      ``research._fetch_open_meteo_range`` emits (used as-is).
+
+    Without covering all three, source-discriminated OM rows from either the
+    research() wrapper or the public fetcher would aggregate to null.
 
     Args:
         run_records: All Open-Meteo hourly records for the date.
@@ -221,12 +278,19 @@ def _aggregate_fcst_temps_openmeteo(
     Returns:
         (fcst_high_f, fcst_low_f) or (None, None) if no records in window.
     """
-    temps_f = [
-        r["temperature_c"] * 9 / 5 + 32
-        for r in run_records
-        if r.get("temperature_c") is not None
-        and window_start_iso <= r.get("valid_at", "") <= window_end_iso
-    ]
+    temps_f: list[float] = []
+    for r in run_records:
+        if not (window_start_iso <= r.get("valid_at", "") <= window_end_iso):
+            continue
+        temp_c = r.get("temperature_c")
+        if temp_c is None:
+            temp_c = r.get("temp_c")
+        if temp_c is not None:
+            temps_f.append(temp_c * 9 / 5 + 32)
+            continue
+        temp_f = r.get("temperature_f")
+        if temp_f is not None:
+            temps_f.append(temp_f)
     return (max(temps_f), min(temps_f)) if temps_f else (None, None)
 
 
@@ -250,7 +314,10 @@ def build_pairs_row(
         climate: NWS CLI record for the date (or None). Must be a dict or None
             - non-dict values are treated as None.
         forecasts: All forecast records with valid_at (or None if unavailable).
-            IEM MOS records have issued_at; Open-Meteo records do not.
+            Records are split by their ``source`` field: ``source`` prefixed
+            ``open_meteo`` -> Open-Meteo, everything else (e.g.
+            ``source="iem.archive"``) -> IEM MOS. ``issued_at`` is NOT used as
+            the discriminator (Phase 20+ Open-Meteo rows carry one too).
         forecast_model: Filter IEM MOS records to this model before run
             selection. None = no filtering (best available run).
         tz_override: IANA timezone name override for stations not in the known
@@ -295,9 +362,17 @@ def build_pairs_row(
         win_start_iso = win_start.strftime("%Y-%m-%dT%H:%M:%SZ")
         win_end_iso = win_end.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        # Separate IEM MOS (has issued_at) from Open-Meteo (no issued_at)
-        iem_records = [r for r in forecasts if r.get("issued_at")]
-        om_records = [r for r in forecasts if not r.get("issued_at")]
+        # Separate IEM MOS from Open-Meteo by the authoritative ``source``
+        # field (issue #67), with a legacy no-source/no-issued_at fallback —
+        # see _is_open_meteo_record. ``issued_at`` presence alone is NOT a
+        # valid discriminator: Phase 20+ Open-Meteo rows carry a derived
+        # ``issued_at`` (for cycle-math / previous-runs caching), so the old
+        # ``issued_at``-based split misrouted those rows into the IEM MOS
+        # aggregation path, silently nulling forecast temps and polluting IEM
+        # run-selection. research._fetch_open_meteo_range already documents
+        # this contract ("discriminates via row.get('source')").
+        om_records = [r for r in forecasts if _is_open_meteo_record(r)]
+        iem_records = [r for r in forecasts if not _is_open_meteo_record(r)]
 
         # Apply forecast_model filter to IEM MOS records before run selection.
         # Phase 17 Wave 4 iter-3 review HIGH: case-insensitive match because
@@ -339,19 +414,66 @@ def build_pairs_row(
 
         # Fall back to Open-Meteo if IEM MOS yielded no temperature data
         if fcst_high is None and om_records:
-            fcst_high, fcst_low = _aggregate_fcst_temps_openmeteo(
-                om_records, win_start_iso, win_end_iso
-            )
-            fcst_model = next((r.get("model") for r in om_records if r.get("model")), "open-meteo")
+            # Leakage guard (issue #67, codex P1): Phase 20+ OM rows carry a
+            # derived issued_at. Pre-#67 these flowed through the IEM branch,
+            # where _select_best_run filtered runs issued AFTER market close.
+            # The OM branch has no such filter, so apply the cutoff here too —
+            # otherwise a row from a run issued after settlement (e.g. live /
+            # single-run cycles mixed into training pairs) would leak its
+            # temperature/POP/QPF into the pair, not just its timestamp.
+            # Legacy source-less OM rows have no issued_at provenance and are
+            # kept (documented all-window behavior — nothing to leak).
+            cutoff_iso = market_close.strftime("%Y-%m-%dT%H:%M:%SZ")
+            # Normalize valid_at / issued_at to ISO-Z strings up front so direct
+            # callers passing raw fetch_open_meteo output (pandas Timestamps)
+            # don't TypeError against the string window bounds (codex P2). Shallow
+            # copies — the caller's row dicts are not mutated.
+            norm_om = [
+                {
+                    **r,
+                    "valid_at": _to_iso_z(r.get("valid_at")),
+                    "issued_at": _to_iso_z(r.get("issued_at")),
+                }
+                for r in om_records
+            ]
             window_om = [
-                r for r in om_records if win_start_iso <= r.get("valid_at", "") <= win_end_iso
+                r
+                for r in norm_om
+                if win_start_iso <= r.get("valid_at", "") <= win_end_iso
+                and ((iss := r.get("issued_at")) is None or iss <= cutoff_iso)
             ]
-            probs = [
-                r["precipitation_probability_pct"]
-                for r in window_om
-                if r.get("precipitation_probability_pct") is not None
-            ]
-            fcst_pop = max(probs) if probs else None
+            fcst_high, fcst_low = _aggregate_fcst_temps_openmeteo(
+                window_om, win_start_iso, win_end_iso
+            )
+            if window_om:
+                fcst_model = next(
+                    (r.get("model") for r in window_om if r.get("model")), "open-meteo"
+                )
+                # POP: accept the unit-contract ``precipitation_probability_pct``
+                # OR the ``pop_6hr_pct`` alias research._fetch_open_meteo_range
+                # emits. Without the alias, source-discriminated wrapper rows
+                # would regress POP to None now that they no longer flow through
+                # the IEM branch. Explicit None-checks preserve a valid 0.0.
+                probs: list[float] = []
+                for r in window_om:
+                    p = r.get("precipitation_probability_pct")
+                    if p is None:
+                        p = r.get("pop_6hr_pct")
+                    if p is not None:
+                        probs.append(p)
+                fcst_pop = max(probs) if probs else None
+                # QPF: the OM unit-contract shape carries no QPF, but the
+                # research wrapper emits ``qpf_6hr_in`` — sum over the window to
+                # match IEM-branch semantics (else wrapper QPF regresses too).
+                qpfs_om = [r["qpf_6hr_in"] for r in window_om if r.get("qpf_6hr_in") is not None]
+                if qpfs_om:
+                    fcst_qpf = sum(qpfs_om)
+                # ISSUED_AT provenance: most-recent run timestamp (all already
+                # <= cutoff by the window_om filter above). None for legacy
+                # source-less rows.
+                om_issued = [iss for r in window_om if (iss := r.get("issued_at")) is not None]
+                if om_issued:
+                    fcst_issued = max(om_issued)
 
         fcst.update(
             {

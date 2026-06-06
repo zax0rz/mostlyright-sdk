@@ -14,6 +14,12 @@
     },
     {
       "gated": false,
+      "path": "json/schema.forecast_nwp.v1.json",
+      "sha256": "7e2e1e1fb23af67f7831fa4e4f2c0c3fa7c6d5bdf47fcf130b668176ea6d4a56",
+      "size_bytes": 3858
+    },
+    {
+      "gated": false,
       "path": "json/schema.observation.v1.json",
       "sha256": "e8c9ea9ad3c9c0d8e53893a7e17a1a012b54afbed4cb51ab7c033fb7f2fcd76a",
       "size_bytes": 4228

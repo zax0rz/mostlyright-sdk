@@ -165,6 +165,9 @@ class NwpForecastSchema(Schema):
         ColumnSpec(name="precip_mm_1h", dtype="float64", units="mm", nullable=True),
         ColumnSpec(name="pressure_pa_surface", dtype="float64", units="Pa", nullable=True),
         ColumnSpec(name="pressure_pa_mslp", dtype="float64", units="Pa", nullable=True),
+        ColumnSpec(name="cloud_cover_pct", dtype="float64", units="percent", nullable=True),
+        ColumnSpec(name="visibility_m", dtype="float64", units="m", nullable=True),
+        ColumnSpec(name="cloud_ceiling_m", dtype="float64", units="m", nullable=True),
         # Provenance / QC -----------------------------------------------
         ColumnSpec(
             name="qc_status",

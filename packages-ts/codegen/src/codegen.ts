@@ -144,6 +144,7 @@ const SCHEMA_FILES = [
   "schema.settlement.cli.v1.json",
   "schema.observation_ledger.v1.json",
   "schema.observation_qc.v1.json",
+  "schema.forecast_nwp.v1.json",
 ];
 
 async function emitSchemas(out: FileMap): Promise<void> {

@@ -23,6 +23,9 @@ VARIABLE_MAP: dict[str, tuple[str, str]] = {
     "precip_mm_1h": ("APCP", "surface"),
     "pressure_pa_surface": ("PRES", "surface"),
     "pressure_pa_mslp": ("PRMSL", "mean sea level"),
+    "cloud_cover_pct": ("TCDC", "entire atmosphere"),
+    "visibility_m": ("VIS", "surface"),
+    "cloud_ceiling_m": ("HGT", "cloud ceiling"),
 }
 
 

@@ -36,7 +36,8 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
+from math import ceil
 from typing import Any, Literal
 
 import httpx
@@ -61,6 +62,15 @@ OPEN_METEO_LIVE_URL = "https://api.open-meteo.com/v1/forecast"
 
 #: Polite floor — 5 req/s single-worker (tighter than the documented 600/min).
 _OM_POLITE_DELAY_S: float = 0.2
+
+#: Open-Meteo per-call weight thresholds (free tier billing model).
+_OM_MAX_DAYS_PER_CALL: int = 14
+_OM_VAR_FREE_BUDGET: int = 10
+
+#: Single-Runs returns a fixed ~168h (7-day) horizon from ``run=`` regardless
+#: of the requested window, so its weighted cost / polite delay uses this fixed
+#: span — NOT the (possibly year-long) caller window.
+_OM_SINGLE_RUNS_HORIZON_DAYS: int = 7
 
 #: Retry-After cap (mirrors ``_kalshi_client._RETRY_AFTER_CAP_SECONDS``).
 _RETRY_AFTER_CAP_SECONDS: float = 60.0
@@ -150,6 +160,40 @@ _CANONICAL_COLUMNS: tuple[str, ...] = (
 )
 
 
+def _chunk_date_range(
+    from_date: str,
+    to_date: str,
+    max_days: int = _OM_MAX_DAYS_PER_CALL,
+) -> list[tuple[str, str]]:
+    """Split [from_date, to_date] into ≤max_days-day chunks."""
+    start = date.fromisoformat(from_date)
+    end = date.fromisoformat(to_date)
+    chunks: list[tuple[str, str]] = []
+    cur = start
+    while cur <= end:
+        chunk_end = min(cur + timedelta(days=max_days - 1), end)
+        chunks.append((cur.isoformat(), chunk_end.isoformat()))
+        cur = chunk_end + timedelta(days=1)
+    return chunks
+
+
+def _weighted_call_cost(num_vars: int, num_days: int) -> float:
+    """Open-Meteo weighted call cost: ceil(vars/10) * ceil(days/14)."""
+    return float(ceil(num_vars / _OM_VAR_FREE_BUDGET) * ceil(num_days / _OM_MAX_DAYS_PER_CALL))
+
+
+def _validate_variables(variables: tuple[str, ...] | None) -> tuple[str, ...]:
+    """Validate caller-supplied variables; return full default set when None."""
+    if variables is None:
+        return _OM_VARIABLES_TO_FETCH
+    unknown = [v for v in variables if v not in _OM_VAR_TO_COLUMN]
+    if unknown:
+        raise ValueError(
+            f"unknown OM variable(s) — {unknown!r}; allowed: {sorted(_OM_VAR_TO_COLUMN)}"
+        )
+    return tuple(variables)
+
+
 def _station_to_lat_lon(station: str) -> tuple[float, float]:
     """Resolve an ICAO (or 3-letter US) station to ``(latitude, longitude)``.
 
@@ -221,7 +265,10 @@ def _dispatch_endpoint(
     raise ValueError(f"mode must be one of {sorted(_VALID_MODES)}; got {mode!r}")
 
 
-def _build_hourly_param(endpoint: str) -> str:
+def _build_hourly_param(
+    endpoint: str,
+    variables: tuple[str, ...] = _OM_VARIABLES_TO_FETCH,
+) -> str:
     """Build the comma-separated ``hourly=...`` URL param.
 
     Previous Runs API: suffix every variable with ``_previous_day1``
@@ -229,9 +276,9 @@ def _build_hourly_param(endpoint: str) -> str:
     Single Runs / Seamless: no suffix (exact-cycle / seamless stream).
     """
     if endpoint == OPEN_METEO_PREVIOUS_RUNS_URL:
-        return ",".join(f"{v}_previous_day1" for v in _OM_VARIABLES_TO_FETCH)
+        return ",".join(f"{v}_previous_day1" for v in variables)
     # Single Runs / Seamless / Live: bare variable names (no suffix).
-    return ",".join(_OM_VARIABLES_TO_FETCH)
+    return ",".join(variables)
 
 
 def _parse_value(value: Any) -> float | None:
@@ -471,6 +518,7 @@ def fetch_open_meteo(
     mode: Mode = "training",
     issued_at: str | None = None,
     allow_leakage: bool = False,
+    variables: tuple[str, ...] | None = None,
     client: httpx.Client | None = None,
     timeout: float = HTTP_TIMEOUT,
 ) -> pd.DataFrame:
@@ -488,6 +536,9 @@ def fetch_open_meteo(
             cycle provenance.
         allow_leakage: Required ``True`` when ``mode='seamless'``; raises
             :class:`OpenMeteoSeamlessLeakageError` otherwise.
+        variables: Subset of :data:`_OM_VARIABLES_TO_FETCH` to request.
+            ``None`` (default) requests all 18. Unknown names raise
+            :class:`ValueError` before any HTTP request.
         client: Optional :class:`httpx.Client` (test-injection seam).
         timeout: Per-request timeout in seconds.
 
@@ -496,11 +547,14 @@ def fetch_open_meteo(
         (with canonical columns + dtypes) on 404 or empty response.
 
     Raises:
-        ValueError: unknown model, unknown mode, or unknown station.
+        ValueError: unknown model, unknown mode, unknown station, or unknown
+            variable name (checked before any HTTP request).
         OpenMeteoSeamlessLeakageError: ``mode='seamless'`` without
             ``allow_leakage=True``. Raised BEFORE any HTTP request.
         NotImplementedError: ``mode='live'`` (deferred to PLAN-05).
     """
+    vars_to_fetch = _validate_variables(variables)
+
     if model not in OPEN_METEO_MODELS:
         raise ValueError(
             f"model must be one of {sorted(OPEN_METEO_MODELS)[:5]}... "
@@ -514,77 +568,121 @@ def fetch_open_meteo(
     )
 
     lat, lon = _station_to_lat_lon(station)
-    params: dict[str, Any] = {
-        "latitude": lat,
-        "longitude": lon,
-        "models": model,
-        "hourly": _build_hourly_param(endpoint),
-        "timezone": "UTC",
-        "timeformat": "iso8601",
-    }
-    if endpoint == OPEN_METEO_SINGLE_RUNS_URL:
-        # Single-Runs API rejects start_date/end_date; use run= only.
-        # The response contains the full horizon (up to 168 h); we clip
-        # to [from_date, to_date] after parsing (see below).
-        params["run"] = issued_at
-    else:
-        params["start_date"] = from_date
-        params["end_date"] = to_date
 
-    close_client = False
+    # Chunk date ranges >14 days for every endpoint that bills by start_date/
+    # end_date window (Previous Runs, Seamless, Live) — keeps per-call weighted
+    # cost low and avoids the free-tier rate limit (#64). Single Runs is the one
+    # exception: it sends only run= and returns a fixed ~168h horizon, so it
+    # stays a single call (codex P2).
+    if endpoint == OPEN_METEO_SINGLE_RUNS_URL:
+        chunks = [(from_date, to_date)]
+    else:
+        chunks = _chunk_date_range(from_date, to_date)
+
+    close_client = client is None
     if client is None:
         client = httpx.Client(timeout=timeout)
-        close_client = True
 
-    retrieved_at = datetime.now(UTC)
-    payload: dict[str, Any] = {}
+    frames: list[pd.DataFrame] = []
     try:
-        for attempt in range(_MAX_RETRIES + 1):
-            try:
-                resp = client.get(endpoint, params=params)
-                resp.raise_for_status()
-                payload = resp.json()
-                break
-            except httpx.HTTPStatusError as exc:
-                status = getattr(exc.response, "status_code", None)
-                if status == 404:
-                    log.debug("open_meteo 404 on %s; skipping", endpoint)
-                    return _empty_df()
-                if status == 429 and attempt < _MAX_RETRIES:
-                    retry_after = _parse_retry_after_seconds(
-                        exc.response.headers.get("Retry-After")
+        for chunk_from, chunk_to in chunks:
+            params: dict[str, Any] = {
+                "latitude": lat,
+                "longitude": lon,
+                "models": model,
+                "hourly": _build_hourly_param(endpoint, vars_to_fetch),
+                "timezone": "UTC",
+                "timeformat": "iso8601",
+            }
+            if endpoint == OPEN_METEO_SINGLE_RUNS_URL:
+                # Single-Runs API rejects start_date/end_date; use run= only.
+                # The response contains the full horizon (up to 168 h); we clip
+                # to [from_date, to_date] after parsing (see below).
+                params["run"] = issued_at
+            else:
+                params["start_date"] = chunk_from
+                params["end_date"] = chunk_to
+
+            retrieved_at = datetime.now(UTC)
+            payload: dict[str, Any] = {}
+            for attempt in range(_MAX_RETRIES + 1):
+                try:
+                    resp = client.get(endpoint, params=params)
+                    resp.raise_for_status()
+                    payload = resp.json()
+                    break
+                except httpx.HTTPStatusError as exc:
+                    status = getattr(exc.response, "status_code", None)
+                    if status == 404:
+                        log.debug("open_meteo 404 on %s; skipping", endpoint)
+                        payload = {}
+                        break
+                    if status == 429 and attempt < _MAX_RETRIES:
+                        retry_after = _parse_retry_after_seconds(
+                            exc.response.headers.get("Retry-After")
+                        )
+                        sleep_for = max(retry_after, _OM_POLITE_DELAY_S * (attempt + 1))
+                        log.warning(
+                            "open_meteo 429 — sleeping %.1fs (attempt %d)",
+                            sleep_for,
+                            attempt + 1,
+                        )
+                        time.sleep(sleep_for)
+                        continue
+                    raise
+
+            # Weight-aware polite delay scales with per-call cost. Single-Runs
+            # ignores start_date/end_date and returns a FIXED ~168h horizon from
+            # run=, so its cost uses that fixed span — not the requested window.
+            # Otherwise an exact-cycle multi-month/year request would sleep for
+            # tens of seconds after a single API call (codex P2).
+            if endpoint == OPEN_METEO_SINGLE_RUNS_URL:
+                num_days = _OM_SINGLE_RUNS_HORIZON_DAYS
+            else:
+                num_days = (date.fromisoformat(chunk_to) - date.fromisoformat(chunk_from)).days + 1
+            cost = _weighted_call_cost(len(vars_to_fetch), num_days)
+            time.sleep(_OM_POLITE_DELAY_S * ceil(cost))
+
+            if payload:
+                frames.append(
+                    _project_payload_to_dataframe(
+                        payload,
+                        station=station,
+                        model=model,
+                        endpoint=endpoint,
+                        issued_at_str=issued_at,
+                        retrieved_at=retrieved_at,
                     )
-                    sleep_for = max(retry_after, _OM_POLITE_DELAY_S * (attempt + 1))
-                    log.warning(
-                        "open_meteo 429 — sleeping %.1fs (attempt %d)",
-                        sleep_for,
-                        attempt + 1,
-                    )
-                    time.sleep(sleep_for)
-                    continue
-                raise
-        time.sleep(_OM_POLITE_DELAY_S)
+                )
     finally:
         if close_client:
             client.close()
 
-    if not payload:
+    if not frames:
         return _empty_df()
 
-    df = _project_payload_to_dataframe(
-        payload,
-        station=station,
-        model=model,
-        endpoint=endpoint,
-        issued_at_str=issued_at,
-        retrieved_at=retrieved_at,
-    )
+    df = pd.concat(frames, ignore_index=True) if len(frames) > 1 else frames[0]
 
     # Single-Runs returns the full horizon from run=; clip to requested window.
     if endpoint == OPEN_METEO_SINGLE_RUNS_URL and not df.empty:
         lo = pd.Timestamp(from_date, tz="UTC")
         hi = pd.Timestamp(to_date, tz="UTC") + pd.Timedelta(days=1)
         df = df[(df["valid_at"] >= lo) & (df["valid_at"] < hi)]
+
+    # Restamp source-identity / fetch provenance (issue #64 / codex P2):
+    # BOTH pd.concat (multi-chunk Previous-Runs windows >14 days) and boolean
+    # row-masking (the Single-Runs clip above) drop ``df.attrs``. Each per-chunk
+    # frame already carries attrs["source"]/["retrieved_at"] from
+    # _project_payload_to_dataframe; without re-stamping, chunked/clipped frames
+    # return rows lacking the documented provenance and fail
+    # validate_dataframe(...)'s source_attr_required check. Use the latest chunk
+    # retrieved_at as the combined-frame timestamp.
+    df.attrs["source"] = frames[0].attrs.get("source")
+    _retrieved = [
+        f.attrs.get("retrieved_at") for f in frames if f.attrs.get("retrieved_at") is not None
+    ]
+    if _retrieved:
+        df.attrs["retrieved_at"] = max(_retrieved)
 
     return df
 

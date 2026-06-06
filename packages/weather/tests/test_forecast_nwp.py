@@ -169,6 +169,27 @@ class TestQcStatusForRow:
 
         assert _qc_status_for_row({"temp_k_2m": float("nan")}) == "clean"
 
+    def test_cloud_cover_bounds_qc(self) -> None:
+        from mostlyright.weather.forecast_nwp import _qc_status_for_row
+
+        assert _qc_status_for_row({"cloud_cover_pct": 50.0}) == "clean"
+        assert _qc_status_for_row({"cloud_cover_pct": -1.0}) == "suspect"
+        assert _qc_status_for_row({"cloud_cover_pct": 101.0}) == "suspect"
+
+    def test_visibility_bounds_qc(self) -> None:
+        from mostlyright.weather.forecast_nwp import _qc_status_for_row
+
+        assert _qc_status_for_row({"visibility_m": 10000.0}) == "clean"
+        assert _qc_status_for_row({"visibility_m": -10.0}) == "suspect"
+        assert _qc_status_for_row({"visibility_m": 120000.0}) == "flagged"
+
+    def test_cloud_ceiling_bounds_qc(self) -> None:
+        from mostlyright.weather.forecast_nwp import _qc_status_for_row
+
+        assert _qc_status_for_row({"cloud_ceiling_m": 2000.0}) == "clean"
+        assert _qc_status_for_row({"cloud_ceiling_m": -5.0}) == "suspect"
+        assert _qc_status_for_row({"cloud_ceiling_m": 25000.0}) == "flagged"
+
 
 # ---------------------------------------------------------------------------
 # Mirror fallback + unknown-station handling (no cfgrib needed)
@@ -599,6 +620,9 @@ class TestCodexP2Followups:
             "dewpoint_k_2m",
             "pressure_pa_surface",
             "pressure_pa_mslp",
+            "cloud_cover_pct",
+            "visibility_m",
+            "cloud_ceiling_m",
         ):
             assert str(df[col].dtype) == "float64", (
                 f"{col} dtype must be float64, got {df[col].dtype}"
@@ -618,6 +642,194 @@ class TestCodexP2Followups:
         )
         assert df.empty
         assert df.attrs.get("source") == "noaa_bdp"
+
+
+# ---------------------------------------------------------------------------
+# Disambiguation heuristics
+# ---------------------------------------------------------------------------
+class TestDisambiguationHeuristics:
+    def test_pick_record_prefers_instantaneous_over_window(self) -> None:
+        from mostlyright.weather._fetchers._nwp_idx import IdxRecord
+        from mostlyright.weather.forecast_nwp import _pick_record
+
+        r_inst = IdxRecord(
+            record_no=636,
+            byte_offset=1000,
+            byte_end=2000,
+            reference_date="d=",
+            variable="TCDC",
+            level="entire atmosphere",
+            forecast_period="1 hour fcst",
+        )
+        r_ave = IdxRecord(
+            record_no=637,
+            byte_offset=2000,
+            byte_end=3000,
+            reference_date="d=",
+            variable="TCDC",
+            level="entire atmosphere",
+            forecast_period="0-1 hour ave fcst",
+        )
+
+        # Order should not matter; r_inst should be picked
+        assert _pick_record([r_inst, r_ave]) == r_inst
+        assert _pick_record([r_ave, r_inst]) == r_inst
+
+    def test_pick_record_breaks_ties_with_record_no(self) -> None:
+        from mostlyright.weather._fetchers._nwp_idx import IdxRecord
+        from mostlyright.weather.forecast_nwp import _pick_record
+
+        r1 = IdxRecord(
+            record_no=596,
+            byte_offset=1000,
+            byte_end=2000,
+            reference_date="d=",
+            variable="APCP",
+            level="surface",
+            forecast_period="0-1 hour acc fcst",
+        )
+        r2 = IdxRecord(
+            record_no=597,
+            byte_offset=2000,
+            byte_end=3000,
+            reference_date="d=",
+            variable="APCP",
+            level="surface",
+            forecast_period="0-1 hour acc fcst",
+        )
+
+        # Picks lowest record_no
+        assert _pick_record([r1, r2]) == r1
+        assert _pick_record([r2, r1]) == r1
+
+    def test_pick_record_ambiguous_distinct_windows_returns_none(self) -> None:
+        """Issue #63 / codex P2: distinct aggregation windows (e.g. max vs min)
+        with no instantaneous record are genuinely ambiguous — _pick_record
+        returns None so the caller fails loud rather than silently picking an
+        arbitrary window."""
+        from mostlyright.weather._fetchers._nwp_idx import IdxRecord
+        from mostlyright.weather.forecast_nwp import _pick_record
+
+        r_max = IdxRecord(
+            record_no=10,
+            byte_offset=1000,
+            byte_end=2000,
+            reference_date="d=",
+            variable="TMP",
+            level="surface",
+            forecast_period="0-1 hour max fcst",
+        )
+        r_min = IdxRecord(
+            record_no=11,
+            byte_offset=2000,
+            byte_end=3000,
+            reference_date="d=",
+            variable="TMP",
+            level="surface",
+            forecast_period="0-1 hour min fcst",
+        )
+
+        assert _pick_record([r_max, r_min]) is None
+        assert _pick_record([r_min, r_max]) is None
+
+    def test_pick_record_identical_window_twin_picks_lowest_record_no(self) -> None:
+        """The GFS APCP:surface twin — two records, IDENTICAL window — is safe
+        to resolve by lowest record_no (same data)."""
+        from mostlyright.weather._fetchers._nwp_idx import IdxRecord
+        from mostlyright.weather.forecast_nwp import _pick_record
+
+        r1 = IdxRecord(596, 0, 99, "d=", "APCP", "surface", "0-1 hour acc fcst")
+        r2 = IdxRecord(597, 100, 199, "d=", "APCP", "surface", "0-1 hour acc fcst")
+        assert _pick_record([r1, r2]) == r1
+        assert _pick_record([r2, r1]) == r1
+
+    def test_extract_records_raises_on_ambiguous_distinct_windows(self) -> None:
+        """Issue #63 / codex P2: _extract_records must raise GribIntegrityError
+        (loud fail) when a (variable, level) resolves to multiple DISTINCT
+        windows with no instantaneous record — not silently pick one."""
+        if not _HAS_NWP_EXTRA:
+            pytest.skip("requires [nwp] extra installed")
+        import httpx
+        from mostlyright.weather._fetchers._nwp_archive import build_fetch_plan
+        from mostlyright.weather._fetchers._nwp_idx import IdxRecord
+        from mostlyright.weather.forecast_nwp import _extract_records
+
+        plan = build_fetch_plan(
+            model="gfs",
+            mirror="aws_bdp",
+            cycle=datetime(2026, 5, 23, 12, tzinfo=UTC),
+            fxx=1,
+        )
+        # Two DISTINCT accumulation windows for the same key, no instantaneous.
+        records = [
+            IdxRecord(596, 0, 99, "d=", "APCP", "surface", "0-1 hour acc fcst"),
+            IdxRecord(600, 200, 299, "d=", "APCP", "surface", "0-6 hour acc fcst"),
+        ]
+
+        # Transport must never be reached — the ambiguity check raises first.
+        def fail_transport(request: httpx.Request) -> httpx.Response:
+            raise AssertionError("transport should not be reached on ambiguous records")
+
+        client = httpx.Client(transport=httpx.MockTransport(fail_transport))
+        try:
+            with pytest.raises(GribIntegrityError):
+                _extract_records(
+                    plan=plan,
+                    filtered_records=records,
+                    variable_map={"precip_mm_1h": ("APCP", "surface")},
+                    station_coords=[(40.7, -74.0)],
+                    column_values={"precip_mm_1h": [None]},
+                    distances_km=[None],
+                    model="gfs",
+                    client=client,
+                )
+        finally:
+            client.close()
+
+    def test_extract_records_disambiguates_without_raising_error(self) -> None:
+        """Integration-level test of _extract_records with duplicate entries."""
+        if not _HAS_NWP_EXTRA:
+            pytest.skip("requires [nwp] extra installed")
+        import httpx
+        from mostlyright.weather._fetchers._nwp_archive import build_fetch_plan
+        from mostlyright.weather._fetchers._nwp_idx import IdxRecord
+        from mostlyright.weather.forecast_nwp import _extract_records
+
+        plan = build_fetch_plan(
+            model="gfs",
+            mirror="aws_bdp",
+            cycle=datetime(2026, 5, 23, 12, tzinfo=UTC),
+            fxx=1,
+        )
+        # We supply duplicate records for APCP. They should be disambiguated, and
+        # since we will raise a MockTransport exception on request, it verifies
+        # that we successfully passed the duplicate check (which would have raised
+        # GribIntegrityError instead of MockTransport failure).
+        records = [
+            IdxRecord(596, 0, 99, "d=", "APCP", "surface", "0-1 hour acc fcst"),
+            IdxRecord(597, 100, 199, "d=", "APCP", "surface", "0-1 hour acc fcst"),
+        ]
+
+        def fail_transport(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(503, text="service unavailable")
+
+        client = httpx.Client(transport=httpx.MockTransport(fail_transport))
+        from mostlyright.weather.forecast_nwp import _MirrorTransportFailed
+
+        try:
+            with pytest.raises(_MirrorTransportFailed):
+                _extract_records(
+                    plan=plan,
+                    filtered_records=records,
+                    variable_map={"precip_mm_1h": ("APCP", "surface")},
+                    station_coords=[(40.7, -74.0)],
+                    column_values={"precip_mm_1h": [None]},
+                    distances_km=[None],
+                    model="gfs",
+                    client=client,
+                )
+        finally:
+            client.close()
 
 
 # ---------------------------------------------------------------------------

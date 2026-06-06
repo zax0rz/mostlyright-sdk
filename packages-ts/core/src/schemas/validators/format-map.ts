@@ -13,6 +13,11 @@ export type FormatKind = "date" | "date-time";
 export type SchemaFormatMap = Readonly<Record<string, FormatKind>>;
 
 const FORMAT_MAPS: Readonly<Record<string, SchemaFormatMap>> = Object.freeze({
+  "schema.forecast_nwp.v1": Object.freeze({
+    "issued_at": "date-time",
+    "retrieved_at": "date-time",
+    "valid_at": "date-time",
+  }),
   "schema.forecast.iem_mos.v1": Object.freeze({
     "issued_at": "date-time",
     "retrieved_at": "date-time",

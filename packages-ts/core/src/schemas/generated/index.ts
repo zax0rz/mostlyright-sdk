@@ -9,3 +9,4 @@ export * from "./forecast.station.v1.js";
 export * from "./settlement.cli.v1.js";
 export * from "./observation_ledger.v1.js";
 export * from "./observation_qc.v1.js";
+export * from "./forecast_nwp.v1.js";
