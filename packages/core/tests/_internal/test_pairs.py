@@ -92,6 +92,8 @@ def _om_record(
     source: str = "open_meteo.previous_runs",
     issued_at: str | None = None,
     temperature_f: float | None = None,
+    pop_6hr_pct: float | None = None,
+    qpf_6hr_in: float | None = None,
 ) -> dict:
     """Open-Meteo hourly forecast record matching specs/forecast_series.json.
 
@@ -113,6 +115,10 @@ def _om_record(
         rec["temperature_f"] = temperature_f
     if issued_at is not None:
         rec["issued_at"] = issued_at
+    if pop_6hr_pct is not None:
+        rec["pop_6hr_pct"] = pop_6hr_pct
+    if qpf_6hr_in is not None:
+        rec["qpf_6hr_in"] = qpf_6hr_in
     return rec
 
 
@@ -501,6 +507,49 @@ class TestBuildPairsRow:
         row = build_pairs_row("2024-07-04", "NYC", [], None, om)
         assert row["fcst_high_f"] == pytest.approx(89.6)
         assert row["fcst_low_f"] == pytest.approx(68.0)
+
+    def test_om_research_wrapper_pop_and_qpf_survive(self) -> None:
+        """Issue #67 (codex P2): research-wrapper OM rows carry ``pop_6hr_pct``
+        / ``qpf_6hr_in`` (not ``precipitation_probability_pct``). Now that
+        source routing sends them to the OM branch, those precip columns must
+        still populate — not regress to None as they would if the OM branch
+        only read ``precipitation_probability_pct`` and never set QPF."""
+        om = [
+            _om_record(
+                "2024-07-04T08:00:00Z",
+                temperature_c=None,
+                temperature_f=68.0,
+                source="open_meteo.previous_runs",
+                issued_at="2024-07-04T06:00:00Z",
+                pop_6hr_pct=20.0,
+                qpf_6hr_in=0.1,
+            ),
+            _om_record(
+                "2024-07-04T14:00:00Z",
+                temperature_c=None,
+                temperature_f=89.6,
+                source="open_meteo.previous_runs",
+                issued_at="2024-07-04T06:00:00Z",
+                pop_6hr_pct=60.0,
+                qpf_6hr_in=0.2,
+            ),
+        ]
+        row = build_pairs_row("2024-07-04", "NYC", [], None, om)
+        assert row["fcst_pop_6hr_pct"] == 60.0  # max over window
+        assert row["fcst_qpf_6hr_in"] == pytest.approx(0.3)  # sum over window
+
+    def test_om_pop_zero_not_dropped(self) -> None:
+        """A valid 0.0 POP must survive the alias fallback (no truthiness bug)."""
+        om = [
+            _om_record(
+                "2024-07-04T14:00:00Z",
+                temperature_c=20.0,
+                source="open_meteo.previous_runs",
+                precipitation_probability_pct=0.0,
+            )
+        ]
+        row = build_pairs_row("2024-07-04", "NYC", [], None, om)
+        assert row["fcst_pop_6hr_pct"] == 0.0
 
     def test_fcst_pop_6hr_pct_from_iem(self) -> None:
         records = [

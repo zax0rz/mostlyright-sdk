@@ -373,12 +373,26 @@ def build_pairs_row(
             window_om = [
                 r for r in om_records if win_start_iso <= r.get("valid_at", "") <= win_end_iso
             ]
-            probs = [
-                r["precipitation_probability_pct"]
-                for r in window_om
-                if r.get("precipitation_probability_pct") is not None
-            ]
+            # POP: accept the unit-contract ``precipitation_probability_pct``
+            # OR the ``pop_6hr_pct`` alias that research._fetch_open_meteo_range
+            # emits. Without the alias, source-discriminated wrapper rows (which
+            # carry pop_6hr_pct, not precipitation_probability_pct) would regress
+            # POP to None now that they no longer flow through the IEM branch
+            # (issue #67). Explicit None-checks preserve a valid 0.0 reading.
+            probs: list[float] = []
+            for r in window_om:
+                p = r.get("precipitation_probability_pct")
+                if p is None:
+                    p = r.get("pop_6hr_pct")
+                if p is not None:
+                    probs.append(p)
             fcst_pop = max(probs) if probs else None
+            # QPF: the OM unit-contract shape carries no QPF, but the research
+            # wrapper emits ``qpf_6hr_in`` — sum it over the window to match the
+            # IEM-branch semantics (else wrapper QPF regresses to None too).
+            qpfs_om = [r["qpf_6hr_in"] for r in window_om if r.get("qpf_6hr_in") is not None]
+            if qpfs_om:
+                fcst_qpf = sum(qpfs_om)
 
         fcst.update(
             {
