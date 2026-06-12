@@ -64,14 +64,14 @@ rows roll into the correct calendar settlement.
 | `hrrr` | ✓ wired | CONUS 3km | hourly | 2014-07-30 | High-resolution rapid refresh |
 | `hrrrak` | ✓ wired | Alaska 3km | 3-hourly | 2018-01-01 | HRRR for Alaska |
 | `gfs` | ✓ wired | Global 0.25° | 6-hourly | 2021-01-01 | Standard global model |
-| `gefs` | ✓ wired | Global 0.5° ensemble (32 members) | 6-hourly | 2017-01-01 | Default member `c00`; opt in via `member=` |
+| `gefs` | ✓ wired | Global 0.5° 31-member ensemble (`c00` + `p01`..`p30`) plus `avg`/`spr` statistical products | 6-hourly | 2017-01-01 | Default member `c00`; opt in via `member=` (e.g. `member="p05"`) |
 | `gdas` | ✓ wired | Global 0.25° (short-range) | 6-hourly | 2021-01-01 | GFS analysis system |
 | `nbm` | ✓ wired | Regional blend | hourly | 2020-01-01 | National Blend; `fxx=0` auto-bumps to `1` |
 | `rap` | ✓ wired | CONUS 13km | hourly | 2020-01-01 | Rapid refresh |
 | `rrfs` | ✓ wired | CONUS 3km | hourly | 2024-01-01 | HRRR successor (pre-operational) |
 | `rtma` | ✓ wired | CONUS 2.5km analysis | hourly | 2024-01-01 | Real-time mesoscale analysis (`fxx=0` only) |
 | `urma` | ✓ wired | CONUS 2.5km analysis | hourly | 2024-01-01 | Un-Restricted MA (`fxx=0` only) |
-| `cfs` | ✓ wired | Global 1° (4-member) | 6-hourly | 2011-01-01 | Climate Forecast System |
+| `cfs` | ✓ wired | Global 1° 4-member ensemble (`01`..`04`) | 6-hourly | 2011-01-01 | Climate Forecast System; default member `01`, opt in via `member=` (e.g. `member="03"`) |
 
 All 11 NCEP-family models are end-to-end wired in v1.0.
 
@@ -206,6 +206,36 @@ df = pd.concat(frames, ignore_index=True)
 `cycle=` and `cycle_range_start=` are mutually exclusive. Per-model AWS
 BDP depths are documented above; older cycles raise
 `HistoricalDepthError`.
+
+### Ensemble members (`member=`)
+
+The ensemble models **GEFS** and **CFS** accept a `member=` selector
+(issue #74). It threads to the path builder so you fetch a specific
+ensemble member instead of the default control run:
+
+```python
+from mostlyright.forecasts import forecast_nwp
+
+# GEFS perturbation member p05 (default is the c00 control run)
+df = forecast_nwp(station="KNYC", model="gefs", member="p05")
+
+# CFS member 03 (default is 01)
+df = forecast_nwp(station="KNYC", model="cfs", member="03")
+```
+
+- **GEFS** members: `c00` (control, default), `p01`..`p30`
+  (perturbations), plus `avg` / `spr` statistical products — 33 values.
+- **CFS** members: `01`..`04` (default `01`).
+- `member=` is **only** valid for `gefs` / `cfs`. Passing it for any
+  other model raises `ValueError`. An out-of-enum member value also
+  raises `ValueError` listing the valid members. Both errors fire before
+  the `[nwp]` extra is imported.
+- `member=None` (the default) is byte-identical to pre-#74 behavior — no
+  `member` is threaded and the path-builder default is used.
+
+> **Note:** `member=` does not (yet) add a `member` column to the output
+> DataFrame — it selects which member's grid is fetched. A per-row
+> `member` column is tracked as future work.
 
 ### Settlement-day envelope (Mode 2)
 
