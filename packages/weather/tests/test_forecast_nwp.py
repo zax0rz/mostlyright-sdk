@@ -1043,6 +1043,56 @@ class TestForecastNwpMember:
         assert per_cycle_members, "no per-cycle recursive calls observed"
         assert all(m == "p05" for m in per_cycle_members)
 
+    def test_member_threads_through_public_single_cycle_gefs(self) -> None:
+        """Architect iter-1 HIGH — the public ``forecast_nwp()`` single-cycle
+        mirror loop must pass ``member=`` to ``_try_fetch_records_for_mirror``
+        (the headline ``forecast_nwp("KNYC", "gefs", member="p05")`` shape).
+        Tests C/E exercise the helper directly and Test F intercepts the
+        recursion before the single-cycle body runs, so without this test the
+        ``member=member`` argument at the mirror-loop call site would have
+        zero executions in CI (no ``[nwp]`` extra) AND in a with-extra run —
+        deleting it would silently fetch the c00 control run. Stub the lazy
+        ``[nwp]`` imports into ``sys.modules`` so the import gate passes
+        without the extra, and capture the helper's kwargs; every mirror
+        "fails" (returns None) so the call exits via ``NoLiveForNwpError``
+        before any extraction."""
+        import sys
+        import types
+
+        from mostlyright.weather.forecast_nwp import forecast_nwp
+
+        fake_neighbors = types.ModuleType("sklearn.neighbors")
+        fake_neighbors.BallTree = object  # satisfies `from ... import BallTree`
+        fake_sklearn = types.ModuleType("sklearn")
+        fake_sklearn.neighbors = fake_neighbors  # type: ignore[attr-defined]
+
+        captured: list[dict] = []
+
+        def _capture_and_fail(*args, **kwargs):
+            captured.append(kwargs)
+            return None  # mirror failed → loop tries next → NoLiveForNwpError
+
+        with (
+            patch.dict(
+                sys.modules,
+                {
+                    "cfgrib": types.ModuleType("cfgrib"),
+                    "xarray": types.ModuleType("xarray"),
+                    "sklearn": fake_sklearn,
+                    "sklearn.neighbors": fake_neighbors,
+                },
+            ),
+            patch(
+                "mostlyright.weather.forecast_nwp._try_fetch_records_for_mirror",
+                side_effect=_capture_and_fail,
+            ),
+            pytest.raises(NoLiveForNwpError),
+        ):
+            forecast_nwp("KNYC", "gefs", cycle=self._GEFS_CYCLE, member="p05")
+
+        assert captured, "_try_fetch_records_for_mirror was never called"
+        assert all(c.get("member") == "p05" for c in captured)
+
 
 # ---------------------------------------------------------------------------
 # Live integration (network-bound, marked + gated)
