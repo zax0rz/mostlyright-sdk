@@ -148,3 +148,22 @@ def test_core_wrapper_forwards_member_to_impl() -> None:
     fake_impl.assert_called_once()
     _, kwargs = fake_impl.call_args
     assert kwargs.get("member") == "p05"
+
+
+def test_core_wrapper_omits_member_kwarg_by_default() -> None:
+    """Cross-version skew guard (#74): a default call (no ``member=``) must
+    NOT pass a ``member`` kwarg to the weather impl, so core stays
+    call-compatible with a pre-1.7.0 mostlyrightmd-weather whose impl lacks
+    the parameter. Mirrors the weather-side Test D at the delegation layer."""
+    from unittest.mock import Mock, patch
+
+    from mostlyright.forecasts import forecast_nwp
+
+    fake_impl = Mock(return_value="sentinel-df")
+    with patch("mostlyright.weather.forecast_nwp.forecast_nwp", fake_impl):
+        result = forecast_nwp("KNYC", "gefs")
+
+    assert result == "sentinel-df"
+    fake_impl.assert_called_once()
+    _, kwargs = fake_impl.call_args
+    assert "member" not in kwargs

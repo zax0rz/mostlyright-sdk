@@ -270,6 +270,14 @@ def forecast_nwp(
             source=f"nwp.{model}",
         ) from None
 
+    # Issue #74 cross-version skew guard: thread ``member`` only when the
+    # caller actually set it. Passing ``member=member`` unconditionally would
+    # make EVERY core-wrapper call TypeError against an older
+    # mostlyrightmd-weather whose impl predates the kwarg (core 1.7.0 +
+    # weather <=1.6.0 outside the [research] extra's floor). With the guard,
+    # default calls stay call-compatible across the skew; only explicit
+    # ``member=`` callers on an old weather see the loud TypeError.
+    member_kwargs: dict[str, str] = {} if member is None else {"member": member}
     return _impl(
         station,
         model,
@@ -278,6 +286,6 @@ def forecast_nwp(
         cycle_range_end=cycle_range_end,
         fxx=fxx,
         mirror=mirror,
-        member=member,
         client=client,
+        **member_kwargs,
     )
