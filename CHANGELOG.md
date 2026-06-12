@@ -2,6 +2,19 @@
 
 All notable changes to `mostlyright`. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] — 2026-06-12 — GEFS/CFS ensemble member selection
+
+Minor release: `forecast_nwp()` gains a `member=` ensemble-member selector for GEFS and CFS.
+
+### Added
+- **`member=` ensemble selector on `forecast_nwp()` for GEFS + CFS** ([#75](https://github.com/mostlyrightmd/mostlyright-sdk/pull/75), closes [#74](https://github.com/mostlyrightmd/mostlyright-sdk/issues/74)). `docs/forecasts.md` documented `member=` for GEFS but the public function never exposed it — the path builders (`ge{member}` / CFS `6hrly_grib_{member}`) supported member selection all along. `forecast_nwp(station, "gefs", member="p05")` now fetches a specific ensemble member; valid members are validated against the closed enums (GEFS: `c00` control + `p01`..`p30` perturbations + `avg`/`spr` statistical products; CFS: `01`..`04`) with a loud `ValueError` for any other model or out-of-enum value, raised before the `[nwp]` extra imports. `member=None` (default) stays byte-identical to v1.6.0 behavior. Works on both the single-cycle path and `cycle_range_start`/`cycle_range_end` backfills. The output schema is unchanged (no `member` column — selector only; tracked as future work). TS twin: `ForecastNwpOptions` gains `readonly member?: string` (signature-forward; TS NWP execution remains v2.0+).
+
+### Changed
+- **`mostlyrightmd[research]` extra now pins `mostlyrightmd-weather>=1.7.0`** (was `>=1.6.0`): the core `forecast_nwp()` wrapper threads `member=` to the weather impl, a kwarg introduced in weather 1.7.0. Default (`member=None`) calls remain call-compatible with older weather installs — the wrapper only passes the kwarg when explicitly set.
+
+### Notes
+- Dual version bump: PyPI `1.7.0` (`mostlyrightmd`, `mostlyrightmd-weather`, `mostlyrightmd-markets`) and npm `vts-1.7.0` (`@mostlyrightmd/core`, `@mostlyrightmd/weather`, `@mostlyrightmd/markets`, `mostlyright`).
+
 ## [1.6.0] — 2026-06-06 — Open-Meteo forecast-join correctness, NWP fields, OM rate-limiting + research() docs
 
 Minor release bundling two correctness fixes and two feature PRs.

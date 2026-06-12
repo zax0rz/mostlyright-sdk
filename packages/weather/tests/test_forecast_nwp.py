@@ -833,6 +833,268 @@ class TestDisambiguationHeuristics:
 
 
 # ---------------------------------------------------------------------------
+# Issue #74 — member= ensemble selector for GEFS / CFS
+# ---------------------------------------------------------------------------
+class TestForecastNwpMember:
+    """Validate + thread the ``member=`` kwarg (issue #74).
+
+    ``member`` is only meaningful for the wired ensemble models GEFS / CFS.
+    Misuse (member on a non-member model, or an out-of-enum member value)
+    raises ``ValueError`` BEFORE the lazy ``[nwp]`` imports, so callers
+    without cfgrib installed still get the right error. When valid, the
+    member string is threaded to ``build_fetch_plan`` (and on to the
+    GEFS/CFS path builders) ONLY when non-None — passing ``member=None``
+    would override the path-builder default and crash f-string formatting.
+    """
+
+    # A GEFS/CFS cycle inside each model's archive depth on the 6h grid so
+    # the single-cycle path runs deterministically without network.
+    _GEFS_CYCLE: ClassVar[datetime] = datetime(2025, 6, 1, 12, 0, tzinfo=UTC)
+    _CFS_CYCLE: ClassVar[datetime] = datetime(2025, 6, 1, 12, 0, tzinfo=UTC)
+
+    def test_member_on_non_member_model_raises(self) -> None:
+        """Test A — member= on a wired non-member model (hrrr) raises,
+        naming the member-capable models. Fires before any fetch/import."""
+        from mostlyright.weather.forecast_nwp import forecast_nwp
+
+        with pytest.raises(ValueError) as exc_info:
+            forecast_nwp("KNYC", "hrrr", member="p05")
+        msg = str(exc_info.value)
+        assert "gefs" in msg
+        assert "cfs" in msg
+
+    def test_invalid_member_on_gefs_raises_listing_valid(self) -> None:
+        """Test B — an out-of-enum member on gefs raises, listing the
+        sorted valid GEFS members. No network."""
+        from mostlyright.weather._fetchers._nwp_grids.gefs import GEFS_MEMBERS
+        from mostlyright.weather.forecast_nwp import forecast_nwp
+
+        with pytest.raises(ValueError) as exc_info:
+            forecast_nwp("KNYC", "gefs", member="zzz")
+        msg = str(exc_info.value)
+        # The message must list the real sorted member set.
+        for m in sorted(GEFS_MEMBERS):
+            assert m in msg
+
+    @staticmethod
+    def _capturing_build_fetch_plan(captured: list[dict]):
+        """Wrap the real ``build_fetch_plan`` to record its kwargs.
+
+        ``build_fetch_plan`` does no network I/O (pure URL construction), so
+        we delegate to the real implementation to get a valid plan, then let
+        the caller's ``MockTransport`` 404 the ``.idx`` fetch — driving the
+        helper down its ``except httpx.HTTPStatusError`` → ``None`` path."""
+        from mostlyright.weather.forecast_nwp import build_fetch_plan as _real
+
+        def _wrapped(*args, **kwargs):
+            captured.append(kwargs)
+            return _real(*args, **kwargs)
+
+        return _wrapped
+
+    @staticmethod
+    def _mock_404_client() -> httpx.Client:
+        def _handler(_request: httpx.Request) -> httpx.Response:
+            return httpx.Response(404, text="not found")
+
+        return httpx.Client(transport=httpx.MockTransport(_handler))
+
+    def test_member_threads_to_build_fetch_plan_gefs(self) -> None:
+        """Test C — member="p05" threads member="p05" into build_fetch_plan
+        for gefs. Exercises the single-cycle threading helper
+        ``_try_fetch_records_for_mirror`` directly so it runs in CI without
+        the ``[nwp]`` extra (the helper sits below the lazy-import gate). A
+        404 MockTransport drives the helper to its mirror-fallback None."""
+        from mostlyright.weather.forecast_nwp import _try_fetch_records_for_mirror
+
+        captured: list[dict] = []
+        client = self._mock_404_client()
+        try:
+            with patch(
+                "mostlyright.weather.forecast_nwp.build_fetch_plan",
+                side_effect=self._capturing_build_fetch_plan(captured),
+            ):
+                result = _try_fetch_records_for_mirror(
+                    model="gefs",
+                    mirror="aws_bdp",
+                    cycle=self._GEFS_CYCLE,
+                    fxx=1,
+                    variable_map={"temp_k_2m": ("TMP", "2 m above ground")},
+                    client=client,
+                    member="p05",
+                )
+        finally:
+            client.close()
+
+        assert result is None  # 404 → None (mirror fallback)
+        assert captured, "build_fetch_plan was never called"
+        assert all(c.get("member") == "p05" for c in captured)
+
+    def test_member_none_omits_kwarg_gefs(self) -> None:
+        """Test D (regression) — member=None (default) must NOT pass a
+        member key to build_fetch_plan (passing member=None would override
+        the path-builder default c00 and crash). Byte-identical to today.
+        Direct on ``_try_fetch_records_for_mirror`` so it runs without the
+        ``[nwp]`` extra."""
+        from mostlyright.weather.forecast_nwp import _try_fetch_records_for_mirror
+
+        captured: list[dict] = []
+        client = self._mock_404_client()
+        try:
+            with patch(
+                "mostlyright.weather.forecast_nwp.build_fetch_plan",
+                side_effect=self._capturing_build_fetch_plan(captured),
+            ):
+                _try_fetch_records_for_mirror(
+                    model="gefs",
+                    mirror="aws_bdp",
+                    cycle=self._GEFS_CYCLE,
+                    fxx=1,
+                    variable_map={"temp_k_2m": ("TMP", "2 m above ground")},
+                    client=client,
+                )
+        finally:
+            client.close()
+
+        assert captured, "build_fetch_plan was never called"
+        assert all("member" not in c for c in captured)
+
+    def test_member_threads_to_build_fetch_plan_cfs(self) -> None:
+        """Test E — member="03" threads member="03" into build_fetch_plan
+        for cfs. Direct on ``_try_fetch_records_for_mirror`` (CI-safe)."""
+        from mostlyright.weather.forecast_nwp import _try_fetch_records_for_mirror
+
+        captured: list[dict] = []
+        client = self._mock_404_client()
+        try:
+            with patch(
+                "mostlyright.weather.forecast_nwp.build_fetch_plan",
+                side_effect=self._capturing_build_fetch_plan(captured),
+            ):
+                _try_fetch_records_for_mirror(
+                    model="cfs",
+                    mirror="aws_bdp",
+                    cycle=self._CFS_CYCLE,
+                    fxx=1,
+                    variable_map={"temp_k_2m": ("TMP", "2 m above ground")},
+                    client=client,
+                    member="03",
+                )
+        finally:
+            client.close()
+
+        assert captured, "build_fetch_plan was never called"
+        assert all(c.get("member") == "03" for c in captured)
+
+    def test_member_validation_fires_before_nwp_import(self) -> None:
+        """Tests A/B fire pre-import; this pins the ordering explicitly for
+        valid members too — a valid member on gefs reaches the single-cycle
+        path (and ultimately the lazy ``[nwp]`` import) rather than tripping
+        validation. Without the extra installed, the call surfaces
+        ``SourceUnavailableError`` (NOT a member ValueError), proving a valid
+        member passed validation. With the extra, it would proceed to fetch;
+        we only assert the no-ValueError property here."""
+        from mostlyright.weather.forecast_nwp import forecast_nwp
+
+        if _HAS_NWP_EXTRA:
+            pytest.skip("absence-of-extra ordering check; extra is installed")
+        with pytest.raises(SourceUnavailableError):
+            forecast_nwp("KNYC", "gefs", cycle=self._GEFS_CYCLE, member="p05")
+
+    def test_member_threads_through_multi_cycle_gefs(self) -> None:
+        """Test F (multi-cycle) — every recursive single-cycle call in a
+        cycle_range backfill carries member="p05". Patches the module-level
+        ``forecast_nwp`` recursion target (mirroring the existing multi-cycle
+        test) to capture the per-cycle kwargs WITHOUT hitting the ``[nwp]``
+        import gate, so it runs in CI without the extra."""
+        from mostlyright.weather import forecast_nwp as fnwp_module
+
+        start = datetime(2025, 6, 1, 0, 0, tzinfo=UTC)
+        end = datetime(2025, 6, 1, 6, 0, tzinfo=UTC)  # GEFS 6h grid: 00, 06
+        real_forecast_nwp = fnwp_module.forecast_nwp
+        per_cycle_members: list[str | None] = []
+
+        def _fake_single(*args, **kwargs):
+            cycle = kwargs.get("cycle")
+            # Only intercept the per-cycle recursive call (no range kwargs).
+            if cycle is not None and kwargs.get("cycle_range_start") is None:
+                per_cycle_members.append(kwargs.get("member"))
+                return None  # no rows for this cycle; range path concats empties
+            return real_forecast_nwp(*args, **kwargs)
+
+        with (
+            patch(
+                "mostlyright.weather._fetchers._nwp_cycle_chunks.check_historical_depth",
+                return_value=None,
+            ),
+            patch(
+                "mostlyright.weather.forecast_nwp.forecast_nwp",
+                side_effect=_fake_single,
+            ),
+        ):
+            real_forecast_nwp(
+                station="KNYC",
+                model="gefs",
+                cycle_range_start=start,
+                cycle_range_end=end,
+                member="p05",
+            )
+
+        assert per_cycle_members, "no per-cycle recursive calls observed"
+        assert all(m == "p05" for m in per_cycle_members)
+
+    def test_member_threads_through_public_single_cycle_gefs(self) -> None:
+        """Architect iter-1 HIGH — the public ``forecast_nwp()`` single-cycle
+        mirror loop must pass ``member=`` to ``_try_fetch_records_for_mirror``
+        (the headline ``forecast_nwp("KNYC", "gefs", member="p05")`` shape).
+        Tests C/E exercise the helper directly and Test F intercepts the
+        recursion before the single-cycle body runs, so without this test the
+        ``member=member`` argument at the mirror-loop call site would have
+        zero executions in CI (no ``[nwp]`` extra) AND in a with-extra run —
+        deleting it would silently fetch the c00 control run. Stub the lazy
+        ``[nwp]`` imports into ``sys.modules`` so the import gate passes
+        without the extra, and capture the helper's kwargs; every mirror
+        "fails" (returns None) so the call exits via ``NoLiveForNwpError``
+        before any extraction."""
+        import sys
+        import types
+
+        from mostlyright.weather.forecast_nwp import forecast_nwp
+
+        fake_neighbors = types.ModuleType("sklearn.neighbors")
+        fake_neighbors.BallTree = object  # satisfies `from ... import BallTree`
+        fake_sklearn = types.ModuleType("sklearn")
+        fake_sklearn.neighbors = fake_neighbors  # type: ignore[attr-defined]
+
+        captured: list[dict] = []
+
+        def _capture_and_fail(*args, **kwargs):
+            captured.append(kwargs)
+            return None  # mirror failed → loop tries next → NoLiveForNwpError
+
+        with (
+            patch.dict(
+                sys.modules,
+                {
+                    "cfgrib": types.ModuleType("cfgrib"),
+                    "xarray": types.ModuleType("xarray"),
+                    "sklearn": fake_sklearn,
+                    "sklearn.neighbors": fake_neighbors,
+                },
+            ),
+            patch(
+                "mostlyright.weather.forecast_nwp._try_fetch_records_for_mirror",
+                side_effect=_capture_and_fail,
+            ),
+            pytest.raises(NoLiveForNwpError),
+        ):
+            forecast_nwp("KNYC", "gefs", cycle=self._GEFS_CYCLE, member="p05")
+
+        assert captured, "_try_fetch_records_for_mirror was never called"
+        assert all(c.get("member") == "p05" for c in captured)
+
+
+# ---------------------------------------------------------------------------
 # Live integration (network-bound, marked + gated)
 # ---------------------------------------------------------------------------
 @pytest.mark.live

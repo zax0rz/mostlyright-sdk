@@ -114,6 +114,13 @@ _WIRED_NWP_MODELS: frozenset[str] = frozenset(
 _RESERVED_MODELS: frozenset[str] = frozenset(NWP_MODEL_VALUES) - _WIRED_NWP_MODELS
 
 
+#: Issue #74: models whose ensemble ``member=`` is wired into their path
+#: builder (``_gefs_path`` / ``_cfs_path``). RRFS declares members but its
+#: member is NOT threaded into the path builder, so it is excluded here —
+#: passing ``member=`` for any non-listed model raises ``ValueError``.
+_MEMBER_CAPABLE_MODELS: frozenset[str] = frozenset({"gefs", "cfs"})
+
+
 #: cfgrib's canonical short-name for each GRIB2 ``(variable, level)`` pair
 #: in the mostlyright variable maps. Lifted from cfgrib's CF / GRIB2 short-
 #: name table; used to project per-record xarray datasets back to the
@@ -324,14 +331,24 @@ def _try_fetch_records_for_mirror(
     fxx: int,
     variable_map: dict[str, tuple[str, str]],
     client: httpx.Client,
+    member: str | None = None,
 ) -> tuple[NwpFetchPlan, list[IdxRecord], int] | None:
     """Resolve a fetch plan + ``.idx`` + content length on one mirror.
 
     Returns ``None`` if the mirror failed (caller falls back to the next
     one in the chain). Returns a tuple ``(plan, records, content_length)``
     on success — caller does the per-record byte-range fetch.
+
+    Issue #74: ``member`` is threaded to ``build_fetch_plan`` (and on to
+    the GEFS/CFS path builder) ONLY when non-None — passing ``member=None``
+    would override the path-builder default (``c00`` / ``01``) and crash
+    f-string formatting.
     """
-    plan = build_fetch_plan(model=model, mirror=mirror, cycle=cycle, fxx=fxx)
+    # Build per-model kwargs, including ``member`` only when explicitly set.
+    per_model_kwargs: dict[str, Any] = {}
+    if member is not None:
+        per_model_kwargs["member"] = member
+    plan = build_fetch_plan(model=model, mirror=mirror, cycle=cycle, fxx=fxx, **per_model_kwargs)
     try:
         idx_text = fetch_idx_text(plan, client=client)
         # Phase 17 FORECAST-04: dispatch idx parser style per model.
@@ -583,6 +600,7 @@ def forecast_nwp(
     cycle_range_end: datetime | None = None,
     fxx: int | None = None,
     mirror: str | None = None,
+    member: str | None = None,
     client: httpx.Client | None = None,
     backend: str = "pandas",
     return_type: str = "dataframe",
@@ -601,6 +619,12 @@ def forecast_nwp(
         fxx: Forecast hour ahead of ``cycle``. Default ``1`` (next hour).
         mirror: Force a specific mirror (``"aws_bdp"`` or ``"nomads"``).
             Default: try AWS first then NOMADS.
+        member: Ensemble member id — only valid for the member-capable
+            models GEFS (e.g. ``"p05"``, default ``"c00"``) and CFS
+            (``"01"``..``"04"``, default ``"01"``). ``None`` (the default)
+            keeps the path-builder default and is byte-identical to
+            pre-issue-#74 behavior. Threaded to the GEFS/CFS path builder
+            only when non-None.
         client: Reuse an ``httpx.Client`` for connection pooling. A
             fresh client is created (and closed) per call if omitted.
 
@@ -614,7 +638,9 @@ def forecast_nwp(
     Raises:
         NwpModelNotAvailableError: ``model`` is reserved (ECMWF Tier-2).
         ValueError: ``model`` or ``mirror`` is not in the supported set;
-            ``fxx`` is negative; ``cycle`` is naive.
+            ``fxx`` is negative; ``cycle`` is naive; ``member`` is set for
+            a non-member model, or is not a valid member of the requested
+            model's ensemble (GEFS/CFS).
         SourceUnavailableError: the ``[nwp]`` optional extra
             (``cfgrib`` + ``xarray`` + ``sklearn``) is not installed.
         NoLiveForNwpError: every wired mirror failed (typically while
@@ -688,6 +714,28 @@ def forecast_nwp(
             f"got {mirror!r}"
         )
 
+    # Issue #74: validate the ``member=`` ensemble selector EARLY — before
+    # the lazy ``[nwp]`` imports below — so callers without cfgrib still get
+    # the right ValueError. Only GEFS / CFS have their member wired into the
+    # path builder; RRFS member is NOT wired and is intentionally excluded.
+    # The member enums are plain frozensets (gefs.py / cfs.py import no
+    # cfgrib/xarray at module level), so importing them here is cheap.
+    if member is not None:
+        if model not in _MEMBER_CAPABLE_MODELS:
+            raise ValueError(
+                f"member= is only supported for models "
+                f"{sorted(_MEMBER_CAPABLE_MODELS)}; got model={model!r}"
+            )
+        if model == "gefs":
+            from ._fetchers._nwp_grids.gefs import GEFS_MEMBERS as _MEMBERS
+        else:  # model == "cfs"
+            from ._fetchers._nwp_grids.cfs import CFS_MEMBERS as _MEMBERS
+        if member not in _MEMBERS:
+            raise ValueError(
+                f"member={member!r} is not a valid {model} member; "
+                f"valid members are {sorted(_MEMBERS)}"
+            )
+
     # Phase 17 Wave-2 iter-3: model-aware fxx default. RTMA / URMA are
     # analysis products with no forecast hour -- default to 0. All other
     # models default to fxx=1. The None sentinel lets us distinguish an
@@ -751,6 +799,7 @@ def forecast_nwp(
                     cycle=_c,
                     fxx=fxx if fxx is not None else (0 if model in {"rtma", "urma"} else 1),
                     mirror=mirror,
+                    member=member,
                     client=client,
                     backend="pandas",
                     return_type="dataframe",
@@ -919,6 +968,7 @@ def forecast_nwp(
                 fxx=fxx,
                 variable_map=variable_map,
                 client=client,
+                member=member,
             )
             if attempt is None:
                 continue

@@ -1,6 +1,6 @@
 [project]
 name = "mostlyrightmd"
-version = "1.6.0"
+version = "1.7.0"
 description = "Python SDK for quants, ML engineers, and AI agents — one interface to public data. Adapters ship weather + prediction-market settlements (Kalshi NHIGH/NLOW, Polymarket) today; SEC filings, Federal Reserve series, court filings, FDA approvals, and equities are next. Schema-versioned, leakage-free, local-first. Imports as `mostlyright`."
 readme = "README.md"
 license = "MIT"
@@ -72,10 +72,12 @@ parquet = [
 # pandas upper bound aligned with `parquet` extra at <4.0; both backends
 # are exercised by the dual-pandas CI matrix.
 research = [
-    # >=1.6.0: research() now calls fetch_open_meteo(variables=...), a kwarg
-    # introduced in mostlyrightmd-weather 1.6.0 (#64). An older weather pin would
-    # raise TypeError on research(..., forecast_source="open_meteo") (codex P1).
-    "mostlyrightmd-weather>=1.6.0,<2.0",
+    # >=1.7.0: forecast_nwp() threads member= to the weather impl, a kwarg
+    # introduced in mostlyrightmd-weather 1.7.0 (#74) — an older weather would
+    # TypeError on forecast_nwp(..., member=...). (Supersedes the >=1.6.0 floor
+    # for fetch_open_meteo(variables=...), #64 codex P1; default calls stay
+    # skew-tolerant via the core wrapper's conditional member threading.)
+    "mostlyrightmd-weather>=1.7.0,<2.0",
     "pyarrow>=17.0,<24.0",
     "pandas>=2.2,<4.0",
 ]
