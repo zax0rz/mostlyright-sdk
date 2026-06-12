@@ -53,6 +53,12 @@ export interface ForecastNwpOptions {
   readonly fxx?: number;
   /** Force a mirror (e.g. `"aws_bdp"`). */
   readonly mirror?: string;
+  /**
+   * Ensemble member id (e.g. GEFS `"p05"`, CFS `"03"`). Mirrors the
+   * Python `member=` kwarg (issue #74); only meaningful for GEFS / CFS.
+   * Signature-forward only — TS NWP execution lands in v2.0+.
+   */
+  readonly member?: string;
 }
 
 /**

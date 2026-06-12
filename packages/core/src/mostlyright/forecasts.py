@@ -131,6 +131,7 @@ def forecast_nwp(
     cycle_range_end: datetime | None = None,
     fxx: int | None = None,
     mirror: str | None = None,
+    member: str | None = None,
     client: httpx.Client | None = None,
 ) -> pd.DataFrame:
     """Fetch an NWP forecast from NOAA Big Data Program direct-fetch.
@@ -149,6 +150,12 @@ def forecast_nwp(
         fxx: Forecast hour ahead of ``cycle``. Default ``1``.
         mirror: Force a specific NOAA BDP mirror (``"aws_bdp"`` or
             ``"nomads"``). Default: try AWS then NOMADS.
+        member: Ensemble member id — only valid for the member-capable
+            models GEFS (``"c00"``/``"p01"``..``"p30"``/``"avg"``/``"spr"``,
+            default ``"c00"``) and CFS (``"01"``..``"04"``, default
+            ``"01"``). ``None`` (default) is byte-identical to today.
+            Validation + the valid-member enums live in the weather impl;
+            this wrapper passes ``member`` straight through (issue #74).
         client: Reuse an ``httpx.Client`` for connection pooling.
 
     Returns:
@@ -157,7 +164,9 @@ def forecast_nwp(
     Raises:
         ValueError: ``model`` not in :data:`SUPPORTED_NWP_MODELS` and
             not a reserved ECMWF id; ``fxx`` is negative; ``cycle`` is
-            naive; ``mirror`` outside the supported set.
+            naive; ``mirror`` outside the supported set; ``member`` set
+            for a non-member model or not a valid member of the model's
+            ensemble (validated in the weather impl).
         NwpModelNotAvailableError: ``model`` is a reserved ECMWF id.
         SourceUnavailableError: ``[nwp]`` optional extra not installed.
         NoLiveForNwpError: every wired NOAA BDP mirror failed.
@@ -269,5 +278,6 @@ def forecast_nwp(
         cycle_range_end=cycle_range_end,
         fxx=fxx,
         mirror=mirror,
+        member=member,
         client=client,
     )

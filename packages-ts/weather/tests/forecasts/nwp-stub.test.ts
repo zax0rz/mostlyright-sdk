@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 
 import { DataAvailabilityError, NwpNotAvailableError } from "@mostlyrightmd/core";
 
-import { forecastNwp } from "../../src/forecasts/index.js";
+import { type ForecastNwpOptions, forecastNwp } from "../../src/forecasts/index.js";
 
 describe("forecastNwp (Phase 21 21-07 messaging)", () => {
   it("raises NwpNotAvailableError (subclass of DataAvailabilityError)", async () => {
@@ -114,5 +114,16 @@ describe("forecastNwp (Phase 21 21-07 messaging)", () => {
     expect(models.length).toBe(24);
     // Exercise one call to lock the runtime behavior.
     await expect(forecastNwp("KNYC", models[0])).rejects.toThrow();
+  });
+
+  it("ForecastNwpOptions accepts an optional member (issue #74 parity)", async () => {
+    // Compile-level check: `member?` must exist on ForecastNwpOptions, or
+    // tsc fails. Runtime still throws the v1.x stub error.
+    const opts: ForecastNwpOptions = { member: "p05" };
+    await expect(forecastNwp("KNYC", "gefs", opts)).rejects.toThrow(NwpNotAvailableError);
+    // Inline-literal form mirrors the Python call shape.
+    await expect(forecastNwp("KNYC", "cfs", { member: "03" })).rejects.toThrow(
+      NwpNotAvailableError,
+    );
   });
 });
